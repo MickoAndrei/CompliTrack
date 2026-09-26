@@ -1,3 +1,4 @@
+ HEAD
 # 🛡️ CompliTrack
 
 **Regulatory Compliance & Accountability System** *USTP Claveria — College of Engineering and Technology (CET)*
@@ -297,3 +298,7 @@ This project is licensed under the **MIT License** — see [LICENSE](http://LICE
 - [Laravel](https://laravel.com) — the backend framework this project is built on  
 - [Lucide Icons](https://lucide.dev)  
 - Built with Laravel, MongoDB, Node.js, and Flutter
+
+# CompliTrack
+Centralized, secure, and auditable regulatory compliance management system built for USTP Claveria's College of Engineering and Technology (CET). Tracks evidence archiving, compliance checks, and corrective action status across departments, with role-based dashboards and real-time notifications.
+ 34fb73ab3e6f23af4019ee63f5f9032514c7064c
