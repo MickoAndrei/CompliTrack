@@ -1,0 +1,19 @@
+@import 'tailwindcss';
+
+@source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
+@source '../../storage/framework/views/*.php';
+@source '../**/*.blade.php';
+@source '../**/*.js';
+
+@theme {
+    --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
+        'Segoe UI Symbol', 'Noto Color Emoji';
+    --font-heading: 'Poppins', ui-sans-serif, system-ui, sans-serif;
+
+    /* USTP palette + role badge colors — Guide §3 / §3.1 */
+    --color-ustp-navy: #00205B;
+    --color-ustp-gold: #FFC72C;
+    --color-ustp-purple: #6C4AB6;
+    --color-ustp-blue: #2B6CB0;
+    --color-ustp-gray: #6B7280;
+}
