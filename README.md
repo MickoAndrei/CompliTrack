@@ -44,6 +44,7 @@ The system is intentionally scoped to three core functions:
 - [User Roles & Permissions](#user-roles--permissions)
 - [Architecture](#architecture)
 - [Installation](#installation)
+- [Git Workflow](#git-workflow)
 - [Getting Started](#getting-started)
   - [Prerequisites](#prerequisites)
   - [Backend (Laravel API)](#backend-laravel-api)
@@ -200,6 +201,70 @@ php artisan serve
 Visit `http://localhost:8000/login` — if the CompliTrack login page loads,
 the backend install is working. See [Getting Started](#getting-started)
 below for running each service together during development.
+
+---
+
+## Git Workflow
+
+This repo uses two long-lived branches:
+
+| Branch | Purpose |
+|---|---|
+| `Development` | Where new/changed modules are pushed and tested. Things are allowed to be temporarily broken here. |
+| `CompliTrack` | The stable branch — only receives code that has been verified working on `Development`. This is treated as the "main" branch. |
+
+**Never commit finished-but-untested work straight to `CompliTrack`.**
+
+### Daily workflow — working on Development
+
+```bash
+git checkout Development
+git pull origin Development      # get the latest changes first
+
+# ...make your changes...
+
+git add .
+git commit -m "Describe what you changed"
+git push origin Development
+```
+
+### Once a change is verified working — merge into CompliTrack
+
+**Option A — Pull Request (recommended):**
+1. Push your commits to `Development` (as above).
+2. On GitHub, open a Pull Request: base `CompliTrack` ← compare `Development`.
+3. Review the diff, then click **Merge pull request**.
+
+**Option B — merge locally:**
+
+```bash
+git checkout CompliTrack
+git pull origin CompliTrack
+git merge Development
+git push origin CompliTrack
+```
+
+### After merging
+
+Switch back to `Development` for the next round of work:
+
+```bash
+git checkout Development
+```
+
+### Quick reference — common commands
+
+| Command | What it does |
+|---|---|
+| `git status` | Shows current branch + staged/unstaged changes |
+| `git branch -a` | Lists local and remote branches |
+| `git remote -v` | Shows which GitHub repo you're connected to |
+| `git add .` | Stages all changed files |
+| `git commit -m "message"` | Commits staged changes |
+| `git push origin <branch>` | Pushes commits to that branch on GitHub |
+| `git pull origin <branch>` | Fetches and merges the latest from that branch |
+| `git checkout <branch>` | Switches to a different local branch |
+| `git merge <branch>` | Merges another branch into the one you're on |
 
 ---
 
