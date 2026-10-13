@@ -1,0 +1,7 @@
+build/
+.dart_tool/
+.env
+*.iml
+.idea/
+google-services.json
+GoogleService-Info.plist
