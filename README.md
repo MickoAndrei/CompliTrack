@@ -6,8 +6,8 @@
 *USTP Claveria — College of Engineering and Technology (CET)*
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Built with Laravel](https://img.shields.io/badge/Built%20with-Laravel-FF2D20?logo=laravel&logoColor=white)](https://laravel.com)
-![Laravel](https://img.shields.io/badge/Laravel-11-FF2D20?logo=laravel&logoColor=white)
+![Laravel](https://img.shields.io/badge/Laravel-12-FF2D20?logo=laravel&logoColor=white)
+![PHP](https://img.shields.io/badge/PHP-8.2%2B-777BB4?logo=php&logoColor=white)
 ![MongoDB](https://img.shields.io/badge/MongoDB-7.0-47A248?logo=mongodb&logoColor=white)
 ![Node.js](https://img.shields.io/badge/Node.js-Express%20%2B%20Socket.io-339933?logo=node.js&logoColor=white)
 ![Flutter](https://img.shields.io/badge/Flutter-3.24%2B-02569B?logo=flutter&logoColor=white)
@@ -37,8 +37,20 @@ The system is intentionally scoped to three core functions:
 
 ---
 
+## Current Status
+
+> **The project is at the scaffold stage.** The folder structure, models, routes,
+> role middleware and role seeder are in place. Most controllers, services,
+> Blade views, the `realtime/` service and the `mobile/` app are **empty
+> placeholders** waiting to be implemented. Features described below are the
+> design target, not what is running today — see the [Roadmap](#roadmap) for
+> what is actually done.
+
+---
+
 ## Table of Contents
 
+- [Current Status](#current-status)
 - [Features](#features)
 - [Tech Stack](#tech-stack)
 - [User Roles & Permissions](#user-roles--permissions)
@@ -46,13 +58,9 @@ The system is intentionally scoped to three core functions:
 - [Installation](#installation)
 - [Git Workflow](#git-workflow)
 - [Getting Started](#getting-started)
-  - [Prerequisites](#prerequisites)
-  - [Backend (Laravel API)](#backend-laravel-api)
-  - [Realtime Service (Node.js)](#realtime-service-nodejs)
-  - [Mobile App (Flutter)](#mobile-app-flutter)
 - [Environment Variables](#environment-variables)
 - [Database Collections](#database-collections)
-- [API Endpoints](#api-endpoints-summary)
+- [API Endpoints](#api-endpoints)
 - [Folder Structure](#folder-structure)
 - [Security](#security)
 - [Roadmap](#roadmap)
@@ -70,7 +78,7 @@ The system is intentionally scoped to three core functions:
 - 🔄 Corrective Action Tracker with a full status timeline (`open → in_progress → closed`)
 - 🔔 Real-time in-app + push notifications (Socket.io + Firebase Cloud Messaging)
 - 📊 Role-specific dashboards with KPIs, compliance gauges, and trend charts
-- 📱 Cross-platform mobile app (Flutter) for Auditors and Auditees in the field
+- 📱 Cross-platform mobile app (Flutter) for all four roles, built around Auditor and Auditee field use
 - 🧾 Full audit logging of every write operation (user, action, IP address)
 - 🖨️ PDF compliance reports with official USTP Navy/Gold branding
 
@@ -82,14 +90,14 @@ The system is intentionally scoped to three core functions:
 
 | Layer | Technology |
 |---|---|
-| Backend API | Laravel 11 (PHP 8.3) — REST API, business logic, role middleware, file encryption |
+| Backend API | Laravel 12 (PHP 8.2+) — REST API, business logic, role middleware, file encryption |
 | Realtime Service | Node.js (Express + Socket.io) — live notifications, status updates, dashboard refresh |
-| Mobile App | Flutter 3.24+ (Dart 3.5) — Android/iOS, for Auditee and Auditor field use |
+| Mobile App | Flutter 3.24+ (Dart 3.5) — Android/iOS |
 | Database | MongoDB 7.0 (`mongodb/laravel-mongodb`) — flexible schema for compliance docs |
 | Auth | Laravel Sanctum (Web) · JWT via `tymon/jwt-auth` (Mobile) |
 | Storage | Local encrypted disk + optional S3-compatible (MinIO) |
-| Push Notifications | Firebase Cloud Messaging (FCM), dispatched via the Node service |
-| Frontend Web | Laravel Blade + Tailwind CSS 3.4 + Alpine.js |
+| Push Notifications | Firebase Cloud Messaging (FCM, HTTP v1), dispatched via the Node service |
+| Frontend Web | Laravel Blade + Tailwind CSS 4 (via Vite) + Alpine.js |
 | Icons | [Lucide Icons](https://lucide.dev) — single icon library across Web & Mobile |
 
 ---
@@ -157,9 +165,8 @@ cp .env.example .env
 php artisan key:generate
 ```
 
-Open `.env` and set your MongoDB connection string, `ENCRYPTION_KEY`, and mail
-settings — see [Environment Variables](#environment-variables) below for the
-full list.
+Open `.env` and set `MONGODB_URI`, `MONGODB_DATABASE`, `ENCRYPTION_KEY`, and
+mail settings — see [Environment Variables](#environment-variables) below.
 
 ### 3. Install frontend asset dependencies
 
@@ -175,14 +182,23 @@ php artisan migrate
 php artisan db:seed        # seeds the 4 fixed roles (0-3)
 ```
 
+> **Note:** `DB_CONNECTION` stays `sqlite` for Laravel's own framework tables
+> (sessions, cache, queue). The included migrations only create those tables.
+> Application data lives in MongoDB (`MONGODB_*`) and its collections are
+> created on first write; the Mongo index migration is a placeholder to be
+> filled in.
+
 ### 5. Install the realtime service dependencies (Node.js)
 
 ```bash
 cd realtime
 npm install
-cp .env.example .env       # MongoDB URI, FCM server key, Socket.io port
+cp .env.example .env       # MongoDB URI, Firebase service account, Socket.io port
 cd ..
 ```
+
+> The `realtime/` files are placeholders (`package.json` and `.env.example`
+> are still empty) — fill them in before running this step.
 
 ### 6. (Optional) Install the mobile app dependencies (Flutter)
 
@@ -198,9 +214,10 @@ cd ..
 php artisan serve
 ```
 
-Visit `http://localhost:8000/login` — if the CompliTrack login page loads,
-the backend install is working. See [Getting Started](#getting-started)
-below for running each service together during development.
+Visit `http://localhost:8000/login`. The route exists, but the login view
+(`resources/views/auth/login.blade.php`) is still an empty placeholder, so the
+page will be blank until it is built. See [Getting Started](#getting-started)
+for running each service during development.
 
 ---
 
@@ -272,9 +289,9 @@ git checkout Development
 
 ### Prerequisites
 
-- PHP 8.3+ and Composer
+- PHP 8.2+ and Composer
 - Node.js 20+ and npm/yarn
-- MongoDB 7.0 (local or Atlas)
+- MongoDB 7.0 (local or Atlas) and the PHP `mongodb` extension
 - Flutter 3.24+ / Dart 3.5+ (for the mobile app)
 - Firebase project (for FCM push notifications)
 
@@ -306,25 +323,35 @@ flutter run
 
 ## Environment Variables
 
-Minimal set required by the Laravel backend:
+Set in the root `.env` (copied from `.env.example`). CompliTrack-specific values:
 
 ```env
 APP_NAME=CompliTrack
 APP_URL=http://localhost:8000
 
-DB_CONNECTION=mongodb
-MONGO_DB_URI=mongodb://localhost:27017/complitrack
+# Laravel framework tables (sessions, cache, queue) — leave as-is
+DB_CONNECTION=sqlite
 
-ENCRYPTION_KEY=            # AES-256-GCM key, rotated via Super Admin panel
+# CompliTrack: MongoDB (app data)
+MONGODB_URI=mongodb://127.0.0.1:27017
+MONGODB_DATABASE=complitrack
+
 JWT_SECRET=
+ENCRYPTION_KEY=            # AES-256-GCM key, rotated via Super Admin panel
 
 MAIL_MAILER=smtp
 MAIL_HOST=
 MAIL_PORT=587
 
-FCM_SERVER_KEY=
+FCM_SERVER_KEY=            # legacy placeholder — see note below
 NODE_SOCKET_URL=http://localhost:4000
 ```
+
+> **FCM note:** Google's legacy FCM server keys no longer work. Push
+> notifications use the FCM HTTP v1 API, which needs a Firebase
+> **service-account JSON** configured in the `realtime/` service
+> (`realtime/src/config/firebase.js`). `FCM_SERVER_KEY` should be replaced
+> with a service-account path once that is wired up.
 
 ---
 
@@ -342,66 +369,98 @@ MongoDB collections (schema enforced via Laravel validation):
 
 ---
 
-## API Endpoints Summary
+## API Endpoints
 
-| Method | Endpoint | Description |
-|---|---|---|
-| `POST` | `/api/v1/auth/login` | Authenticate, returns `{token, user}` |
-| `POST` | `/api/v1/auth/forgot-password` | Sends a signed, time-limited reset link |
-| `GET` | `/api/v1/users` | List users (role-restricted) |
-| `POST` | `/api/v1/archives/upload` | Encrypts and stores evidence |
-| `GET` | `/api/v1/archives/{id}/download` | Decrypts and streams a file |
-| `POST` | `/api/v1/compliance-checks` | Create a compliance check |
-| `PATCH` | `/api/v1/compliance-checks/{id}/status` | Update corrective status, triggers realtime event |
-| `GET` | `/api/v1/notifications` | Notifications for the logged-in user |
+All routes are under `/api/v1` (defined in `routes/api.php`). Everything except
+the auth routes requires `auth:sanctum`.
 
-Full endpoint list is documented in `/docs/api.md`.
+| Method | Endpoint | Roles | Description |
+|---|---|---|---|
+| `POST` | `/auth/login` | public | Authenticate, returns `{token, user}` |
+| `POST` | `/auth/logout` | public | Log out |
+| `POST` | `/auth/forgot-password` | public | Sends a signed, time-limited reset link |
+| `POST` | `/auth/reset-password` | public | Reset password with the signed token |
+| `GET/POST/PUT/DELETE` | `/users`, `/users/{id}` | 0, 1 | User management (`apiResource`) |
+| `GET/POST/PUT/DELETE` | `/departments`, `/departments/{id}` | 0, 1 | Department management (`apiResource`) |
+| `POST` | `/archives/upload` | all (per scope) | Encrypts and stores evidence |
+| `GET` | `/archives` | all (per scope) | List archive documents |
+| `GET` | `/archives/{id}/download` | all (per scope) | Decrypts and streams a file |
+| `GET/POST/PUT/DELETE` | `/compliance-checks`, `/compliance-checks/{id}` | all (per scope) | Compliance checks (`apiResource`) |
+| `PATCH` | `/compliance-checks/{id}/status` | all (per scope) | Update corrective status, triggers realtime event |
+| `GET` | `/notifications` | all | Notifications for the logged-in user |
+| `PATCH` | `/notifications/{id}/read` | all | Mark a notification as read |
+| `GET` | `/logs` | 0 | System audit logs |
+| `GET` | `/reports` | 0, 1 | Generate compliance reports |
+
+> The route definitions exist, but the controllers behind them are still empty.
 
 ---
 
 ## Folder Structure
 
+See [`FILE_STRUCTURE.md`](FILE_STRUCTURE.md) for the complete file-by-file tree.
+Top level:
+
 ```
 app/
-  Models/            # User, Department, ArchiveDocument, ComplianceCheck
-  Http/Controllers/Api/V1/
-  Http/Middleware/RoleMiddleware.php
   Helpers/RoleHelper.php
-routes/api.php
-config/database.php  # mongodb connection
+  Http/Controllers/Api/V1/     # Auth, User, Department, Archive, ComplianceCheck,
+                               # Notification, AuditLog, Report controllers
+  Http/Controllers/Web/        # Dashboard, Profile
+  Http/Middleware/             # RoleMiddleware, AuditLogMiddleware, EnsureUserIsActive
+  Models/                      # User, Role, Department, ArchiveDocument,
+                               # ComplianceCheck, Notification, AuditLog
+  Services/                    # ArchiveEncryption, ComplianceCheck,
+                               # NotificationDispatch, ReportGenerator, AuditLog
+config/                        # database.php (mongodb), sanctum, jwt, cors
+database/                      # migrations, seeders (Role, Department, SuperAdmin)
+resources/views/               # Blade: super-admin/, admin/, auditor/, auditee/,
+                               # auth/, components/, layouts/, partials/, errors/
+routes/                        # api.php, web.php
+tests/
 
-lib/                  # Flutter mobile app
-  core/
-  data/
-  presentation/
-    screens/
-    widgets/
+realtime/                      # Node.js + Socket.io + FCM service
+  src/{config,sockets,watchers,services,models,utils}/
+
+mobile/                        # Flutter app (all 4 roles)
+  lib/
+    core/{constants,theme,utils,network,services}/
+    data/{models,repositories}/
+    presentation/{navigation,screens,widgets}/
 ```
 
 ---
 
 ## Security
 
-- Archive files encrypted at rest with **AES-256-GCM**; per-file IV stored in `encryptionIv`
-- **SHA-256** checksum generated on upload, verified on download
-- Passwords hashed with **bcrypt** (cost 12)
-- Login endpoint rate-limited (5 attempts/min per email + IP) → `429` beyond that
-- Role checks always via `RoleMiddleware` on the integer `roleId`, never by name
-- MongoDB ObjectId format validated before every query
-- Every write operation logged to `audit_logs`
+The design targets below are **planned**; check each against the code before
+relying on it. Status reflects the current repository.
 
-Found a security issue? Please see [Security Policy](#) below rather than opening a public issue.
+| Control | Status |
+|---|---|
+| Role checks via `RoleMiddleware` on the integer `roleId`, never by name | ✅ Implemented |
+| Archive files encrypted at rest with **AES-256-GCM**; per-file IV in `encryptionIv` | ⏳ Planned (`ArchiveEncryptionService` is a stub) |
+| **SHA-256** checksum on upload, verified on download | ⏳ Planned |
+| Passwords hashed with **bcrypt** (cost 12) | ⏳ Planned |
+| Login rate-limited (5 attempts/min per email + IP) → `429` | ⏳ Planned (`RateLimitServiceProvider` is a stub) |
+| MongoDB ObjectId format validated before every query | ⏳ Planned |
+| Every write operation logged to `audit_logs` | ⏳ Planned (`AuditLogMiddleware` is a stub) |
+
+Found a security issue? Please don't open a public issue. Use GitHub's
+**Security → Report a vulnerability** on this repository to report it privately.
 
 ---
 
 ## Roadmap
 
-- [x] Phase 1 — Laravel setup, auth, roles seeder, users/department CRUD
-- [x] Phase 2 — Archive module with encryption, upload/download
+- [ ] Phase 1 — Laravel setup, auth, roles seeder, users/department CRUD
+  - [x] Laravel + MongoDB setup, models, routes, `RoleMiddleware`, `RoleSeeder`
+  - [ ] Auth endpoints, users/department CRUD
+- [ ] Phase 2 — Archive module with encryption, upload/download
 - [ ] Phase 3 — Compliance checks, corrective status, notifications collection
 - [ ] Phase 4 — Node.js realtime service + FCM integration
 - [ ] Phase 5 — Blade dashboards per role
-- [ ] Phase 6 — Flutter mobile app (Auditee/Auditor)
+- [ ] Phase 6 — Flutter mobile app (all four roles)
 - [ ] Phase 7 — Testing, audit logs, PDF reports, deployment
 
 ---
@@ -427,5 +486,3 @@ This project is licensed under the **MIT License** — see [LICENSE](LICENSE) fo
 - [Laravel](https://laravel.com) — the backend framework this project is built on
 - [Lucide Icons](https://lucide.dev)
 - Built with Laravel, MongoDB, Node.js, and Flutter
-
-</div>
