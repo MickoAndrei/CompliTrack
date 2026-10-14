@@ -5,3 +5,5 @@ build/
 .idea/
 google-services.json
 GoogleService-Info.plist
+# Widget Preview related
+.widget_preview/
