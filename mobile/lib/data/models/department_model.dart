@@ -1,3 +1,5 @@
+import 'model_json.dart';
+
 class DepartmentModel {
   final String id;
   final String departmentCode;
@@ -21,15 +23,15 @@ class DepartmentModel {
 
   factory DepartmentModel.fromJson(Map<String, dynamic> json) {
     return DepartmentModel(
-      id: json['_id'] as String? ?? json['id'] as String? ?? '',
-      departmentCode: json['departmentCode'] as String? ?? '',
-      departmentName: json['departmentName'] as String? ?? '',
-      collegeName: json['collegeName'] as String? ?? 'College of Engineering and Technology',
-      campusName: json['campusName'] as String? ?? 'CET Claveria',
-      headUserId: json['headUserId'] as String?,
-      isActive: json['isActive'] as bool? ?? true,
+      id: ModelJson.requiredString(json, '_id', alias: 'id'),
+      departmentCode: ModelJson.requiredString(json, 'departmentCode'),
+      departmentName: ModelJson.requiredString(json, 'departmentName'),
+      collegeName: ModelJson.requiredString(json, 'collegeName'),
+      campusName: ModelJson.requiredString(json, 'campusName'),
+      headUserId: ModelJson.optionalString(json, 'headUserId'),
+      isActive: ModelJson.requiredBool(json, 'isActive'),
       createdAt: json['createdAt'] != null
-          ? DateTime.tryParse(json['createdAt'].toString())
+          ? ModelJson.requiredDateTime(json, 'createdAt')
           : null,
     );
   }

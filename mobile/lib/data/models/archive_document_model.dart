@@ -1,3 +1,5 @@
+import 'model_json.dart';
+
 class ArchiveDocumentModel {
   final String id;
   final String fileCode;
@@ -29,20 +31,18 @@ class ArchiveDocumentModel {
 
   factory ArchiveDocumentModel.fromJson(Map<String, dynamic> json) {
     return ArchiveDocumentModel(
-      id: json['_id'] as String? ?? json['id'] as String? ?? '',
-      fileCode: json['fileCode'] as String? ?? '',
-      originalName: json['originalName'] as String? ?? '',
-      mimeType: json['mimeType'] as String? ?? 'application/pdf',
-      fileSize: json['fileSize'] as int? ?? 0,
-      checksum: json['checksum'] as String? ?? '',
-      departmentCode: json['departmentCode'] as String? ?? json['department']?['departmentCode'] as String? ?? '',
-      referenceStandard: json['referenceStandard'] as String? ?? '',
-      uploadedBy: json['uploadedBy'] as String? ?? json['uploader']?['fullName'] as String? ?? '',
-      isVerified: json['isVerified'] as bool? ?? true,
-      isEncrypted: json['isEncrypted'] as bool? ?? true,
-      createdAt: json['createdAt'] != null
-          ? DateTime.tryParse(json['createdAt'].toString()) ?? DateTime.now()
-          : DateTime.now(),
+      id: ModelJson.requiredString(json, '_id', alias: 'id'),
+      fileCode: ModelJson.requiredString(json, 'fileCode'),
+      originalName: ModelJson.requiredString(json, 'originalName'),
+      mimeType: ModelJson.requiredString(json, 'mimeType'),
+      fileSize: ModelJson.requiredInt(json, 'fileSize'),
+      checksum: ModelJson.requiredString(json, 'checksum'),
+      departmentCode: ModelJson.requiredString(json, 'departmentCode'),
+      referenceStandard: ModelJson.requiredString(json, 'referenceStandard'),
+      uploadedBy: ModelJson.requiredString(json, 'uploadedBy'),
+      isVerified: json['isVerified'] == true,
+      isEncrypted: ModelJson.requiredBool(json, 'isEncrypted'),
+      createdAt: ModelJson.requiredDateTime(json, 'createdAt'),
     );
   }
 

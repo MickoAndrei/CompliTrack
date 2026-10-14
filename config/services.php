@@ -35,4 +35,8 @@ return [
         ],
     ],
 
+    'complitrack' => [
+        'encryption_key' => env('ENCRYPTION_KEY'),
+    ],
+
 ];

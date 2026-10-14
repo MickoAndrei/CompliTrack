@@ -1,3 +1,5 @@
+import 'model_json.dart';
+
 class UserModel {
   final String id;
   final String userCode;
@@ -25,18 +27,18 @@ class UserModel {
 
   factory UserModel.fromJson(Map<String, dynamic> json) {
     return UserModel(
-      id: json['_id'] as String? ?? json['id'] as String? ?? '',
-      userCode: json['userCode'] as String? ?? '',
-      fullName: json['fullName'] as String? ?? '',
-      email: json['email'] as String? ?? '',
-      roleId: json['roleId'] as int? ?? 3,
-      roleSlug: json['roleSlug'] as String? ?? 'auditee',
-      departmentId: json['departmentId'] as String?,
-      officeName: json['officeName'] as String? ?? '',
-      isActive: json['isActive'] as bool? ?? true,
-      createdAt: json['createdAt'] != null
-          ? DateTime.tryParse(json['createdAt'].toString())
-          : null,
+      id: ModelJson.requiredString(json, '_id', alias: 'id'),
+      userCode: ModelJson.requiredString(json, 'userCode'),
+      fullName: ModelJson.requiredString(json, 'fullName'),
+      email: ModelJson.requiredString(json, 'email'),
+      roleId: ModelJson.requiredInt(json, 'roleId'),
+      roleSlug: ModelJson.requiredString(json, 'roleSlug'),
+      departmentId: ModelJson.optionalString(json, 'departmentId'),
+      officeName: ModelJson.optionalString(json, 'officeName') ?? '',
+      isActive: ModelJson.requiredBool(json, 'isActive'),
+      createdAt: json['createdAt'] == null
+          ? null
+          : ModelJson.requiredDateTime(json, 'createdAt'),
     );
   }
 

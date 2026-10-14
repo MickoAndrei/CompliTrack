@@ -1,3 +1,5 @@
+import 'model_json.dart';
+
 class AuditLogModel {
   final String id;
   final String userId;
@@ -23,17 +25,15 @@ class AuditLogModel {
 
   factory AuditLogModel.fromJson(Map<String, dynamic> json) {
     return AuditLogModel(
-      id: json['_id'] as String? ?? json['id'] as String? ?? '',
-      userId: json['userId'] as String? ?? '',
-      userName: json['userName'] as String? ?? json['user']?['fullName'] as String? ?? 'System',
-      action: json['action'] as String? ?? '',
-      entityType: json['entityType'] as String?,
-      entityId: json['entityId'] as String?,
-      ipAddress: json['ipAddress'] as String?,
-      userAgent: json['userAgent'] as String?,
-      createdAt: json['createdAt'] != null
-          ? DateTime.tryParse(json['createdAt'].toString()) ?? DateTime.now()
-          : DateTime.now(),
+      id: ModelJson.requiredString(json, '_id', alias: 'id'),
+      userId: ModelJson.optionalString(json, 'userId') ?? '',
+      userName: ModelJson.requiredString(json, 'userName'),
+      action: ModelJson.requiredString(json, 'action'),
+      entityType: ModelJson.optionalString(json, 'entityType'),
+      entityId: ModelJson.optionalString(json, 'entityId'),
+      ipAddress: ModelJson.optionalString(json, 'ipAddress'),
+      userAgent: ModelJson.optionalString(json, 'userAgent'),
+      createdAt: ModelJson.requiredDateTime(json, 'createdAt'),
     );
   }
 

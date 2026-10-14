@@ -1,5 +1,7 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
-import '../../core/utils/role_helper.dart';
+import '../../core/services/socket_service.dart';
 import '../../data/models/user_model.dart';
 import '../../data/repositories/auth_repository.dart';
 
@@ -12,7 +14,7 @@ class AuthProvider extends ChangeNotifier {
   }
 
   bool _isLoggedIn = false;
-  int _roleId = RoleHelper.roleSuperAdmin;
+  int _roleId = -1;
   UserModel? _currentUser;
   bool _isInitializing = true;
 
@@ -22,13 +24,23 @@ class AuthProvider extends ChangeNotifier {
   bool get isInitializing => _isInitializing;
 
   Future<void> _initSession() async {
-    final session = await _authRepository.getSavedSession();
-    if (session.token != null && session.roleId != null) {
-      _isLoggedIn = true;
-      _roleId = session.roleId!;
-    } else {
-      _isLoggedIn = true;
-      _roleId = RoleHelper.roleSuperAdmin;
+    try {
+      final session = await _authRepository.getSavedSession();
+      _isLoggedIn = session.token != null && session.roleId != null;
+      if (_isLoggedIn) {
+        _roleId = session.roleId!;
+        _currentUser = session.user;
+        unawaited(SocketService.instance.connect());
+      }
+    } catch (error, stackTrace) {
+      FlutterError.reportError(FlutterErrorDetails(
+        exception: error,
+        stack: stackTrace,
+        library: 'CompliTrack authentication',
+      ));
+      _isLoggedIn = false;
+      _roleId = -1;
+      _currentUser = null;
     }
     _isInitializing = false;
     notifyListeners();
@@ -40,6 +52,7 @@ class AuthProvider extends ChangeNotifier {
       _isLoggedIn = true;
       _roleId = result.user.roleId;
       _currentUser = result.user;
+      unawaited(SocketService.instance.connect());
       notifyListeners();
       return true;
     }
@@ -47,9 +60,14 @@ class AuthProvider extends ChangeNotifier {
   }
 
   Future<void> logout() async {
-    await _authRepository.logout();
-    _isLoggedIn = false;
-    _currentUser = null;
-    notifyListeners();
+    try {
+      await _authRepository.logout();
+    } finally {
+      _isLoggedIn = false;
+      _roleId = -1;
+      _currentUser = null;
+      SocketService.instance.disconnect();
+      notifyListeners();
+    }
   }
 }

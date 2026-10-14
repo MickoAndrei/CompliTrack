@@ -54,4 +54,20 @@ class AppIcons {
       fontFamily: 'Lucide', fontPackage: 'lucide_icons_flutter');
   static const IconData chevronDown = IconData(57457,
       fontFamily: 'Lucide', fontPackage: 'lucide_icons_flutter');
+  static const IconData visibility = IconData(57534,
+      fontFamily: 'Lucide', fontPackage: 'lucide_icons_flutter');
+  static const IconData visibilityOff = IconData(57535,
+      fontFamily: 'Lucide', fontPackage: 'lucide_icons_flutter');
+  static const IconData help = IconData(57474,
+      fontFamily: 'Lucide', fontPackage: 'lucide_icons_flutter');
+  static const IconData download = IconData(57485,
+      fontFamily: 'Lucide', fontPackage: 'lucide_icons_flutter');
+  static const IconData document = IconData(57552,
+      fontFamily: 'Lucide', fontPackage: 'lucide_icons_flutter');
+  static const IconData spreadsheet = IconData(58150,
+      fontFamily: 'Lucide', fontPackage: 'lucide_icons_flutter');
+  static const IconData logout = IconData(57617,
+      fontFamily: 'Lucide', fontPackage: 'lucide_icons_flutter');
+  static const IconData close = IconData(57480,
+      fontFamily: 'Lucide', fontPackage: 'lucide_icons_flutter');
 }

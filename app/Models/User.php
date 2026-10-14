@@ -3,6 +3,8 @@
 namespace App\Models;
 
 use Laravel\Sanctum\HasApiTokens;
+use App\Casts\NullableObjectId;
+use App\Casts\ObjectIdArray;
 use MongoDB\Laravel\Auth\User as Authenticatable;
 
 class User extends Authenticatable
@@ -11,13 +13,23 @@ class User extends Authenticatable
 
     protected $connection = 'mongodb';
     protected $collection = 'users';
+    public const CREATED_AT = 'createdAt';
+    public const UPDATED_AT = 'updatedAt';
 
     protected $fillable = [
         'userCode', 'fullName', 'email', 'password', 'roleId', 'roleSlug',
-        'departmentId', 'officeName', 'isActive', 'fcmToken', 'lastLoginAt',
+        'departmentId', 'assignedDepartmentIds', 'officeName', 'isActive', 'fcmToken', 'lastLoginAt',
     ];
 
     protected $hidden = ['password'];
+
+    protected $casts = [
+        'departmentId' => NullableObjectId::class,
+        'assignedDepartmentIds' => ObjectIdArray::class,
+        'roleId' => 'integer',
+        'isActive' => 'boolean',
+        'lastLoginAt' => 'datetime',
+    ];
 
     // roleId: 0 = Super Admin, 1 = Admin, 2 = Auditor, 3 = Auditee (Guide §6)
     public function isSuperAdmin(): bool

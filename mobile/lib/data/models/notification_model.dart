@@ -1,3 +1,5 @@
+import 'model_json.dart';
+
 class NotificationModel {
   final String id;
   final String recipientUserId;
@@ -25,18 +27,16 @@ class NotificationModel {
 
   factory NotificationModel.fromJson(Map<String, dynamic> json) {
     return NotificationModel(
-      id: json['_id'] as String? ?? json['id'] as String? ?? '',
-      recipientUserId: json['recipientUserId'] as String? ?? '',
-      senderUserId: json['senderUserId'] as String?,
-      type: json['type'] as String? ?? 'system_alert',
-      title: json['title'] as String? ?? '',
-      message: json['message'] as String? ?? '',
-      relatedCheckId: json['relatedCheckId'] as String?,
-      relatedUserCode: json['relatedUserCode'] as String?,
-      isRead: json['isRead'] as bool? ?? false,
-      createdAt: json['createdAt'] != null
-          ? DateTime.tryParse(json['createdAt'].toString()) ?? DateTime.now()
-          : DateTime.now(),
+      id: ModelJson.requiredString(json, '_id', alias: 'id'),
+      recipientUserId: ModelJson.requiredString(json, 'recipientUserId'),
+      senderUserId: ModelJson.optionalString(json, 'senderUserId'),
+      type: ModelJson.requiredString(json, 'type'),
+      title: ModelJson.requiredString(json, 'title'),
+      message: ModelJson.requiredString(json, 'message'),
+      relatedCheckId: ModelJson.optionalString(json, 'relatedCheckId'),
+      relatedUserCode: ModelJson.optionalString(json, 'relatedUserCode'),
+      isRead: ModelJson.requiredBool(json, 'isRead'),
+      createdAt: ModelJson.requiredDateTime(json, 'createdAt'),
     );
   }
 

@@ -166,29 +166,42 @@ php artisan key:generate
 ```
 
 Open `.env` and set `MONGODB_URI`, `MONGODB_DATABASE`, `ENCRYPTION_KEY`, and
-mail settings — see [Environment Variables](#environment-variables) below.
+the initial administrator credentials — see [Environment Variables](#environment-variables)
+below.
 
-### 3. Install frontend asset dependencies
+### 3. Start the MongoDB replica set
+
+Docker Desktop (or Docker Engine with the Compose plugin) is required:
+
+```bash
+docker compose up -d mongodb
+php artisan mongodb:check
+```
+
+The Compose service runs MongoDB 7.0 as a single-node `rs0` replica set for
+development. Its data persists in the `mongodb_data` volume. Do not use this
+single-node setup as a production topology.
+
+### 4. Install frontend asset dependencies
 
 ```bash
 npm install
 npm run build      # or: npm run dev, for a watched dev build
 ```
 
-### 4. Run database migrations & seeders
+### 5. Run database migrations & seeders
 
 ```bash
-php artisan migrate
-php artisan db:seed        # seeds the 4 fixed roles (0-3)
+php artisan migrate --force
+php artisan db:seed
 ```
 
-> **Note:** `DB_CONNECTION` stays `sqlite` for Laravel's own framework tables
-> (sessions, cache, queue). The included migrations only create those tables.
-> Application data lives in MongoDB (`MONGODB_*`) and its collections are
-> created on first write; the Mongo index migration is a placeholder to be
-> filled in.
+`DB_CONNECTION` remains `sqlite` for Laravel framework tables. Application
+collections and their unique, query, TTL, token, and password-reset indexes
+are managed in MongoDB. The initial super-admin seeder requires the credentials
+in `.env`; it does not contain a default account password.
 
-### 5. Install the realtime service dependencies (Node.js)
+### 6. Install the realtime service dependencies (Node.js)
 
 ```bash
 cd realtime
@@ -197,10 +210,7 @@ cp .env.example .env       # MongoDB URI, Firebase service account, Socket.io po
 cd ..
 ```
 
-> The `realtime/` files are placeholders (`package.json` and `.env.example`
-> are still empty) — fill them in before running this step.
-
-### 6. (Optional) Install the mobile app dependencies (Flutter)
+### 7. (Optional) Install the mobile app dependencies (Flutter)
 
 ```bash
 cd mobile
@@ -333,11 +343,12 @@ APP_URL=http://localhost:8000
 DB_CONNECTION=sqlite
 
 # CompliTrack: MongoDB (app data)
-MONGODB_URI=mongodb://127.0.0.1:27017
+MONGODB_URI=mongodb://localhost:27017/?replicaSet=rs0&directConnection=true
 MONGODB_DATABASE=complitrack
 
-JWT_SECRET=
-ENCRYPTION_KEY=            # AES-256-GCM key, rotated via Super Admin panel
+SUPER_ADMIN_EMAIL=admin@example.edu
+SUPER_ADMIN_PASSWORD=      # Set a unique password (at least 12 characters)
+ENCRYPTION_KEY=            # Base64-encoded 32-byte AES-256-GCM key
 
 MAIL_MAILER=smtp
 MAIL_HOST=
@@ -346,6 +357,12 @@ MAIL_PORT=587
 FCM_SERVER_KEY=            # legacy placeholder — see note below
 NODE_SOCKET_URL=http://localhost:4000
 ```
+
+Generate an encryption key locally with
+`php -r "echo base64_encode(random_bytes(32)), PHP_EOL;"`; do not commit it.
+For a physical mobile device or a non-Android-simulator target, override the
+default Android-emulator API host at build time:
+`flutter run --dart-define=COMPLITRACK_API_URL=http://<your-host>:8000`.
 
 > **FCM note:** Google's legacy FCM server keys no longer work. Push
 > notifications use the FCM HTTP v1 API, which needs a Firebase

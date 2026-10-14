@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart';
 import '../models/user_model.dart';
 import '../../core/network/api_client.dart';
 import '../../core/services/secure_storage_service.dart';
@@ -17,59 +18,109 @@ class AuthRepository {
     required String password,
     String? fcmToken,
   }) async {
-    try {
-      final response = await _apiClient.dio.post(
-        '/api/v1/auth/login',
-        data: {
-          'email': email,
-          'password': password,
-          if (fcmToken != null) 'fcmToken': fcmToken,
-        },
-      );
-
-      if (response.statusCode == 200 && response.data != null) {
-        final token = response.data['token'] as String;
-        final user = UserModel.fromJson(response.data['user'] as Map<String, dynamic>);
-
-        await _storageService.saveToken(token);
-        await _storageService.saveRoleId(user.roleId);
-        await _storageService.saveUserId(user.id);
-
-        return (token: token, user: user);
-      }
-    } catch (_) {
-      // Mock login for Super Admin
+    final response = await _apiClient.dio.post(
+      '/api/v1/auth/login',
+      data: {
+        'email': email,
+        'password': password,
+        if (fcmToken != null) 'fcmToken': fcmToken,
+      },
+    );
+    final body = _requireMap(response.data);
+    final token = body['token'];
+    final userJson = body['user'];
+    if (token is! String || token.isEmpty || userJson is! Map<String, dynamic>) {
+      throw const FormatException('The login response is missing its token or user.');
     }
 
-    const mockUser = UserModel(
-      id: '1',
-      userCode: 'SA-2026-001',
-      fullName: 'Nico Dale B. Sevilla',
-      email: 'mteresa.uy@ustp.edu.ph',
-      roleId: 0,
-      roleSlug: 'super_admin',
-      officeName: 'CET — System-Wide',
-      isActive: true,
-    );
-    const mockToken = 'sanctum_token_super_admin_mock';
+    final user = UserModel.fromJson(userJson);
+    await _storageService.saveToken(token);
+    await _storageService.saveRoleId(user.roleId);
+    await _storageService.saveUserId(user.id);
 
-    await _storageService.saveToken(mockToken);
-    await _storageService.saveRoleId(0);
-    await _storageService.saveUserId('1');
-
-    return (token: mockToken, user: mockUser);
+    return (token: token, user: user);
   }
 
   Future<void> logout() async {
     try {
       await _apiClient.dio.post('/api/v1/auth/logout');
-    } catch (_) {}
-    await _storageService.clearAll();
+    } finally {
+      await _storageService.clearAll();
+    }
   }
 
-  Future<({String? token, int? roleId})> getSavedSession() async {
+  Future<void> requestPasswordReset(String email) async {
+    await _apiClient.dio.post(
+      '/api/v1/auth/forgot-password',
+      data: {'email': email},
+    );
+  }
+
+  Future<void> resetPassword({
+    required String email,
+    required String token,
+    required String password,
+  }) async {
+    await _apiClient.dio.post(
+      '/api/v1/auth/reset-password',
+      data: {
+        'email': email,
+        'token': token,
+        'password': password,
+        'password_confirmation': password,
+      },
+    );
+  }
+
+  Future<void> changePassword({
+    required String currentPassword,
+    required String newPassword,
+  }) async {
+    await _apiClient.dio.patch(
+      '/api/v1/auth/password',
+      data: {
+        'currentPassword': currentPassword,
+        'password': newPassword,
+        'password_confirmation': newPassword,
+      },
+    );
+  }
+
+  Future<({String? token, int? roleId, UserModel? user})> getSavedSession() async {
     final token = await _storageService.getToken();
     final roleId = await _storageService.getRoleId();
-    return (token: token, roleId: roleId);
+    if (token == null || token.isEmpty || roleId == null || roleId < 0 || roleId > 3) {
+      await _storageService.clearAll();
+      return (token: null, roleId: null, user: null);
+    }
+
+    try {
+      final response = await _apiClient.dio.get('/api/v1/auth/me');
+      final body = _requireMap(response.data);
+      final userJson = body['user'];
+      if (userJson is! Map<String, dynamic>) {
+        throw const FormatException('The session response is missing its user.');
+      }
+      final user = UserModel.fromJson(userJson);
+      if (user.roleId != roleId) {
+        await _storageService.clearAll();
+        return (token: null, roleId: null, user: null);
+      }
+      return (token: token, roleId: roleId, user: user);
+    } on DioException catch (error) {
+      if (error.response?.statusCode == 401) {
+        await _storageService.clearAll();
+        return (token: null, roleId: null, user: null);
+      }
+      return (token: token, roleId: roleId, user: null);
+    } on FormatException {
+      await _storageService.clearAll();
+      rethrow;
+    }
+  }
+
+  Map<String, dynamic> _requireMap(dynamic value) {
+    if (value is Map<String, dynamic>) return value;
+    throw const FormatException('The server returned an invalid response.');
   }
 }

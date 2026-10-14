@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_icons.dart';
-import '../screens/admin/admin_notifications_screen.dart';
+import '../screens/auditee/notifications_screen.dart';
+import 'ustp_logo.dart';
 
 class UstpAppBar extends StatelessWidget implements PreferredSizeWidget {
   final String title;
@@ -28,49 +30,21 @@ class UstpAppBar extends StatelessWidget implements PreferredSizeWidget {
       child: SafeArea(
         child: Row(
           children: [
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                RichText(
-                  text: const TextSpan(
-                    style: TextStyle(
-                      fontFamily: 'Poppins',
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                    ),
-                    children: [
-                      TextSpan(
-                        text: 'Compli',
-                        style: TextStyle(color: AppColors.ustpWhite),
-                      ),
-                      TextSpan(
-                        text: 'Track',
-                        style: TextStyle(color: AppColors.ustpGold),
-                      ),
-                    ],
-                  ),
-                ),
-                const Text(
-                  'CLAVERIA CAMPUS / MOBILE',
-                  style: TextStyle(
-                    fontFamily: 'Inter',
-                    fontSize: 9,
-                    color: AppColors.ustpMuted,
-                    letterSpacing: 0.8,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ],
+            const UstpLogo(
+              fontSize: 16,
+              subtitle: 'CLAVERIA CAMPUS / MOBILE',
             ),
             const Spacer(),
             Stack(
               clipBehavior: Clip.none,
               children: [
                 IconButton(
-                  icon: const Icon(AppIcons.notifications, color: AppColors.ustpWhite, size: 22),
-                  onPressed: onNotificationTap ??
-                      () => AdminNotificationsScreen.showOverlay(context),
+                  icon: const Icon(AppIcons.notifications,
+                      color: AppColors.ustpWhite, size: 22),
+                  onPressed: () async {
+                    onNotificationTap?.call();
+                    await NotificationsScreen.showOverlay(context);
+                  },
                 ),
                 if (showNotificationBadge)
                   Positioned(
@@ -89,7 +63,10 @@ class UstpAppBar extends StatelessWidget implements PreferredSizeWidget {
             ),
             const SizedBox(width: 4),
             GestureDetector(
-              onTap: onProfileTap,
+              onTap: () {
+                onProfileTap?.call();
+                context.go('/common/profile');
+              },
               child: const CircleAvatar(
                 radius: 18,
                 backgroundColor: AppColors.ustpLight,
