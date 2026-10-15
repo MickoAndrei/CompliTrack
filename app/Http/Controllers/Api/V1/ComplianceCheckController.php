@@ -60,6 +60,8 @@ class ComplianceCheckController extends Controller
             'referenceStandard' => ['required', 'in:ARTA-3days,ARTA-7days,ARTA-20days,ISO9001-9.2'],
             'result' => ['required', 'in:compliant,non_compliant'],
             'remarks' => ['nullable', 'string', 'max:5000'],
+            'linkedArchiveIds' => ['sometimes', 'array', 'max:100'],
+            'linkedArchiveIds.*' => ['required', 'string', 'regex:/^[a-f0-9]{24}$/', 'distinct'],
         ]);
 
         $check = $this->checks->create($request->user(), $data, $request);

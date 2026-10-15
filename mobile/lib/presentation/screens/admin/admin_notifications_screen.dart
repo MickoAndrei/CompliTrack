@@ -3,6 +3,7 @@ import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_icons.dart';
 import '../../../data/models/notification_model.dart';
 import '../../../data/repositories/notification_repository.dart';
+import 'broadcast_notification_dialog.dart';
 import '../../widgets/empty_state.dart';
 import '../../widgets/ustp_app_bar.dart';
 
@@ -19,7 +20,8 @@ class AdminNotificationsScreen extends StatefulWidget {
   }
 
   @override
-  State<AdminNotificationsScreen> createState() => _AdminNotificationsScreenState();
+  State<AdminNotificationsScreen> createState() =>
+      _AdminNotificationsScreenState();
 }
 
 class _AdminNotificationsScreenState extends State<AdminNotificationsScreen> {
@@ -64,7 +66,8 @@ class _AdminNotificationsScreenState extends State<AdminNotificationsScreen> {
         onProfileTap: () {},
       ),
       body: _isLoading
-          ? const Center(child: CircularProgressIndicator(color: AppColors.ustpNavy))
+          ? const Center(
+              child: CircularProgressIndicator(color: AppColors.ustpNavy))
           : _notifications.isEmpty
               ? const EmptyState(
                   title: 'No notifications',
@@ -104,10 +107,21 @@ class _AdminNotificationsScreenState extends State<AdminNotificationsScreen> {
                         ],
                       ),
                       const SizedBox(height: 12),
-                      ..._notifications.map((item) => _buildNotificationCard(item, context)),
+                      ..._notifications
+                          .map((item) => _buildNotificationCard(item, context)),
                     ],
                   ),
                 ),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () async {
+          await BroadcastNotificationDialog.show(context);
+          if (mounted) _loadNotifications();
+        },
+        backgroundColor: AppColors.ustpNavy,
+        foregroundColor: AppColors.ustpWhite,
+        icon: const Icon(Icons.campaign_outlined),
+        label: const Text('Broadcast'),
+      ),
     );
   }
 
@@ -139,7 +153,9 @@ class _AdminNotificationsScreenState extends State<AdminNotificationsScreen> {
           Container(
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: item.isRead ? AppColors.ustpLight : AppColors.ustpGold.withValues(alpha: 0.2),
+              color: item.isRead
+                  ? AppColors.ustpLight
+                  : AppColors.ustpGold.withValues(alpha: 0.2),
               shape: BoxShape.circle,
             ),
             child: Icon(
@@ -207,7 +223,8 @@ class AdminNotificationsOverlay extends StatefulWidget {
   const AdminNotificationsOverlay({super.key});
 
   @override
-  State<AdminNotificationsOverlay> createState() => _AdminNotificationsOverlayState();
+  State<AdminNotificationsOverlay> createState() =>
+      _AdminNotificationsOverlayState();
 }
 
 class _AdminNotificationsOverlayState extends State<AdminNotificationsOverlay> {
@@ -273,10 +290,26 @@ class _AdminNotificationsOverlayState extends State<AdminNotificationsOverlay> {
                   ),
                 ),
                 IconButton(
-                  icon: const Icon(AppIcons.settings, size: 20, color: AppColors.ustpMuted),
+                  icon: const Icon(AppIcons.settings,
+                      size: 20, color: AppColors.ustpMuted),
                   onPressed: () {},
                 ),
               ],
+            ),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: () async {
+                  await BroadcastNotificationDialog.show(context);
+                  if (mounted) _loadNotifications();
+                },
+                icon: const Icon(Icons.campaign_outlined),
+                label: const Text('Broadcast to Auditees'),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: AppColors.ustpNavy,
+                  side: const BorderSide(color: AppColors.ustpNavy),
+                ),
+              ),
             ),
             const SizedBox(height: 4),
 
@@ -350,7 +383,9 @@ class _AdminNotificationsOverlayState extends State<AdminNotificationsOverlay> {
           Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: item.isRead ? AppColors.ustpLight : AppColors.ustpGold.withValues(alpha: 0.2),
+              color: item.isRead
+                  ? AppColors.ustpLight
+                  : AppColors.ustpGold.withValues(alpha: 0.2),
               shape: BoxShape.circle,
             ),
             child: Icon(

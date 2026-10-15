@@ -51,8 +51,12 @@ class ArchiveController extends Controller
         if ($request->filled('referenceStandard')) {
             $query->where('referenceStandard', $request->query('referenceStandard'));
         }
-        if ($request->filled('dateFilter') && $request->query('dateFilter') === 'Last 30 Days') {
-            $query->where('createdAt', '>=', now()->utc()->subDays(30));
+        if ($request->filled('dateFilter')) {
+            if ($request->query('dateFilter') === 'Last 30 Days') {
+                $query->where('createdAt', '>=', now()->utc()->subDays(30));
+            } elseif ($request->query('dateFilter') === 'This Quarter') {
+                $query->where('createdAt', '>=', now()->utc()->startOfQuarter());
+            }
         }
 
         $page = $query->orderBy('createdAt', 'desc')

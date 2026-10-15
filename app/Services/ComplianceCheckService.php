@@ -38,6 +38,22 @@ class ComplianceCheckService
             ]);
         }
 
+        $linkedArchiveIds = [];
+        foreach ($data['linkedArchiveIds'] ?? [] as $archiveId) {
+            $objectId = MongoId::parse($archiveId, 'linkedArchiveIds');
+            $archive = $this->scopes->archives($actor)
+                ->where('_id', $objectId)
+                ->first();
+            if (!$archive
+                || (string) $archive->departmentId !== (string) $departmentId
+                || $archive->referenceStandard !== $data['referenceStandard']) {
+                throw ValidationException::withMessages([
+                    'linkedArchiveIds' => 'Selected evidence must belong to the check department and reference standard.',
+                ]);
+            }
+            $linkedArchiveIds[] = $archive->getKey();
+        }
+
         $now = now()->utc();
         $nonCompliant = $data['result'] === 'non_compliant';
         $check = ComplianceCheck::create([
@@ -55,7 +71,7 @@ class ComplianceCheckService
                 'remarks' => 'Finding created',
                 'timestamp' => $now,
             ]] : [],
-            'linkedArchiveIds' => [],
+            'linkedArchiveIds' => $linkedArchiveIds,
             'dueDate' => $nonCompliant ? $now->copy()->addDays(7) : null,
             'closedAt' => null,
         ]);

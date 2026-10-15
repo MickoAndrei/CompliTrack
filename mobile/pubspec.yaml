@@ -10,6 +10,7 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  flutter_dotenv: ^6.0.1
   lucide_icons_flutter: ^1.1.0
   file_picker: ^8.0.0
   firebase_core: ^3.0.0
@@ -24,6 +25,7 @@ dependencies:
   percent_indicator: ^4.2.3
   google_fonts: ^6.2.1
   intl: ^0.19.0
+  pdf: ^3.13.1
 
 dev_dependencies:
   flutter_test:
@@ -34,3 +36,4 @@ flutter:
   uses-material-design: true
   assets:
     - assets/images/
+    - .env

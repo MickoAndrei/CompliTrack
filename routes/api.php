@@ -25,6 +25,7 @@ Route::prefix('v1')->group(function () {
             Route::apiResource('users', UserController::class)->parameters(['users' => 'id']);
             Route::post('/users/{id}/reset-password', [UserController::class, 'resetPassword']);
             Route::apiResource('departments', DepartmentController::class)->parameters(['departments' => 'id']);
+            Route::post('/notifications/broadcast', [NotificationController::class, 'broadcast']);
         });
 
         // Archive module

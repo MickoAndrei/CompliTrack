@@ -34,12 +34,15 @@ import 'auditee_shell.dart';
 import 'super_admin_shell.dart';
 
 class AppRouter {
-  static GoRouter buildRouter({required int currentRoleId, required bool isLoggedIn}) {
+  static GoRouter buildRouter(
+      {required int currentRoleId, required bool isLoggedIn}) {
     return GoRouter(
-      initialLocation: isLoggedIn ? RoleHelper.getDashboardRoute(currentRoleId) : '/landing',
+      initialLocation:
+          isLoggedIn ? RoleHelper.getDashboardRoute(currentRoleId) : '/landing',
       redirect: (context, state) {
         final loc = state.matchedLocation;
-        final isAuthRoute = loc == '/landing' || loc == '/login' || loc == '/forgot-password';
+        final isAuthRoute =
+            loc == '/landing' || loc == '/login' || loc == '/forgot-password';
         if (!isLoggedIn && !isAuthRoute) {
           return '/login';
         }
@@ -54,7 +57,8 @@ class AppRouter {
             RoleHelper.roleAuditee => '/auditee',
             _ => null,
           };
-          if (prefix == null || (loc != prefix && !loc.startsWith('$prefix/'))) {
+          if (prefix == null ||
+              (loc != prefix && !loc.startsWith('$prefix/'))) {
             return '/403';
           }
         }
@@ -104,7 +108,8 @@ class AppRouter {
               routes: [
                 GoRoute(
                   path: '/super-admin',
-                  builder: (context, state) => const SuperAdminDashboardScreen(),
+                  builder: (context, state) =>
+                      const SuperAdminDashboardScreen(),
                 ),
               ],
             ),
@@ -120,7 +125,8 @@ class AppRouter {
               routes: [
                 GoRoute(
                   path: '/super-admin/departments',
-                  builder: (context, state) => const DepartmentManagementScreen(),
+                  builder: (context, state) =>
+                      const DepartmentManagementScreen(),
                 ),
               ],
             ),
@@ -161,7 +167,8 @@ class AppRouter {
               routes: [
                 GoRoute(
                   path: '/admin/users',
-                  builder: (context, state) => const AdminUserManagementScreen(),
+                  builder: (context, state) =>
+                      const AdminUserManagementScreen(),
                 ),
               ],
             ),
@@ -169,15 +176,8 @@ class AppRouter {
               routes: [
                 GoRoute(
                   path: '/admin/departments',
-                  builder: (context, state) => const DepartmentManagementScreen(),
-                ),
-              ],
-            ),
-            StatefulShellBranch(
-              routes: [
-                GoRoute(
-                  path: '/admin/reports',
-                  builder: (context, state) => const ReportsViewScreen(),
+                  builder: (context, state) =>
+                      const DepartmentManagementScreen(),
                 ),
               ],
             ),
@@ -189,13 +189,25 @@ class AppRouter {
                 ),
               ],
             ),
+            StatefulShellBranch(
+              routes: [
+                GoRoute(
+                  path: '/admin/reports',
+                  builder: (context, state) => const ReportsViewScreen(),
+                ),
+              ],
+            ),
           ],
         ),
 
         // Auditor Shell Route
         StatefulShellRoute.indexedStack(
           builder: (context, state, navigationShell) {
-            return AuditorShell(navigationShell: navigationShell);
+            return AuditorShell(
+              navigationShell: navigationShell,
+              hideNavigationBar:
+                  state.matchedLocation == '/auditor/checks/create',
+            );
           },
           branches: [
             StatefulShellBranch(
@@ -229,14 +241,6 @@ class AppRouter {
             StatefulShellBranch(
               routes: [
                 GoRoute(
-                  path: '/auditor/corrective',
-                  builder: (context, state) => const CorrectiveBoardScreen(),
-                ),
-              ],
-            ),
-            StatefulShellBranch(
-              routes: [
-                GoRoute(
                   path: '/auditor/archives',
                   builder: (context, state) => const ArchiveReviewScreen(),
                 ),
@@ -245,8 +249,23 @@ class AppRouter {
             StatefulShellBranch(
               routes: [
                 GoRoute(
-                  path: '/auditor/notifications',
-                  builder: (context, state) => const AuditorNotificationsScreen(),
+                  path: '/auditor/corrective',
+                  builder: (context, state) => const CorrectiveBoardScreen(),
+                ),
+              ],
+            ),
+            StatefulShellBranch(
+              routes: [
+                GoRoute(
+                  path: '/auditor/profile',
+                  builder: (context, state) => const ProfileScreen(),
+                  routes: [
+                    GoRoute(
+                      path: 'notifications',
+                      builder: (context, state) =>
+                          const AuditorNotificationsScreen(),
+                    ),
+                  ],
                 ),
               ],
             ),

@@ -4,7 +4,10 @@ const { loadConfig } = require('./config/env');
 const { connectToDatabase } = require('./config/db');
 const { initializeFirebase } = require('./config/firebase');
 const { createSocketServer } = require('./sockets');
-const { watchComplianceChecks } = require('./watchers/complianceChecksWatcher');
+const {
+  watchComplianceChecks,
+  watchBroadcastNotifications,
+} = require('./watchers/complianceChecksWatcher');
 const logger = require('./utils/logger');
 
 async function start() {
@@ -25,11 +28,18 @@ async function start() {
   const server = http.createServer(app);
   const io = createSocketServer(server, database, config.corsOrigins);
   const abortController = new AbortController();
-  const watcher = watchComplianceChecks({
-    database,
-    io,
-    signal: abortController.signal,
-  });
+  const watchers = Promise.all([
+    watchComplianceChecks({
+      database,
+      io,
+      signal: abortController.signal,
+    }),
+    watchBroadcastNotifications({
+      database,
+      io,
+      signal: abortController.signal,
+    }),
+  ]);
 
   server.listen(config.port, () => {
     logger.info('Realtime service is listening.', { port: config.port });
@@ -39,7 +49,7 @@ async function start() {
     abortController.abort();
     io.close();
     server.close();
-    await watcher;
+    await watchers;
     await client.close();
     process.exit(0);
   };

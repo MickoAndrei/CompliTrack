@@ -1,27 +1,34 @@
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_icons.dart';
 import '../../../data/models/archive_document_model.dart';
+import '../../../data/models/department_model.dart';
 import '../../../data/repositories/archive_repository.dart';
+import '../../../data/repositories/department_repository.dart';
+import '../../widgets/admin_page_header.dart';
 import '../../widgets/empty_state.dart';
-import '../../widgets/ustp_app_bar.dart';
 
 class ArchiveRepositoryScreen extends StatefulWidget {
   const ArchiveRepositoryScreen({super.key});
 
   @override
-  State<ArchiveRepositoryScreen> createState() => _ArchiveRepositoryScreenState();
+  State<ArchiveRepositoryScreen> createState() =>
+      _ArchiveRepositoryScreenState();
 }
 
 class _ArchiveRepositoryScreenState extends State<ArchiveRepositoryScreen> {
-  final ArchiveRepository _repository = ArchiveRepository();
-
-  String? _selectedDept;
-  String? _selectedStandard;
-  String? _selectedDate;
+  final _repository = ArchiveRepository();
+  final _departmentsRepository = DepartmentRepository();
+  String _selectedDept = 'All Departments';
+  String _selectedStandard = 'ISO & ARTA';
+  String _selectedDate = 'This Quarter';
   bool _isLoading = true;
+  Object? _error;
   List<ArchiveDocumentModel> _documents = [];
+  List<DepartmentModel> _departments = [];
+  final Set<String> _busyDocuments = {};
 
   @override
   void initState() {
@@ -30,57 +37,111 @@ class _ArchiveRepositoryScreenState extends State<ArchiveRepositoryScreen> {
   }
 
   Future<void> _loadArchives() async {
-    setState(() => _isLoading = true);
-    final results = await _repository.getArchiveDocuments(
-      department: _selectedDept,
-      referenceStandard: _selectedStandard,
-      dateFilter: _selectedDate,
-    );
-    if (mounted) {
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
+    try {
+      final results = await Future.wait([
+        _repository.getArchiveDocuments(
+          department: _selectedDept,
+          referenceStandard: _selectedStandard,
+          dateFilter: _selectedDate,
+        ),
+        _departmentsRepository.getDepartments(campus: 'CET Claveria'),
+      ]);
+      if (!mounted) return;
       setState(() {
-        _documents = results;
+        _documents = results[0] as List<ArchiveDocumentModel>;
+        _departments = results[1] as List<DepartmentModel>;
         _isLoading = false;
       });
+    } catch (error) {
+      if (mounted) {
+        setState(() {
+          _error = error;
+          _isLoading = false;
+        });
+      }
     }
   }
 
   Future<void> _verifyChecksum(ArchiveDocumentModel doc) async {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Verifying SHA-256 checksum for ${doc.originalName}...')),
-    );
-    final success = await _repository.verifyChecksum(doc.id);
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          backgroundColor: success ? AppColors.success : AppColors.error,
-          content: Text(
-            success
-                ? 'SHA-256 Checksum Verified! Plaintext matches hash.'
-                : 'Checksum mismatch detected!',
+    setState(() => _busyDocuments.add(doc.id));
+    try {
+      final verified = await _repository.verifyChecksum(doc.id);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            backgroundColor: verified ? AppColors.success : AppColors.error,
+            content: Text(
+              verified
+                  ? 'Checksum verified for ${doc.originalName}.'
+                  : 'Checksum verification failed for ${doc.originalName}.',
+            ),
           ),
-        ),
-      );
-      _loadArchives();
+        );
+        await _loadArchives();
+      }
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Could not verify archive: $error')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _busyDocuments.remove(doc.id));
     }
   }
 
-  void _showDeleteNotice(ArchiveDocumentModel doc) {
-    showDialog(
+  Future<void> _download(ArchiveDocumentModel doc) async {
+    setState(() => _busyDocuments.add(doc.id));
+    try {
+      final bytes = await _repository.downloadArchive(doc.id);
+      final savedPath = await FilePicker.platform.saveFile(
+        fileName: doc.originalName,
+        bytes: bytes,
+      );
+      if (mounted && savedPath != null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Downloaded ${doc.originalName}.')),
+        );
+      }
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Could not download archive: $error')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _busyDocuments.remove(doc.id));
+    }
+  }
+
+  void _previewDetails(ArchiveDocumentModel doc) {
+    showDialog<void>(
       context: context,
       builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('Delete Archive'),
-        content: Text(
-          'Deleting encrypted archive "${doc.originalName}" is restricted on mobile devices for roles 0 & 1. Manage on Web to perform permanent deletions.',
+        title: Text(doc.originalName),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Department: ${doc.departmentCode}'),
+            Text('Standard: ${doc.referenceStandard}'),
+            Text('Uploaded by: ${doc.uploadedBy}'),
+            Text('File size: ${_formatSize(doc.fileSize)}'),
+            const SizedBox(height: 8),
+            const Text(
+              'Use Download to open the verified document on this device.',
+              style: TextStyle(color: AppColors.ustpMuted, fontSize: 12),
+            ),
+          ],
         ),
         actions: [
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.ustpNavy,
-              foregroundColor: AppColors.ustpWhite,
-            ),
+          TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Got it'),
+            child: const Text('Close'),
           ),
         ],
       ),
@@ -91,247 +152,320 @@ class _ArchiveRepositoryScreenState extends State<ArchiveRepositoryScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.ustpLight,
-      appBar: UstpAppBar(
-        onNotificationTap: () {},
-        onProfileTap: () {},
-      ),
       body: Column(
         children: [
-          // Header Filters Row Container
-          Container(
-            padding: const EdgeInsets.all(16),
-            color: AppColors.ustpWhite,
-            child: SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Row(
-                children: [
-                  // Department Filter Dropdown
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: AppColors.ustpLight,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: AppColors.ustpMuted.withValues(alpha: 0.2)),
-                    ),
-                    child: DropdownButtonHideUnderline(
-                      child: DropdownButton<String?>(
-                        value: _selectedDept,
-                        hint: const Text(
-                          'All Departments',
-                          style: TextStyle(
-                            fontFamily: 'Inter',
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                            color: AppColors.ustpDark,
-                          ),
-                        ),
-                        icon: const Icon(AppIcons.chevronDown, size: 16, color: AppColors.ustpDark),
-                        items: const [
-                          DropdownMenuItem(value: null, child: Text('All Departments')),
-                          DropdownMenuItem(value: 'IT', child: Text('IT')),
-                          DropdownMenuItem(value: 'Envi Sci', child: Text('Envi Sci')),
-                          DropdownMenuItem(value: 'Food Tech.', child: Text('Food Tech.')),
-                          DropdownMenuItem(value: 'Agro - Bio .', child: Text('Agro - Bio .')),
-                        ],
-                        onChanged: (val) {
-                          setState(() => _selectedDept = val);
-                          _loadArchives();
-                        },
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-
-                  // Standards Filter Dropdown
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: AppColors.ustpLight,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: AppColors.ustpMuted.withValues(alpha: 0.2)),
-                    ),
-                    child: DropdownButtonHideUnderline(
-                      child: DropdownButton<String?>(
-                        value: _selectedStandard,
-                        hint: const Text(
-                          'All Standards',
-                          style: TextStyle(
-                            fontFamily: 'Inter',
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                            color: AppColors.ustpDark,
-                          ),
-                        ),
-                        icon: const Icon(AppIcons.chevronDown, size: 16, color: AppColors.ustpDark),
-                        items: const [
-                          DropdownMenuItem(value: null, child: Text('All Standards')),
-                          DropdownMenuItem(value: 'ISO 9001', child: Text('ISO 9001')),
-                          DropdownMenuItem(value: 'ARTA 7', child: Text('ARTA 7-day rule')),
-                          DropdownMenuItem(value: 'ARTA 3', child: Text('ARTA 3-day rule')),
-                          DropdownMenuItem(value: 'ISO 14001', child: Text('ISO 14001')),
-                        ],
-                        onChanged: (val) {
-                          setState(() => _selectedStandard = val);
-                          _loadArchives();
-                        },
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-
-                  // Date Filter Dropdown
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: AppColors.ustpLight,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: AppColors.ustpMuted.withValues(alpha: 0.2)),
-                    ),
-                    child: DropdownButtonHideUnderline(
-                      child: DropdownButton<String?>(
-                        value: _selectedDate,
-                        hint: const Text(
-                          'Any Date',
-                          style: TextStyle(
-                            fontFamily: 'Inter',
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                            color: AppColors.ustpDark,
-                          ),
-                        ),
-                        icon: const Icon(AppIcons.chevronDown, size: 16, color: AppColors.ustpDark),
-                        items: const [
-                          DropdownMenuItem(value: null, child: Text('Any Date')),
-                          DropdownMenuItem(value: 'Today', child: Text('Today')),
-                          DropdownMenuItem(value: 'This Week', child: Text('This Week')),
-                          DropdownMenuItem(value: 'This Month', child: Text('This Month')),
-                        ],
-                        onChanged: (val) {
-                          setState(() => _selectedDate = val);
-                          _loadArchives();
-                        },
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
+          const AdminPageHeader(
+            title: 'Document Archive',
+            subtitle: 'System-wide repository for verified compliance records',
           ),
-
-          // Archive Cards List
           Expanded(
-            child: _isLoading
-                ? const Center(child: CircularProgressIndicator(color: AppColors.ustpNavy))
-                : _documents.isEmpty
-                    ? const EmptyState(
-                        title: 'No archives found',
-                        subtitle: 'No encrypted documents match your selected filters.',
-                        icon: AppIcons.archive,
-                      )
-                    : RefreshIndicator(
-                        color: AppColors.ustpNavy,
-                        onRefresh: _loadArchives,
-                        child: ListView.builder(
-                          padding: const EdgeInsets.all(16),
-                          itemCount: _documents.length,
-                          itemBuilder: (context, index) {
-                            final doc = _documents[index];
-                            return _buildArchiveCard(doc);
-                          },
+            child: Column(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(12, 10, 12, 8),
+                  child: Column(
+                    children: [
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: AppColors.ustpWhite,
+                          border: const Border(
+                            left: BorderSide(
+                              color: AppColors.ustpMuted,
+                              width: 3,
+                            ),
+                          ),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: const Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Icon(
+                              AppIcons.lock,
+                              size: 16,
+                              color: AppColors.ustpMuted,
+                            ),
+                            SizedBox(width: 7),
+                            Expanded(
+                              child: Text(
+                                'Read-only — Admin cannot delete archive documents once verified.',
+                                style: TextStyle(
+                                  color: AppColors.ustpMuted,
+                                  fontSize: 10,
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
                       ),
+                      const SizedBox(height: 8),
+                      _FilterDropdown<String>(
+                        label: 'Dept:',
+                        value: _selectedDept,
+                        items: [
+                          const DropdownMenuItem(
+                            value: 'All Departments',
+                            child: Text('All Departments'),
+                          ),
+                          for (final department in _departments)
+                            DropdownMenuItem(
+                              value: department.departmentCode,
+                              child: Text(department.departmentName),
+                            ),
+                        ],
+                        onChanged: (value) {
+                          if (value == null) return;
+                          setState(() => _selectedDept = value);
+                          _loadArchives();
+                        },
+                      ),
+                      const SizedBox(height: 6),
+                      _FilterDropdown<String>(
+                        label: 'Standard:',
+                        value: _selectedStandard,
+                        items: const [
+                          DropdownMenuItem(
+                            value: 'ISO & ARTA',
+                            child: Text('ISO & ARTA'),
+                          ),
+                          DropdownMenuItem(
+                            value: 'ISO9001-9.2',
+                            child: Text('ISO 9001'),
+                          ),
+                          DropdownMenuItem(
+                            value: 'ARTA-3days',
+                            child: Text('ARTA 3'),
+                          ),
+                          DropdownMenuItem(
+                            value: 'ARTA-7days',
+                            child: Text('ARTA 7'),
+                          ),
+                          DropdownMenuItem(
+                            value: 'ARTA-20days',
+                            child: Text('ARTA 20'),
+                          ),
+                        ],
+                        onChanged: (value) {
+                          if (value == null) return;
+                          setState(() => _selectedStandard = value);
+                          _loadArchives();
+                        },
+                      ),
+                      const SizedBox(height: 6),
+                      _FilterDropdown<String>(
+                        label: 'Upload Date:',
+                        value: _selectedDate,
+                        items: const [
+                          DropdownMenuItem(
+                            value: 'This Quarter',
+                            child: Text('This Quarter'),
+                          ),
+                          DropdownMenuItem(
+                            value: 'Last 30 Days',
+                            child: Text('Last 30 Days'),
+                          ),
+                          DropdownMenuItem(
+                            value: 'All Dates',
+                            child: Text('All Dates'),
+                          ),
+                        ],
+                        onChanged: (value) {
+                          if (value == null) return;
+                          setState(() => _selectedDate = value);
+                          _loadArchives();
+                        },
+                      ),
+                    ],
+                  ),
+                ),
+                Expanded(
+                  child: _isLoading
+                      ? const Center(
+                          child: CircularProgressIndicator(
+                            color: AppColors.ustpNavy,
+                          ),
+                        )
+                      : _error != null
+                          ? _ArchiveLoadError(
+                              error: _error!,
+                              onRetry: _loadArchives,
+                            )
+                          : _documents.isEmpty
+                              ? RefreshIndicator(
+                                  onRefresh: _loadArchives,
+                                  child: ListView(
+                                    physics:
+                                        const AlwaysScrollableScrollPhysics(),
+                                    children: const [
+                                      SizedBox(height: 50),
+                                      EmptyState(
+                                        title: 'No archives found',
+                                        subtitle:
+                                            'No documents match the selected filters.',
+                                        icon: AppIcons.archive,
+                                      ),
+                                    ],
+                                  ),
+                                )
+                              : RefreshIndicator(
+                                  color: AppColors.ustpNavy,
+                                  onRefresh: _loadArchives,
+                                  child: ListView.builder(
+                                    physics:
+                                        const AlwaysScrollableScrollPhysics(),
+                                    padding: const EdgeInsets.fromLTRB(
+                                      12,
+                                      0,
+                                      12,
+                                      16,
+                                    ),
+                                    itemCount: _documents.length,
+                                    itemBuilder: (context, index) =>
+                                        _ArchiveCard(
+                                      document: _documents[index],
+                                      isBusy: _busyDocuments
+                                          .contains(_documents[index].id),
+                                      onPreview: () =>
+                                          _previewDetails(_documents[index]),
+                                      onDownload: () =>
+                                          _download(_documents[index]),
+                                      onVerify: () =>
+                                          _verifyChecksum(_documents[index]),
+                                    ),
+                                  ),
+                                ),
+                ),
+              ],
+            ),
           ),
         ],
       ),
     );
   }
+}
 
-  Widget _buildArchiveCard(ArchiveDocumentModel doc) {
-    final formattedDate = DateFormat('yyyy-MM-dd').format(doc.createdAt);
+class _FilterDropdown<T> extends StatelessWidget {
+  const _FilterDropdown({
+    required this.label,
+    required this.value,
+    required this.items,
+    required this.onChanged,
+  });
 
+  final String label;
+  final T value;
+  final List<DropdownMenuItem<T>> items;
+  final ValueChanged<T?> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(16),
+      height: 38,
+      padding: const EdgeInsets.symmetric(horizontal: 9),
       decoration: BoxDecoration(
         color: AppColors.ustpWhite,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
+        border: Border.all(color: const Color(0xFFE5EAF1)),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        children: [
+          Text(
+            label,
+            style: const TextStyle(color: AppColors.ustpMuted, fontSize: 10),
+          ),
+          const SizedBox(width: 6),
+          Expanded(
+            child: DropdownButtonHideUnderline(
+              child: DropdownButton<T>(
+                value: value,
+                isExpanded: true,
+                icon: const Icon(AppIcons.chevronDown, size: 15),
+                style: const TextStyle(
+                  color: AppColors.ustpDark,
+                  fontSize: 10,
+                  fontWeight: FontWeight.w600,
+                ),
+                items: items,
+                onChanged: onChanged,
+              ),
+            ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _ArchiveCard extends StatelessWidget {
+  const _ArchiveCard({
+    required this.document,
+    required this.isBusy,
+    required this.onPreview,
+    required this.onDownload,
+    required this.onVerify,
+  });
+
+  final ArchiveDocumentModel document;
+  final bool isBusy;
+  final VoidCallback onPreview;
+  final VoidCallback onDownload;
+  final VoidCallback onVerify;
+
+  @override
+  Widget build(BuildContext context) {
+    final isPdf = document.originalName.toLowerCase().endsWith('.pdf');
+    final fileColor = isPdf ? AppColors.error : AppColors.info;
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.fromLTRB(11, 10, 11, 8),
+      decoration: BoxDecoration(
+        color: AppColors.ustpWhite,
+        border: Border.all(color: const Color(0xFFE5EAF1)),
+        borderRadius: BorderRadius.circular(10),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Top Row: File Icon + File Name & Reference (Left) | Verification Pill Badge (Right)
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Container(
-                padding: const EdgeInsets.all(10),
+                width: 27,
+                height: 29,
                 decoration: BoxDecoration(
-                  color: const Color(0xFFE0F2FE),
-                  borderRadius: BorderRadius.circular(10),
+                  color: fileColor.withValues(alpha: 0.08),
+                  borderRadius: BorderRadius.circular(6),
                 ),
-                child: const Icon(
-                  Icons.insert_drive_file_outlined,
-                  color: AppColors.info,
-                  size: 22,
+                child: Icon(
+                  isPdf ? AppIcons.document : AppIcons.spreadsheet,
+                  color: fileColor,
+                  size: 16,
                 ),
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: 8),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      doc.originalName,
+                      document.originalName,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
-                        fontFamily: 'Poppins',
-                        fontSize: 15,
-                        fontWeight: FontWeight.bold,
                         color: AppColors.ustpDark,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      '${doc.departmentCode} · ${doc.referenceStandard}',
-                      style: const TextStyle(
-                        fontFamily: 'Inter',
-                        fontSize: 12,
-                        color: AppColors.ustpMuted,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              // Verification Badge Pill
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                decoration: BoxDecoration(
-                  color: doc.isVerified ? const Color(0xFFDCFCE7) : const Color(0xFFFEE2E2),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      doc.isVerified ? Icons.check_circle_outline : Icons.warning_amber_rounded,
-                      size: 12,
-                      color: doc.isVerified ? AppColors.success : AppColors.error,
-                    ),
-                    const SizedBox(width: 4),
-                    Text(
-                      doc.isVerified ? 'Verified' : 'Unverified',
-                      style: TextStyle(
-                        fontFamily: 'Inter',
+                        fontFamily: 'Poppins',
                         fontSize: 11,
                         fontWeight: FontWeight.bold,
-                        color: doc.isVerified ? AppColors.success : AppColors.error,
+                      ),
+                    ),
+                    Text(
+                      '${document.referenceStandard} · ${document.departmentCode}',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: AppColors.ustpMuted,
+                        fontSize: 9,
                       ),
                     ),
                   ],
@@ -339,118 +473,119 @@ class _ArchiveRepositoryScreenState extends State<ArchiveRepositoryScreen> {
               ),
             ],
           ),
-          const SizedBox(height: 12),
-
-          // Upload Metadata Text
+          const SizedBox(height: 7),
           Text(
-            'Uploaded by ${doc.uploadedBy} · $formattedDate',
-            style: const TextStyle(
-              fontFamily: 'Inter',
-              fontSize: 12,
-              color: AppColors.ustpMuted,
-            ),
+            'Uploaded by ${document.uploadedBy}',
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(color: AppColors.ustpDark, fontSize: 9),
           ),
-          const SizedBox(height: 14),
-
-          // Action Buttons Row: Preview | Download | Verify Checksum | Delete Trash Icon
+          const SizedBox(height: 5),
           Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              // Preview Button
-              OutlinedButton.icon(
-                style: OutlinedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                  side: BorderSide(color: AppColors.ustpMuted.withValues(alpha: 0.3)),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                  minimumSize: Size.zero,
-                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                ),
-                onPressed: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Decrypting & opening preview for ${doc.originalName}...')),
-                  );
-                },
-                icon: const Icon(Icons.remove_red_eye_outlined, size: 14, color: AppColors.ustpDark),
-                label: const Text(
-                  'Preview',
-                  style: TextStyle(
-                    fontFamily: 'Inter',
-                    fontSize: 12,
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.ustpDark,
-                  ),
+              const Text(
+                'UPLOAD DATE',
+                style: TextStyle(color: AppColors.ustpMuted, fontSize: 8),
+              ),
+              Text(
+                DateFormat('MMM d, yyyy').format(document.createdAt),
+                style: const TextStyle(
+                  color: AppColors.ustpDark,
+                  fontSize: 9,
                 ),
               ),
-              const SizedBox(width: 8),
-
-              // Download Button
-              OutlinedButton.icon(
-                style: OutlinedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                  side: BorderSide(color: AppColors.ustpMuted.withValues(alpha: 0.3)),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                  minimumSize: Size.zero,
-                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                ),
-                onPressed: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Downloading encrypted archive ${doc.originalName}...')),
-                  );
-                },
-                icon: const Icon(Icons.download_outlined, size: 14, color: AppColors.ustpDark),
-                label: const Text(
-                  'Download',
-                  style: TextStyle(
-                    fontFamily: 'Inter',
-                    fontSize: 12,
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.ustpDark,
-                  ),
-                ),
+            ],
+          ),
+          const Divider(height: 13, color: Color(0xFFE8EDF4)),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
+              _ArchiveAction(label: 'Preview', onPressed: onPreview),
+              const _ArchiveActionDivider(),
+              _ArchiveAction(
+                label: isBusy ? 'Please wait…' : 'Download',
+                onPressed: isBusy ? null : onDownload,
               ),
-              const SizedBox(width: 8),
-
-              // Verify Checksum Button (if Unverified)
-              if (!doc.isVerified) ...[
-                OutlinedButton.icon(
-                  style: OutlinedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                    side: const BorderSide(color: AppColors.ustpNavy),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                    minimumSize: Size.zero,
-                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                  ),
-                  onPressed: () => _verifyChecksum(doc),
-                  icon: const Icon(Icons.verified_user_outlined, size: 14, color: AppColors.ustpNavy),
-                  label: const Text(
-                    'Verify Checksum',
-                    style: TextStyle(
-                      fontFamily: 'Inter',
-                      fontSize: 11,
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.ustpNavy,
-                    ),
-                  ),
+              if (!document.isVerified) ...[
+                const _ArchiveActionDivider(),
+                _ArchiveAction(
+                  label: 'Verify',
+                  onPressed: isBusy ? null : onVerify,
                 ),
-                const SizedBox(width: 8),
               ],
-
-              const Spacer(),
-
-              // Delete Trash Icon
-              IconButton(
-                padding: EdgeInsets.zero,
-                constraints: const BoxConstraints(),
-                onPressed: () => _showDeleteNotice(doc),
-                icon: const Icon(
-                  Icons.delete_outline_rounded,
-                  color: AppColors.error,
-                  size: 20,
-                ),
-              ),
             ],
           ),
         ],
       ),
     );
   }
+}
+
+class _ArchiveAction extends StatelessWidget {
+  const _ArchiveAction({required this.label, required this.onPressed});
+
+  final String label;
+  final VoidCallback? onPressed;
+
+  @override
+  Widget build(BuildContext context) => TextButton(
+        onPressed: onPressed,
+        style: TextButton.styleFrom(
+          minimumSize: Size.zero,
+          padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+        ),
+        child: Text(
+          label,
+          style: const TextStyle(
+            color: AppColors.ustpNavy,
+            fontSize: 9,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      );
+}
+
+class _ArchiveActionDivider extends StatelessWidget {
+  const _ArchiveActionDivider();
+
+  @override
+  Widget build(BuildContext context) =>
+      Container(height: 12, width: 1, color: const Color(0xFFCBD5E1));
+}
+
+class _ArchiveLoadError extends StatelessWidget {
+  const _ArchiveLoadError({required this.error, required this.onRetry});
+
+  final Object error;
+  final Future<void> Function() onRetry;
+
+  @override
+  Widget build(BuildContext context) => Center(
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'Could not load archives.\n$error',
+                textAlign: TextAlign.center,
+                style: const TextStyle(color: AppColors.ustpMuted),
+              ),
+              const SizedBox(height: 8),
+              OutlinedButton.icon(
+                onPressed: onRetry,
+                icon: const Icon(AppIcons.refresh, size: 16),
+                label: const Text('Retry'),
+              ),
+            ],
+          ),
+        ),
+      );
+}
+
+String _formatSize(int bytes) {
+  if (bytes < 1024 * 1024) return '${(bytes / 1024).toStringAsFixed(0)} KB';
+  return '${(bytes / (1024 * 1024)).toStringAsFixed(1)} MB';
 }

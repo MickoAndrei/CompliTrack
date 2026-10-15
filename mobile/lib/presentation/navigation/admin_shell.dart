@@ -23,11 +23,15 @@ class AdminShell extends StatelessWidget {
         selectedItemColor: AppColors.ustpGold,
         unselectedItemColor: AppColors.ustpMuted,
         items: const [
-          BottomNavigationBarItem(icon: Icon(AppIcons.dashboard), label: 'Home'),
+          BottomNavigationBarItem(
+              icon: Icon(AppIcons.dashboard), label: 'Dashboard'),
           BottomNavigationBarItem(icon: Icon(AppIcons.users), label: 'Users'),
-          BottomNavigationBarItem(icon: Icon(AppIcons.department), label: 'Depts'),
-          BottomNavigationBarItem(icon: Icon(AppIcons.compliance), label: 'Reports'),
-          BottomNavigationBarItem(icon: Icon(AppIcons.archive), label: 'Archives'),
+          BottomNavigationBarItem(
+              icon: Icon(AppIcons.department), label: 'Offices'),
+          BottomNavigationBarItem(
+              icon: Icon(AppIcons.archive), label: 'Archive'),
+          BottomNavigationBarItem(
+              icon: Icon(AppIcons.compliance), label: 'Reports'),
         ],
       ),
     );

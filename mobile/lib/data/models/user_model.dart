@@ -8,6 +8,7 @@ class UserModel {
   final int roleId;
   final String roleSlug;
   final String? departmentId;
+  final String? departmentName;
   final String officeName;
   final bool isActive;
   final DateTime? createdAt;
@@ -20,6 +21,7 @@ class UserModel {
     required this.roleId,
     required this.roleSlug,
     this.departmentId,
+    this.departmentName,
     required this.officeName,
     required this.isActive,
     this.createdAt,
@@ -34,6 +36,7 @@ class UserModel {
       roleId: ModelJson.requiredInt(json, 'roleId'),
       roleSlug: ModelJson.requiredString(json, 'roleSlug'),
       departmentId: ModelJson.optionalString(json, 'departmentId'),
+      departmentName: ModelJson.optionalString(json, 'departmentName'),
       officeName: ModelJson.optionalString(json, 'officeName') ?? '',
       isActive: ModelJson.requiredBool(json, 'isActive'),
       createdAt: json['createdAt'] == null
@@ -51,6 +54,7 @@ class UserModel {
       'roleId': roleId,
       'roleSlug': roleSlug,
       'departmentId': departmentId,
+      if (departmentName != null) 'departmentName': departmentName,
       'officeName': officeName,
       'isActive': isActive,
       if (createdAt != null) 'createdAt': createdAt!.toIso8601String(),

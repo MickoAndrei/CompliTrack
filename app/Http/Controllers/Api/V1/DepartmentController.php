@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
 use App\Models\Department;
+use App\Models\User;
 use App\Services\AuditLogService;
 use App\Services\RoleScopeService;
 use App\Support\MongoId;
@@ -87,12 +88,24 @@ class DepartmentController extends Controller
             'departmentName' => ['sometimes', 'required', 'string', 'max:255'],
             'collegeName' => ['sometimes', 'required', 'string', 'max:100'],
             'campusName' => ['sometimes', 'required', 'string', 'max:100'],
+            'headUserId' => ['sometimes', 'nullable', 'string', 'regex:/^[a-f0-9]{24}$/'],
             'isActive' => ['sometimes', 'boolean'],
         ]);
 
         if ((int) $request->user()->roleId === 1
             && ($data['collegeName'] ?? $department->collegeName) !== 'CET') {
             abort(403, 'Admins may only manage CET departments.');
+        }
+        if (!empty($data['headUserId'])) {
+            $head = User::where('_id', MongoId::parse($data['headUserId'], 'headUserId'))
+                ->where('departmentId', $department->getKey())
+                ->whereIn('roleId', [2, 3])
+                ->exists();
+            if (!$head) {
+                return response()->json([
+                    'message' => 'The department head must be an auditor or auditee assigned to this department.',
+                ], 422);
+            }
         }
         $department->fill($data)->save();
         $this->auditLogs->record($request, 'Updated department', 'department', $department->getKey());

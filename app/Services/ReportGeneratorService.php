@@ -45,18 +45,48 @@ class ReportGeneratorService
             ->map(static fn ($group, $month) => ['month' => Carbon::createFromFormat('!Y-m', (string) $month)->format('M'), 'count' => $group->count()]);
 
         $departmentCompliance = $departments->map(function (Department $department) use ($checks) {
-            $departmentChecks = clone $checks;
-            $total = $departmentChecks->where('departmentId', $department->getKey())->count();
-            $compliant = (clone $checks)
+            $departmentChecks = (clone $checks)
                 ->where('departmentId', $department->getKey())
-                ->where('result', 'compliant')
-                ->count();
+                ->get(['createdAt', 'result', 'correctiveStatus']);
+            $total = $departmentChecks->count();
+            $compliant = $departmentChecks->where('result', 'compliant')->count();
+            $openChecks = $departmentChecks->whereIn('correctiveStatus', ['open', 'in_progress']);
+            $agingDays = $openChecks->isEmpty()
+                ? 0
+                : (int) round($openChecks->avg(
+                    static fn (ComplianceCheck $check) => $check->createdAt?->diffInDays(now()),
+                ));
 
             return [
+                'departmentName' => $department->departmentName,
                 'departmentCode' => $department->departmentCode,
                 'compliancePercentage' => $total === 0 ? 0.0 : round(($compliant / $total) * 100, 1),
+                'openCarAgingDays' => $agingDays,
             ];
         })->values()->all();
+
+        $trendStart = now()->utc()->startOfMonth()->subMonths(5);
+        $trendChecks = $this->scopes->checks($actor)
+            ->where('createdAt', '>=', $trendStart)
+            ->get(['createdAt', 'result']);
+        $monthlyComplianceTrend = collect(range(0, 5))
+            ->map(function (int $offset) use ($trendStart, $trendChecks) {
+                $month = $trendStart->copy()->addMonths($offset);
+                $monthChecks = $trendChecks->filter(
+                    static fn (ComplianceCheck $check) => $check->createdAt?->format('Y-m') === $month->format('Y-m'),
+                );
+                $total = $monthChecks->count();
+                $compliant = $monthChecks->where('result', 'compliant')->count();
+
+                return [
+                    'month' => $month->format('M'),
+                    'compliancePercentage' => $total === 0
+                        ? 0.0
+                        : round(($compliant / $total) * 100, 1),
+                ];
+            })
+            ->values()
+            ->all();
 
         $storageBytes = $this->scopes->archives($actor)->sum('fileSize');
 
@@ -67,6 +97,7 @@ class ReportGeneratorService
             'activeAudits' => $activeAudits,
             'userGrowth' => $userGrowth->values()->all(),
             'deptCompliance' => $departmentCompliance,
+            'monthlyComplianceTrend' => $monthlyComplianceTrend,
             'complianceRate' => $totalChecks === 0 ? 0.0 : round(($compliantChecks / $totalChecks) * 100, 1),
             'openCars' => $openCars,
             'openOverSevenDays' => $openOverSevenDays,

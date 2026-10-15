@@ -7,12 +7,12 @@ class ApiClient {
   final SecureStorageService _storageService;
 
   ApiClient({
-    String baseUrl = ApiConstants.baseUrl,
+    String? baseUrl,
     SecureStorageService? storageService,
   }) : _storageService = storageService ?? SecureStorageService() {
     dio = Dio(
       BaseOptions(
-        baseUrl: baseUrl,
+        baseUrl: baseUrl ?? ApiConstants.baseUrl,
         connectTimeout: const Duration(seconds: 15),
         receiveTimeout: const Duration(seconds: 15),
         headers: {

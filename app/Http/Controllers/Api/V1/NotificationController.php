@@ -57,6 +57,49 @@ class NotificationController extends Controller
         return response()->json(['message' => 'Notifications marked as read.']);
     }
 
+    public function broadcast(Request $request)
+    {
+        $data = $request->validate([
+            'departmentId' => ['required', 'string', 'regex:/^[a-f0-9]{24}$/'],
+            'message' => ['required', 'string', 'not_regex:/^\s*$/', 'max:2000'],
+        ]);
+        $departmentId = MongoId::parse($data['departmentId'], 'departmentId');
+        $department = $this->scopes->departments($request->user())
+            ->where('_id', $departmentId)
+            ->where('isActive', true)
+            ->firstOrFail();
+        $recipients = $this->scopes->users($request->user())
+            ->where('roleId', 3)
+            ->where('departmentId', $department->getKey())
+            ->where('isActive', true)
+            ->get(['_id']);
+
+        foreach ($recipients as $recipient) {
+            Notification::create([
+                'recipientUserId' => $recipient->getKey(),
+                'senderUserId' => $request->user()->getKey(),
+                'type' => 'admin_broadcast',
+                'title' => 'Broadcast Notification',
+                'message' => trim($data['message']),
+                'isRead' => false,
+                'fcmSent' => false,
+            ]);
+        }
+
+        $this->auditLogs->record(
+            $request,
+            'Broadcast notification to department auditees',
+            'department',
+            $department->getKey(),
+        );
+
+        return response()->json([
+            'message' => 'Broadcast notification created.',
+            'recipientCount' => $recipients->count(),
+            'departmentName' => $department->departmentName,
+        ], 201);
+    }
+
     private function serialize(Notification $notification): array
     {
         $data = $notification->toArray();

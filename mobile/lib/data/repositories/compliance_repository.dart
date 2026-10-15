@@ -8,11 +8,15 @@ class ComplianceRepository {
 
   final Dio _dio;
 
-  Future<List<ComplianceCheckModel>> getChecks({String? correctiveStatus}) async {
+  Future<List<ComplianceCheckModel>> getChecks({
+    String? correctiveStatus,
+    int perPage = 20,
+  }) async {
     final response = await _dio.get(
       '/api/v1/compliance-checks',
       queryParameters: {
         if (correctiveStatus != null) 'correctiveStatus': correctiveStatus,
+        'perPage': perPage,
       },
     );
     return ApiResponse.list(response.data)
@@ -31,6 +35,7 @@ class ComplianceRepository {
     required String referenceStandard,
     required String result,
     String? remarks,
+    List<String> linkedArchiveIds = const [],
   }) async {
     final response = await _dio.post(
       '/api/v1/compliance-checks',
@@ -40,6 +45,7 @@ class ComplianceRepository {
         'referenceStandard': referenceStandard,
         'result': result,
         if (remarks != null && remarks.isNotEmpty) 'remarks': remarks,
+        if (linkedArchiveIds.isNotEmpty) 'linkedArchiveIds': linkedArchiveIds,
       },
     );
     return ComplianceCheckModel.fromJson(ApiResponse.object(response.data));

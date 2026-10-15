@@ -22,8 +22,12 @@ class ReportController extends Controller
         return response()->json([
             'data' => $this->reports->generate(
                 $request->user(),
-                isset($dates['startDate']) ? \Illuminate\Support\Carbon::parse($dates['startDate']) : null,
-                isset($dates['endDate']) ? \Illuminate\Support\Carbon::parse($dates['endDate']) : null,
+                isset($dates['startDate'])
+                    ? \Illuminate\Support\Carbon::parse($dates['startDate'])->startOfDay()
+                    : null,
+                isset($dates['endDate'])
+                    ? \Illuminate\Support\Carbon::parse($dates['endDate'])->endOfDay()
+                    : null,
             ),
         ]);
     }
