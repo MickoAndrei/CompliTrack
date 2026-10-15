@@ -1,7 +1,9 @@
 build/
 .dart_tool/
-.env
 *.iml
 .idea/
 google-services.json
 GoogleService-Info.plist
+# Widget Preview related
+.widget_preview/
+.env

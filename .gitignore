@@ -3,6 +3,8 @@
 .env
 .env.backup
 .env.production
+!/mobile/.env
+mobile/.env
 .phpactor.json
 .phpunit.result.cache
 /.fleet
@@ -26,3 +28,4 @@ Thumbs.db
 .aider.chat.history.md
 .aider.input.history
 .aider.tags.cache.v4/
+/mobile/.flutter-plugins-dependencies

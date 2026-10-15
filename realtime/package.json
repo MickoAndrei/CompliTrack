@@ -1,0 +1,22 @@
+{
+  "name": "complitrack-realtime",
+  "version": "1.0.0",
+  "private": true,
+  "description": "CompliTrack MongoDB change-stream and Socket.IO service",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "check": "node --check src/server.js && node --check src/watchers/complianceChecksWatcher.js",
+    "test": "node --test"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "firebase-admin": "^13.0.2",
+    "mongodb": "^6.12.0",
+    "socket.io": "^4.8.1"
+  }
+}
