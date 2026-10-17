@@ -17,40 +17,6 @@ abstract final class UstpTheme {
         onSecondary: AppColors.ustpDark,
         onSurface: AppColors.ustpDark,
       ),
-      textTheme: GoogleFonts.interTextTheme().copyWith(
-        displayLarge: GoogleFonts.poppins(
-          fontSize: 28,
-          fontWeight: FontWeight.bold,
-          color: AppColors.ustpNavy,
-        ),
-        displayMedium: GoogleFonts.poppins(
-          fontSize: 22,
-          fontWeight: FontWeight.w600,
-          color: AppColors.ustpDark,
-        ),
-        titleLarge: GoogleFonts.poppins(
-          fontSize: 18,
-          fontWeight: FontWeight.bold,
-          color: AppColors.ustpDark,
-        ),
-        titleMedium: GoogleFonts.poppins(
-          fontSize: 16,
-          fontWeight: FontWeight.w600,
-          color: AppColors.ustpDark,
-        ),
-        bodyLarge: GoogleFonts.inter(
-          fontSize: 16,
-          color: AppColors.ustpDark,
-        ),
-        bodyMedium: GoogleFonts.inter(
-          fontSize: 14,
-          color: AppColors.ustpDark,
-        ),
-        bodySmall: GoogleFonts.inter(
-          fontSize: 12,
-          color: AppColors.ustpMuted,
-        ),
-      ),
       appBarTheme: const AppBarTheme(
         backgroundColor: AppColors.ustpNavy,
         foregroundColor: AppColors.ustpWhite,

@@ -98,7 +98,7 @@ class _ArchiveRepositoryScreenState extends State<ArchiveRepositoryScreen> {
     setState(() => _busyDocuments.add(doc.id));
     try {
       final bytes = await _repository.downloadArchive(doc.id);
-      final savedPath = await FilePicker.platform.saveFile(
+      final savedPath = await FilePicker.saveFile(
         fileName: doc.originalName,
         bytes: bytes,
       );

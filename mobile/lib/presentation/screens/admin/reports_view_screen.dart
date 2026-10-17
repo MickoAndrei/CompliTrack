@@ -152,7 +152,7 @@ class _ReportsViewScreenState extends State<ReportsViewScreen> {
         ),
       );
       final bytes = Uint8List.fromList(await document.save());
-      final savedPath = await FilePicker.platform.saveFile(
+      final savedPath = await FilePicker.saveFile(
         fileName:
             'complitrack-report-${dateFormat.format(_startDate)}-${dateFormat.format(_endDate)}.pdf',
         bytes: bytes,
