@@ -66,7 +66,7 @@ class _ArchiveReviewScreenState extends State<ArchiveReviewScreen> {
     setState(() => _busyDocuments.add(archive.id));
     try {
       final bytes = await _repository.downloadArchive(archive.id);
-      final savedPath = await FilePicker.platform.saveFile(
+      final savedPath = await FilePicker.saveFile(
         fileName: archive.originalName,
         bytes: bytes,
       );

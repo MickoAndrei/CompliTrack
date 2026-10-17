@@ -72,22 +72,21 @@ class _UploadEvidenceScreenState extends State<UploadEvidenceScreen> {
       _errorMessage = null;
     });
     try {
-      final result = await FilePicker.platform.pickFiles(
+      final result = await FilePicker.pickFiles(
         type: FileType.custom,
         allowedExtensions: FileValidator.allowedExtensions.toList(),
-        allowMultiple: false,
-        withData: true,
       );
       if (!mounted) return;
-      if (result == null || result.files.isEmpty) {
+      if (result.isEmpty) {
         setState(() => _isPickingFile = false);
         return;
       }
 
-      final file = result.files.single;
+      final file = result.single;
+      final fileSize = file.lengthSync() ?? 0;
       final validationError = FileValidator.validate(
         extension: file.extension,
-        sizeInBytes: file.size,
+        sizeInBytes: fileSize,
       );
       setState(() {
         _isPickingFile = false;
@@ -294,7 +293,7 @@ class _UploadEvidenceScreenState extends State<UploadEvidenceScreen> {
                     Text(
                       _selectedFile == null
                           ? 'PDF, DOCX, JPG, PNG · Max 20MB'
-                          : '${(_selectedFile!.size / (1024 * 1024)).toStringAsFixed(2)} MB · Tap to replace',
+                          : '${(((_selectedFile?.lengthSync() ?? 0) / (1024 * 1024))).toStringAsFixed(2)} MB · Tap to replace',
                       style: const TextStyle(
                         fontSize: 8,
                         color: AppColors.ustpMuted,

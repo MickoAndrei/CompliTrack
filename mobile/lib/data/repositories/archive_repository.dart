@@ -67,14 +67,8 @@ class ArchiveRepository {
     required PlatformFile file,
     void Function(int sent, int total)? onSendProgress,
   }) async {
-    final MultipartFile upload;
-    if (file.bytes != null) {
-      upload = MultipartFile.fromBytes(file.bytes!, filename: file.name);
-    } else if (file.path != null) {
-      upload = await MultipartFile.fromFile(file.path!, filename: file.name);
-    } else {
-      throw const FormatException('The selected file cannot be read.');
-    }
+    final bytes = await file.readAsBytes();
+    final upload = MultipartFile.fromBytes(bytes, filename: file.name);
 
     final response = await _dio.post(
       '/api/v1/archives/upload',
