@@ -1,6 +1,6 @@
 # CompliTrack — Full File Structure
 
-`← NEW` = empty placeholder file added for you to fill in.
+`← NEW` = path added during the CompliTrack V8 setup; it may be implemented or remain a scaffold.
 
 ```
 CompliTrack/
@@ -20,6 +20,7 @@ CompliTrack/
 │   │   │   │       ├── ReportController.php
 │   │   │   │       └── UserController.php
 │   │   │   ├── Web/
+│   │   │   │   ├── AuthController.php
 │   │   │   │   ├── DashboardController.php  ← NEW
 │   │   │   │   └── ProfileController.php  ← NEW
 │   │   │   └── Controller.php
@@ -186,7 +187,8 @@ CompliTrack/
 │   ├── fonts/
 │   │   └── .gitkeep  ← NEW
 │   ├── images/
-│   │   └── .gitkeep  ← NEW
+│   │   ├── .gitkeep  ← NEW
+│   │   └── ustp-claveria-logo.jpg
 │   ├── .htaccess
 │   ├── favicon.ico
 │   ├── index.php
@@ -219,7 +221,8 @@ CompliTrack/
 │   │   └── app.css
 │   ├── js/
 │   │   ├── app.js
-│   │   └── bootstrap.js
+│   │   ├── bootstrap.js
+│   │   └── pages.js
 │   └── views/
 │       ├── admin/
 │       │   ├── archives.blade.php
@@ -252,7 +255,9 @@ CompliTrack/
 │       │   ├── alert-banner.blade.php  ← NEW
 │       │   ├── compliance-gauge.blade.php  ← NEW
 │       │   ├── data-table.blade.php  ← NEW
+│       │   ├── dashboard-page.blade.php
 │       │   ├── kpi-card.blade.php
+│       │   ├── resource-page.blade.php
 │       │   ├── role-badge.blade.php
 │       │   ├── status-badge.blade.php
 │       │   ├── timeline-stepper.blade.php  ← NEW
@@ -294,6 +299,7 @@ CompliTrack/
 ├── artisan
 ├── composer.json
 ├── package.json
+├── package-lock.json
 ├── phpunit.xml
 └── vite.config.js
 ```

@@ -7,7 +7,10 @@ use App\Models\PasswordResetToken;
 use App\Models\User;
 use App\Services\PasswordResetService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Storage;
+use Laravel\Sanctum\Http\Middleware\EnsureFrontendRequestsAreStateful;
 
 class AuthController extends Controller
 {
@@ -17,10 +20,11 @@ class AuthController extends Controller
             'email' => ['required', 'email', 'max:255'],
             'password' => ['required', 'string'],
             'fcmToken' => ['sometimes', 'nullable', 'string', 'max:4096'],
+            'remember' => ['sometimes', 'boolean'],
         ]);
 
         $user = User::where('email', strtolower(trim($validated['email'])))->first();
-        if (!$user || !$user->isActive || !Hash::check($validated['password'], $user->password)) {
+        if (! $user || ! $user->isActive || ! Hash::check($validated['password'], $user->password)) {
             return response()->json(['message' => 'Invalid email or password.'], 401);
         }
 
@@ -29,6 +33,13 @@ class AuthController extends Controller
             $user->fcmToken = $validated['fcmToken'];
         }
         $user->save();
+
+        if (EnsureFrontendRequestsAreStateful::fromFrontend($request)) {
+            Auth::guard('web')->login($user, $request->boolean('remember'));
+            $request->session()->regenerate();
+
+            return response()->json(['user' => $user->toArray()]);
+        }
 
         $token = $user->createToken('mobile', ['*'], now()->addDays(30));
 
@@ -57,7 +68,7 @@ class AuthController extends Controller
             'password' => ['required', 'string', 'min:12', 'confirmed'],
         ]);
         $user = $request->user();
-        if (!Hash::check($validated['currentPassword'], $user->password)) {
+        if (! Hash::check($validated['currentPassword'], $user->password)) {
             return response()->json(['message' => 'The current password is incorrect.'], 422);
         }
 
@@ -65,6 +76,39 @@ class AuthController extends Controller
         $user->save();
 
         return response()->json(['message' => 'Password updated successfully.']);
+    }
+
+    public function uploadAvatar(Request $request)
+    {
+        $validated = $request->validate([
+            'avatar' => ['required', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
+        ]);
+        $user = $request->user();
+        $previousPath = $user->avatarPath;
+        $path = $validated['avatar']->store('avatars', 'public');
+
+        if (! $path) {
+            return response()->json(['message' => 'The profile photo could not be saved.'], 500);
+        }
+
+        $user->avatarPath = $path;
+        $user->save();
+        if ($previousPath && $previousPath !== $path) {
+            Storage::disk('public')->delete($previousPath);
+        }
+
+        return response()->json(['avatarUrl' => url('/api/v1/auth/avatar')]);
+    }
+
+    public function avatar(Request $request)
+    {
+        $path = $request->user()->avatarPath;
+        abort_unless($path && Storage::disk('public')->exists($path), 404);
+
+        return response()->file(Storage::disk('public')->path($path), [
+            'Content-Type' => Storage::disk('public')->mimeType($path) ?: 'application/octet-stream',
+            'Cache-Control' => 'private, max-age=300',
+        ]);
     }
 
     public function forgotPassword(Request $request, PasswordResetService $passwordResets)
@@ -95,12 +139,12 @@ class AuthController extends Controller
             ->where('createdAt', '>=', now()->subMinutes(60))
             ->first();
 
-        if (!$reset) {
+        if (! $reset) {
             return response()->json(['message' => 'The password reset token is invalid or expired.'], 422);
         }
 
         $user = User::where('email', $email)->where('isActive', true)->first();
-        if (!$user) {
+        if (! $user) {
             $reset->delete();
 
             return response()->json(['message' => 'The password reset token is invalid or expired.'], 422);

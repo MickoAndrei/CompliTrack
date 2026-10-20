@@ -1,24 +1,32 @@
 <?php
 
-use App\Http\Controllers\Api\V1\{
-    AuthController, UserController, DepartmentController,
-    ArchiveController, ComplianceCheckController,
-    NotificationController, AuditLogController, ReportController
-};
+use App\Http\Controllers\Api\V1\ArchiveController;
+use App\Http\Controllers\Api\V1\AuditLogController;
+use App\Http\Controllers\Api\V1\AuthController;
+use App\Http\Controllers\Api\V1\ComplianceCheckController;
+use App\Http\Controllers\Api\V1\DepartmentController;
+use App\Http\Controllers\Api\V1\NotificationController;
+use App\Http\Controllers\Api\V1\ReportController;
+use App\Http\Controllers\Api\V1\UserController;
 use App\Http\Middleware\EnsureUserIsActive;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('v1')->group(function () {
 
     // Auth (public)
-    Route::post('/auth/login', [AuthController::class, 'login']);
+    Route::post('/auth/login', [AuthController::class, 'login'])->middleware('throttle:5,1');
     Route::post('/auth/forgot-password', [AuthController::class, 'forgotPassword']);
     Route::post('/auth/reset-password', [AuthController::class, 'resetPassword']);
 
     Route::middleware(['auth:sanctum', EnsureUserIsActive::class])->group(function () {
         Route::get('/auth/me', [AuthController::class, 'me']);
+        Route::get('/auth/avatar', [AuthController::class, 'avatar']);
         Route::post('/auth/logout', [AuthController::class, 'logout']);
         Route::patch('/auth/password', [AuthController::class, 'changePassword']);
+        Route::post('/auth/avatar', [AuthController::class, 'uploadAvatar']);
+
+        Route::middleware('role:0,1,2')->get('/directory/auditees', [UserController::class, 'auditees']);
+        Route::middleware('role:0,1,2,3')->get('/directory/departments', [DepartmentController::class, 'index']);
 
         // Super Admin + Admin: user & department management
         Route::middleware('role:0,1')->group(function () {

@@ -10,10 +10,34 @@
         'Segoe UI Symbol', 'Noto Color Emoji';
     --font-heading: 'Poppins', ui-sans-serif, system-ui, sans-serif;
 
-    /* USTP palette + role badge colors — Guide §3 / §3.1 */
+    --color-ustp-light: #F5F7FA;
+    --color-ustp-white: #FFFFFF;
+    --color-ustp-dark: #0F172A;
+    --color-ustp-muted: #64748B;
+    --color-success: #16A34A;
+    --color-warning: #F59E0B;
+    --color-error: #DC2626;
+    --color-info: #0EA5E9;
     --color-ustp-navy: #00205B;
     --color-ustp-gold: #FFC72C;
-    --color-ustp-purple: #6C4AB6;
-    --color-ustp-blue: #2B6CB0;
-    --color-ustp-gray: #6B7280;
+    --color-ustp-purple: #7C3AED;
+    --color-ustp-blue: #0EA5E9;
+    --color-ustp-gray: #64748B;
+}
+
+@layer base {
+    [x-cloak] {
+        display: none !important;
+    }
+
+    body {
+        @apply bg-ustp-light font-sans text-ustp-dark antialiased;
+    }
+
+    button,
+    input,
+    select,
+    textarea {
+        font: inherit;
+    }
 }

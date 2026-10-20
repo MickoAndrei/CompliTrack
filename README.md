@@ -169,6 +169,12 @@ Open `.env` and set `MONGODB_URI`, `MONGODB_DATABASE`, `ENCRYPTION_KEY`, and
 the initial administrator credentials — see [Environment Variables](#environment-variables)
 below.
 
+For a local development database, `php artisan db:seed` also creates clearly
+marked fictional demo departments, users, compliance checks, and notifications.
+New demo account passwords are generated and printed once in the terminal;
+save them before closing the output. Existing demo account passwords are never
+changed by rerunning the seeder. Do not seed this demo dataset into production.
+
 ### 3. Start the MongoDB replica set
 
 Docker Desktop (or Docker Engine with the Compose plugin) is required:

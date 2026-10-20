@@ -13,6 +13,7 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
+        $middleware->statefulApi();
         // Usage: Route::middleware('role:0,1') — see app/Http/Middleware/RoleMiddleware.php
         $middleware->alias([
             'role' => RoleMiddleware::class,

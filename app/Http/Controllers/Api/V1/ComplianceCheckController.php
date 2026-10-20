@@ -8,6 +8,7 @@ use App\Models\Department;
 use App\Models\User;
 use App\Services\ComplianceCheckService;
 use App\Services\RoleScopeService;
+use App\Support\MongoId;
 use Illuminate\Http\Request;
 
 class ComplianceCheckController extends Controller
@@ -15,8 +16,7 @@ class ComplianceCheckController extends Controller
     public function __construct(
         private readonly ComplianceCheckService $checks,
         private readonly RoleScopeService $scopes,
-    ) {
-    }
+    ) {}
 
     public function index(Request $request)
     {
@@ -26,6 +26,17 @@ class ComplianceCheckController extends Controller
             if ($request->filled($field)) {
                 $query->where($field, $request->query($field));
             }
+        }
+        if ($request->filled('search')) {
+            $search = '/'.preg_quote(trim((string) $request->query('search')), '/').'/i';
+            $query->where(function ($query) use ($search) {
+                $query->where('checkCode', 'regex', $search)
+                    ->orWhere('remarks', 'regex', $search);
+            });
+        }
+        if ($request->boolean('overdue')) {
+            $query->where('correctiveStatus', 'open')
+                ->where('createdAt', '<', now()->utc()->subDays(7));
         }
 
         $page = $query->orderBy('createdAt', 'desc')
@@ -46,7 +57,7 @@ class ComplianceCheckController extends Controller
     public function show(Request $request, string $id)
     {
         $check = $this->scopes->checks($request->user())
-            ->where('_id', \App\Support\MongoId::parse($id))
+            ->where('_id', MongoId::parse($id))
             ->firstOrFail();
 
         return response()->json(['data' => $this->serialize($check)]);

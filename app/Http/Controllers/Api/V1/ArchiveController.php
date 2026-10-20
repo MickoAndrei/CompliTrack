@@ -16,7 +16,6 @@ use App\Support\MongoId;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
-use MongoDB\BSON\ObjectId;
 use Throwable;
 
 class ArchiveController extends Controller
@@ -34,8 +33,7 @@ class ArchiveController extends Controller
         private readonly CounterService $counters,
         private readonly ArchiveEncryptionService $encryption,
         private readonly AuditLogService $auditLogs,
-    ) {
-    }
+    ) {}
 
     public function index(Request $request)
     {
@@ -43,13 +41,20 @@ class ArchiveController extends Controller
         if ($request->filled('department')) {
             $departmentCode = (string) $request->query('department');
             $department = Department::where('departmentCode', $departmentCode)->first();
-            if (!$department) {
+            if (! $department) {
                 return response()->json(['data' => [], 'meta' => ['total' => 0]]);
             }
             $query->where('departmentId', $department->getKey());
         }
         if ($request->filled('referenceStandard')) {
             $query->where('referenceStandard', $request->query('referenceStandard'));
+        }
+        if ($request->filled('search')) {
+            $search = '/'.preg_quote(trim((string) $request->query('search')), '/').'/i';
+            $query->where(function ($query) use ($search) {
+                $query->where('originalName', 'regex', $search)
+                    ->orWhere('fileCode', 'regex', $search);
+            });
         }
         if ($request->filled('dateFilter')) {
             if ($request->query('dateFilter') === 'Last 30 Days') {
@@ -86,7 +91,7 @@ class ArchiveController extends Controller
         $file = $request->file('file');
         $extension = strtolower($file->getClientOriginalExtension());
         $mimeType = $file->getMimeType();
-        if (!isset(self::MIME_TYPES[$extension]) || self::MIME_TYPES[$extension] !== $mimeType) {
+        if (! isset(self::MIME_TYPES[$extension]) || self::MIME_TYPES[$extension] !== $mimeType) {
             throw ValidationException::withMessages([
                 'file' => 'The file extension and detected MIME type do not match an allowed format.',
             ]);
@@ -94,7 +99,7 @@ class ArchiveController extends Controller
 
         $actor = $request->user();
         $check = ComplianceCheck::find(MongoId::parse($data['checkId'], 'checkId'));
-        if (!$check || $check->referenceStandard !== $data['referenceStandard']) {
+        if (! $check || $check->referenceStandard !== $data['referenceStandard']) {
             throw ValidationException::withMessages([
                 'checkId' => 'The selected check does not match the selected standard.',
             ]);
@@ -107,7 +112,7 @@ class ArchiveController extends Controller
         $encrypted = $this->encryption->encrypt($plaintext);
         $fileCode = $this->counters->next('ARCH', yearly: true);
         $path = "archives/{$fileCode}.enc";
-        if (!Storage::disk('local')->put($path, $encrypted['ciphertext'])) {
+        if (! Storage::disk('local')->put($path, $encrypted['ciphertext'])) {
             throw new \RuntimeException('Unable to write the encrypted archive.');
         }
 
@@ -202,6 +207,7 @@ class ArchiveController extends Controller
                     && $this->scopes->canAccessDepartment($actor, MongoId::parse((string) $check->departmentId)),
                 403,
             );
+
             return;
         }
 
@@ -214,7 +220,7 @@ class ArchiveController extends Controller
 
     private function decryptAndVerify(ArchiveDocument $archive): string
     {
-        if (!Storage::disk('local')->exists($archive->encryptedPath)) {
+        if (! Storage::disk('local')->exists($archive->encryptedPath)) {
             abort(404, 'The encrypted archive file is missing.');
         }
         $ciphertext = Storage::disk('local')->get($archive->encryptedPath);
@@ -223,7 +229,7 @@ class ArchiveController extends Controller
             $archive->encryptionIv,
             $archive->encryptionTag,
         );
-        if (!hash_equals($archive->checksum, hash('sha256', $plaintext))) {
+        if (! hash_equals($archive->checksum, hash('sha256', $plaintext))) {
             throw new \RuntimeException('Archive checksum verification failed.');
         }
 
