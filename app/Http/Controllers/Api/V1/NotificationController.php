@@ -14,13 +14,19 @@ class NotificationController extends Controller
     public function __construct(
         private readonly RoleScopeService $scopes,
         private readonly AuditLogService $auditLogs,
-    ) {
-    }
+    ) {}
 
     public function index(Request $request)
     {
-        $page = $this->scopes->notifications($request->user())
-            ->orderBy('createdAt', 'desc')
+        $query = $this->scopes->notifications($request->user());
+        if ($request->filled('search')) {
+            $search = '/'.preg_quote(trim((string) $request->query('search')), '/').'/i';
+            $query->where(function ($query) use ($search) {
+                $query->where('title', 'regex', $search)
+                    ->orWhere('message', 'regex', $search);
+            });
+        }
+        $page = $query->orderBy('createdAt', 'desc')
             ->paginate(min(max((int) $request->query('perPage', 20), 1), 100));
         $data = collect($page->items())->map(fn (Notification $notification) => $this->serialize($notification));
 

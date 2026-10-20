@@ -28,6 +28,7 @@ class SuperAdminSeeder extends Seeder
         User::create([
             'userCode' => app(CounterService::class)->next('SA'),
             'fullName' => 'Super Administrator',
+            'email' => $email,
             'password' => Hash::make($password, ['rounds' => 12]),
             'roleId' => 0,
             'roleSlug' => 'super_admin',

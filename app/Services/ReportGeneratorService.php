@@ -91,6 +91,8 @@ class ReportGeneratorService
         $storageBytes = $this->scopes->archives($actor)->sum('fileSize');
 
         return [
+            'totalChecks' => $totalChecks,
+            'compliantChecks' => $compliantChecks,
             'totalUsers' => $this->scopes->users($actor)->where('isActive', true)->count(),
             'totalDepts' => $departments->count(),
             'storageUsedGb' => round(((float) $storageBytes) / (1024 ** 3), 2),

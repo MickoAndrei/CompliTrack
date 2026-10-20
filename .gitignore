@@ -29,3 +29,4 @@ Thumbs.db
 .aider.input.history
 .aider.tags.cache.v4/
 /mobile/.flutter-plugins-dependencies
+complitrack_web_temp/

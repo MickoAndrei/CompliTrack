@@ -13,6 +13,7 @@ use App\Support\MongoId;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
+use MongoDB\BSON\ObjectId;
 
 class UserController extends Controller
 {
@@ -21,8 +22,7 @@ class UserController extends Controller
         private readonly CounterService $counters,
         private readonly AuditLogService $auditLogs,
         private readonly PasswordResetService $passwordResets,
-    ) {
-    }
+    ) {}
 
     public function index(Request $request)
     {
@@ -30,6 +30,7 @@ class UserController extends Controller
         if ($request->filled('roleId')) {
             $query->where('roleId', (int) $request->query('roleId'));
         }
+
         if ($request->filled('search')) {
             $search = trim((string) $request->query('search'));
             $query->where(function ($query) use ($search) {
@@ -53,6 +54,13 @@ class UserController extends Controller
         ]);
     }
 
+    public function auditees(Request $request)
+    {
+        $request->query->set('roleId', '3');
+
+        return $this->index($request);
+    }
+
     public function store(Request $request)
     {
         $data = $request->validate([
@@ -73,14 +81,14 @@ class UserController extends Controller
 
         $actor = $request->user();
         $roleId = (int) $data['roleId'];
-        if ((int) $actor->roleId === 1 && !in_array($roleId, [2, 3], true)) {
+        if ((int) $actor->roleId === 1 && ! in_array($roleId, [2, 3], true)) {
             abort(403, 'Admins may only create auditors and auditees.');
         }
         $departmentId = isset($data['departmentId'])
             ? MongoId::parse($data['departmentId'], 'departmentId')
             : null;
         $this->validateDepartmentAssignment($actor, $roleId, $departmentId, $data['assignedDepartmentIds'] ?? []);
-        if ($roleId !== 0 && !$departmentId) {
+        if ($roleId !== 0 && ! $departmentId) {
             return response()->json(['message' => 'A department is required for this role.'], 422);
         }
         if ($roleId === 3 && empty($data['officeName'])) {
@@ -144,7 +152,7 @@ class UserController extends Controller
         }
 
         $roleId = (int) ($data['roleId'] ?? $user->roleId);
-        if ((int) $request->user()->roleId === 1 && !in_array($roleId, [2, 3], true)) {
+        if ((int) $request->user()->roleId === 1 && ! in_array($roleId, [2, 3], true)) {
             abort(403, 'Admins may only manage auditors and auditees.');
         }
         $departmentId = array_key_exists('departmentId', $data)
@@ -193,7 +201,7 @@ class UserController extends Controller
     private function validateDepartmentAssignment(
         User $actor,
         int $roleId,
-        ?\MongoDB\BSON\ObjectId $departmentId,
+        ?ObjectId $departmentId,
         array $assignedDepartmentIds,
     ): void {
         if ($roleId === 0) {
@@ -211,7 +219,7 @@ class UserController extends Controller
         foreach (array_unique(array_map('strval', $ids)) as $id) {
             $objectId = MongoId::parse($id, 'assignedDepartmentIds');
             $department = Department::find($objectId);
-            if (!$department || !$department->isActive
+            if (! $department || ! $department->isActive
                 || ((int) $actor->roleId === 1 && $department->collegeName !== 'CET')) {
                 abort(422, 'The selected department is unavailable or outside your scope.');
             }
