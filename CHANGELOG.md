@@ -18,6 +18,8 @@ All notable changes to CompliTrack are documented here.
 - Reverted the recent Super Admin create-user modal and keyboard-handling experiments, restoring the earlier role-filter dropdown presentation.
 - Removed persistent chart tooltip overlays so department compliance bars display clearly in USTP gold; replaced the placeholder crest and malformed notification glyph with the USTP emblem and a rounded bell icon.
 
+
+
 ## [Unreleased] - 2026-10-20
 
 ### Added
