@@ -477,6 +477,8 @@ class _AdminNotificationsOverlayState extends State<AdminNotificationsOverlay> {
                   foregroundColor: AppColors.ustpMuted,
                   minimumSize: const Size(30, 30),
                   padding: EdgeInsets.zero,
+                  visualDensity: VisualDensity.compact,
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                 ),
               ),
             ],

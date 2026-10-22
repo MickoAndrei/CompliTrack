@@ -2,6 +2,22 @@
 
 All notable changes to CompliTrack are documented here.
 
+## [Unreleased] - 2026-10-22
+
+### Added
+
+- Added live System Health checks for the API, realtime service, database, and push configuration on the Super Admin dashboard.
+
+### Changed
+
+- Updated the Super Admin dashboard to show recent audit activity and a six-month cumulative user-growth trend from current data.
+- Tightened the Users toolbar with a compact role filter and create-user action, and reduced the notification overlay close control size.
+
+### Fixed
+
+- Reverted the recent Super Admin create-user modal and keyboard-handling experiments, restoring the earlier role-filter dropdown presentation.
+- Removed persistent chart tooltip overlays so department compliance bars display clearly in USTP gold; replaced the placeholder crest and malformed notification glyph with the USTP emblem and a rounded bell icon.
+
 ## [Unreleased] - 2026-10-20
 
 ### Added
