@@ -34,15 +34,38 @@ class ReportGeneratorService
         $activeAudits = $openCars;
 
         $users = $this->scopes->users($actor);
-        if ($startDate) {
-            $users->where('createdAt', '>=', $startDate->copy()->utc());
+        if ($startDate || $endDate) {
+            if ($startDate) {
+                $users->where('createdAt', '>=', $startDate->copy()->utc());
+            }
+            if ($endDate) {
+                $users->where('createdAt', '<=', $endDate->copy()->utc());
+            }
+            $userGrowth = $users->get(['createdAt'])
+                ->filter(static fn (User $user) => $user->createdAt !== null)
+                ->groupBy(static fn (User $user) => $user->createdAt->format('Y-m'))
+                ->map(static fn ($group, $month) => [
+                    'month' => Carbon::createFromFormat('!Y-m', (string) $month)->format('M'),
+                    'count' => $group->count(),
+                ]);
+        } else {
+            // Show six complete months and a cumulative user count so the dashboard
+            // trend is meaningful even when no one signed up in a particular month.
+            $trendStart = now()->utc()->startOfMonth()->subMonths(6);
+            $trendEnd = $trendStart->copy()->addMonths(6);
+            $userDates = $users->where('createdAt', '<', $trendEnd)->get(['createdAt'])
+                ->pluck('createdAt')
+                ->filter();
+            $userGrowth = collect(range(0, 5))->map(function (int $offset) use ($trendStart, $userDates) {
+                $month = $trendStart->copy()->addMonths($offset);
+                $nextMonth = $month->copy()->addMonth();
+
+                return [
+                    'month' => $month->format('M'),
+                    'count' => $userDates->filter(static fn ($createdAt) => $createdAt < $nextMonth)->count(),
+                ];
+            });
         }
-        if ($endDate) {
-            $users->where('createdAt', '<=', $endDate->copy()->utc());
-        }
-        $userGrowth = $users->get(['createdAt'])
-            ->groupBy(static fn (User $user) => $user->createdAt?->format('Y-m'))
-            ->map(static fn ($group, $month) => ['month' => Carbon::createFromFormat('!Y-m', (string) $month)->format('M'), 'count' => $group->count()]);
 
         $departmentCompliance = $departments->map(function (Department $department) use ($checks) {
             $departmentChecks = (clone $checks)

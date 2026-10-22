@@ -25,27 +25,10 @@ class UstpLogo extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         if (showEmblem) ...[
-          // USTP Crest Seal Badge
-          Container(
+          SizedBox(
             width: fontSize * 1.5,
             height: fontSize * 1.5,
-            decoration: BoxDecoration(
-              color: AppColors.ustpGold.withValues(alpha: 0.2),
-              shape: BoxShape.circle,
-              border: Border.all(color: AppColors.ustpGold, width: 1.5),
-            ),
-            child: Center(
-              child: Text(
-                'USTP',
-                style: TextStyle(
-                  fontFamily: 'Poppins',
-                  fontSize: fontSize * 0.38,
-                  fontWeight: FontWeight.w900,
-                  color: AppColors.ustpGold,
-                  letterSpacing: -0.5,
-                ),
-              ),
-            ),
+            child: const CustomPaint(painter: _BrandEmblemPainter()),
           ),
           SizedBox(width: fontSize * 0.45),
         ],
@@ -90,4 +73,75 @@ class UstpLogo extends StatelessWidget {
       ],
     );
   }
+}
+
+class _BrandEmblemPainter extends CustomPainter {
+  const _BrandEmblemPainter();
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    canvas.save();
+    canvas.scale(size.width / 40, size.height / 40);
+    final outer = Paint()
+      ..color = const Color(0xFFFAB005)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.5;
+    final circle = Path()
+      ..addOval(Rect.fromCircle(center: const Offset(20, 20), radius: 18.5));
+    for (final metric in circle.computeMetrics()) {
+      for (double distance = 0; distance < metric.length; distance += 4.5) {
+        canvas.drawPath(metric.extractPath(distance, distance + 2.5), outer);
+      }
+    }
+    canvas.drawCircle(
+      const Offset(20, 20),
+      14.5,
+      Paint()
+        ..color = const Color(0xFF00205B)
+        ..style = PaintingStyle.fill,
+    );
+    canvas.drawCircle(
+      const Offset(20, 20),
+      14.5,
+      Paint()
+        ..color = const Color(0xFF3B5998)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 0.8,
+    );
+    final crest = Path()
+      ..moveTo(20, 8)
+      ..lineTo(24, 15)
+      ..lineTo(16, 15)
+      ..close();
+    canvas.drawPath(crest, Paint()..color = Colors.white.withValues(alpha: .85));
+    final label = TextPainter(
+      text: const TextSpan(
+        text: 'USTP',
+        style: TextStyle(
+          color: Color(0xFFFAB005),
+          fontFamily: 'sans-serif',
+          fontSize: 7.5,
+          fontWeight: FontWeight.w800,
+          letterSpacing: .4,
+        ),
+      ),
+      textDirection: TextDirection.ltr,
+    )..layout();
+    label.paint(canvas, Offset(20 - label.width / 2, 22.25));
+    final lowerArc = Path()
+      ..moveTo(11, 30)
+      ..cubicTo(15, 33, 25, 33, 29, 30);
+    canvas.drawPath(
+      lowerArc,
+      Paint()
+        ..color = Colors.white
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1.2
+        ..strokeCap = StrokeCap.round,
+    );
+    canvas.restore();
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }

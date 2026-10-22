@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import '../../core/constants/app_colors.dart';
-import '../../core/constants/app_icons.dart';
 import '../providers/auth_provider.dart';
 import 'ustp_logo.dart';
 
@@ -42,7 +41,7 @@ class UstpAppBar extends StatelessWidget implements PreferredSizeWidget {
               clipBehavior: Clip.none,
               children: [
                 IconButton(
-                  icon: const Icon(AppIcons.notifications,
+                  icon: const Icon(Icons.notifications_none_rounded,
                       color: AppColors.ustpWhite, size: 22),
                   onPressed: () {
                     if (onNotificationTap != null) {

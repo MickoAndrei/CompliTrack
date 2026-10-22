@@ -1,10 +1,12 @@
-import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
+import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_icons.dart';
+import '../../../data/models/audit_log_model.dart';
 import '../../../data/models/super_admin_dashboard_model.dart';
+import '../../../data/repositories/audit_log_repository.dart';
 import '../../../data/repositories/super_admin_repository.dart';
-import '../../widgets/kpi_card.dart';
 import '../../widgets/manage_on_web_badge.dart';
 import '../../widgets/ustp_app_bar.dart';
 
@@ -17,394 +19,285 @@ class SuperAdminDashboardScreen extends StatefulWidget {
 
 class _SuperAdminDashboardScreenState extends State<SuperAdminDashboardScreen> {
   final SuperAdminRepository _repository = SuperAdminRepository();
+  final AuditLogRepository _auditLogRepository = AuditLogRepository();
   late Future<SuperAdminDashboardModel> _dashboardFuture;
+  late Future<List<AuditLogModel>> _auditLogsFuture;
 
   @override
   void initState() {
     super.initState();
-    _loadMetrics();
+    _dashboardFuture = _repository.getDashboardMetrics();
+    _auditLogsFuture = _auditLogRepository.getAuditLogs();
   }
 
-  void _loadMetrics() {
+  Future<void> _reload() async {
+    final future = _repository.getDashboardMetrics();
+    final logsFuture = _auditLogRepository.getAuditLogs();
     setState(() {
-      _dashboardFuture = _repository.getDashboardMetrics();
+      _dashboardFuture = future;
+      _auditLogsFuture = logsFuture;
     });
+    await future;
+    await logsFuture.catchError((_) => <AuditLogModel>[]);
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.ustpLight,
-      appBar: UstpAppBar(
-        onNotificationTap: () {
-          // Navigate to Notifications
-        },
-        onProfileTap: () {
-          // Navigate to Profile
-        },
-      ),
+      appBar: const UstpAppBar(),
       body: FutureBuilder<SuperAdminDashboardModel>(
         future: _dashboardFuture,
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(
-              child: CircularProgressIndicator(color: AppColors.ustpNavy),
-            );
+            return const Center(child: CircularProgressIndicator(color: AppColors.ustpNavy));
           }
-
-          if (snapshot.hasError) {
+          if (snapshot.hasError || snapshot.data == null) {
             return Center(
-              child: Padding(
-                padding: const EdgeInsets.all(24.0),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const Icon(AppIcons.forbidden, color: AppColors.error, size: 48),
-                    const SizedBox(height: 16),
-                    const Text(
-                      'Failed to load dashboard metrics',
-                      style: TextStyle(
-                        fontFamily: 'Poppins',
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: AppColors.ustpDark,
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    ElevatedButton.icon(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.ustpNavy,
-                        foregroundColor: AppColors.ustpWhite,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                      onPressed: _loadMetrics,
-                      icon: const Icon(AppIcons.refresh, size: 18),
-                      label: const Text('Retry'),
-                    ),
-                  ],
-                ),
-              ),
+              child: Column(mainAxisSize: MainAxisSize.min, children: [
+                const Text('Could not load dashboard metrics', style: TextStyle(color: AppColors.ustpDark)),
+                const SizedBox(height: 12),
+                FilledButton(onPressed: _reload, child: const Text('Retry')),
+              ]),
             );
           }
-
-          final metrics = snapshot.data ?? const SuperAdminDashboardModel(
-            totalUsers: 248,
-            totalDepts: 12,
-            storageUsedGb: 38.4,
-            activeAudits: 17,
-            userGrowth: [
-              UserGrowthData(month: 'Apr', count: 152),
-              UserGrowthData(month: 'May', count: 170),
-              UserGrowthData(month: 'Jun', count: 188),
-              UserGrowthData(month: 'Jul', count: 210),
-              UserGrowthData(month: 'Aug', count: 230),
-              UserGrowthData(month: 'Sep', count: 248),
-            ],
-            deptCompliance: [
-              DepartmentComplianceData(departmentCode: 'IT', compliancePercentage: 92.0),
-              DepartmentComplianceData(departmentCode: 'Civil', compliancePercentage: 78.0),
-              DepartmentComplianceData(departmentCode: 'EE', compliancePercentage: 85.0),
-              DepartmentComplianceData(departmentCode: 'ME', compliancePercentage: 71.0),
-              DepartmentComplianceData(departmentCode: 'CpE', compliancePercentage: 88.0),
-            ],
-          );
-
+          final metrics = snapshot.data!;
           return RefreshIndicator(
             color: AppColors.ustpNavy,
-            onRefresh: () async => _loadMetrics(),
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(16.0),
+            onRefresh: _reload,
+            child: ListView(
               physics: const AlwaysScrollableScrollPhysics(),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // KPI Grid (2x2)
-                  Row(
-                    children: [
-                      Expanded(
-                        child: KpiCard(
-                          title: 'Total Users',
-                          value: metrics.totalUsers.toString(),
-                          icon: AppIcons.users,
-                          iconColor: AppColors.info,
-                          iconBgColor: const Color(0xFFE0F2FE),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: KpiCard(
-                          title: 'Total Depts',
-                          value: metrics.totalDepts.toString(),
-                          icon: AppIcons.department,
-                          iconColor: AppColors.ustpPurple,
-                          iconBgColor: const Color(0xFFF3E8FF),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: KpiCard(
-                          title: 'Storage Used',
-                          value: '${metrics.storageUsedGb} GB',
-                          icon: AppIcons.storage,
-                          iconColor: AppColors.ustpGold,
-                          iconBgColor: const Color(0xFFFEF9C3),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: KpiCard(
-                          title: 'Active Audits',
-                          value: metrics.activeAudits.toString(),
-                          icon: AppIcons.compliance,
-                          iconColor: AppColors.success,
-                          iconBgColor: const Color(0xFFDCFCE7),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 20),
-
-                  // User Growth Trend Chart
-                  _buildUserGrowthChartCard(metrics.userGrowth),
-
-                  const SizedBox(height: 20),
-
-                  // Compliance by Department Chart
-                  _buildComplianceChartCard(metrics.deptCompliance),
-
-                  const SizedBox(height: 24),
-                ],
-              ),
+              padding: const EdgeInsets.fromLTRB(14, 10, 14, 24),
+              children: [
+                Row(children: [
+                  Expanded(child: _MetricCard(value: '${metrics.totalUsers}', label: 'Total Users', icon: AppIcons.users, color: const Color(0xFF2878FF), tint: const Color(0xFFEEF5FF))),
+                  const SizedBox(width: 8),
+                  Expanded(child: _MetricCard(value: '${metrics.totalDepts}', label: 'Total Depts', icon: AppIcons.department, color: const Color(0xFF8B3DFF), tint: const Color(0xFFF5F0FF))),
+                ]),
+                const SizedBox(height: 8),
+                Row(children: [
+                  Expanded(child: _MetricCard(value: '${metrics.storageUsedGb} GB', label: 'Storage Used', icon: AppIcons.storage, color: AppColors.ustpGold, tint: const Color(0xFFFFFAE9))),
+                  const SizedBox(width: 8),
+                  Expanded(child: _MetricCard(value: '${metrics.activeAudits}', label: 'Active Audits', icon: AppIcons.compliance, color: const Color(0xFF00B984), tint: const Color(0xFFE9FBF4))),
+                ]),
+                const SizedBox(height: 18),
+                _GrowthCard(data: metrics.userGrowth),
+                const SizedBox(height: 14),
+                _ComplianceCard(data: metrics.deptCompliance),
+                const SizedBox(height: 14),
+                _RecentLogsCard(future: _auditLogsFuture),
+                const SizedBox(height: 14),
+                const _SystemHealthCard(),
+              ],
             ),
           );
         },
       ),
     );
   }
+}
 
-  Widget _buildUserGrowthChartCard(List<UserGrowthData> userGrowth) {
-    final startCount = userGrowth.isNotEmpty ? userGrowth.first.count : 152;
-    final endCount = userGrowth.isNotEmpty ? userGrowth.last.count : 248;
+class _MetricCard extends StatelessWidget {
+  const _MetricCard({required this.value, required this.label, required this.icon, required this.color, required this.tint});
+  final String value, label;
+  final IconData icon;
+  final Color color, tint;
 
+  @override
+  Widget build(BuildContext context) => Container(
+        height: 60,
+        padding: const EdgeInsets.symmetric(horizontal: 10),
+        decoration: _cardDecoration(),
+        child: Row(children: [
+          Container(width: 32, height: 32, decoration: BoxDecoration(color: tint, borderRadius: BorderRadius.circular(9)), child: Icon(icon, size: 18, color: color)),
+          const SizedBox(width: 9),
+          Expanded(child: Column(mainAxisAlignment: MainAxisAlignment.center, crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text(value, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontFamily: 'Poppins', fontSize: 14, height: 1.25, fontWeight: FontWeight.w700, color: AppColors.ustpDark)),
+            Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontFamily: 'Inter', fontSize: 9, color: AppColors.ustpMuted)),
+          ])),
+        ]),
+      );
+}
+
+class _GrowthCard extends StatelessWidget {
+  const _GrowthCard({required this.data});
+  final List<UserGrowthData> data;
+
+  @override
+  Widget build(BuildContext context) {
+    final start = data.isEmpty ? 0 : data.first.count;
+    final end = data.isEmpty ? 0 : data.last.count;
     return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: AppColors.ustpWhite,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 10,
-            offset: const Offset(0, 2),
+      height: 164,
+      padding: const EdgeInsets.fromLTRB(12, 12, 8, 8),
+      decoration: _cardDecoration(),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Row(children: [
+          Expanded(child: Text('User Growth Trend ($start → $end)', style: const TextStyle(fontFamily: 'Poppins', fontSize: 10.5, fontWeight: FontWeight.w700, color: AppColors.ustpDark))),
+          Text(data.length < 2 ? '' : '${data.first.month} - ${data.last.month}', style: const TextStyle(fontFamily: 'Inter', fontSize: 9, color: AppColors.ustpMuted)),
+        ]),
+        const SizedBox(height: 8),
+        Expanded(child: LineChart(LineChartData(
+          minX: 0, maxX: data.length < 2 ? 1 : (data.length - 1).toDouble(),
+          minY: data.isEmpty ? 0 : (data.map((e) => e.count).reduce((a, b) => a < b ? a : b) - 12).toDouble(),
+          maxY: data.isEmpty ? 100 : (data.map((e) => e.count).reduce((a, b) => a > b ? a : b) + 12).toDouble(),
+          gridData: FlGridData(show: true, drawVerticalLine: false, getDrawingHorizontalLine: (_) => const FlLine(color: Color(0xFFE8EDF4), strokeWidth: 1)),
+          borderData: FlBorderData(show: false),
+          titlesData: FlTitlesData(
+            topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)), rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)), leftTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+            bottomTitles: AxisTitles(sideTitles: SideTitles(showTitles: true, interval: 1, reservedSize: 18, getTitlesWidget: (v, _) {
+              if (v != v.roundToDouble()) return const SizedBox.shrink();
+              final i = v.toInt();
+              if (i < 0 || i >= data.length) return const SizedBox.shrink();
+              return Text(data[i].month, style: const TextStyle(fontFamily: 'Inter', fontSize: 8, color: AppColors.ustpMuted));
+            })),
           ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Expanded(
-                child: Text(
-                  'User Growth Trend ($startCount → $endCount)',
-                  style: const TextStyle(
-                    fontFamily: 'Poppins',
-                    fontSize: 15,
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.ustpDark,
-                  ),
+          lineBarsData: [LineChartBarData(spots: List.generate(data.length, (i) => FlSpot(i.toDouble(), data[i].count.toDouble())), isCurved: false, color: AppColors.ustpNavy, barWidth: 1.5, dotData: FlDotData(show: true, getDotPainter: (_, __, ___, ____) => FlDotCirclePainter(radius: 2, color: AppColors.ustpWhite, strokeWidth: 1.2, strokeColor: AppColors.ustpNavy)), belowBarData: BarAreaData(show: false))],
+        ))),
+      ]),
+    );
+  }
+}
+
+class _ComplianceCard extends StatelessWidget {
+  const _ComplianceCard({required this.data});
+  final List<DepartmentComplianceData> data;
+
+  @override
+  Widget build(BuildContext context) => Container(
+        height: 178,
+        padding: const EdgeInsets.fromLTRB(12, 12, 12, 8),
+        decoration: _cardDecoration(),
+        child: Column(children: [
+          Row(children: [const Expanded(child: Text('Compliance by Department (%)', style: TextStyle(fontFamily: 'Poppins', fontSize: 10.5, fontWeight: FontWeight.w700, color: AppColors.ustpDark))), const ManageOnWebBadge(label: 'Read-only')]),
+          const SizedBox(height: 9),
+          Expanded(child: BarChart(BarChartData(
+            maxY: 110, minY: 0, alignment: BarChartAlignment.spaceAround,
+            gridData: FlGridData(show: false), borderData: FlBorderData(show: false),
+            titlesData: FlTitlesData(
+              show: true,
+              topTitles: const AxisTitles(
+                sideTitles: SideTitles(showTitles: false),
+              ),
+              leftTitles: const AxisTitles(
+                sideTitles: SideTitles(showTitles: false),
+              ),
+              rightTitles: const AxisTitles(
+                sideTitles: SideTitles(showTitles: false),
+              ),
+              bottomTitles: AxisTitles(
+                sideTitles: SideTitles(
+                  showTitles: true,
+                  reservedSize: 18,
+                  getTitlesWidget: (value, _) {
+                    final index = value.toInt();
+                    if (index < 0 || index >= data.length) {
+                      return const SizedBox.shrink();
+                    }
+                    return Text(
+                      data[index].departmentCode,
+                      style: const TextStyle(
+                        fontFamily: 'Inter',
+                        fontSize: 8,
+                        color: AppColors.ustpMuted,
+                      ),
+                    );
+                  },
                 ),
               ),
-              const Text(
-                'Apr - Sep',
-                style: TextStyle(
-                  fontFamily: 'Inter',
-                  fontSize: 12,
-                  color: AppColors.ustpMuted,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 24),
-          SizedBox(
-            height: 180,
-            child: LineChart(
-              LineChartData(
-                gridData: FlGridData(
-                  show: true,
-                  drawVerticalLine: false,
-                  getDrawingHorizontalLine: (value) => FlLine(
-                    color: AppColors.ustpLight,
-                    strokeWidth: 1,
-                  ),
-                ),
-                titlesData: FlTitlesData(
-                  rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                  topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                  leftTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                  bottomTitles: AxisTitles(
-                    sideTitles: SideTitles(
-                      showTitles: true,
-                      getTitlesWidget: (value, meta) {
-                        final index = value.toInt();
-                        if (index >= 0 && index < userGrowth.length) {
-                          return Padding(
-                            padding: const EdgeInsets.only(top: 8.0),
-                            child: Text(
-                              userGrowth[index].month,
-                              style: const TextStyle(
-                                fontFamily: 'Inter',
-                                fontSize: 11,
-                                color: AppColors.ustpMuted,
-                              ),
-                            ),
-                          );
-                        }
-                        return const SizedBox.shrink();
-                      },
-                      reservedSize: 28,
-                    ),
-                  ),
-                ),
-                borderData: FlBorderData(show: false),
-                lineBarsData: [
-                  LineChartBarData(
-                    spots: List.generate(
-                      userGrowth.length,
-                      (i) => FlSpot(i.toDouble(), userGrowth[i].count.toDouble()),
-                    ),
-                    isCurved: false,
-                    color: AppColors.ustpNavy,
-                    barWidth: 2.5,
-                    isStrokeCapRound: true,
-                    dotData: FlDotData(
-                      show: true,
-                      getDotPainter: (spot, percent, barData, index) {
-                        return FlDotCirclePainter(
-                          radius: 4,
-                          color: AppColors.ustpGold,
-                          strokeWidth: 2,
-                          strokeColor: AppColors.ustpNavy,
-                        );
-                      },
-                    ),
-                    belowBarData: BarAreaData(
-                      show: true,
-                      color: AppColors.ustpNavy.withValues(alpha: 0.04),
+            ),
+            barGroups: List.generate(
+              data.length,
+              (index) => BarChartGroupData(
+                x: index,
+                barsSpace: 0,
+                barRods: [
+                  BarChartRodData(
+                    toY: data[index].compliancePercentage,
+                    width: 22,
+                    color: AppColors.ustpGold,
+                    borderRadius: const BorderRadius.vertical(
+                      top: Radius.circular(4),
                     ),
                   ),
                 ],
               ),
             ),
-          ),
-        ],
-      ),
-    );
-  }
+            barTouchData: BarTouchData(enabled: false),
+          ))),
+        ]),
+      );
+}
 
-  Widget _buildComplianceChartCard(List<DepartmentComplianceData> deptCompliance) {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: AppColors.ustpWhite,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 10,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                'Compliance by Department (%)',
-                style: TextStyle(
-                  fontFamily: 'Poppins',
-                  fontSize: 15,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.ustpDark,
+class _RecentLogsCard extends StatelessWidget {
+  const _RecentLogsCard({required this.future});
+  final Future<List<AuditLogModel>> future;
+
+  @override
+  Widget build(BuildContext context) => Container(
+        padding: const EdgeInsets.fromLTRB(12, 12, 12, 7),
+        decoration: _cardDecoration(),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          const Text('Recent Audit Logs', style: TextStyle(fontFamily: 'Poppins', fontSize: 10.5, fontWeight: FontWeight.w700, color: AppColors.ustpDark)),
+          const SizedBox(height: 5),
+          FutureBuilder<List<AuditLogModel>>(
+            future: future,
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting && !snapshot.hasData) {
+                return const Padding(padding: EdgeInsets.symmetric(vertical: 12), child: Center(child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.ustpNavy)));
+              }
+              if (snapshot.hasError) {
+                return const Padding(padding: EdgeInsets.symmetric(vertical: 8), child: Text('Audit logs are unavailable.', style: TextStyle(fontFamily: 'Inter', fontSize: 9, color: AppColors.ustpMuted)));
+              }
+              final logs = (snapshot.data ?? const <AuditLogModel>[]).take(4);
+              if (logs.isEmpty) {
+                return const Padding(padding: EdgeInsets.symmetric(vertical: 8), child: Text('No recent audit activity.', style: TextStyle(fontFamily: 'Inter', fontSize: 9, color: AppColors.ustpMuted)));
+              }
+              return Column(children: [
+                for (final log in logs) Container(
+                  padding: const EdgeInsets.symmetric(vertical: 5),
+                  decoration: const BoxDecoration(border: Border(bottom: BorderSide(color: Color(0xFFE9EEF5)))),
+                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    Row(children: [Expanded(child: Text(log.userName, style: const TextStyle(fontFamily: 'Inter', fontWeight: FontWeight.w700, fontSize: 9.5, color: AppColors.ustpDark))), Text(_timeAgo(log.createdAt), style: const TextStyle(fontFamily: 'Inter', fontSize: 8, color: Color(0xFF8A9BB3)))]),
+                    const SizedBox(height: 1), Text(log.action, maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(fontFamily: 'Inter', fontSize: 8.5, color: AppColors.ustpMuted)),
+                  ]),
                 ),
-              ),
-              ManageOnWebBadge(label: 'Read-only'),
-            ],
+              ]);
+            },
           ),
-          const SizedBox(height: 24),
-          SizedBox(
-            height: 200,
-            child: BarChart(
-              BarChartData(
-                alignment: BarChartAlignment.spaceAround,
-                maxY: 100,
-                barTouchData: BarTouchData(enabled: true),
-                titlesData: FlTitlesData(
-                  show: true,
-                  rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                  topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                  leftTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                  bottomTitles: AxisTitles(
-                    sideTitles: SideTitles(
-                      showTitles: true,
-                      getTitlesWidget: (value, meta) {
-                        final index = value.toInt();
-                        if (index >= 0 && index < deptCompliance.length) {
-                          return Padding(
-                            padding: const EdgeInsets.only(top: 8.0),
-                            child: Text(
-                              deptCompliance[index].departmentCode,
-                              style: const TextStyle(
-                                fontFamily: 'Inter',
-                                fontSize: 11,
-                                fontWeight: FontWeight.w600,
-                                color: AppColors.ustpMuted,
-                              ),
-                            ),
-                          );
-                        }
-                        return const SizedBox.shrink();
-                      },
-                      reservedSize: 28,
-                    ),
-                  ),
-                ),
-                gridData: FlGridData(show: false),
-                borderData: FlBorderData(show: false),
-                barGroups: List.generate(
-                  deptCompliance.length,
-                  (i) => BarChartGroupData(
-                    x: i,
-                    showingTooltipIndicators: [0],
-                    barRods: [
-                      BarChartRodData(
-                        toY: deptCompliance[i].compliancePercentage,
-                        color: AppColors.ustpGold,
-                        width: 28,
-                        borderRadius: const BorderRadius.only(
-                          topLeft: Radius.circular(6),
-                          topRight: Radius.circular(6),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
+        ]),
+      );
+
+  String _timeAgo(DateTime date) {
+    final minutes = DateTime.now().difference(date.toLocal()).inMinutes;
+    if (minutes < 1) return 'Just now';
+    if (minutes < 60) return '$minutes min${minutes == 1 ? '' : 's'} ago';
+    final hours = minutes ~/ 60;
+    if (hours < 24) return '$hours hour${hours == 1 ? '' : 's'} ago';
+    if (hours < 48) return 'Yesterday';
+    return DateFormat('MMM d').format(date.toLocal());
   }
 }
+
+class _SystemHealthCard extends StatelessWidget {
+  const _SystemHealthCard();
+  @override
+  Widget build(BuildContext context) => Container(
+        padding: const EdgeInsets.fromLTRB(12, 12, 12, 7),
+        decoration: _cardDecoration(),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          const Text('System Health', style: TextStyle(fontFamily: 'Poppins', fontSize: 10.5, fontWeight: FontWeight.w700, color: AppColors.ustpDark)),
+          const SizedBox(height: 4),
+          for (final service in ['Node.js Service', 'MongoDB Cluster', 'FCM Push Service']) Padding(
+            padding: const EdgeInsets.symmetric(vertical: 5),
+            child: Row(children: [Expanded(child: Text(service, style: const TextStyle(fontFamily: 'Inter', fontSize: 9, color: AppColors.ustpDark))), const Icon(Icons.circle, size: 7, color: Color(0xFF00BE87)), const SizedBox(width: 5), const Text('Operational', style: TextStyle(fontFamily: 'Inter', fontSize: 8.5, color: Color(0xFF00A874), fontWeight: FontWeight.w600))]),
+          ),
+        ]),
+      );
+}
+
+BoxDecoration _cardDecoration() => BoxDecoration(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(11),
+      border: Border.all(color: const Color(0xFFE3EAF2)),
+    );
