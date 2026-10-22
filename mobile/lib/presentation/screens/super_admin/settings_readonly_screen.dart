@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_icons.dart';
+import '../admin/admin_notifications_screen.dart';
 import '../../widgets/manage_on_web_badge.dart';
 import '../../widgets/ustp_app_bar.dart';
 
@@ -57,7 +58,7 @@ class _SettingsReadonlyScreenState extends State<SettingsReadonlyScreen> {
     return Scaffold(
       backgroundColor: AppColors.ustpLight,
       appBar: UstpAppBar(
-        onNotificationTap: () {},
+        onNotificationTap: () => AdminNotificationsScreen.showOverlay(context),
         onProfileTap: () {},
       ),
       body: SingleChildScrollView(
@@ -258,7 +259,8 @@ class _SettingsReadonlyScreenState extends State<SettingsReadonlyScreen> {
                     controller: TextEditingController(text: 'AAAA••••'),
                     style: const TextStyle(color: AppColors.ustpMuted),
                     decoration: InputDecoration(
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                      contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 14, vertical: 12),
                       fillColor: AppColors.ustpLight,
                       filled: true,
                       border: OutlineInputBorder(
@@ -283,7 +285,8 @@ class _SettingsReadonlyScreenState extends State<SettingsReadonlyScreen> {
                     controller: TextEditingController(text: '••••••'),
                     style: const TextStyle(color: AppColors.ustpMuted),
                     decoration: InputDecoration(
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                      contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 14, vertical: 12),
                       fillColor: AppColors.ustpLight,
                       filled: true,
                       border: OutlineInputBorder(

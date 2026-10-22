@@ -51,7 +51,7 @@ class ReportGeneratorService
         } else {
             // Show six complete months and a cumulative user count so the dashboard
             // trend is meaningful even when no one signed up in a particular month.
-            $trendStart = now()->utc()->startOfMonth()->subMonths(6);
+            $trendStart = now()->utc()->startOfMonth()->subMonths(5);
             $trendEnd = $trendStart->copy()->addMonths(6);
             $userDates = $users->where('createdAt', '<', $trendEnd)->get(['createdAt'])
                 ->pluck('createdAt')

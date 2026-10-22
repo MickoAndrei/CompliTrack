@@ -3,6 +3,7 @@ import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_icons.dart';
 import '../../../data/models/user_model.dart';
 import '../../../data/repositories/user_repository.dart';
+import '../admin/admin_notifications_screen.dart';
 import '../../widgets/empty_state.dart';
 import '../../widgets/role_badge.dart';
 import '../../widgets/ustp_app_bar.dart';
@@ -86,7 +87,8 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                 controller: nameController,
                 decoration: InputDecoration(
                   labelText: 'Full Name',
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12)),
                 ),
               ),
               const SizedBox(height: 12),
@@ -94,7 +96,8 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                 controller: emailController,
                 decoration: InputDecoration(
                   labelText: 'Email Address',
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12)),
                 ),
               ),
               const SizedBox(height: 12),
@@ -102,7 +105,8 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                 controller: officeController,
                 decoration: InputDecoration(
                   labelText: 'Department / Office',
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12)),
                 ),
               ),
               const SizedBox(height: 12),
@@ -110,7 +114,8 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                 initialValue: selectedRole,
                 decoration: InputDecoration(
                   labelText: 'Role',
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12)),
                 ),
                 items: const [
                   DropdownMenuItem(value: 0, child: Text('Super Admin')),
@@ -130,12 +135,14 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                     backgroundColor: AppColors.ustpNavy,
                     foregroundColor: AppColors.ustpWhite,
                     padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12)),
                   ),
                   onPressed: () {
                     Navigator.pop(context);
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('User created successfully')),
+                      const SnackBar(
+                          content: Text('User created successfully')),
                     );
                     _loadUsers();
                   },
@@ -224,7 +231,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
     return Scaffold(
       backgroundColor: AppColors.ustpLight,
       appBar: UstpAppBar(
-        onNotificationTap: () {},
+        onNotificationTap: () => AdminNotificationsScreen.showOverlay(context),
         onProfileTap: () {},
       ),
       body: Column(
@@ -246,7 +253,8 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                       fontSize: 14,
                       color: AppColors.ustpMuted,
                     ),
-                    prefixIcon: const Icon(AppIcons.search, color: AppColors.ustpMuted, size: 20),
+                    prefixIcon: const Icon(AppIcons.search,
+                        color: AppColors.ustpMuted, size: 20),
                     contentPadding: const EdgeInsets.symmetric(vertical: 9),
                     fillColor: AppColors.ustpWhite,
                     filled: true,
@@ -272,7 +280,8 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                   children: [
                     // Role Filter Dropdown
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 0),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 10, vertical: 0),
                       decoration: BoxDecoration(
                         color: AppColors.ustpWhite,
                         borderRadius: BorderRadius.circular(9),
@@ -290,11 +299,14 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                               color: AppColors.ustpDark,
                             ),
                           ),
-                          icon: const Icon(AppIcons.chevronDown, size: 16, color: AppColors.ustpMuted),
+                          icon: const Icon(AppIcons.chevronDown,
+                              size: 16, color: AppColors.ustpMuted),
                           isDense: true,
                           items: const [
-                            DropdownMenuItem(value: null, child: Text('All Roles')),
-                            DropdownMenuItem(value: 0, child: Text('Super Admin')),
+                            DropdownMenuItem(
+                                value: null, child: Text('All Roles')),
+                            DropdownMenuItem(
+                                value: 0, child: Text('Super Admin')),
                             DropdownMenuItem(value: 1, child: Text('Admin')),
                             DropdownMenuItem(value: 2, child: Text('Auditor')),
                             DropdownMenuItem(value: 3, child: Text('Auditee')),
@@ -313,13 +325,15 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                         backgroundColor: AppColors.ustpGold,
                         foregroundColor: AppColors.ustpDark,
                         elevation: 0,
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 9),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(9),
                         ),
                       ),
                       onPressed: _showCreateUserModal,
-                      icon: const Icon(Icons.person_add_alt_1, size: 16, color: AppColors.ustpDark),
+                      icon: const Icon(Icons.person_add_alt_1,
+                          size: 16, color: AppColors.ustpDark),
                       label: const Text(
                         'Create User',
                         style: TextStyle(
@@ -338,7 +352,8 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
           // Users Card List
           Expanded(
             child: _isLoading
-                ? const Center(child: CircularProgressIndicator(color: AppColors.ustpNavy))
+                ? const Center(
+                    child: CircularProgressIndicator(color: AppColors.ustpNavy))
                 : _users.isEmpty
                     ? const EmptyState(
                         title: 'No users found',
@@ -394,7 +409,9 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                     width: 7,
                     height: 7,
                     decoration: BoxDecoration(
-                      color: user.isActive ? AppColors.success : AppColors.ustpMuted,
+                      color: user.isActive
+                          ? AppColors.success
+                          : AppColors.ustpMuted,
                       shape: BoxShape.circle,
                     ),
                   ),
@@ -403,9 +420,11 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                     user.isActive ? 'Active' : 'Inactive',
                     style: TextStyle(
                       fontFamily: 'Inter',
-                    fontSize: 10,
+                      fontSize: 10,
                       fontWeight: FontWeight.bold,
-                      color: user.isActive ? AppColors.success : AppColors.ustpMuted,
+                      color: user.isActive
+                          ? AppColors.success
+                          : AppColors.ustpMuted,
                     ),
                   ),
                 ],
@@ -470,7 +489,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                       'Edit',
                       style: TextStyle(
                         fontFamily: 'Inter',
-                      fontSize: 11,
+                        fontSize: 11,
                         fontWeight: FontWeight.bold,
                         color: AppColors.info,
                       ),
@@ -490,9 +509,8 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                         fontFamily: 'Inter',
                         fontSize: 11,
                         fontWeight: FontWeight.bold,
-                        color: user.isActive
-                            ? AppColors.error
-                            : AppColors.success,
+                        color:
+                            user.isActive ? AppColors.error : AppColors.success,
                       ),
                     ),
                   ),
@@ -508,7 +526,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                       'Reset',
                       style: TextStyle(
                         fontFamily: 'Inter',
-                      fontSize: 11,
+                        fontSize: 11,
                         fontWeight: FontWeight.bold,
                         color: AppColors.ustpNavy,
                       ),

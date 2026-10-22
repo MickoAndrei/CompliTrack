@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/constants/app_colors.dart';
-import '../../core/constants/app_icons.dart';
 
 class SuperAdminShell extends StatelessWidget {
   final StatefulNavigationShell navigationShell;
@@ -29,34 +28,35 @@ class SuperAdminShell extends StatelessWidget {
           backgroundColor: AppColors.ustpNavy,
           selectedItemColor: AppColors.ustpGold,
           unselectedItemColor: AppColors.ustpMuted,
+          iconSize: 18,
           selectedLabelStyle: const TextStyle(
             fontFamily: 'Inter',
-            fontSize: 11,
+            fontSize: 9,
             fontWeight: FontWeight.bold,
           ),
           unselectedLabelStyle: const TextStyle(
             fontFamily: 'Inter',
-            fontSize: 11,
+            fontSize: 9,
           ),
           items: const [
             BottomNavigationBarItem(
-              icon: Icon(AppIcons.dashboard),
+              icon: Icon(Icons.dashboard_outlined),
               label: 'Dashboard',
             ),
             BottomNavigationBarItem(
-              icon: Icon(AppIcons.users),
+              icon: Icon(Icons.person_outline_rounded),
               label: 'User',
             ),
             BottomNavigationBarItem(
-              icon: Icon(AppIcons.department),
+              icon: Icon(Icons.account_tree_outlined),
               label: 'Dept',
             ),
             BottomNavigationBarItem(
-              icon: Icon(AppIcons.settings),
+              icon: Icon(Icons.find_in_page_outlined),
               label: 'Actions',
             ),
             BottomNavigationBarItem(
-              icon: Icon(AppIcons.archive),
+              icon: Icon(Icons.inventory_2_outlined),
               label: 'Archive',
             ),
           ],

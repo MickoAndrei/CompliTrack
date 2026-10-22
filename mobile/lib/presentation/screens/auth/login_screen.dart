@@ -192,7 +192,7 @@ class _LoginScreenState extends State<LoginScreen> {
                             color: AppColors.ustpDark,
                           ),
                           decoration: _loginInputDecoration(
-                            hintText: 'nicodale@ustp.edu.ph',
+                            hintText: 'username@ustp.edu.ph',
                           ),
                         ),
                         const SizedBox(height: 11),

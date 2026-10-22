@@ -4,6 +4,7 @@ import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_icons.dart';
 import '../../../data/models/audit_log_model.dart';
 import '../../../data/repositories/audit_log_repository.dart';
+import '../admin/admin_notifications_screen.dart';
 import '../../widgets/empty_state.dart';
 import '../../widgets/ustp_app_bar.dart';
 
@@ -121,7 +122,7 @@ class _SystemLogsScreenState extends State<SystemLogsScreen> {
     return Scaffold(
       backgroundColor: AppColors.ustpLight,
       appBar: UstpAppBar(
-        onNotificationTap: () {},
+        onNotificationTap: () => AdminNotificationsScreen.showOverlay(context),
         onProfileTap: () {},
       ),
       body: Column(
@@ -143,7 +144,8 @@ class _SystemLogsScreenState extends State<SystemLogsScreen> {
                       fontSize: 14,
                       color: AppColors.ustpMuted,
                     ),
-                    prefixIcon: const Icon(AppIcons.search, color: AppColors.ustpMuted, size: 20),
+                    prefixIcon: const Icon(AppIcons.search,
+                        color: AppColors.ustpMuted, size: 20),
                     contentPadding: const EdgeInsets.symmetric(vertical: 12),
                     fillColor: AppColors.ustpLight,
                     filled: true,
@@ -162,11 +164,14 @@ class _SystemLogsScreenState extends State<SystemLogsScreen> {
                     children: [
                       // All Users Filter Dropdown
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 10, vertical: 2),
                         decoration: BoxDecoration(
                           color: AppColors.ustpLight,
                           borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: AppColors.ustpMuted.withValues(alpha: 0.2)),
+                          border: Border.all(
+                              color:
+                                  AppColors.ustpMuted.withValues(alpha: 0.2)),
                         ),
                         child: DropdownButtonHideUnderline(
                           child: DropdownButton<String?>(
@@ -180,13 +185,22 @@ class _SystemLogsScreenState extends State<SystemLogsScreen> {
                                 color: AppColors.ustpDark,
                               ),
                             ),
-                            icon: const Icon(AppIcons.chevronDown, size: 16, color: AppColors.ustpDark),
+                            icon: const Icon(AppIcons.chevronDown,
+                                size: 16, color: AppColors.ustpDark),
                             items: const [
-                              DropdownMenuItem(value: null, child: Text('All Users')),
-                              DropdownMenuItem(value: 'Rafael Domingo', child: Text('Rafael Domingo')),
-                              DropdownMenuItem(value: 'Kristine Salcedo', child: Text('Kristine Salcedo')),
-                              DropdownMenuItem(value: 'Ma. Teresa Uy', child: Text('Ma. Teresa Uy')),
-                              DropdownMenuItem(value: 'System', child: Text('System')),
+                              DropdownMenuItem(
+                                  value: null, child: Text('All Users')),
+                              DropdownMenuItem(
+                                  value: 'Rafael Domingo',
+                                  child: Text('Rafael Domingo')),
+                              DropdownMenuItem(
+                                  value: 'Kristine Salcedo',
+                                  child: Text('Kristine Salcedo')),
+                              DropdownMenuItem(
+                                  value: 'Ma. Teresa Uy',
+                                  child: Text('Ma. Teresa Uy')),
+                              DropdownMenuItem(
+                                  value: 'System', child: Text('System')),
                             ],
                             onChanged: (val) {
                               setState(() => _selectedUser = val);
@@ -199,11 +213,14 @@ class _SystemLogsScreenState extends State<SystemLogsScreen> {
 
                       // All Actions Filter Dropdown
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 10, vertical: 2),
                         decoration: BoxDecoration(
                           color: AppColors.ustpLight,
                           borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: AppColors.ustpMuted.withValues(alpha: 0.2)),
+                          border: Border.all(
+                              color:
+                                  AppColors.ustpMuted.withValues(alpha: 0.2)),
                         ),
                         child: DropdownButtonHideUnderline(
                           child: DropdownButton<String?>(
@@ -217,13 +234,23 @@ class _SystemLogsScreenState extends State<SystemLogsScreen> {
                                 color: AppColors.ustpDark,
                               ),
                             ),
-                            icon: const Icon(AppIcons.chevronDown, size: 16, color: AppColors.ustpDark),
+                            icon: const Icon(AppIcons.chevronDown,
+                                size: 16, color: AppColors.ustpDark),
                             items: const [
-                              DropdownMenuItem(value: null, child: Text('All Actions')),
-                              DropdownMenuItem(value: 'Reset password', child: Text('Password Reset')),
-                              DropdownMenuItem(value: 'Closed CAR', child: Text('Closed CAR')),
-                              DropdownMenuItem(value: 'Created department', child: Text('Department Created')),
-                              DropdownMenuItem(value: 'Uploaded evidence', child: Text('Evidence Uploaded')),
+                              DropdownMenuItem(
+                                  value: null, child: Text('All Actions')),
+                              DropdownMenuItem(
+                                  value: 'Reset password',
+                                  child: Text('Password Reset')),
+                              DropdownMenuItem(
+                                  value: 'Closed CAR',
+                                  child: Text('Closed CAR')),
+                              DropdownMenuItem(
+                                  value: 'Created department',
+                                  child: Text('Department Created')),
+                              DropdownMenuItem(
+                                  value: 'Uploaded evidence',
+                                  child: Text('Evidence Uploaded')),
                             ],
                             onChanged: (val) {
                               setState(() => _selectedAction = val);
@@ -237,15 +264,20 @@ class _SystemLogsScreenState extends State<SystemLogsScreen> {
                       // Date Range Filter Button
                       OutlinedButton.icon(
                         style: OutlinedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                          side: BorderSide(color: AppColors.ustpMuted.withValues(alpha: 0.2)),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 12, vertical: 10),
+                          side: BorderSide(
+                              color:
+                                  AppColors.ustpMuted.withValues(alpha: 0.2)),
                           backgroundColor: _selectedDateRange != null
                               ? AppColors.ustpNavy.withValues(alpha: 0.08)
                               : AppColors.ustpLight,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12)),
                         ),
                         onPressed: _pickDateRange,
-                        icon: const Icon(Icons.calendar_today_outlined, size: 14, color: AppColors.ustpDark),
+                        icon: const Icon(Icons.calendar_today_outlined,
+                            size: 14, color: AppColors.ustpDark),
                         label: Text(
                           _selectedDateRange == null
                               ? 'Date Range'
@@ -271,11 +303,14 @@ class _SystemLogsScreenState extends State<SystemLogsScreen> {
                       backgroundColor: AppColors.ustpGold,
                       foregroundColor: AppColors.ustpDark,
                       elevation: 0,
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 16, vertical: 10),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12)),
                     ),
                     onPressed: _showExportDisabledNotice,
-                    icon: const Icon(AppIcons.lock, size: 16, color: AppColors.ustpDark),
+                    icon: const Icon(AppIcons.lock,
+                        size: 16, color: AppColors.ustpDark),
                     label: const Text(
                       'Export CSV',
                       style: TextStyle(
@@ -293,7 +328,8 @@ class _SystemLogsScreenState extends State<SystemLogsScreen> {
           // Audit Log Cards Container
           Expanded(
             child: _isLoading
-                ? const Center(child: CircularProgressIndicator(color: AppColors.ustpNavy))
+                ? const Center(
+                    child: CircularProgressIndicator(color: AppColors.ustpNavy))
                 : _logs.isEmpty
                     ? const EmptyState(
                         title: 'No audit logs found',
@@ -322,7 +358,8 @@ class _SystemLogsScreenState extends State<SystemLogsScreen> {
                               shrinkWrap: true,
                               physics: const NeverScrollableScrollPhysics(),
                               itemCount: _logs.length,
-                              separatorBuilder: (context, index) => const Divider(
+                              separatorBuilder: (context, index) =>
+                                  const Divider(
                                 height: 1,
                                 color: AppColors.ustpLight,
                               ),
