@@ -5,6 +5,7 @@ import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_icons.dart';
 import '../providers/auth_provider.dart';
 import '../screens/admin/admin_notifications_screen.dart';
+import 'ustp_app_bar.dart';
 import 'ustp_logo.dart';
 
 class AdminPageHeader extends StatelessWidget {
@@ -37,9 +38,9 @@ class AdminPageHeader extends StatelessWidget {
                       subtitle: 'CLAVERIA CAMPUS / MOBILE',
                     ),
                   ),
-                  _HeaderAction(
-                    icon: AppIcons.notifications,
-                    onTap: () => AdminNotificationsScreen.showOverlay(context),
+                  UstpNotificationButton(
+                    onPressed: () =>
+                        AdminNotificationsScreen.showOverlay(context),
                   ),
                   const SizedBox(width: 8),
                   GestureDetector(
@@ -95,29 +96,5 @@ class AdminPageHeader extends StatelessWidget {
     if (parts.length == 1) return parts.first.characters.first.toUpperCase();
     return '${parts.first.characters.first}${parts.last.characters.first}'
         .toUpperCase();
-  }
-}
-
-class _HeaderAction extends StatelessWidget {
-  const _HeaderAction({required this.icon, required this.onTap});
-
-  final IconData icon;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: AppColors.ustpWhite.withValues(alpha: 0.12),
-      shape: const CircleBorder(),
-      child: InkWell(
-        customBorder: const CircleBorder(),
-        onTap: onTap,
-        child: SizedBox(
-          width: 34,
-          height: 34,
-          child: Icon(icon, color: AppColors.ustpWhite, size: 18),
-        ),
-      ),
-    );
   }
 }

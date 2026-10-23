@@ -35,7 +35,8 @@ class _CorrectiveBoardScreenState extends State<CorrectiveBoardScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: UstpAppBar(
-        onNotificationTap: () => context.go('/auditor/profile/notifications'),
+        onNotificationTap: () async =>
+            context.go('/auditor/profile/notifications'),
       ),
       body: FutureBuilder<List<ComplianceCheckModel>>(
         future: _checks,

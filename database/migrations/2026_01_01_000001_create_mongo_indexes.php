@@ -45,7 +45,7 @@ return new class extends Migration
         ],
         'password_reset_tokens' => [
             [['email' => 1], ['unique' => true, 'name' => 'password_reset_tokens_email_unique']],
-            [['createdAt' => 1], ['expireAfterSeconds' => 3600, 'name' => 'password_reset_tokens_created_ttl']],
+            [['createdAt' => 1], ['expireAfterSeconds' => 600, 'name' => 'password_reset_tokens_created_ttl']],
         ],
     ];
 

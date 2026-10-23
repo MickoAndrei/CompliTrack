@@ -642,7 +642,7 @@ body {
 }
 
 .btn-primary:hover .btn-arrow {
-  transform: translateX(3px);
+  transform: translateY(-1px);
 }
 
 .btn-secondary {

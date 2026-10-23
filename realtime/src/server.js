@@ -12,16 +12,24 @@ const logger = require('./utils/logger');
 
 async function start() {
   const config = loadConfig();
-  initializeFirebase(config.firebaseCredentials);
+  const firebaseApp = initializeFirebase(config.firebaseCredentials);
   const { client, database } = await connectToDatabase(config);
   const app = express();
   app.get('/health', async (_request, response) => {
     try {
       await database.command({ ping: 1 });
-      response.json({ status: 'ok' });
+      response.json({
+        status: 'ok',
+        database: 'ok',
+        pushConfigured: firebaseApp !== null,
+      });
     } catch (exception) {
       logger.error('Realtime health check failed.', exception);
-      response.status(503).json({ status: 'unavailable' });
+      response.status(503).json({
+        status: 'unavailable',
+        database: 'unavailable',
+        pushConfigured: firebaseApp !== null,
+      });
     }
   });
 

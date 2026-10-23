@@ -3,6 +3,7 @@ import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_icons.dart';
 import '../../../data/models/user_model.dart';
 import '../../../data/repositories/user_repository.dart';
+import '../admin/admin_notifications_screen.dart';
 import '../../widgets/empty_state.dart';
 import '../../widgets/role_badge.dart';
 import '../../widgets/ustp_app_bar.dart';
@@ -12,6 +13,33 @@ class UserManagementScreen extends StatefulWidget {
 
   @override
   State<UserManagementScreen> createState() => _UserManagementScreenState();
+}
+
+class _RoleFilterLabel extends StatelessWidget {
+  const _RoleFilterLabel(this.label);
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: FittedBox(
+        fit: BoxFit.scaleDown,
+        alignment: Alignment.centerLeft,
+        child: Text(
+          label,
+          maxLines: 1,
+          softWrap: false,
+          style: const TextStyle(
+            fontFamily: 'Inter',
+            fontSize: 10,
+            color: AppColors.ustpDark,
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 class _UserManagementScreenState extends State<UserManagementScreen> {
@@ -69,82 +97,90 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
             bottom: MediaQuery.of(context).viewInsets.bottom + 24,
           ),
           child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                'Create New User',
-                style: TextStyle(
-                  fontFamily: 'Poppins',
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.ustpNavy,
-                ),
-              ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: nameController,
-                decoration: InputDecoration(
-                  labelText: 'Full Name',
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                ),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: emailController,
-                decoration: InputDecoration(
-                  labelText: 'Email Address',
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                ),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: officeController,
-                decoration: InputDecoration(
-                  labelText: 'Department / Office',
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                ),
-              ),
-              const SizedBox(height: 12),
-              DropdownButtonFormField<int>(
-                initialValue: selectedRole,
-                decoration: InputDecoration(
-                  labelText: 'Role',
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                ),
-                items: const [
-                  DropdownMenuItem(value: 0, child: Text('Super Admin')),
-                  DropdownMenuItem(value: 1, child: Text('Admin')),
-                  DropdownMenuItem(value: 2, child: Text('Auditor')),
-                  DropdownMenuItem(value: 3, child: Text('Auditee')),
-                ],
-                onChanged: (val) {
-                  if (val != null) selectedRole = val;
-                },
-              ),
-              const SizedBox(height: 20),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.ustpNavy,
-                    foregroundColor: AppColors.ustpWhite,
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Create New User',
+                  style: TextStyle(
+                    fontFamily: 'Poppins',
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.ustpNavy,
                   ),
-                  onPressed: () {
-                    Navigator.pop(context);
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('User created successfully')),
-                    );
-                    _loadUsers();
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: nameController,
+                  decoration: InputDecoration(
+                    labelText: 'Full Name',
+                    border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12)),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: emailController,
+                  decoration: InputDecoration(
+                    labelText: 'Email Address',
+                    border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12)),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: officeController,
+                  decoration: InputDecoration(
+                    labelText: 'Department / Office',
+                    border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12)),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                DropdownButtonFormField<int>(
+                  initialValue: selectedRole,
+                  isExpanded: true,
+                  menuMaxHeight: 240,
+                  decoration: InputDecoration(
+                    labelText: 'Role',
+                    border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12)),
+                  ),
+                  items: const [
+                    DropdownMenuItem(value: 0, child: Text('Super Admin')),
+                    DropdownMenuItem(value: 1, child: Text('Admin')),
+                    DropdownMenuItem(value: 2, child: Text('Auditor')),
+                    DropdownMenuItem(value: 3, child: Text('Auditee')),
+                  ],
+                  onChanged: (value) {
+                    if (value != null) selectedRole = value;
                   },
-                  child: const Text(
-                    'Create User',
-                    style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 20),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.ustpNavy,
+                      foregroundColor: AppColors.ustpWhite,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12)),
+                    ),
+                    onPressed: () {
+                      Navigator.pop(context);
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                            content: Text('User created successfully')),
+                      );
+                      _loadUsers();
+                    },
+                    child: const Text(
+                      'Create User',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
                   ),
                 ),
-              ),
             ],
           ),
         );
@@ -224,15 +260,15 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
     return Scaffold(
       backgroundColor: AppColors.ustpLight,
       appBar: UstpAppBar(
-        onNotificationTap: () {},
+        onNotificationTap: () => AdminNotificationsScreen.showOverlay(context),
         onProfileTap: () {},
       ),
       body: Column(
         children: [
           // Search & Filter Header Section
           Container(
-            padding: const EdgeInsets.all(16),
-            color: AppColors.ustpWhite,
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 10),
+            color: AppColors.ustpLight,
             child: Column(
               children: [
                 // Search Bar
@@ -246,13 +282,22 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                       fontSize: 14,
                       color: AppColors.ustpMuted,
                     ),
-                    prefixIcon: const Icon(AppIcons.search, color: AppColors.ustpMuted, size: 20),
-                    contentPadding: const EdgeInsets.symmetric(vertical: 12),
-                    fillColor: AppColors.ustpLight,
+                    prefixIcon: const Icon(Icons.search_rounded,
+                        color: AppColors.ustpMuted, size: 20),
+                    contentPadding: const EdgeInsets.symmetric(vertical: 9),
+                    fillColor: AppColors.ustpWhite,
                     filled: true,
                     border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide.none,
+                      borderRadius: BorderRadius.circular(9),
+                      borderSide: const BorderSide(color: Color(0xFFDCE4EF)),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(9),
+                      borderSide: const BorderSide(color: Color(0xFFDCE4EF)),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(9),
+                      borderSide: const BorderSide(color: AppColors.ustpNavy),
                     ),
                   ),
                 ),
@@ -263,60 +308,104 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     // Role Filter Dropdown
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: AppColors.ustpLight,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: AppColors.ustpMuted.withValues(alpha: 0.2)),
-                      ),
-                      child: DropdownButtonHideUnderline(
-                        child: DropdownButton<int?>(
-                          value: _selectedRoleId,
-                          hint: const Text(
-                            'Role Filter',
-                            style: TextStyle(
-                              fontFamily: 'Inter',
-                              fontSize: 13,
-                              fontWeight: FontWeight.w600,
-                              color: AppColors.ustpDark,
+                    SizedBox(
+                      width: 94,
+                      height: 30,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8),
+                        decoration: BoxDecoration(
+                          color: AppColors.ustpWhite,
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: const Color(0xFFDCE4EF)),
+                        ),
+                        child: DropdownButtonHideUnderline(
+                          child: DropdownButton<int?>(
+                            value: _selectedRoleId,
+                            isExpanded: true,
+                            isDense: true,
+                            menuWidth: 94,
+                            menuMaxHeight: 216,
+                            borderRadius: BorderRadius.circular(8),
+                            dropdownColor: AppColors.ustpWhite,
+                            elevation: 4,
+                            selectedItemBuilder: (context) => const [
+                              _RoleFilterLabel('Sort By'),
+                              _RoleFilterLabel('Super Admin'),
+                              _RoleFilterLabel('Admin'),
+                              _RoleFilterLabel('Auditor'),
+                              _RoleFilterLabel('Auditee'),
+                            ],
+                            hint: const Text(
+                              'Sort By',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                fontFamily: 'Inter',
+                                fontSize: 10,
+                                color: AppColors.ustpDark,
+                              ),
                             ),
+                            icon: const Icon(Icons.keyboard_arrow_down_rounded,
+                                size: 16, color: AppColors.ustpMuted),
+                            items: const [
+                              DropdownMenuItem(
+                                value: null,
+                                child: _RoleFilterLabel('Sort By'),
+                              ),
+                              DropdownMenuItem(
+                                value: 0,
+                                child: _RoleFilterLabel('Super Admin'),
+                              ),
+                              DropdownMenuItem(
+                                value: 1,
+                                child: _RoleFilterLabel('Admin'),
+                              ),
+                              DropdownMenuItem(
+                                value: 2,
+                                child: _RoleFilterLabel('Auditor'),
+                              ),
+                              DropdownMenuItem(
+                                value: 3,
+                                child: _RoleFilterLabel('Auditee'),
+                              ),
+                            ],
+                            onChanged: (val) {
+                              setState(() => _selectedRoleId = val);
+                              _loadUsers();
+                            },
                           ),
-                          icon: const Icon(AppIcons.chevronDown, size: 18, color: AppColors.ustpDark),
-                          items: const [
-                            DropdownMenuItem(value: null, child: Text('All Roles')),
-                            DropdownMenuItem(value: 0, child: Text('Super Admin')),
-                            DropdownMenuItem(value: 1, child: Text('Admin')),
-                            DropdownMenuItem(value: 2, child: Text('Auditor')),
-                            DropdownMenuItem(value: 3, child: Text('Auditee')),
-                          ],
-                          onChanged: (val) {
-                            setState(() => _selectedRoleId = val);
-                            _loadUsers();
-                          },
                         ),
                       ),
                     ),
 
                     // Create User Button
-                    ElevatedButton.icon(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.ustpGold,
-                        foregroundColor: AppColors.ustpDark,
-                        elevation: 0,
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
+                    SizedBox(
+                      width: 94,
+                      height: 30,
+                      child: ElevatedButton.icon(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.ustpGold,
+                          foregroundColor: AppColors.ustpDark,
+                          elevation: 0,
+                          minimumSize: const Size(94, 30),
+                          padding: const EdgeInsets.symmetric(horizontal: 5),
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
                         ),
-                      ),
-                      onPressed: _showCreateUserModal,
-                      icon: const Icon(AppIcons.plus, size: 18, color: AppColors.ustpDark),
-                      label: const Text(
-                        'Create User',
-                        style: TextStyle(
-                          fontFamily: 'Inter',
-                          fontSize: 13,
-                          fontWeight: FontWeight.bold,
+                        onPressed: _showCreateUserModal,
+                        icon: const Icon(Icons.person_add_alt_1,
+                            size: 13, color: AppColors.ustpDark),
+                        label: const Text(
+                          'Create User',
+                          maxLines: 1,
+                          softWrap: false,
+                          style: TextStyle(
+                            fontFamily: 'Inter',
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                       ),
                     ),
@@ -329,7 +418,8 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
           // Users Card List
           Expanded(
             child: _isLoading
-                ? const Center(child: CircularProgressIndicator(color: AppColors.ustpNavy))
+                ? const Center(
+                    child: CircularProgressIndicator(color: AppColors.ustpNavy))
                 : _users.isEmpty
                     ? const EmptyState(
                         title: 'No users found',
@@ -340,7 +430,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                         color: AppColors.ustpNavy,
                         onRefresh: _loadUsers,
                         child: ListView.builder(
-                          padding: const EdgeInsets.all(16),
+                          padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
                           itemCount: _users.length,
                           itemBuilder: (context, index) {
                             final user = _users[index];
@@ -357,17 +447,11 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
   Widget _buildUserCard(UserModel user) {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.fromLTRB(15, 13, 15, 11),
       decoration: BoxDecoration(
         color: AppColors.ustpWhite,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFDCE4EF)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -380,7 +464,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                 user.userCode,
                 style: const TextStyle(
                   fontFamily: 'Inter',
-                  fontSize: 12,
+                  fontSize: 11,
                   fontWeight: FontWeight.w600,
                   color: AppColors.ustpMuted,
                 ),
@@ -388,10 +472,12 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
               Row(
                 children: [
                   Container(
-                    width: 8,
-                    height: 8,
+                    width: 7,
+                    height: 7,
                     decoration: BoxDecoration(
-                      color: user.isActive ? AppColors.success : AppColors.ustpMuted,
+                      color: user.isActive
+                          ? AppColors.success
+                          : AppColors.ustpMuted,
                       shape: BoxShape.circle,
                     ),
                   ),
@@ -400,23 +486,25 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                     user.isActive ? 'Active' : 'Inactive',
                     style: TextStyle(
                       fontFamily: 'Inter',
-                      fontSize: 12,
+                      fontSize: 10,
                       fontWeight: FontWeight.bold,
-                      color: user.isActive ? AppColors.success : AppColors.ustpMuted,
+                      color: user.isActive
+                          ? AppColors.success
+                          : AppColors.ustpMuted,
                     ),
                   ),
                 ],
               ),
             ],
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 7),
 
           // Middle: Full Name
           Text(
             user.fullName,
             style: const TextStyle(
               fontFamily: 'Poppins',
-              fontSize: 16,
+              fontSize: 14,
               fontWeight: FontWeight.bold,
               color: AppColors.ustpDark,
             ),
@@ -428,7 +516,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
             user.email,
             style: const TextStyle(
               fontFamily: 'Inter',
-              fontSize: 13,
+              fontSize: 11,
               color: AppColors.ustpMuted,
             ),
           ),
@@ -439,15 +527,15 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
             user.officeName,
             style: const TextStyle(
               fontFamily: 'Inter',
-              fontSize: 13,
+              fontSize: 11,
               fontWeight: FontWeight.w500,
               color: AppColors.ustpDark,
             ),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 9),
 
-          const Divider(height: 1, color: AppColors.ustpLight),
-          const SizedBox(height: 8),
+          const Divider(height: 1, color: Color(0xFFDCE4EF)),
+          const SizedBox(height: 7),
 
           // Bottom Row: Role Badge (Left) + Actions (Right)
           Row(
@@ -467,7 +555,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                       'Edit',
                       style: TextStyle(
                         fontFamily: 'Inter',
-                        fontSize: 12,
+                        fontSize: 11,
                         fontWeight: FontWeight.bold,
                         color: AppColors.info,
                       ),
@@ -483,11 +571,12 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                     ),
                     child: Text(
                       user.isActive ? 'Deactivate' : 'Activate',
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontFamily: 'Inter',
-                        fontSize: 12,
+                        fontSize: 11,
                         fontWeight: FontWeight.bold,
-                        color: AppColors.error,
+                        color:
+                            user.isActive ? AppColors.error : AppColors.success,
                       ),
                     ),
                   ),
@@ -503,7 +592,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                       'Reset',
                       style: TextStyle(
                         fontFamily: 'Inter',
-                        fontSize: 12,
+                        fontSize: 11,
                         fontWeight: FontWeight.bold,
                         color: AppColors.ustpNavy,
                       ),

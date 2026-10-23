@@ -7,10 +7,7 @@ use Illuminate\Notifications\Notification;
 
 class PasswordResetLink extends Notification
 {
-    public function __construct(
-        private readonly string $token,
-        private readonly string $email,
-    )
+    public function __construct(private readonly string $resetUrl)
     {
     }
 
@@ -24,7 +21,8 @@ class PasswordResetLink extends Notification
         return (new MailMessage())
             ->subject('CompliTrack password reset')
             ->line('A password reset was requested for your account.')
-            ->line('Enter this one-time code in the CompliTrack app: '.$this->token)
-            ->line('This code expires in 60 minutes. If you did not request this, no action is needed.');
+            ->line('Click the link below to choose a new password. This link expires in 10 minutes and can be used once.')
+            ->action('Reset password', $this->resetUrl)
+            ->line('If you did not request this, no action is needed.');
     }
 }

@@ -37,7 +37,8 @@ class _AuditorDashboardScreenState extends State<AuditorDashboardScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: UstpAppBar(
-        onNotificationTap: () => context.go('/auditor/profile/notifications'),
+        onNotificationTap: () async =>
+            context.go('/auditor/profile/notifications'),
       ),
       body: FutureBuilder<List<ComplianceCheckModel>>(
         future: _checks,
@@ -149,9 +150,8 @@ class _AuditorDashboardScreenState extends State<AuditorDashboardScreen> {
                           CircularPercentIndicator(
                             radius: 38,
                             lineWidth: 9,
-                            percent: checks.isEmpty
-                                ? 0
-                                : compliant / checks.length,
+                            percent:
+                                checks.isEmpty ? 0 : compliant / checks.length,
                             circularStrokeCap: CircularStrokeCap.butt,
                             progressColor: AppColors.success,
                             backgroundColor: AppColors.error,
@@ -217,7 +217,8 @@ class _AuditorDashboardScreenState extends State<AuditorDashboardScreen> {
                       if (checks.isEmpty)
                         const EmptyState(
                           title: 'No recent checks',
-                          subtitle: 'Your latest check activity will appear here.',
+                          subtitle:
+                              'Your latest check activity will appear here.',
                           icon: AppIcons.compliance,
                         )
                       else

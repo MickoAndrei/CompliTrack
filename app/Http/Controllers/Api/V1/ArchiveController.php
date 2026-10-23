@@ -14,7 +14,6 @@ use App\Services\CounterService;
 use App\Services\RoleScopeService;
 use App\Support\MongoId;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
 use Throwable;
 
@@ -90,8 +89,9 @@ class ArchiveController extends Controller
 
         $file = $request->file('file');
         $extension = strtolower($file->getClientOriginalExtension());
-        $mimeType = $file->getMimeType();
-        if (! isset(self::MIME_TYPES[$extension]) || self::MIME_TYPES[$extension] !== $mimeType) {
+        $mimeType = self::MIME_TYPES[$extension] ?? null;
+        $contents = $file->getContent();
+        if (! $mimeType || ! $this->matchesFileSignature($extension, $contents)) {
             throw ValidationException::withMessages([
                 'file' => 'The file extension and detected MIME type do not match an allowed format.',
             ]);
@@ -107,12 +107,12 @@ class ArchiveController extends Controller
         $this->authorizeCheckUpload($actor, $check);
 
         $departmentId = MongoId::parse((string) $check->departmentId, 'departmentId');
-        $plaintext = $file->getContent();
+        $plaintext = $contents;
         $checksum = hash('sha256', $plaintext);
         $encrypted = $this->encryption->encrypt($plaintext);
         $fileCode = $this->counters->next('ARCH', yearly: true);
         $path = "archives/{$fileCode}.enc";
-        if (! Storage::disk('local')->put($path, $encrypted['ciphertext'])) {
+        if (! $this->writeEncryptedFile($path, $encrypted['ciphertext'])) {
             throw new \RuntimeException('Unable to write the encrypted archive.');
         }
 
@@ -162,7 +162,7 @@ class ArchiveController extends Controller
             if ($archive) {
                 $archive->delete();
             }
-            Storage::disk('local')->delete($path);
+            $this->deleteEncryptedFile($path);
             throw $exception;
         }
 
@@ -220,10 +220,10 @@ class ArchiveController extends Controller
 
     private function decryptAndVerify(ArchiveDocument $archive): string
     {
-        if (! Storage::disk('local')->exists($archive->encryptedPath)) {
+        $ciphertext = $this->readEncryptedFile($archive->encryptedPath);
+        if ($ciphertext === null) {
             abort(404, 'The encrypted archive file is missing.');
         }
-        $ciphertext = Storage::disk('local')->get($archive->encryptedPath);
         $plaintext = $this->encryption->decrypt(
             $ciphertext,
             $archive->encryptionIv,
@@ -236,6 +236,49 @@ class ArchiveController extends Controller
         return $plaintext;
     }
 
+    private function writeEncryptedFile(string $relativePath, string $contents): bool
+    {
+        $path = $this->encryptedFilePath($relativePath);
+        $directory = dirname($path);
+        if (! is_dir($directory) && ! mkdir($directory, 0775, true) && ! is_dir($directory)) {
+            return false;
+        }
+
+        return file_put_contents($path, $contents, LOCK_EX) !== false;
+    }
+
+    private function readEncryptedFile(string $relativePath): ?string
+    {
+        $path = $this->encryptedFilePath($relativePath);
+        if (! is_file($path)) {
+            return null;
+        }
+
+        $contents = file_get_contents($path);
+
+        return $contents === false ? null : $contents;
+    }
+
+    private function deleteEncryptedFile(string $relativePath): void
+    {
+        $path = $this->encryptedFilePath($relativePath);
+        if (is_file($path)) {
+            unlink($path);
+        }
+    }
+
+    private function encryptedFilePath(string $relativePath): string
+    {
+        abort_unless(
+            preg_match('/^archives\\/[A-Za-z0-9._-]+\\.enc$/', $relativePath) === 1,
+            500,
+            'The encrypted archive path is invalid.',
+        );
+
+        return rtrim(config('filesystems.disks.local.root'), DIRECTORY_SEPARATOR)
+            .DIRECTORY_SEPARATOR.str_replace('/', DIRECTORY_SEPARATOR, $relativePath);
+    }
+
     private function serialize(ArchiveDocument $archive): array
     {
         $data = $archive->toArray();
@@ -245,5 +288,19 @@ class ArchiveController extends Controller
         $data['uploadedBy'] = User::find($archive->uploadedByUserId)?->fullName;
 
         return $data;
+    }
+
+    private function matchesFileSignature(string $extension, string $contents): bool
+    {
+        return match ($extension) {
+            'pdf' => str_starts_with($contents, '%PDF-'),
+            'png' => str_starts_with($contents, "\x89PNG\r\n\x1a\n"),
+            'jpg', 'jpeg' => str_starts_with($contents, "\xff\xd8\xff"),
+            // DOCX is a ZIP package; verify its ZIP signature without requiring fileinfo.
+            'docx' => str_starts_with($contents, "PK\x03\x04")
+                || str_starts_with($contents, "PK\x05\x06")
+                || str_starts_with($contents, "PK\x07\x08"),
+            default => false,
+        };
     }
 }

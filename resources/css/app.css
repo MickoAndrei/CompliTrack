@@ -25,6 +25,91 @@
     --color-ustp-gray: #64748B;
 }
 
+/* Profile layout: portal stylesheets use an unlayered reset, so keep these
+   scoped rules unlayered as well to preserve the intended spacing. */
+.account-profile-page {
+    width: 100%;
+    max-width: 960px;
+    margin: 0 auto;
+    padding: 32px 24px;
+}
+
+.account-profile-heading {
+    margin-bottom: 24px;
+}
+
+.account-profile-heading > p:first-child {
+    margin: 0 0 8px;
+}
+
+.account-profile-heading h2,
+.account-profile-heading > p:last-child {
+    margin: 0;
+}
+
+.account-profile-heading > p:last-child {
+    margin-top: 8px;
+}
+
+.account-profile-identity {
+    padding: 24px 28px;
+}
+
+.account-profile-details {
+    padding: 24px 28px 28px;
+}
+
+.account-profile-details > div {
+    min-width: 0;
+    padding: 16px;
+}
+
+.account-profile-details dd {
+    margin-top: 8px;
+}
+
+.account-profile-identity > div:last-child > button {
+    padding: 12px 20px;
+}
+
+.account-profile-signout {
+    margin: 0;
+    padding: 16px 28px;
+}
+
+.account-profile-signout p {
+    margin: 0;
+}
+
+.account-profile-signout button {
+    padding: 8px 16px;
+}
+
+@media (max-width: 640px) {
+    .account-profile-page {
+        padding: 24px 16px;
+    }
+
+    .account-profile-identity {
+        padding: 20px;
+    }
+
+    .account-profile-details {
+        padding: 20px;
+    }
+
+    .account-profile-details > div {
+        padding: 14px;
+    }
+
+    .account-profile-signout {
+        align-items: flex-start;
+        flex-direction: column;
+        gap: 12px;
+        padding: 16px 20px;
+    }
+}
+
 @layer base {
     [x-cloak] {
         display: none !important;
@@ -41,3 +126,4 @@
         font: inherit;
     }
 }
+

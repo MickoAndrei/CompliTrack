@@ -2,13 +2,16 @@
 
 namespace App\Models;
 
-use Laravel\Sanctum\Contracts\HasAbilities;
-use MongoDB\Laravel\Eloquent\Model;
+use Laravel\Sanctum\PersonalAccessToken as SanctumPersonalAccessToken;
+use MongoDB\Laravel\Eloquent\DocumentModel;
 
-class PersonalAccessToken extends Model implements HasAbilities
+class PersonalAccessToken extends SanctumPersonalAccessToken
 {
+    use DocumentModel;
+
     protected $connection = 'mongodb';
     protected $collection = 'personal_access_tokens';
+    protected $keyType = 'string';
 
     protected $fillable = [
         'name',
