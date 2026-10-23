@@ -58,6 +58,8 @@ Route::prefix('v1')->group(function () {
         // Super Admin only
         Route::middleware('role:0')->group(function () {
             Route::get('/logs', [AuditLogController::class, 'index']);
+            Route::post('/users/{id}/reactivate', [UserController::class, 'reactivate']);
+            Route::post('/departments/{id}/reactivate', [DepartmentController::class, 'reactivate']);
         });
 
         Route::middleware('role:0,1')->group(function () {

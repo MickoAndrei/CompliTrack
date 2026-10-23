@@ -16,7 +16,7 @@
         </section>
         <section class="form-wrapper check-inbox-wrapper" x-cloak x-show="submitted">
             <div class="back-button-container"><a href="{{ route('login') }}" class="back-link-btn"><span class="back-arrow">&larr;</span> Back to log in</a></div>
-            <div class="inbox-card"><div class="mail-badge-icon"><i data-lucide="mail"></i></div><h2 class="form-title inbox-title">Check your inbox</h2><p class="inbox-message">If an active account exists for <strong x-text="email"></strong>, a reset link has been sent. The link expires in 30 minutes.</p><button type="button" class="btn btn-secondary" :disabled="loading" @click="submit()" x-text="loading ? 'Sending…' : 'Resend link'"></button><div class="form-footer-action"><span>Remembered your password?</span><a href="{{ route('login') }}" class="link-bold">Log in</a></div></div>
+            <div class="inbox-card"><div class="mail-badge-icon"><i data-lucide="mail"></i></div><h2 class="form-title inbox-title">Check your inbox</h2><p class="inbox-message">If an active account exists for <strong x-text="email"></strong>, a reset link has been sent. The link expires in 10 minutes.</p><button type="button" class="btn btn-secondary" :disabled="loading" @click="submit()" x-text="loading ? 'Sending…' : 'Resend link'"></button><div class="form-footer-action"><span>Remembered your password?</span><a href="{{ route('login') }}" class="link-bold">Log in</a></div></div>
         </section>
     </main>
 </div>

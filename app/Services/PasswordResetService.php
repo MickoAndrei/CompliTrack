@@ -18,7 +18,12 @@ class PasswordResetService
             ['token' => hash('sha256', $token), 'createdAt' => now()->utc()],
         );
 
+        $resetUrl = route('password.reset.form', [
+            'email' => strtolower($user->email),
+            'token' => $token,
+        ]);
+
         Notification::route('mail', $user->email)
-            ->notify(new PasswordResetLink($token, $user->email));
+            ->notify(new PasswordResetLink($resetUrl));
     }
 }

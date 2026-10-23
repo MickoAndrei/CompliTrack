@@ -3,13 +3,20 @@
 use App\Http\Controllers\Web\AuthController;
 use Illuminate\Support\Facades\Route;
 
-// Blade SPA-style entry points per role dashboard (Guide §10)
 Route::view('/', 'auth.login');
 Route::view('/login', 'auth.login')->name('login');
-Route::view('/forgot-password', 'auth.forgot-password')->name('password.request');
+
+Route::middleware('throttle:5,1')->group(function () {
+    Route::get('/forgot-password', [AuthController::class, 'showForgotForm'])->name('password.request');
+    Route::post('/forgot-password', [AuthController::class, 'sendCode'])->name('password.email');
+    Route::get('/reset-password', [AuthController::class, 'showResetForm'])->name('password.reset.form');
+    Route::post('/reset-password', [AuthController::class, 'resetPassword'])->name('password.update');
+});
 
 Route::middleware(['auth'])->group(function () {
     Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
+    Route::patch('/profile/password', [ProfileController::class, 'updatePassword'])
+        ->name('profile.password.update');
     Route::view('/profile', 'auth.profile');
 
     Route::middleware('role:0')->prefix('super-admin')->group(function () {
@@ -21,7 +28,6 @@ Route::middleware(['auth'])->group(function () {
         Route::view('/logs', 'super-admin.logs');
         Route::view('/settings', 'super-admin.settings');
     });
-
     Route::middleware('role:1')->prefix('admin')->group(function () {
         Route::view('/dashboard', 'admin.dashboard');
         Route::view('/departments', 'admin.departments');
@@ -31,7 +37,6 @@ Route::middleware(['auth'])->group(function () {
         Route::view('/reports', 'admin.reports');
         Route::view('/notifications', 'admin.notifications');
     });
-
     Route::middleware('role:2')->prefix('auditor')->group(function () {
         Route::view('/dashboard', 'auditor.dashboard');
         Route::view('/checks', 'auditor.checks');
@@ -41,7 +46,6 @@ Route::middleware(['auth'])->group(function () {
         Route::view('/corrective-actions', 'auditor.corrective-actions');
         Route::view('/notifications', 'auditor.notifications');
     });
-
     Route::middleware('role:3')->prefix('auditee')->group(function () {
         Route::view('/dashboard', 'auditee.dashboard');
         Route::view('/my-findings', 'auditee.my-findings');

@@ -396,6 +396,13 @@ body {
 .super-admin-dashboard .metric-icon-box.blue { background: #eff6ff; color: #2563eb; }
 .super-admin-dashboard .metric-icon-box.blue i { width: 20px; height: 20px; }
 .super-admin-dashboard .chart-canvas-container.super-admin-chart { display: flex; align-items: stretch; justify-content: space-around; gap: 12px; padding: 10px 6px 0; }
+.super-admin-dashboard .chart-canvas-container.super-admin-chart.is-scrollable { justify-content: flex-start; overflow-x: auto; overflow-y: hidden; }
+.super-admin-dashboard .super-admin-chart.is-scrollable .super-admin-bar-item { flex: 0 0 68px; }
+.super-admin-dashboard .chart-header-flex:has(.chart-filter-tabs) { align-items: center; gap: 12px; flex-wrap: wrap; }
+.chart-filter-tabs { display: flex; flex-wrap: wrap; gap: 4px; padding: 3px; border: 1px solid #e2e8f0; border-radius: 999px; background: #f8fafc; }
+.chart-filter-tabs button { padding: 4px 8px; border: 0; border-radius: 999px; background: transparent; color: #64748b; font: inherit; font-size: 10px; font-weight: 700; white-space: nowrap; cursor: pointer; }
+.chart-filter-tabs button.active { background: #fff; color: #1d4ed8; box-shadow: 0 1px 3px #0f172a1a; }
+.chart-filter-tabs button:focus-visible { outline: 2px solid #2563eb; outline-offset: 1px; }
 .super-admin-bar-item { display: flex; flex: 1; min-width: 0; flex-direction: column; align-items: center; justify-content: flex-end; gap: 7px; }
 .super-admin-bar-value { color: #475569; font-size: 10px; font-weight: 700; }
 .super-admin-bar-track { display: flex; width: min(38px, 75%); height: 155px; align-items: flex-end; overflow: hidden; border-radius: 6px 6px 0 0; background: #f1f5f9; }
@@ -403,7 +410,9 @@ body {
 .super-admin-bar-label { max-width: 100%; overflow: hidden; color: #64748b; font-size: 9px; text-overflow: ellipsis; white-space: nowrap; }
 .super-admin-dashboard .chart-canvas-container.super-admin-trend { position: relative; display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); align-items: stretch; gap: 0; padding: 0 7px; }
 .super-admin-trend-svg { position: absolute; inset: 0 7px 25px; width: calc(100% - 14px); height: calc(100% - 25px); overflow: visible; }
+.super-admin-trend-svg line { vector-effect: non-scaling-stroke; }
 .super-admin-trend-svg polyline { vector-effect: non-scaling-stroke; }
+.chart-range-readout { color: #64748b; font-size: .78em; font-weight: 500; white-space: nowrap; }
 .super-admin-trend-item { position: relative; z-index: 1; min-width: 0; }
 .super-admin-trend-point { position: absolute; left: 50%; width: 9px; height: 9px; transform: translateX(-50%); border: 2px solid #fff; border-radius: 50%; background: #2563eb; box-shadow: 0 0 0 1px #2563eb; }
 .super-admin-trend-label { position: absolute; right: 0; bottom: 0; left: 0; color: #64748b; font-size: 9px; text-align: center; }

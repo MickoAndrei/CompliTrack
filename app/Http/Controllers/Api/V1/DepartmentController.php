@@ -120,9 +120,41 @@ class DepartmentController extends Controller
             ->firstOrFail();
         $department->isActive = false;
         $department->save();
+        $departmentId = (string) $department->getKey();
+        User::query()->get()
+            ->each(function (User $user) use ($request, $departmentId) {
+                if ((int) $user->roleId === 0) {
+                    return;
+                }
+                $storedActive = strtolower(trim((string) $user->getRawOriginal('isActive')));
+                $isActive = in_array($storedActive, ['1', 'true', 'yes', 'on'], true);
+                $assignedDepartmentIds = array_filter([
+                    (string) $user->departmentId,
+                    ...($user->assignedDepartmentIds ?? []),
+                ]);
+                if (! $isActive || ! in_array($departmentId, $assignedDepartmentIds, true)) {
+                    return;
+                }
+
+                $user->isActive = false;
+                $user->save();
+                $this->auditLogs->record($request, 'Deactivated user because department was deactivated', 'user', $user->getKey());
+            });
         $this->auditLogs->record($request, 'Deactivated department', 'department', $department->getKey());
 
         return response()->json(['message' => 'Department deactivated.']);
+    }
+
+    public function reactivate(Request $request, string $id)
+    {
+        $department = $this->scopes->departments($request->user())
+            ->where('_id', MongoId::parse($id))
+            ->firstOrFail();
+        $department->isActive = true;
+        $department->save();
+        $this->auditLogs->record($request, 'Reactivated department', 'department', $department->getKey());
+
+        return response()->json(['message' => 'Department reactivated.']);
     }
 
     private function serialize(Department $department): array

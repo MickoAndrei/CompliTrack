@@ -42,7 +42,17 @@ class AuditLogController extends Controller
             $query->where('createdAt', '<=', $request->date('endDate'));
         }
 
-        $page = $query->orderBy('createdAt', 'desc')
+        $sortableFields = ['createdAt', 'action', 'userName', 'entityType'];
+        $sortBy = (string) $request->query('sortBy', 'createdAt');
+        $sortDirection = strtolower((string) $request->query('sortDirection', 'desc'));
+        if (!in_array($sortBy, $sortableFields, true)) {
+            $sortBy = 'createdAt';
+        }
+        if (!in_array($sortDirection, ['asc', 'desc'], true)) {
+            $sortDirection = 'desc';
+        }
+
+        $page = $query->orderBy($sortBy, $sortDirection)
             ->paginate(min(max((int) $request->query('perPage', 20), 1), 100));
         $data = collect($page->items())->map(function (AuditLog $log) {
             $data = $log->toArray();

@@ -19,6 +19,9 @@
 @php($searchLabel = match ($title) { 'User Management' => 'User', 'Archive Repository' => 'Archive', 'Audit Logs' => 'Audit Logs', default => strtolower($title) })
 @php($panelClass = match ($roleId) { 0 => 'app-view-panel active', 2, 3 => 'view-panel active', default => '' })
 <section class="{{ $panelClass }}" x-data="resourcePage({ endpoint: @js($endpoint), columns: @js($columns), perPage: {{ (int) $perPage }}, detailBase: @js($detailBase), allowStatusUpdates: {{ $allowStatusUpdates ? 'true' : 'false' }}, allowArchiveActions: {{ $allowArchiveActions ? 'true' : 'false' }}, allowNotificationActions: {{ $allowNotificationActions ? 'true' : 'false' }}, allowUserCreate: {{ $allowUserCreate ? 'true' : 'false' }}, allowUserActions: {{ $allowUserActions ? 'true' : 'false' }}, actorRoleId: {{ $actorRoleId === null ? 'null' : (int) $actorRoleId }}, allowDepartmentCreate: {{ $allowDepartmentCreate ? 'true' : 'false' }}, allowDepartmentActions: {{ $allowDepartmentActions ? 'true' : 'false' }}, allowBroadcast: {{ $allowBroadcast ? 'true' : 'false' }} })" x-init="load()">
+    <div x-cloak x-show="successPopupVisible" x-transition class="fixed right-6 top-6 z-[100] flex min-h-[52px] w-[calc(100%-3rem)] max-w-sm items-center rounded-lg border-l-4 bg-ustp-navy pr-5 py-4 text-[13px] font-medium leading-5 text-white shadow-[0_10px_25px_rgba(5,27,68,0.18)]" :class="successPopupType === 'error' ? 'border-red-500' : 'border-ustp-gold'" style="padding-left: 24px" :role="successPopupType === 'error' ? 'alert' : 'status'" aria-live="polite">
+        <span class="min-w-0 flex-1" x-text="successPopupMessage"></span>
+    </div>
     @php($toolbarClass = match ($roleId) { 0, 2 => 'table-filter-bar', 1 => 'toolbar', 3 => 'toolbar-row', default => 'toolbar' })
     @php($controlClass = match ($roleId) { 0, 2 => 'filter-left-controls', 1 => 'toolbar-left', 3 => '', default => 'toolbar-left' })
     <div class="{{ $toolbarClass }}">
@@ -27,6 +30,19 @@
                 <i data-lucide="search" aria-hidden="true"></i>
                 <span class="sr-only">Search {{ $searchLabel }}</span>
                 <input type="search" x-model="search" @input.debounce.350ms="load(1)" placeholder="Search {{ $searchLabel }}" aria-label="Search {{ $searchLabel }}" class="{{ $roleId === 0 ? 'input-search-field' : '' }}">
+            </label>
+            <label x-show="endpoint === 'logs'" x-cloak class="flex items-center gap-2 text-[12.5px] font-medium text-ustp-muted">
+                <span>Sort by</span>
+                <select x-model="sortBy" @change="load(1)" aria-label="Sort audit logs by" class="h-9 rounded-lg border border-slate-200 bg-white px-3 text-[12.5px] font-medium text-ustp-dark focus:border-ustp-navy focus:outline-none focus:ring-2 focus:ring-ustp-navy/10">
+                    <option value="createdAt:desc">Date: Newest first</option>
+                    <option value="createdAt:asc">Date: Oldest first</option>
+                    <option value="action:asc">Action: A to Z</option>
+                    <option value="action:desc">Action: Z to A</option>
+                    <option value="userName:asc">User: A to Z</option>
+                    <option value="userName:desc">User: Z to A</option>
+                    <option value="entityType:asc">Record type: A to Z</option>
+                    <option value="entityType:desc">Record type: Z to A</option>
+                </select>
             </label>
         </div>
         <button x-show="allowUserCreate" x-cloak type="button" @click="startUserCreate()" class="{{ $roleId === 1 ? 'btn-gold user-create-trigger' : 'btn btn-gold user-create-trigger' }}"><i data-lucide="user-round-plus" aria-hidden="true"></i><span>Create User</span></button>
@@ -59,7 +75,7 @@
                 </thead>
                 <tbody class="divide-y divide-slate-100">
                     <template x-for="row in rows" :key="row._id || row.id || JSON.stringify(row)">
-                        <tr class="hover:bg-slate-50/70">
+                        <tr class="hover:bg-slate-50/70" :data-log-id="endpoint === 'logs' ? row._id : null" :style="endpoint === 'logs' && logHighlightId === String(row._id) ? 'background-color: #fef3c7; box-shadow: inset 4px 0 #f59e0b;' : ''" style="transition: background-color .35s ease, box-shadow .35s ease;">
                             <template x-for="column in columns" :key="column.key">
                                 <td class="whitespace-nowrap px-5 py-4 text-ustp-dark">
                                     <template x-if="column.key === 'checkCode' && detailBase">
@@ -94,12 +110,14 @@
                             </td>
                             <td x-show="allowUserActions" class="whitespace-nowrap px-5 py-4">
                                 <button type="button" @click="startUserEdit(row)" class="mr-3 text-xs font-semibold text-ustp-navy hover:underline">Edit</button>
-                                <button x-show="row.isActive" type="button" @click="sendReset(row)" class="mr-3 text-xs font-semibold text-ustp-navy hover:underline">Reset password</button>
-                                <button x-show="row.isActive" type="button" @click="deactivateUser(row)" class="text-xs font-semibold text-error hover:underline">Deactivate</button>
+                                <button x-show="isRowActive(row)" type="button" @click="sendReset(row)" class="mr-3 text-xs font-semibold text-ustp-navy hover:underline">Reset password</button>
+                                <button x-show="isRowActive(row) && Number(row.roleId) !== 0" type="button" @click="deactivateUser(row)" class="text-xs font-semibold text-error hover:underline">Deactivate</button>
+                                <button x-show="!isRowActive(row) && actorRoleId === 0" type="button" @click="reactivateUser(row)" class="text-xs font-semibold text-emerald-700 hover:underline">Reactivate</button>
                             </td>
                             <td x-show="allowDepartmentActions" class="whitespace-nowrap px-5 py-4">
                                 <button type="button" @click="startDepartmentEdit(row)" class="mr-3 text-xs font-semibold text-ustp-navy hover:underline">Edit</button>
-                                <button x-show="row.isActive" type="button" @click="deactivateDepartment(row)" class="text-xs font-semibold text-error hover:underline">Deactivate</button>
+                                <button x-show="isRowActive(row)" type="button" @click="deactivateDepartment(row)" class="text-xs font-semibold text-error hover:underline">Deactivate</button>
+                                <button x-show="!isRowActive(row) && actorRoleId === 0" type="button" @click="reactivateDepartment(row)" class="text-xs font-semibold text-emerald-700 hover:underline">Reactivate</button>
                             </td>
                         </tr>
                     </template>
@@ -172,5 +190,87 @@
             <label class="block text-sm font-medium">Message<textarea x-model="broadcastForm.message" required maxlength="2000" rows="5" class="mt-1.5 w-full rounded-xl border border-slate-200 px-3 py-2.5"></textarea></label>
             <div class="flex justify-end gap-3"><button type="button" @click="broadcastModalOpen = false" class="rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold">Cancel</button><button :disabled="saving" class="rounded-xl bg-ustp-navy px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-60" x-text="saving ? 'Sending…' : 'Send broadcast'"></button></div>
         </form>
+    </div>
+    <div x-cloak x-show="resetConfirmOpen" class="user-modal-overlay fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-ustp-dark/50 p-4" @keydown.escape.window="closeResetModals()" @click.self="closeResetModals()" role="dialog" aria-modal="true">
+        <div class="my-auto w-full max-w-md rounded-2xl bg-white shadow-xl overflow-hidden">
+            <header class="user-modal-header">
+                <span class="user-modal-heading-icon">
+                    <i data-lucide="mail-question" aria-hidden="true"></i>
+                </span>
+                <div class="user-modal-heading-copy">
+                    <p>RESET PASSWORD</p>
+                    <h3 class="font-heading">Send reset link?</h3>
+                    <span>A reset link will be sent to this user.</span>
+                </div>
+                <button type="button" @click="closeResetModals()" aria-label="Close dialog" class="user-modal-close">
+                    <i data-lucide="x" aria-hidden="true"></i>
+                </button>
+            </header>
+            <div class="user-modal-body">
+                <p class="text-sm text-ustp-muted">A password reset link will be sent to <span class="font-semibold text-ustp-dark" x-text="resetTarget?.email"></span> (<span x-text="resetTarget?.fullName"></span>).</p>
+            </div>
+            <footer class="user-modal-footer">
+                <span>This will invalidate the current password.</span>
+                <div>
+                    <button type="button" @click="closeResetModals()" class="user-modal-cancel">Cancel</button>
+                    <button type="button" @click="confirmReset()" :disabled="resetSending" class="user-modal-submit">
+                        <i data-lucide="send" aria-hidden="true"></i>
+                        <span x-text="resetSending ? 'Sending...' : 'Yes, send link'"></span>
+                    </button>
+                </div>
+            </footer>
+        </div>
+    </div>
+    <div x-cloak x-show="deactivateConfirmOpen" class="user-modal-overlay fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-ustp-dark/50 p-4" @keydown.escape.window="closeDeactivateModals()" @click.self="closeDeactivateModals()" role="dialog" aria-modal="true">
+        <div class="my-auto w-full max-w-md rounded-2xl bg-white shadow-xl overflow-hidden">
+            <header class="user-modal-header">
+                <span class="user-modal-heading-icon" style="background-color: rgb(239 68 68 / 0.1); color: rgb(239 68 68);">
+                    <i data-lucide="triangle-alert" aria-hidden="true"></i>
+                </span>
+                <div class="user-modal-heading-copy">
+                    <p x-text="deactivateType === 'user' ? 'DEACTIVATE USER' : 'DEACTIVATE DEPARTMENT'"></p>
+                    <h3 class="font-heading" x-text="deactivateType === 'user' ? 'Deactivate user?' : 'Deactivate department?'"></h3>
+                    <span>This action can be reversed by an admin.</span>
+                </div>
+                <button type="button" @click="closeDeactivateModals()" aria-label="Close dialog" class="user-modal-close">
+                    <i data-lucide="x" aria-hidden="true"></i>
+                </button>
+            </header>
+            <div class="user-modal-body">
+                <p class="text-sm text-ustp-muted" x-show="deactivateType === 'user'">Are you sure you want to deactivate <span class="font-semibold text-ustp-dark" x-text="deactivateTarget?.fullName"></span> (<span x-text="deactivateTarget?.email"></span>)? They will lose access.</p>
+                <p class="text-sm text-ustp-muted" x-show="deactivateType === 'department'">Are you sure you want to deactivate department <span class="font-semibold text-ustp-dark" x-text="deactivateTarget?.departmentName"></span>? Users in this department will be affected.</p>
+            </div>
+            <footer class="user-modal-footer">
+                <span>This cannot be undone without admin help.</span>
+                <div>
+                    <button type="button" @click="closeDeactivateModals()" class="user-modal-cancel">Cancel</button>
+                    <button type="button" @click="confirmDeactivate()" :disabled="deactivateSending" class="rounded-xl bg-red-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-60" x-text="deactivateSending ? 'Deactivating...' : 'Yes, deactivate'"></button>
+                </div>
+            </footer>
+        </div>
+    </div>
+    <div x-cloak x-show="reactivateConfirmOpen" class="user-modal-overlay fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-ustp-dark/50 p-4" @keydown.escape.window="closeReactivateModals()" @click.self="closeReactivateModals()" role="dialog" aria-modal="true" aria-labelledby="reactivate-user-title">
+        <div class="my-auto w-full max-w-md rounded-2xl bg-white shadow-xl overflow-hidden">
+            <header class="user-modal-header">
+                <span class="user-modal-heading-icon" style="background-color: rgb(34 197 94 / 0.1); color: rgb(5 150 105);"><i :data-lucide="reactivateType === 'department' ? 'building-2' : 'user-round-check'" aria-hidden="true"></i></span>
+                <div class="user-modal-heading-copy"><p x-text="reactivateType === 'department' ? 'REACTIVATE DEPARTMENT' : 'REACTIVATE USER'"></p><h3 id="reactivate-user-title" class="font-heading" x-text="reactivateType === 'department' ? 'Reactivate department?' : 'Reactivate user?'"></h3><span x-text="reactivateType === 'department' ? 'The department will become active again.' : 'The user will be able to sign in again.'"></span></div>
+                <button type="button" @click="closeReactivateModals()" aria-label="Close dialog" class="user-modal-close"><i data-lucide="x" aria-hidden="true"></i></button>
+            </header>
+            <div class="user-modal-body">
+                <p class="text-sm text-ustp-muted">Are you sure you want to reactivate <span class="font-semibold text-ustp-dark" x-text="reactivateType === 'department' ? reactivateTarget?.departmentName : reactivateTarget?.fullName"></span><span x-show="reactivateType === 'user'"> (<span x-text="reactivateTarget?.email"></span>)</span>?</p>
+            </div>
+            <footer class="user-modal-footer"><span x-text="reactivateType === 'department' ? 'The department will be available again.' : 'This restores account access.'"></span><div><button type="button" @click="closeReactivateModals()" class="user-modal-cancel">Cancel</button><button type="button" @click="confirmReactivate()" :disabled="reactivateSending" class="rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-60" x-text="reactivateSending ? 'Reactivating...' : 'Yes, reactivate'"></button></div></footer>
+        </div>
+    </div>
+    <div x-cloak x-show="reactivateErrorOpen" class="user-modal-overlay fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-ustp-dark/50 p-4" @keydown.escape.window="closeReactivateModals()" @click.self="closeReactivateModals()" role="alertdialog" aria-modal="true" aria-labelledby="reactivate-error-title">
+        <div class="my-auto w-full max-w-md rounded-2xl bg-white shadow-xl overflow-hidden">
+            <header class="user-modal-header">
+                <span class="user-modal-heading-icon" style="background-color: rgb(245 158 11 / 0.12); color: rgb(180 83 9);"><i data-lucide="triangle-alert" aria-hidden="true"></i></span>
+                <div class="user-modal-heading-copy"><p>REACTIVATION BLOCKED</p><h3 id="reactivate-error-title" class="font-heading">Unable to reactivate yet</h3><span>Resolve this requirement, then try again.</span></div>
+                <button type="button" @click="closeReactivateModals()" aria-label="Close dialog" class="user-modal-close"><i data-lucide="x" aria-hidden="true"></i></button>
+            </header>
+            <div class="user-modal-body"><p class="text-sm text-ustp-muted" x-text="reactivateError"></p></div>
+            <footer class="user-modal-footer"><span>Resolve the issue above before trying again.</span><div><button type="button" @click="closeReactivateModals()" class="user-modal-submit">Got it</button></div></footer>
+        </div>
     </div>
 </section>

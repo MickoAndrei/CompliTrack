@@ -251,6 +251,7 @@ CompliTrack/
 │       │   ├── forgot-password.blade.php
 │       │   ├── login.blade.php
 │       │   └── profile.blade.php
+│       │   └── reset-password.blade.php ← NEW
 │       ├── components/
 │       │   ├── alert-banner.blade.php  ← NEW
 │       │   ├── compliance-gauge.blade.php  ← NEW

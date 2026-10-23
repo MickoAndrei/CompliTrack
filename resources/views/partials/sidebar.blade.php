@@ -33,6 +33,7 @@
             ['Archives', '/auditee/archives', 'archive'],
             ['Notifications', '/auditee/notifications', 'bell'],
             ['Help', '/auditee/help', 'circle-help'],
+            ['Profile', '/profile', 'circle-user-round'],
         ],
     ];
     $roleNames = ['Super Admin', 'Admin', 'Auditor', 'Auditee'];
@@ -71,14 +72,4 @@
             @endforeach
         </nav>
     @if ($roleId === 0)</div>@endif
-    <a href="/profile" class="{{ $roleId === 0 ? 'sidebar-footer' : 'sidebar-footer' }} {{ $roleId === 2 ? 'sidebar-user-info' : '' }}">
-        <span class="{{ $roleId === 0 ? 'user-profile-widget' : ($roleId === 2 ? 'user-avatar-small' : ($roleId === 1 ? 'avatar-sm' : 'flex size-10 items-center justify-center rounded-full bg-ustp-gold font-semibold text-ustp-navy')) }}">
-            <img src="{{ $userAvatarUrl ?? '' }}" alt="" class="{{ $roleId === 0 ? 'avatar-circle' : ($roleId === 2 ? 'avatar-img' : 'shared-user-avatar') }} {{ $userAvatarUrl ? '' : 'hidden' }}" data-user-avatar>
-            <span class="{{ $userAvatarUrl ? 'hidden' : '' }} {{ $roleId === 0 ? 'avatar-initials' : ($roleId === 2 ? 'avatar-initials auditor-avatar-initials' : '') }}" data-user-avatar-fallback>{{ $userInitials }}</span>
-        </span>
-        <span class="{{ $roleId === 0 ? 'user-meta-info' : ($roleId === 2 ? '' : 'min-w-0') }}">
-            <span class="{{ $roleId === 0 ? 'user-display-name' : ($roleId === 1 ? 'footer-user-name' : ($roleId === 2 ? 'user-name' : 'block truncate text-sm font-semibold')) }}">{{ auth()->user()->fullName }}</span>
-            <span class="{{ $roleId === 0 ? 'user-department-tag' : ($roleId === 1 ? 'footer-user-dept' : ($roleId === 2 ? 'user-role' : 'block text-xs text-white/60')) }}">{{ $roleNames[$roleId] ?? 'User' }}</span>
-        </span>
-    </a>
 </aside>

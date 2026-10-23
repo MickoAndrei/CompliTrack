@@ -2,6 +2,30 @@
 
 All notable changes to CompliTrack are documented here.
 
+## [Unreleased] - 2026-10-23
+
+### Added
+
+- Added web password reset pages and submission handlers, including reset email links, password updates from the profile, and a 10-minute reset-token lifetime.
+- Added reactivation actions for users and departments, with audit entries for activation changes.
+- Added encrypted demo archive documents to the database seeder.
+- Added profile-photo upload and display support to the web profile and navigation.
+
+### Changed
+
+- Expanded resource management dialogs with confirmation flows, success notifications, and user or department reactivation controls.
+- Added sortable audit-log columns and updated the Super Admin charts to show user growth and department compliance views.
+- Updated archive and avatar uploads to validate file signatures and read or write files through the configured storage paths.
+- Improved profile, reset-password, evidence-upload, and Super Admin layouts for clearer responsive presentation.
+
+### Fixed
+
+- Prevented deactivation or role demotion of Super Admin accounts, and ensured Super Admin accounts remain active.
+- Deactivated active users assigned to a department when that department is deactivated; blocked user reactivation while an assigned department remains inactive.
+- Corrected audit-log MongoDB identifier handling and normalized active-status values in user listings.
+- Fixed stateful browser-session logout and inactive-account handling for Sanctum authentication.
+- Corrected reset-token expiration handling and reset-email URL generation.
+
 ## [Unreleased] - 2026-10-22
 
 ### Added

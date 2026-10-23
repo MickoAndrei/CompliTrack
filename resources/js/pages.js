@@ -9,11 +9,239 @@ function responseMessage(error, fallback) {
 }
 
 document.addEventListener('alpine:init', () => {
+    Alpine.data('auditeeNotifications', () => ({
+        open: false,
+        loading: false,
+        markingRead: false,
+        error: null,
+        notifications: [],
+        refreshTimer: null,
+        get unreadCount() {
+            return this.notifications.filter((notification) => !notification.isRead).length;
+        },
+        async toggle() {
+            this.open = !this.open;
+            if (this.open) {
+                await this.refresh();
+                this.refreshTimer = window.setInterval(() => this.refresh(), 20000);
+            } else {
+                this.stopRefreshing();
+            }
+        },
+        close() {
+            this.open = false;
+            this.stopRefreshing();
+        },
+        stopRefreshing() {
+            if (this.refreshTimer) window.clearInterval(this.refreshTimer);
+            this.refreshTimer = null;
+        },
+        async refresh() {
+            this.loading = true;
+            this.error = null;
+            try {
+                const { data } = await axios.get(apiPath('notifications'), { params: { perPage: 8 } });
+                this.notifications = data.data || [];
+                this.$nextTick(() => window.renderIcons?.());
+            } catch (error) {
+                this.error = responseMessage(error, 'Unable to load notifications.');
+            } finally {
+                this.loading = false;
+            }
+        },
+        async markAllRead() {
+            if (this.unreadCount === 0 || this.markingRead) return;
+            this.markingRead = true;
+            this.error = null;
+            try {
+                await axios.patch(apiPath('notifications/read-all'));
+                this.notifications = this.notifications.map((notification) => ({ ...notification, isRead: true }));
+            } catch (error) {
+                this.error = responseMessage(error, 'Unable to mark notifications as read.');
+            } finally {
+                this.markingRead = false;
+            }
+        },
+        async markNotificationRead(notification) {
+            if (notification.isRead) return;
+            try {
+                await axios.patch(apiPath(`notifications/${encodeURIComponent(notification._id)}/read`));
+                notification.isRead = true;
+            } catch (error) {
+                this.error = responseMessage(error, 'Unable to mark this notification as read.');
+            }
+        },
+        async clearNotifications() {
+            if (this.loading || this.markingRead) return;
+            this.markingRead = true;
+            this.error = null;
+            try {
+                if (this.unreadCount > 0) await axios.patch(apiPath('notifications/read-all'));
+                this.notifications = [];
+            } catch (error) {
+                this.error = responseMessage(error, 'Unable to clear notifications.');
+            } finally {
+                this.markingRead = false;
+            }
+        },
+        formatActivityTime(value) {
+            const date = value ? new Date(value) : null;
+            if (!date || Number.isNaN(date.getTime())) return 'Time unavailable';
+            const seconds = Math.round((date.getTime() - Date.now()) / 1000);
+            const absSeconds = Math.abs(seconds);
+            const [amount, unit] = absSeconds < 60 ? [seconds, 'second']
+                : absSeconds < 3600 ? [Math.round(seconds / 60), 'minute']
+                    : absSeconds < 86400 ? [Math.round(seconds / 3600), 'hour']
+                        : [Math.round(seconds / 86400), 'day'];
+            return new Intl.RelativeTimeFormat(undefined, { numeric: 'auto' }).format(amount, unit);
+        },
+        destroy() {
+            this.stopRefreshing();
+        },
+    }));
+
+    Alpine.data('activityNotifications', () => ({
+        open: false,
+        loading: false,
+        markingRead: false,
+        error: null,
+        activities: [],
+        notifications: [],
+        dismissedActivityIds: (() => {
+            try {
+                return JSON.parse(window.localStorage.getItem('complitrack.dismissedActivities') || '[]');
+            } catch {
+                return [];
+            }
+        })(),
+        readActivityIds: (() => {
+            try {
+                return JSON.parse(window.localStorage.getItem('complitrack.readActivities') || '[]');
+            } catch {
+                return [];
+            }
+        })(),
+        refreshTimer: null,
+        get unreadCount() {
+            return this.notifications.filter((notification) => !notification.isRead).length;
+        },
+        async toggle() {
+            this.open = !this.open;
+            if (this.open) {
+                this.refreshTimer = window.setInterval(() => this.refresh(), 20000);
+                await this.refresh();
+            } else {
+                this.stopRefreshing();
+            }
+        },
+        close() {
+            this.open = false;
+            this.stopRefreshing();
+        },
+        stopRefreshing() {
+            if (this.refreshTimer) window.clearInterval(this.refreshTimer);
+            this.refreshTimer = null;
+        },
+        async refresh() {
+            this.loading = true;
+            this.error = null;
+            try {
+                const [logsResponse, notificationsResponse] = await Promise.all([
+                    axios.get(apiPath('logs'), { params: { perPage: 8 } }),
+                    axios.get(apiPath('notifications'), { params: { perPage: 8 } }),
+                ]);
+                this.activities = (logsResponse.data.data || []).filter((activity) => !this.dismissedActivityIds.includes(String(activity._id)));
+                this.notifications = (notificationsResponse.data.data || []).filter((notification) => !notification.isRead);
+                this.$nextTick(() => window.renderIcons?.());
+            } catch (error) {
+                this.error = responseMessage(error, 'Unable to load recent activity.');
+            } finally {
+                this.loading = false;
+            }
+        },
+        async markAllRead() {
+            if (this.unreadCount === 0 || this.markingRead) return;
+            this.markingRead = true;
+            try {
+                await axios.patch(apiPath('notifications/read-all'));
+                this.notifications = this.notifications.map((notification) => ({ ...notification, isRead: true }));
+            } catch (error) {
+                this.error = responseMessage(error, 'Unable to mark notifications as read.');
+            } finally {
+                this.markingRead = false;
+            }
+        },
+        async markNotificationRead(notification) {
+            if (notification.isRead) return;
+            try {
+                await axios.patch(apiPath(`notifications/${encodeURIComponent(notification._id)}/read`));
+                notification.isRead = true;
+            } catch (error) {
+                this.error = responseMessage(error, 'Unable to mark this notification as read.');
+            }
+        },
+        async clearNotifications() {
+            if (this.loading || this.markingRead) return;
+            this.markingRead = true;
+            this.error = null;
+            try {
+                if (this.unreadCount > 0) await axios.patch(apiPath('notifications/read-all'));
+                this.dismissedActivityIds = [...new Set([
+                    ...this.dismissedActivityIds,
+                    ...this.activities.map((activity) => String(activity._id)),
+                ])];
+                window.localStorage.setItem('complitrack.dismissedActivities', JSON.stringify(this.dismissedActivityIds));
+                this.activities = [];
+                this.notifications = [];
+            } catch (error) {
+                this.error = responseMessage(error, 'Unable to clear notifications.');
+            } finally {
+                this.markingRead = false;
+            }
+        },
+        isActivityRead(activity) {
+            return this.readActivityIds.includes(String(activity._id));
+        },
+        async openActivity(activity) {
+            const id = String(activity._id);
+            if (!this.readActivityIds.includes(id)) {
+                this.readActivityIds = [...this.readActivityIds, id];
+                window.localStorage.setItem('complitrack.readActivities', JSON.stringify(this.readActivityIds));
+            }
+            await new Promise((resolve) => window.setTimeout(resolve, 220));
+            window.location.assign(`/super-admin/logs?highlight=${encodeURIComponent(id)}`);
+        },
+        formatActivityTime(value) {
+            const date = value ? new Date(value) : null;
+            if (!date || Number.isNaN(date.getTime())) return 'Time unavailable';
+            const seconds = Math.round((date.getTime() - Date.now()) / 1000);
+            const absSeconds = Math.abs(seconds);
+            const [amount, unit] = absSeconds < 60 ? [seconds, 'second']
+                : absSeconds < 3600 ? [Math.round(seconds / 60), 'minute']
+                    : absSeconds < 86400 ? [Math.round(seconds / 3600), 'hour']
+                        : [Math.round(seconds / 86400), 'day'];
+            return new Intl.RelativeTimeFormat(undefined, { numeric: 'auto' }).format(amount, unit);
+        },
+        destroy() {
+            this.stopRefreshing();
+        },
+    }));
+
     Alpine.data('profilePage', ({ avatarUrl }) => ({
         avatarUrl: avatarUrl || '',
         uploading: false,
         error: null,
         message: null,
+        popupTimeout: null,
+        showPopup(type, text) {
+            window.clearTimeout(this.popupTimeout);
+            this.error = type === 'error' ? text : null;
+            this.message = type === 'success' ? text : null;
+            this.popupTimeout = window.setTimeout(() => {
+                this.error = null;
+                this.message = null;
+            }, 3000);
+        },
         async uploadAvatar(event) {
             const file = event.target.files?.[0];
             if (!file) return;
@@ -30,13 +258,16 @@ document.addEventListener('alpine:init', () => {
                     image.classList.remove('hidden');
                 });
                 document.querySelectorAll('[data-user-avatar-fallback]').forEach((fallback) => fallback.classList.add('hidden'));
-                this.message = 'Profile photo updated.';
+                this.showPopup('success', 'Profile photo updated.');
             } catch (error) {
-                this.error = responseMessage(error, 'Profile photo could not be uploaded. Choose a JPG, PNG, or WebP image up to 2 MB.');
+                this.showPopup('error', responseMessage(error, 'Profile photo could not be uploaded. Choose a JPG, PNG, or WebP image up to 2 MB.'));
             } finally {
                 this.uploading = false;
                 event.target.value = '';
             }
+        },
+        destroy() {
+            window.clearTimeout(this.popupTimeout);
         },
     }));
 
@@ -88,17 +319,77 @@ document.addEventListener('alpine:init', () => {
         meta: { total: 0, lastPage: 1 },
         page: 1,
         search: '',
+        sortBy: 'createdAt:desc',
         loading: true,
         error: null,
         message: null,
+        successPopupMessage: '',
+        successPopupType: 'success',
+        successPopupVisible: false,
+        successPopupTimeout: null,
+        logHighlightId: new URLSearchParams(window.location.search).get('highlight'),
+        logHighlightTimeout: null,
         saving: false,
         userModalOpen: false,
         departmentModalOpen: false,
         broadcastModalOpen: false,
+        resetConfirmOpen: false,
+        resetTarget: null,
+        resetSending: false,
+        deactivateConfirmOpen: false,
+        deactivateTarget: null,
+        deactivateType: null,
+        deactivateSending: false,
+        reactivateConfirmOpen: false,
+        reactivateTarget: null,
+        reactivateType: null,
+        reactivateSending: false,
+        reactivateError: null,
+        reactivateErrorOpen: false,
         departments: [],
         userForm: { _id: null, fullName: '', email: '', roleId: 2, departmentId: '', officeName: '' },
         departmentForm: { _id: null, departmentCode: '', departmentName: '', collegeName: 'CET', campusName: 'Claveria' },
         broadcastForm: { departmentId: '', message: '' },
+
+        init() {
+            this.refreshOnFocus = () => {
+                if (!document.hidden && !this.loading) this.load();
+            };
+            window.addEventListener('focus', this.refreshOnFocus);
+            document.addEventListener('visibilitychange', this.refreshOnFocus);
+        },
+
+        destroy() {
+            window.removeEventListener('focus', this.refreshOnFocus);
+            document.removeEventListener('visibilitychange', this.refreshOnFocus);
+            window.clearTimeout(this.successPopupTimeout);
+            window.clearTimeout(this.logHighlightTimeout);
+        },
+
+        highlightLogRow() {
+            if (this.endpoint !== 'logs' || !this.logHighlightId) return;
+            const row = this.rows.find((item) => String(item._id) === String(this.logHighlightId));
+            if (!row) return;
+            const id = String(this.logHighlightId);
+            this.$nextTick(() => {
+                const target = [...document.querySelectorAll('[data-log-id]')].find((element) => element.dataset.logId === id);
+                target?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            });
+            window.clearTimeout(this.logHighlightTimeout);
+            this.logHighlightTimeout = window.setTimeout(() => {
+                this.logHighlightId = null;
+            }, 2000);
+        },
+
+        showSuccessPopup(message, type = 'success') {
+            this.successPopupMessage = message;
+            this.successPopupType = type;
+            this.successPopupVisible = true;
+            window.clearTimeout(this.successPopupTimeout);
+            this.successPopupTimeout = window.setTimeout(() => {
+                this.successPopupVisible = false;
+            }, 3000);
+        },
 
         async load(page = this.page) {
             this.loading = true;
@@ -109,6 +400,10 @@ document.addEventListener('alpine:init', () => {
                         page,
                         perPage: this.perPage,
                         ...(this.search ? { search: this.search } : {}),
+                        ...(this.endpoint === 'logs' ? {
+                            sortBy: this.sortBy.split(':')[0],
+                            sortDirection: this.sortBy.split(':')[1],
+                        } : {}),
                     },
                 });
                 this.rows = Array.isArray(data.data) ? data.data : [];
@@ -118,7 +413,10 @@ document.addEventListener('alpine:init', () => {
                 this.error = responseMessage(error, 'Unable to load these records. Please try again.');
             } finally {
                 this.loading = false;
-                this.$nextTick(() => window.renderIcons?.());
+                this.$nextTick(() => {
+                    window.renderIcons?.();
+                    this.highlightLogRow();
+                });
             }
         },
 
@@ -128,6 +426,11 @@ document.addEventListener('alpine:init', () => {
             if (typeof value === 'object') return Array.isArray(value) ? value.join(', ') : JSON.stringify(value);
             if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}T/.test(value)) return new Date(value).toLocaleString();
             return String(value).replaceAll('_', ' ');
+        },
+
+        isRowActive(row) {
+            return row?.isActive === true || row?.isActive === 1
+                || ['1', 'true', 'yes', 'on'].includes(String(row?.isActive).toLowerCase());
         },
 
         statusClass(value) {
@@ -180,6 +483,7 @@ document.addEventListener('alpine:init', () => {
         async saveUser() {
             this.saving = true;
             this.error = null;
+            this.message = null;
             try {
                 const { _id, ...payload } = this.userForm;
                 payload.roleId = Number(payload.roleId);
@@ -189,7 +493,11 @@ document.addEventListener('alpine:init', () => {
                     await axios.post(apiPath('users'), payload);
                 }
                 this.userModalOpen = false;
-                this.message = _id ? 'User details updated.' : 'User created. An account setup email has been sent.';
+                if (_id) {
+                    this.showSuccessPopup('User details updated.');
+                } else {
+                    this.message = 'User created. An account setup email has been sent.';
+                }
                 await this.load(1);
             } catch (error) {
                 this.error = responseMessage(error, 'Unable to create this user.');
@@ -199,25 +507,125 @@ document.addEventListener('alpine:init', () => {
         },
 
         async deactivateUser(row) {
-            if (!window.confirm(`Deactivate ${row.fullName}?`)) return;
             this.error = null;
+            this.message = null;
+            this.deactivateTarget = row;
+            this.deactivateType = 'user';
+            this.deactivateConfirmOpen = true;
+            this.$nextTick(() => window.renderIcons?.());
+        },
+
+        reactivateUser(row) {
+            this.error = null;
+            this.message = null;
+            this.reactivateError = null;
+            this.reactivateErrorOpen = false;
+            this.reactivateTarget = row;
+            this.reactivateType = 'user';
+            this.reactivateConfirmOpen = true;
+            this.$nextTick(() => window.renderIcons?.());
+        },
+
+        reactivateDepartment(row) {
+            this.error = null;
+            this.message = null;
+            this.reactivateError = null;
+            this.reactivateErrorOpen = false;
+            this.reactivateTarget = row;
+            this.reactivateType = 'department';
+            this.reactivateConfirmOpen = true;
+            this.$nextTick(() => window.renderIcons?.());
+        },
+
+        async confirmReactivate() {
+            if (!this.reactivateTarget) return;
+            this.reactivateSending = true;
+            this.error = null;
+            this.reactivateError = null;
             try {
-                await axios.delete(apiPath(`users/${encodeURIComponent(row._id)}`));
-                row.isActive = false;
-                this.message = 'User deactivated.';
+                const resource = this.reactivateType === 'department' ? 'departments' : 'users';
+                await axios.post(apiPath(`${resource}/${encodeURIComponent(this.reactivateTarget._id)}/reactivate`));
+                const successMessage = `${this.reactivateType === 'department' ? 'Department' : 'User'} reactivated.`;
+                this.reactivateTarget.isActive = true;
+                this.closeReactivateModals();
+                this.showSuccessPopup(successMessage);
             } catch (error) {
-                this.error = responseMessage(error, 'Unable to deactivate this user.');
+                this.reactivateError = responseMessage(error, `Unable to reactivate this ${this.reactivateType || 'user'}.`);
+                this.reactivateConfirmOpen = false;
+                this.reactivateErrorOpen = true;
+            } finally {
+                this.reactivateSending = false;
             }
+        },
+
+        closeReactivateModals() {
+            this.reactivateConfirmOpen = false;
+            this.reactivateErrorOpen = false;
+            this.reactivateTarget = null;
+            this.reactivateType = null;
+            this.reactivateSending = false;
+            this.reactivateError = null;
         },
 
         async sendReset(row) {
             this.error = null;
+            this.message = null;
+            this.resetTarget = row;
+            this.resetConfirmOpen = true;
+            this.$nextTick(() => window.renderIcons?.());
+        },
+
+        async confirmReset() {
+            if (!this.resetTarget) return;
+            this.resetSending = true;
+            this.error = null;
             try {
-                await axios.post(apiPath(`users/${encodeURIComponent(row._id)}/reset-password`));
-                this.message = `A password reset link was sent to ${row.email}.`;
+                await axios.post(apiPath(`users/${encodeURIComponent(this.resetTarget._id)}/reset-password`));
+                const successMessage = `A password reset link was sent to ${this.resetTarget.email}.`;
+                this.closeResetModals();
+                this.showSuccessPopup(successMessage);
             } catch (error) {
                 this.error = responseMessage(error, 'Unable to send a password reset link.');
+                this.resetConfirmOpen = false;
+            } finally {
+                this.resetSending = false;
             }
+        },
+
+        closeResetModals() {
+            this.resetConfirmOpen = false;
+            this.resetTarget = null;
+            this.resetSending = false;
+        },
+
+        async confirmDeactivate() {
+            if (!this.deactivateTarget) return;
+            this.deactivateSending = true;
+            this.error = null;
+            try {
+                const wasUser = this.deactivateType === 'user';
+                if (this.deactivateType === 'user') {
+                    await axios.delete(apiPath(`users/${encodeURIComponent(this.deactivateTarget._id)}`));
+                    this.deactivateTarget.isActive = false;
+                } else {
+                    await axios.delete(apiPath(`departments/${encodeURIComponent(this.deactivateTarget._id)}`));
+                    this.deactivateTarget.isActive = false;
+                }
+                this.closeDeactivateModals();
+                this.showSuccessPopup(wasUser ? 'User deactivated.' : 'Department deactivated.');
+            } catch (error) {
+                this.error = responseMessage(error, this.deactivateType === 'user' ? 'Unable to deactivate this user.' : 'Unable to deactivate this department.');
+                this.deactivateConfirmOpen = false;
+            } finally {
+                this.deactivateSending = false;
+            }
+        },
+
+        closeDeactivateModals() {
+            this.deactivateConfirmOpen = false;
+            this.deactivateTarget = null;
+            this.deactivateType = null;
+            this.deactivateSending = false;
         },
 
         startDepartmentCreate() {
@@ -249,7 +657,7 @@ document.addEventListener('alpine:init', () => {
                     await axios.post(apiPath('departments'), { departmentCode, ...payload });
                 }
                 this.departmentModalOpen = false;
-                this.message = _id ? 'Department updated.' : 'Department created.';
+                this.showSuccessPopup(_id ? 'Department updated.' : 'Department created.');
                 await this.load(1);
             } catch (error) {
                 this.error = responseMessage(error, 'Unable to create this department.');
@@ -259,15 +667,12 @@ document.addEventListener('alpine:init', () => {
         },
 
         async deactivateDepartment(row) {
-            if (!window.confirm(`Deactivate ${row.departmentName}?`)) return;
             this.error = null;
-            try {
-                await axios.delete(apiPath(`departments/${encodeURIComponent(row._id)}`));
-                row.isActive = false;
-                this.message = 'Department deactivated.';
-            } catch (error) {
-                this.error = responseMessage(error, 'Unable to deactivate this department.');
-            }
+            this.message = null;
+            this.deactivateTarget = row;
+            this.deactivateType = 'department';
+            this.deactivateConfirmOpen = true;
+            this.$nextTick(() => window.renderIcons?.());
         },
 
         async startBroadcast() {
@@ -331,9 +736,9 @@ document.addEventListener('alpine:init', () => {
             this.error = null;
             try {
                 await axios.get(apiPath(`archives/${encodeURIComponent(row._id)}/verify-checksum`));
-                this.message = `${row.originalName} passed its integrity check.`;
+                this.showSuccessPopup(`Archive verification succeeded: ${row.originalName} passed its integrity check.`);
             } catch (error) {
-                this.error = responseMessage(error, 'The archive could not be verified.');
+                this.showSuccessPopup(`Archive verification failed: ${responseMessage(error, 'The archive could not be verified.')}`, 'error');
             }
         },
 
@@ -347,8 +752,9 @@ document.addEventListener('alpine:init', () => {
                 anchor.download = row.originalName || row.fileCode;
                 anchor.click();
                 URL.revokeObjectURL(url);
+                this.showSuccessPopup(`Download started: ${row.originalName || row.fileCode}.`);
             } catch (error) {
-                this.error = responseMessage(error, 'The archive could not be downloaded.');
+                this.showSuccessPopup(`Download failed: ${responseMessage(error, 'The archive could not be downloaded.')}`, 'error');
             }
         },
 
@@ -358,7 +764,7 @@ document.addEventListener('alpine:init', () => {
                 await axios.patch(apiPath(`notifications/${encodeURIComponent(row._id)}/read`));
                 row.isRead = true;
             } catch (error) {
-                this.error = responseMessage(error, 'Unable to mark this notification as read.');
+                this.showSuccessPopup(responseMessage(error, 'Unable to mark this notification as read.'), 'error');
             }
         },
     }));
@@ -371,19 +777,49 @@ document.addEventListener('alpine:init', () => {
         error: null,
         stats: {},
         reportData: null,
+        departmentComplianceView: 'all',
         recentChecks: [],
         cards: [],
         actions: [],
         checksUrl: '',
 
+        userTrendMax(months) {
+            const max = Math.max(0, ...(Array.isArray(months) ? months.map(month => Number(month.count) || 0) : []));
+            return Math.max(1, Math.ceil(max / 4) * 4);
+        },
+
+        userTrendTicks(months) {
+            const max = this.userTrendMax(months);
+            return [0, 1, 2, 3, 4].map(step => max * step / 4);
+        },
+
+        trendX(index, length) {
+            return length < 2 ? 210 : 20 + index * (380 / (length - 1));
+        },
+
         trendLinePoints(months) {
             const items = Array.isArray(months) ? months : [];
             return items.map((month, index) => {
-                const x = items.length < 2 ? 210 : 20 + index * (380 / (items.length - 1));
-                const percent = Math.max(0, Math.min(100, Number(month.compliancePercentage) || 0));
-                const y = 160 - percent * 1.35;
+                const x = this.trendX(index, items.length);
+                const count = Math.max(0, Number(month.count) || 0);
+                const y = 160 - (count / this.userTrendMax(items)) * 135;
                 return `${x},${y}`;
             }).join(' ');
+        },
+
+        trendY(count, months) {
+            return 160 - (Math.max(0, Number(count) || 0) / this.userTrendMax(months)) * 135;
+        },
+
+        departmentComplianceItems() {
+            const items = [...(this.reportData?.deptCompliance || [])];
+            if (this.departmentComplianceView === 'most') {
+                return items.sort((a, b) => Number(b.compliancePercentage) - Number(a.compliancePercentage));
+            }
+            if (this.departmentComplianceView === 'least') {
+                return items.sort((a, b) => Number(a.compliancePercentage) - Number(b.compliancePercentage));
+            }
+            return items;
         },
 
         async load() {
@@ -606,6 +1042,16 @@ document.addEventListener('alpine:init', () => {
         saving: false,
         message: null,
         error: null,
+        popupTimeout: null,
+        showPopup(type, text) {
+            window.clearTimeout(this.popupTimeout);
+            this.error = type === 'error' ? text : null;
+            this.message = type === 'success' ? text : null;
+            this.popupTimeout = window.setTimeout(() => {
+                this.error = null;
+                this.message = null;
+            }, 3000);
+        },
         async init() {
             try {
                 const { data } = await axios.get(apiPath('compliance-checks'), { params: { result: 'non_compliant', perPage: 100 } });
@@ -618,15 +1064,16 @@ document.addEventListener('alpine:init', () => {
         },
         async submit() {
             if (!this.file || !this.selectedCheckId) {
-                this.error = 'Choose a compliance check and a file before uploading.';
+                this.showPopup('error', 'Choose a compliance check and a file before uploading.');
                 return;
             }
             const check = this.checks.find((item) => item._id === this.selectedCheckId);
             if (!check) {
-                this.error = 'The selected check is no longer available.';
+                this.showPopup('error', 'The selected check is no longer available.');
                 return;
             }
             this.saving = true;
+            window.clearTimeout(this.popupTimeout);
             this.error = null;
             this.message = null;
             const form = new FormData();
@@ -635,14 +1082,17 @@ document.addEventListener('alpine:init', () => {
             form.append('referenceStandard', check.referenceStandard);
             try {
                 await axios.post(apiPath('archives/upload'), form);
-                this.message = 'Evidence uploaded and encrypted successfully.';
+                this.showPopup('success', 'Evidence uploaded and encrypted successfully.');
                 this.file = null;
                 this.$refs.fileInput.value = '';
             } catch (error) {
-                this.error = responseMessage(error, 'Evidence could not be uploaded.');
+                this.showPopup('error', responseMessage(error, 'Evidence could not be uploaded.'));
             } finally {
                 this.saving = false;
             }
+        },
+        destroy() {
+            window.clearTimeout(this.popupTimeout);
         },
     }));
 });
