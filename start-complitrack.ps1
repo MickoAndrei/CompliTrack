@@ -29,12 +29,16 @@ function Stop-PidFile([string]$pidFile) {
         $parsedProcessId = 0
         if ([int]::TryParse([string]$processId, [ref]$parsedProcessId) -and $parsedProcessId -gt 0) {
             $proc = Get-Process -Id $parsedProcessId -ErrorAction SilentlyContinue
-            if ($proc) {
+            $processInfo = Get-CimInstance Win32_Process -Filter "ProcessId = $parsedProcessId" -ErrorAction SilentlyContinue
+            $isCompliTrack = $processInfo -and ([string]$processInfo.CommandLine).IndexOf($repoRoot, [StringComparison]::OrdinalIgnoreCase) -ge 0
+            if ($proc -and $isCompliTrack) {
                 & taskkill.exe /PID $parsedProcessId /T /F 2>$null | Out-Null
                 if ($LASTEXITCODE -ne 0) {
                     Stop-Process -Id $parsedProcessId -Force -ErrorAction SilentlyContinue
                 }
                 Start-Sleep -Seconds 1
+            } elseif ($proc) {
+                Write-Warning "PID $parsedProcessId is not verified as this CompliTrack checkout; leaving it running."
             }
         }
     }
@@ -228,8 +232,12 @@ if (Test-PortInUse $appPort) {
     Write-Host "Laravel already running on port $appPort"
 } else {
     Stop-PidFile $laravelPidFile
+    Write-Host "Logging out existing accounts before Laravel starts..."
+    php artisan complitrack:logout-all
+    if ($LASTEXITCODE -ne 0) { throw "Could not clear login sessions; Laravel was not started." }
     Write-Host "Starting Laravel on port $appPort..."
-    $p = Start-Process -FilePath "php" -ArgumentList "artisan serve --host=0.0.0.0 --port=$appPort" -WorkingDirectory $repoRoot -RedirectStandardOutput "$logDir\laravel.log" -RedirectStandardError "$logDir\laravel.err.log" -PassThru
+    $artisanPath = Join-Path $repoRoot "artisan"
+    $p = Start-Process -FilePath "php" -ArgumentList "`"$artisanPath`" serve --host=0.0.0.0 --port=$appPort" -WorkingDirectory $repoRoot -RedirectStandardOutput "$logDir\laravel.log" -RedirectStandardError "$logDir\laravel.err.log" -PassThru
     $p.Id | Set-Content $laravelPidFile
 }
 
@@ -239,7 +247,7 @@ if (Test-PortInUse $realtimePort) {
     Stop-PidFile $realtimePidFile
     Write-Host "Starting realtime service..."
     $realtimePath = Join-Path $repoRoot "realtime"
-    $npmArgs = "/d /s /c `"`"$npmCommand`" start`""
+    $npmArgs = "/d /s /c `"`"$npmCommand`" --prefix `"$realtimePath`" start`""
     $p = Start-Process -FilePath $env:ComSpec -ArgumentList $npmArgs -WorkingDirectory $realtimePath -RedirectStandardOutput "$logDir\realtime.log" -RedirectStandardError "$logDir\realtime.err.log" -PassThru
     $p.Id | Set-Content $realtimePidFile
 }
@@ -254,7 +262,7 @@ if (Test-PortInUse 5173) {
 } else {
     Stop-PidFile $vitePidFile
     Write-Host "Starting Vite dev server..."
-    $npmArgs = "/d /s /c `"`"$npmCommand`" run dev`""
+    $npmArgs = "/d /s /c `"`"$npmCommand`" --prefix `"$repoRoot`" run dev`""
     $p = Start-Process -FilePath $env:ComSpec -ArgumentList $npmArgs -WorkingDirectory $repoRoot -RedirectStandardOutput "$logDir\vite.log" -RedirectStandardError "$logDir\vite.err.log" -PassThru
     $p.Id | Set-Content $vitePidFile
 }

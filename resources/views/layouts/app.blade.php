@@ -29,6 +29,12 @@
 </head>
 <body class="min-h-screen" data-user-id="{{ auth()->id() }}">
     @auth
+        <div id="server-offline-banner" class="fixed inset-0 z-[100] hidden flex items-center justify-center bg-slate-950/95 p-6 text-center text-white" role="alert" aria-live="assertive">
+            <div class="max-w-lg rounded-xl border border-white/15 bg-slate-900 p-8 shadow-2xl">
+                <h2 class="mb-3 text-2xl font-bold">Server connection lost</h2>
+                <p class="text-base text-slate-200">CompliTrack is offline. You cannot use the dashboard while the server is unavailable. Reconnecting…</p>
+            </div>
+        </div>
         @php($portalLayout = $portalRole === 3 ? 'app-layout' : 'app-container')
         @php($mainLayout = $portalRole === 2 ? 'main-content' : 'main-wrapper')
         @php($contentLayout = match ($portalRole) {

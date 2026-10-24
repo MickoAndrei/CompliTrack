@@ -6,6 +6,7 @@
     <main class="main-panel">
         <section class="form-wrapper" x-data="loginPage()">
             <template x-if="error"><div class="status-toast" role="alert" x-text="error"></div></template>
+            @if (request()->query('reason') === 'server-restarted') <div class="status-toast" role="status">The server restarted. Please sign in again.</div> @endif
             <div class="form-header"><div class="campus-pill">USTP CLAVERIA PORTAL</div><h2 class="form-title">Welcome back</h2><p class="form-subtitle">Sign in to your CompliTrack account</p></div>
             @if ($errors->any()) <div class="status-toast" role="alert">{{ $errors->first() }}</div> @endif
             <form class="auth-form" @submit.prevent="submit()">
