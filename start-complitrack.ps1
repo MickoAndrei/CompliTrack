@@ -8,6 +8,7 @@ New-Item -ItemType Directory -Force -Path $logDir | Out-Null
 
 $appPort = 8000
 $realtimePort = 4000
+$npmCommand = (Get-Command npm.cmd -ErrorAction SilentlyContinue).Source
 $laravelPidFile = Join-Path $repoRoot ".laravel.pid"
 $vitePidFile = Join-Path $repoRoot ".vite.pid"
 $realtimePidFile = Join-Path $repoRoot ".realtime.pid"
@@ -23,12 +24,18 @@ function Test-PortInUse([int]$port) {
 
 function Stop-PidFile([string]$pidFile) {
     if (-not (Test-Path $pidFile)) { return }
-    $pid = Get-Content $pidFile -ErrorAction SilentlyContinue
-    if ($pid) {
-        $proc = Get-Process -Id $pid -ErrorAction SilentlyContinue
-        if ($proc) {
-            Stop-Process -Id $pid -Force -ErrorAction SilentlyContinue
-            Start-Sleep -Seconds 1
+    $processId = Get-Content $pidFile -ErrorAction SilentlyContinue
+    if ($processId) {
+        $parsedProcessId = 0
+        if ([int]::TryParse([string]$processId, [ref]$parsedProcessId) -and $parsedProcessId -gt 0) {
+            $proc = Get-Process -Id $parsedProcessId -ErrorAction SilentlyContinue
+            if ($proc) {
+                & taskkill.exe /PID $parsedProcessId /T /F 2>$null | Out-Null
+                if ($LASTEXITCODE -ne 0) {
+                    Stop-Process -Id $parsedProcessId -Force -ErrorAction SilentlyContinue
+                }
+                Start-Sleep -Seconds 1
+            }
         }
     }
     Remove-Item $pidFile -Force -ErrorAction SilentlyContinue
@@ -88,6 +95,10 @@ foreach ($cmd in $commands) {
     $found = Get-Command $cmd -ErrorAction SilentlyContinue
     if (-not $found) { throw "$cmd is not installed or not in PATH" }
     Write-Host "  [OK] $cmd found"
+}
+
+if (-not $npmCommand) {
+    throw "npm.cmd is not installed or not in PATH"
 }
 
 $phpVersion = (php -r "echo PHP_VERSION;")
@@ -228,7 +239,8 @@ if (Test-PortInUse $realtimePort) {
     Stop-PidFile $realtimePidFile
     Write-Host "Starting realtime service..."
     $realtimePath = Join-Path $repoRoot "realtime"
-    $p = Start-Process -FilePath "npm" -ArgumentList "start" -WorkingDirectory $realtimePath -RedirectStandardOutput "$logDir\realtime.log" -RedirectStandardError "$logDir\realtime.err.log" -PassThru
+    $npmArgs = "/d /s /c `"`"$npmCommand`" start`""
+    $p = Start-Process -FilePath $env:ComSpec -ArgumentList $npmArgs -WorkingDirectory $realtimePath -RedirectStandardOutput "$logDir\realtime.log" -RedirectStandardError "$logDir\realtime.err.log" -PassThru
     $p.Id | Set-Content $realtimePidFile
 }
 
@@ -242,7 +254,8 @@ if (Test-PortInUse 5173) {
 } else {
     Stop-PidFile $vitePidFile
     Write-Host "Starting Vite dev server..."
-    $p = Start-Process -FilePath "npm" -ArgumentList "run dev" -WorkingDirectory $repoRoot -RedirectStandardOutput "$logDir\vite.log" -RedirectStandardError "$logDir\vite.err.log" -PassThru
+    $npmArgs = "/d /s /c `"`"$npmCommand`" run dev`""
+    $p = Start-Process -FilePath $env:ComSpec -ArgumentList $npmArgs -WorkingDirectory $repoRoot -RedirectStandardOutput "$logDir\vite.log" -RedirectStandardError "$logDir\vite.err.log" -PassThru
     $p.Id | Set-Content $vitePidFile
 }
 
