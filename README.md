@@ -93,12 +93,26 @@ The system is intentionally scoped to three core functions:
 | Backend API | Laravel 12 (PHP 8.2+) — REST API, business logic, role middleware, file encryption |
 | Realtime Service | Node.js (Express + Socket.io) — live notifications, status updates, dashboard refresh |
 | Mobile App | Flutter 3.24+ (Dart 3.5) — Android/iOS |
-| Database | MongoDB 7.0 (`mongodb/laravel-mongodb`) — flexible schema for compliance docs |
+| Database | MongoDB 7.0 (`mongodb/laravel-mongodb`) for CompliTrack application data; SQLite for Laravel framework tables |
 | Auth | Laravel Sanctum (Web) · JWT via `tymon/jwt-auth` (Mobile) |
 | Storage | Local encrypted disk + optional S3-compatible (MinIO) |
 | Push Notifications | Firebase Cloud Messaging (FCM, HTTP v1), dispatched via the Node service |
 | Frontend Web | Laravel Blade + Tailwind CSS 4 (via Vite) + Alpine.js |
 | Icons | [Lucide Icons](https://lucide.dev) — single icon library across Web & Mobile |
+
+### Database Configuration
+
+CompliTrack uses both databases for different purposes:
+
+- **MongoDB** stores application data, including users, roles, departments,
+  archive documents, compliance checks, notifications, and audit logs.
+- **SQLite** is Laravel's default relational connection for framework support
+  tables such as migrations, sessions, cache, and queued jobs. Its default file
+  is `database/database.sqlite`.
+
+`DB_CONNECTION=sqlite` does **not** mean that the main CompliTrack data is stored
+in SQLite. Application models use the `mongodb` connection configured through
+`MONGODB_URI` and `MONGODB_DATABASE`.
 
 ---
 
@@ -151,6 +165,32 @@ cd CompliTrack
 > ```bash
 > git checkout Development
 > ```
+
+### Quick start (Windows PowerShell)
+
+From the repository root, start the application services with:
+
+```powershell
+.\start-complitrack.ps1
+```
+
+The script checks the required tools, creates environment files if needed,
+installs missing dependencies, generates the Laravel app key, starts MongoDB
+when `mongod` or Docker is available, runs Laravel migrations, builds the
+frontend, and starts Laravel, the realtime service, and Vite. Review the root
+`.env` and `realtime\.env` and set any required secrets or service-specific
+configuration before using the application.
+
+Stop the Laravel, realtime, and Vite services with:
+
+```powershell
+.\stop-complitrack.ps1
+```
+
+MongoDB is left running.
+
+The scripts require PHP 8.2+, Composer, Node.js 20+, and npm on `PATH`.
+For manual installation or other platforms, follow the steps below.
 
 ### 2. Install backend dependencies (Laravel)
 
@@ -345,10 +385,10 @@ Set in the root `.env` (copied from `.env.example`). CompliTrack-specific values
 APP_NAME=CompliTrack
 APP_URL=http://localhost:8000
 
-# Laravel framework tables (sessions, cache, queue) — leave as-is
+# Laravel framework tables (not CompliTrack application data)
 DB_CONNECTION=sqlite
 
-# CompliTrack: MongoDB (app data)
+# CompliTrack application data
 MONGODB_URI=mongodb://localhost:27017/?replicaSet=rs0&directConnection=true
 MONGODB_DATABASE=complitrack
 
