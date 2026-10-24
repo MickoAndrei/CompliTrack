@@ -264,7 +264,7 @@ flutter pub get
 cd ..
 ```
 
-### 7. Verify the install
+### 8. Verify the install
 
 ```bash
 php artisan serve
