@@ -211,7 +211,7 @@ class _LoginScreenState extends State<LoginScreen> {
                             color: AppColors.ustpDark,
                           ),
                           decoration: _loginInputDecoration(
-                            hintText: '••••••••••••',
+                            hintText: 'Password',
                             suffixIcon: IconButton(
                               visualDensity: VisualDensity.compact,
                               padding: EdgeInsets.zero,
@@ -375,7 +375,7 @@ InputDecoration _loginInputDecoration({String? hintText, Widget? suffixIcon}) =>
       hintStyle: const TextStyle(
         fontFamily: 'Inter',
         fontSize: 11,
-        color: AppColors.ustpDark,
+        color: AppColors.ustpMuted,
       ),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(10),

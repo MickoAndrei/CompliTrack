@@ -109,8 +109,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
     required VoidCallback onToggle,
   }) {
     return InputDecoration(
-      hintText: '••••••••••••',
-      hintStyle: const TextStyle(color: AppColors.ustpMuted, letterSpacing: 2),
+      hintText: 'Password',
+      hintStyle: const TextStyle(color: AppColors.ustpMuted),
       contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       filled: true,
       fillColor: AppColors.ustpWhite,

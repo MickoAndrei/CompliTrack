@@ -49,6 +49,7 @@ class UserRepository {
     String userId, {
     String? fullName,
     String? email,
+    int? roleId,
     String? departmentId,
     String? officeName,
     bool? isActive,
@@ -58,6 +59,7 @@ class UserRepository {
       data: {
         if (fullName != null) 'fullName': fullName,
         if (email != null) 'email': email,
+        if (roleId != null) 'roleId': roleId,
         if (departmentId != null) 'departmentId': departmentId,
         if (officeName != null) 'officeName': officeName,
         if (isActive != null) 'isActive': isActive,
