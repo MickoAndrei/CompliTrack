@@ -3,8 +3,6 @@
 .env
 .env.backup
 .env.production
-!/mobile/.env
-mobile/.env
 .phpactor.json
 .phpunit.result.cache
 /.fleet
@@ -24,9 +22,5 @@ mobile/.env
 Homestead.json
 Homestead.yaml
 Thumbs.db
-.aider*
-.aider.chat.history.md
-.aider.input.history
-.aider.tags.cache.v4/
-/mobile/.flutter-plugins-dependencies
-complitrack_web_temp/
+settings.local.json
+/complitrack_web_temp/

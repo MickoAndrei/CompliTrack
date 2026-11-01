@@ -2,14 +2,19 @@
 
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
+<<<<<<< HEAD
+=======
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
 use App\Models\PersonalAccessToken;
 use App\Models\User;
+>>>>>>> db322e2bab4d06394e0bc6a3ba9b2bff4ed2b3d7
 
 Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
 })->purpose('Display an inspiring quote');
+<<<<<<< HEAD
+=======
 
 Artisan::command('mongodb:check', function () {
     try {
@@ -56,3 +61,4 @@ Artisan::command('complitrack:logout-all', function () {
 
     return 0;
 })->purpose('Log out all accounts after a CompliTrack server restart');
+>>>>>>> db322e2bab4d06394e0bc6a3ba9b2bff4ed2b3d7

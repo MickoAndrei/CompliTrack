@@ -2,58 +2,48 @@
 
 namespace App\Models;
 
-use Laravel\Sanctum\HasApiTokens;
-use App\Casts\NullableObjectId;
-use App\Casts\ObjectIdArray;
-use MongoDB\Laravel\Auth\User as Authenticatable;
+// use Illuminate\Contracts\Auth\MustVerifyEmail;
+use Database\Factories\UserFactory;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Foundation\Auth\User as Authenticatable;
+use Illuminate\Notifications\Notifiable;
 
 class User extends Authenticatable
 {
-    use HasApiTokens;
+    /** @use HasFactory<UserFactory> */
+    use HasFactory, Notifiable;
 
-    protected $connection = 'mongodb';
-    protected $collection = 'users';
-    public const CREATED_AT = 'createdAt';
-    public const UPDATED_AT = 'updatedAt';
-
+    /**
+     * The attributes that are mass assignable.
+     *
+     * @var list<string>
+     */
     protected $fillable = [
-        'userCode', 'fullName', 'email', 'password', 'roleId', 'roleSlug',
-        'departmentId', 'assignedDepartmentIds', 'officeName', 'isActive', 'fcmToken', 'lastLoginAt', 'avatarPath',
+        'name',
+        'email',
+        'password',
     ];
 
-    protected $hidden = ['password'];
-
-    protected $casts = [
-        'departmentId' => NullableObjectId::class,
-        'assignedDepartmentIds' => ObjectIdArray::class,
-        'roleId' => 'integer',
-        'isActive' => 'boolean',
-        'lastLoginAt' => 'datetime',
+    /**
+     * The attributes that should be hidden for serialization.
+     *
+     * @var list<string>
+     */
+    protected $hidden = [
+        'password',
+        'remember_token',
     ];
 
-    // roleId: 0 = Super Admin, 1 = Admin, 2 = Auditor, 3 = Auditee (Guide §6)
-    public function isSuperAdmin(): bool
+    /**
+     * Get the attributes that should be cast.
+     *
+     * @return array<string, string>
+     */
+    protected function casts(): array
     {
-        return $this->roleId === 0;
-    }
-
-    public function isAdmin(): bool
-    {
-        return $this->roleId === 1;
-    }
-
-    public function isAuditor(): bool
-    {
-        return $this->roleId === 2;
-    }
-
-    public function isAuditee(): bool
-    {
-        return $this->roleId === 3;
-    }
-
-    public function department()
-    {
-        return $this->belongsTo(Department::class, 'departmentId');
+        return [
+            'email_verified_at' => 'datetime',
+            'password' => 'hashed',
+        ];
     }
 }
