@@ -1,8 +1,41 @@
-<p align="center">
-<a href="https://github.com/MickoAndrei/CompliTrack" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a>
-</p>
+<div align="center">
 
-# CompliTrack
+# 🛡️ CompliTrack
+
+**Regulatory Compliance & Accountability System**
+*USTP Claveria — College of Engineering and Technology (CET)*
+
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+![Laravel](https://img.shields.io/badge/Laravel-12-FF2D20?logo=laravel&logoColor=white)
+![PHP](https://img.shields.io/badge/PHP-8.2%2B-777BB4?logo=php&logoColor=white)
+![MongoDB](https://img.shields.io/badge/MongoDB-7.0-47A248?logo=mongodb&logoColor=white)
+![Node.js](https://img.shields.io/badge/Node.js-Express%20%2B%20Socket.io-339933?logo=node.js&logoColor=white)
+![Flutter](https://img.shields.io/badge/Flutter-3.24%2B-02569B?logo=flutter&logoColor=white)
+![Status](https://img.shields.io/badge/status-in%20development-orange)
+
+</div>
+
+---
+
+## Overview
+
+**CompliTrack** is a centralized, secure, and auditable compliance management
+system built exclusively for **USTP Claveria CET**. It replaces manual,
+paper-based tracking with a single source of truth for regulatory evidence,
+audit findings, and corrective actions — covering standards such as the
+**ARTA 3/7/20-day rule** and **ISO 9001:2015 Clause 9.2/10.2**.
+
+The system is intentionally scoped to three core functions:
+
+| # | Function | Description |
+|---|----------|--------------|
+| 1 | 🗄️ **Archive Files** | Secure, encrypted repository (AES‑256‑GCM) for compliance evidence (PDF, DOCX, images). Organized by Department/Office, tagged by reference standard. |
+| 2 | ✅ **Check Compliance** | Auditors create a `ComplianceCheck` record marking **Compliant** / **Non‑Compliant** based on archived evidence. |
+| 3 | 🔔 **Notify Corrective Action Status** | Non‑compliant checks auto‑create a corrective action (`open → in_progress → closed`) and notify the Auditee in‑app + push on every change. Compliant checks also notify the Auditee once, so a passed check is never silent. |
+
+**Workflow:** Auditor checks → if Non‑Compliant, open CAR → notify Auditee → Auditee uploads fix → Auditor reviews → `in_progress` / `closed` → notify Auditee. If Compliant, notify Auditee immediately with no CAR opened.
+
+---
 
 ## Current Status
 
@@ -484,8 +517,8 @@ Found a security issue? Please don't open a public issue. Use GitHub's
 ## Roadmap
 
 - [ ] Phase 1 — Laravel setup, auth, roles seeder, users/department CRUD
-  - [x] Laravel + MongoDB setup, models, routes, `RoleMiddleware`, `RoleSeeder`
-  - [ ] Auth endpoints, users/department CRUD
+    - [x] Laravel + MongoDB setup, models, routes, `RoleMiddleware`, `RoleSeeder`
+    - [ ] Auth endpoints, users/department CRUD
 - [ ] Phase 2 — Archive module with encryption, upload/download
 - [ ] Phase 3 — Compliance checks, corrective status, notifications collection
 - [ ] Phase 4 — Node.js realtime service + FCM integration
@@ -497,15 +530,12 @@ Found a security issue? Please don't open a public issue. Use GitHub's
 
 ## Contributing
 
-Thank you for considering contributing to Laravel! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+Contributions are welcome. Please open an issue to discuss significant
+changes before submitting a pull request, and follow the naming conventions
+in the project's development guide (PascalCase models, camelCase fields,
+kebab-case routes).
 
-## Code of Conduct
-
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
-
-## Security Vulnerabilities
-
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+---
 
 ## License
 
