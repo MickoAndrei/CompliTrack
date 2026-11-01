@@ -1,6 +1,4 @@
 import './bootstrap';
-<<<<<<< HEAD
-=======
 import Alpine from 'alpinejs';
 import { createIcons, icons } from 'lucide';
 import './pages';
@@ -60,4 +58,3 @@ document.addEventListener('DOMContentLoaded', renderIcons);
 document.addEventListener('alpine:initialized', renderIcons);
 document.addEventListener('DOMContentLoaded', startServerStatusMonitor);
 Alpine.start();
->>>>>>> db322e2bab4d06394e0bc6a3ba9b2bff4ed2b3d7
