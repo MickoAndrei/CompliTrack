@@ -2,7 +2,8 @@ name: CompliTrack
 
 on:
   push:
-    branches: [ main, master ]
+    branches: [ "*" ]
+  workflow_dispatch:
 
 jobs:
   build:
@@ -13,16 +14,16 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
-      
+
       - uses: subosito/flutter-action@v2
         with:
           flutter-version: '3.x'
           channel: 'stable'
           cache: true
-          
+
       - run: flutter pub get
       - run: flutter build apk --release
-      
+
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
