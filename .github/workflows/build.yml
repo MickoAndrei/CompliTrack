@@ -25,8 +25,8 @@ jobs:
 
       - name: Create .env file
         run: |
-          echo "COMPLITRACK_API_URL=https://your-backend-api.com" > .env
-          echo "COMPLITRACK_REALTIME_URL=https://your-backend-socket.com" >> .env
+          echo "COMPLITRACK_API_URL=https://complitrack.ai.studio" > .env
+          echo "COMPLITRACK_REALTIME_URL=https://complitrack.ai.studio" >> .env
         working-directory: ./mobile
 
       - name: Install dependencies
