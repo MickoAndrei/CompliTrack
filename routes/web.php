@@ -1,6 +1,5 @@
 <?php
 
-use App\Http\Controllers\Web\AuthController;
 use Illuminate\Support\Facades\Route;
 
 Route::view('/', 'auth.login');

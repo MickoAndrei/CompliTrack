@@ -44,16 +44,6 @@ return [
             'transaction_mode' => 'DEFERRED',
         ],
 
-        // CompliTrack app data lives here (users, departments, archives,
-        // compliance checks, notifications, audit logs — Guide §7).
-        // The default relational connection above still handles Laravel's
-        // own sessions/cache/jobs/personal_access_tokens tables.
-        'mongodb' => [
-            'driver' => 'mongodb',
-            'dsn' => env('MONGODB_URI', 'mongodb://localhost:27017/?replicaSet=rs0&directConnection=true'),
-            'database' => env('MONGODB_DATABASE', 'complitrack'),
-        ],
-
         'mysql' => [
             'driver' => 'mysql',
             'url' => env('DB_URL'),
