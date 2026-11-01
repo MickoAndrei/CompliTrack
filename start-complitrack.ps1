@@ -46,51 +46,12 @@ function Stop-PidFile([string]$pidFile) {
 }
 
 function Ensure-MongoRunning {
-    $mongod = Get-Command mongod -ErrorAction SilentlyContinue
-    if ($mongod) {
-        $running = Get-Process mongod -ErrorAction SilentlyContinue
-        if (-not $running) {
-            $mongoData = Join-Path $repoRoot "mongodb-data"
-            New-Item -ItemType Directory -Force -Path $mongoData | Out-Null
-
-            $logPath = Join-Path $mongoData "mongod.log"
-            $dbPath = Join-Path $mongoData "data"
-
-            New-Item -ItemType Directory -Force -Path $dbPath | Out-Null
-
-            Start-Process -FilePath $mongod.Source `
-                -ArgumentList "--dbpath `"$dbPath`" --logpath `"$logPath`" --fork --bind_ip_all --port 27017" `
-                -NoNewWindow -RedirectStandardOutput "$logDir\mongod.out.log" -RedirectStandardError "$logDir\mongod.err.log"
-            Write-Host "MongoDB started with mongod"
-        } else {
-            Write-Host "MongoDB already running"
-        }
-        return
+    Write-Host "Checking if MongoDB is reachable on port 27017..."
+    $connection = Test-NetConnection -ComputerName "127.0.0.1" -Port 27017 -WarningAction SilentlyContinue
+    if (-not $connection.TcpTestSucceeded) {
+        throw "MongoDB is not running or not reachable on port 27017. Please start your MongoDB server before running CompliTrack."
     }
-
-    $docker = Get-Command docker -ErrorAction SilentlyContinue
-    if ($docker) {
-        $containers = docker ps --format "{{.Names}}" 2>$null
-        if (-not ($containers -contains "complitrack-mongo")) {
-            $mongoData = Join-Path $repoRoot "mongodb-data"
-            New-Item -ItemType Directory -Force -Path $mongoData | Out-Null
-
-            docker rm -f complitrack-mongo 2>$null | Out-Null
-            docker run -d `
-                --name complitrack-mongo `
-                -p 27017:27017 `
-                -v "${mongoData}:/data/db" `
-                mongo:7 `
-                --bind_ip_all | Out-Null
-
-            Write-Host "MongoDB container started"
-        } else {
-            Write-Host "MongoDB container already running"
-        }
-        return
-    }
-
-    Write-Warning "MongoDB not installed and Docker not available."
+    Write-Host "  [OK] MongoDB is running and reachable on port 27017."
 }
 
 Write-Host "Checking required tools..."
@@ -197,7 +158,7 @@ if (-not (Test-Path (Join-Path $repoRoot "vendor"))) {
 }
 
 if (-not (Test-Path (Join-Path $repoRoot "node_modules"))) {
-    npm install
+    & $env:ComSpec /c "`"$npmCommand`" install"
     Write-Host "  [OK] Installed Node dependencies"
 } else {
     Write-Host "  [OK] Node dependencies already installed"
@@ -207,7 +168,7 @@ if (Test-Path (Join-Path $repoRoot "realtime")) {
     $rtNodeModules = Join-Path $repoRoot "realtime\node_modules"
     if (-not (Test-Path $rtNodeModules)) {
         Push-Location (Join-Path $repoRoot "realtime")
-        npm install
+        & $env:ComSpec /c "`"$npmCommand`" install"
         Pop-Location
         Write-Host "  [OK] Installed realtime dependencies"
     } else {
@@ -254,7 +215,8 @@ if (Test-PortInUse $realtimePort) {
 
 Write-Host ""
 Write-Host "Building frontend..."
-npm run build > "$logDir\frontend-build.log" 2>&1
+$buildArgs = "/d /s /c `"`"$npmCommand`" run build > `"$logDir\frontend-build.log`" 2>&1`""
+& $env:ComSpec $buildArgs | Out-Null
 Write-Host "  [OK] Frontend build complete"
 
 if (Test-PortInUse 5173) {

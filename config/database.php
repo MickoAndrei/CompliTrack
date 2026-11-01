@@ -44,6 +44,12 @@ return [
             'transaction_mode' => 'DEFERRED',
         ],
 
+        'mongodb' => [
+            'driver' => 'mongodb',
+            'dsn' => env('MONGODB_URI', 'mongodb://127.0.0.1:27017/?directConnection=true'),
+            'database' => env('MONGODB_DATABASE', 'complitrack'),
+        ],
+
         'mysql' => [
             'driver' => 'mysql',
             'url' => env('DB_URL'),
