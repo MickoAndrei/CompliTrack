@@ -34,7 +34,7 @@ jobs:
         working-directory: ./mobile
 
       - name: Build APK
-        run: flutter build apk --release
+        run: flutter build apk --release --no-tree-shake-icons
         working-directory: ./mobile
 
       - name: Upload APK
