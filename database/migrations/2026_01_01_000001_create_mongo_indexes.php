@@ -57,7 +57,20 @@ return new class extends Migration
             $collection = $database->selectCollection($collectionName);
 
             foreach ($indexes as [$keys, $options]) {
-                $collection->createIndex($keys, $options);
+                try {
+                    $collection->createIndex($keys, $options);
+                } catch (\MongoDB\Driver\Exception\CommandException $e) {
+                    if (isset($options['name'])) {
+                        try {
+                            $collection->dropIndex($options['name']);
+                            $collection->createIndex($keys, $options);
+                        } catch (\Throwable $dropException) {
+                            throw $e;
+                        }
+                    } else {
+                        throw $e;
+                    }
+                }
             }
         }
     }
