@@ -45,6 +45,25 @@ jobs:
           git push origin HEAD:CompliTrack
           gh workflow run build.yml --ref CompliTrack
 
+      - name: Validate deployment secrets
+        env:
+          SERVER_IP: ${{ secrets.SERVER_IP }}
+          SERVER_USER: ${{ secrets.SERVER_USER }}
+          SERVER_SSH_KEY: ${{ secrets.SERVER_SSH_KEY }}
+          SERVER_APP_PATH: ${{ secrets.SERVER_APP_PATH }}
+        run: |
+          missing=()
+          for name in SERVER_IP SERVER_USER SERVER_SSH_KEY SERVER_APP_PATH; do
+            if [[ -z "${!name}" ]]; then
+              missing+=("$name")
+            fi
+          done
+
+          if (( ${#missing[@]} > 0 )); then
+            printf 'Missing required GitHub Actions secret(s): %s\n' "${missing[*]}" >&2
+            exit 1
+          fi
+
       - name: Deploy to server via SSH
         uses: appleboy/ssh-action@v1.0.3
         env:
