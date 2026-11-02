@@ -3,6 +3,14 @@
 .env
 .env.backup
 .env.production
+.env.*
+!.env.example
+**/serviceAccountKey.json
+**/firebase-adminsdk*.json
+**/*service-account*.json
+**/credentials*.json
+**/*.pem
+**/*.p12
 .phpactor.json
 .phpunit.result.cache
 /.fleet
