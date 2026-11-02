@@ -6,6 +6,7 @@ import '../../core/constants/app_colors.dart';
 import '../../core/services/socket_service.dart';
 import '../../data/repositories/notification_repository.dart';
 import '../providers/auth_provider.dart';
+import 'current_user_avatar.dart';
 import 'ustp_logo.dart';
 
 class UstpAppBar extends StatefulWidget implements PreferredSizeWidget {
@@ -72,14 +73,9 @@ class _UstpAppBarState extends State<UstpAppBar> {
                   );
                 }
               },
-              child: const CircleAvatar(
-                radius: 18,
-                backgroundColor: AppColors.ustpGold,
-                child: CircleAvatar(
-                  radius: 16,
-                  backgroundColor: AppColors.ustpLight,
-                  child: _ProfileInitials(),
-                ),
+              child: CurrentUserAvatar(
+                name: auth.currentUser?.fullName ?? '',
+                radius: 16,
               ),
             ),
           ],
@@ -194,27 +190,4 @@ class _UstpNotificationButtonState extends State<UstpNotificationButton> {
           ),
         ),
       );
-}
-
-class _ProfileInitials extends StatelessWidget {
-  const _ProfileInitials();
-
-  @override
-  Widget build(BuildContext context) {
-    final name = context.watch<AuthProvider>().currentUser?.fullName ?? '';
-    final parts = name.trim().split(RegExp(r'\s+'));
-    final initials = parts.isEmpty || parts.first.isEmpty
-        ? '?'
-        : parts.length == 1
-            ? parts.first.substring(0, 1).toUpperCase()
-            : '${parts.first[0]}${parts.last[0]}'.toUpperCase();
-    return Text(
-      initials,
-      style: const TextStyle(
-        color: AppColors.ustpNavy,
-        fontSize: 11,
-        fontWeight: FontWeight.bold,
-      ),
-    );
-  }
 }

@@ -11,6 +11,7 @@ import '../../widgets/auditor_page_header.dart';
 import '../../widgets/admin_page_header.dart';
 import '../../widgets/role_badge.dart';
 import '../../widgets/ustp_app_bar.dart';
+import '../../widgets/current_user_avatar.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -149,6 +150,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
     if (auth.roleId == 2) {
       return _buildAuditorProfile(fullName);
+    }
+    if (auth.roleId == 3) {
+      return _buildAuditeeProfile(fullName);
     }
 
     final profileContent = ListView(
@@ -434,6 +438,204 @@ class _ProfileScreenState extends State<ProfileScreen> {
           : null,
     );
   }
+
+  Widget _buildAuditeeProfile(String fullName) => Scaffold(
+        backgroundColor: AppColors.ustpLight,
+        appBar: UstpAppBar(onProfileTap: () {}),
+        body: ListView(
+          padding: const EdgeInsets.fromLTRB(20, 28, 20, 24),
+          children: [
+            Container(
+              height: 92,
+              padding: const EdgeInsets.symmetric(horizontal: 18),
+              decoration: BoxDecoration(
+                color: AppColors.ustpWhite,
+                borderRadius: BorderRadius.circular(13),
+                border: Border.all(color: const Color(0xFFE2E8F0)),
+              ),
+              child: Row(
+                children: [
+                  CurrentUserAvatar(name: fullName, radius: 27),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          fullName,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontFamily: 'Poppins',
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.ustpDark,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 9, vertical: 3),
+                          decoration: BoxDecoration(
+                            color: AppColors.ustpGold,
+                            borderRadius: BorderRadius.circular(5),
+                          ),
+                          child: const Text(
+                            'AUDITEE',
+                            style: TextStyle(
+                              fontFamily: 'Inter',
+                              fontSize: 9,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.ustpNavy,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 20),
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: AppColors.ustpWhite,
+                borderRadius: BorderRadius.circular(13),
+                border: Border.all(color: const Color(0xFFE2E8F0)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const _FieldLabel('Full Name'),
+                  const SizedBox(height: 6),
+                  TextFormField(
+                    controller: _fullNameController,
+                    readOnly: true,
+                    style: const TextStyle(
+                      fontFamily: 'Inter',
+                      fontSize: 13,
+                      color: AppColors.ustpDark,
+                    ),
+                    decoration: _accountDecoration(fullName, enabled: true),
+                  ),
+                  const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 14),
+                    child: Divider(height: 1, color: Color(0xFFE2E8F0)),
+                  ),
+                  const Text(
+                    'Change Password',
+                    style: TextStyle(
+                      fontFamily: 'Poppins',
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.ustpNavy,
+                    ),
+                  ),
+                  const SizedBox(height: 3),
+                  const Text(
+                    'Ensure your credentials remain secure.',
+                    style: TextStyle(
+                      fontFamily: 'Inter',
+                      fontSize: 10,
+                      color: AppColors.ustpMuted,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Form(
+                    key: _formKey,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const _FieldLabel('Current Password'),
+                        const SizedBox(height: 6),
+                        StatefulBuilder(
+                          builder: (context, setFieldState) => TextFormField(
+                            controller: _currentPasswordController,
+                            obscureText: _hideCurrentPassword,
+                            validator: (value) => value == null || value.isEmpty
+                                ? 'Enter your current password'
+                                : null,
+                            decoration: _passwordDecoration(
+                              obscureText: _hideCurrentPassword,
+                              onToggle: () => setFieldState(
+                                () => _hideCurrentPassword =
+                                    !_hideCurrentPassword,
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 14),
+                        const _FieldLabel('New Password'),
+                        const SizedBox(height: 6),
+                        StatefulBuilder(
+                          builder: (context, setFieldState) => TextFormField(
+                            controller: _newPasswordController,
+                            obscureText: _hideNewPassword,
+                            validator: (value) =>
+                                value == null || value.length < 12
+                                    ? 'Use at least 12 characters'
+                                    : null,
+                            decoration: _passwordDecoration(
+                              obscureText: _hideNewPassword,
+                              onToggle: () => setFieldState(
+                                () => _hideNewPassword = !_hideNewPassword,
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        SizedBox(
+                          width: double.infinity,
+                          height: 44,
+                          child: ElevatedButton(
+                            onPressed: _isUpdatingPassword
+                                ? null
+                                : _handleUpdatePassword,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppColors.ustpGold,
+                              foregroundColor: AppColors.ustpNavy,
+                              elevation: 0,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                            ),
+                            child: _isUpdatingPassword
+                                ? const SizedBox(
+                                    width: 18,
+                                    height: 18,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      color: AppColors.ustpNavy,
+                                    ),
+                                  )
+                                : const Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(AppIcons.lock, size: 17),
+                                      SizedBox(width: 8),
+                                      Text(
+                                        'Update Password',
+                                        style: TextStyle(
+                                          fontFamily: 'Inter',
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      );
 
   Widget _buildAuditorProfile(String fullName) {
     return Scaffold(

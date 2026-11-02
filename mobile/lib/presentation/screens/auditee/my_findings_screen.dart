@@ -93,7 +93,8 @@ class _MyFindingsScreenState extends State<MyFindingsScreen> {
               return ListView(children: [
                 Padding(
                   padding: const EdgeInsets.all(24),
-                  child: Text('Could not load findings.\n${snapshot.error}', textAlign: TextAlign.center),
+                  child: Text('Could not load findings.\n${snapshot.error}',
+                      textAlign: TextAlign.center),
                 ),
               ]);
             }
@@ -107,56 +108,59 @@ class _MyFindingsScreenState extends State<MyFindingsScreen> {
             }
             final checks = _visibleChecks(snapshot.data!);
             return ListView(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 20),
-          children: [
-            TextField(
-              controller: _searchController,
-              onChanged: (value) => setState(() => _query = value),
-              decoration: InputDecoration(
-                hintText: 'Search checks...',
-                hintStyle: const TextStyle(color: AppColors.ustpMuted),
-                prefixIcon: const Icon(AppIcons.search, size: 20),
-                filled: true,
-                fillColor: AppColors.ustpWhite,
-                contentPadding: const EdgeInsets.symmetric(vertical: 12),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10),
-                  borderSide: BorderSide(
-                    color: AppColors.ustpMuted.withValues(alpha: 0.2),
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 20),
+              children: [
+                TextField(
+                  controller: _searchController,
+                  onChanged: (value) => setState(() => _query = value),
+                  decoration: InputDecoration(
+                    hintText: 'Search checks...',
+                    hintStyle: const TextStyle(color: AppColors.ustpMuted),
+                    prefixIcon: const Icon(AppIcons.search, size: 20),
+                    isDense: true,
+                    filled: true,
+                    fillColor: AppColors.ustpWhite,
+                    contentPadding: const EdgeInsets.symmetric(vertical: 8),
+                    prefixIconConstraints:
+                        const BoxConstraints(minWidth: 40, minHeight: 34),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                      borderSide: BorderSide(
+                        color: AppColors.ustpMuted.withValues(alpha: 0.2),
+                      ),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                      borderSide: BorderSide(
+                        color: AppColors.ustpMuted.withValues(alpha: 0.2),
+                      ),
+                    ),
                   ),
                 ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10),
-                  borderSide: BorderSide(
-                    color: AppColors.ustpMuted.withValues(alpha: 0.2),
+                const SizedBox(height: 14),
+                if (checks.isEmpty)
+                  const Padding(
+                    padding: EdgeInsets.only(top: 48),
+                    child: Center(
+                      child: Text(
+                        'No checks match your search.',
+                        style: TextStyle(color: AppColors.ustpMuted),
+                      ),
+                    ),
+                  )
+                else
+                  ...checks.map(
+                    (check) => Padding(
+                      padding: const EdgeInsets.only(bottom: 12),
+                      child: _CheckCard(
+                        item: check,
+                        onViewStandard: () => _showDetail(check),
+                        onUpload: () => _showUpload(check),
+                      ),
+                    ),
                   ),
-                ),
-              ),
-            ),
-            const SizedBox(height: 14),
-            if (checks.isEmpty)
-              const Padding(
-                padding: EdgeInsets.only(top: 48),
-                child: Center(
-                  child: Text(
-                    'No checks match your search.',
-                    style: TextStyle(color: AppColors.ustpMuted),
-                  ),
-                ),
-              )
-            else
-              ...checks.map(
-                (check) => Padding(
-                  padding: const EdgeInsets.only(bottom: 12),
-                  child: _CheckCard(
-                    item: check,
-                    onViewStandard: () => _showDetail(check),
-                    onUpload: () => _showUpload(check),
-                  ),
-                ),
-              ),
               ],
-          );
+            );
           },
         ),
       ),
@@ -245,7 +249,7 @@ class _CheckCard extends StatelessWidget {
             style: TextStyle(fontSize: 10, color: AppColors.ustpMuted),
           ),
           Text(
-            '${item.standard} · ${item.metric}',
+            '${item.standard}${item.standardMetricSeparator}${item.metric}',
             style: const TextStyle(fontSize: 12, color: AppColors.ustpDark),
           ),
           const SizedBox(height: 6),
@@ -346,6 +350,13 @@ class _CheckItem {
   });
 
   factory _CheckItem.fromModel(ComplianceCheckModel check) {
+    final standard = switch (check.referenceStandard) {
+      'ISO9001-9.2' => 'ISO 9001',
+      'ARTA-3days' => 'ARTA Compliance 3',
+      'ARTA-7days' => 'ARTA Compliance 7',
+      'ARTA-20days' => 'ARTA Compliance 20',
+      _ => check.referenceStandard,
+    };
     return _CheckItem(
       id: check.id,
       code: check.checkCode,
@@ -355,7 +366,7 @@ class _CheckItem {
         'closed' => 'Closed',
         _ => 'Compliant',
       },
-      standard: check.referenceStandard,
+      standard: standard,
       metric: check.remarks ?? check.departmentName ?? '',
       auditor: check.auditorName ?? '',
       dueDate: check.dueDate == null
@@ -374,6 +385,8 @@ class _CheckItem {
   final String metric;
   final String auditor;
   final String dueDate;
+  String get standardMetricSeparator =>
+      standard.startsWith('ISO') ? ' | ' : ' · ';
   final List<Map<String, dynamic>> statusHistory;
   final bool canUpload;
   final List<String> linkedEvidence;

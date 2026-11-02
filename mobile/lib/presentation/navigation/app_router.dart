@@ -22,6 +22,7 @@ import '../screens/auditor/create_check_screen.dart';
 import '../screens/auth/forgot_password_screen.dart';
 import '../screens/auth/landing_screen.dart';
 import '../screens/auth/login_screen.dart';
+import '../screens/auth/reset_password_screen.dart';
 import '../screens/common/forbidden_403_screen.dart';
 import '../screens/common/profile_screen.dart';
 import '../screens/super_admin/settings_readonly_screen.dart';
@@ -41,8 +42,10 @@ class AppRouter {
           isLoggedIn ? RoleHelper.getDashboardRoute(currentRoleId) : '/landing',
       redirect: (context, state) {
         final loc = state.matchedLocation;
-        final isAuthRoute =
-            loc == '/landing' || loc == '/login' || loc == '/forgot-password';
+        final isAuthRoute = loc == '/landing' ||
+            loc == '/login' ||
+            loc == '/forgot-password' ||
+            loc == '/reset-password';
         if (!isLoggedIn && !isAuthRoute) {
           return '/login';
         }
@@ -76,6 +79,13 @@ class AppRouter {
         GoRoute(
           path: '/forgot-password',
           builder: (context, state) => const ForgotPasswordScreen(),
+        ),
+        GoRoute(
+          path: '/reset-password',
+          builder: (context, state) => ResetPasswordScreen(
+            email: state.uri.queryParameters['email'] ?? '',
+            token: state.uri.queryParameters['token'] ?? '',
+          ),
         ),
         GoRoute(
           path: '/403',
@@ -297,32 +307,36 @@ class AppRouter {
             StatefulShellBranch(
               routes: [
                 GoRoute(
-                  path: '/auditee/upload',
-                  builder: (context, state) => const UploadEvidenceScreen(),
+                  path: '/auditee/archives',
+                  builder: (context, state) => const MyArchivesScreen(),
                 ),
               ],
             ),
             StatefulShellBranch(
               routes: [
                 GoRoute(
-                  path: '/auditee/notifications',
-                  builder: (context, state) => const NotificationsScreen(),
+                  path: '/auditee/standards',
+                  builder: (context, state) => const HelpReferenceScreen(),
+                ),
+              ],
+            ),
+            StatefulShellBranch(
+              routes: [
+                GoRoute(
+                  path: '/auditee/profile',
+                  builder: (context, state) => const ProfileScreen(),
                 ),
               ],
             ),
           ],
         ),
         GoRoute(
-          path: '/auditee/archives',
-          builder: (context, state) => const MyArchivesScreen(),
+          path: '/auditee/upload',
+          builder: (context, state) => const UploadEvidenceScreen(),
         ),
         GoRoute(
-          path: '/auditee/standards',
-          builder: (context, state) => const HelpReferenceScreen(),
-        ),
-        GoRoute(
-          path: '/auditee/profile',
-          builder: (context, state) => const ProfileScreen(),
+          path: '/auditee/notifications',
+          builder: (context, state) => const NotificationsScreen(),
         ),
       ],
     );

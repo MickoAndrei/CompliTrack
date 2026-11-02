@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/utils/role_helper.dart';
 import '../../providers/auth_provider.dart';
+import '../../widgets/auth_brand_header.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -76,83 +77,11 @@ class _LoginScreenState extends State<LoginScreen> {
         backgroundColor: AppColors.ustpWhite,
         body: Column(
           children: [
-            SizedBox(
-              height: 188,
-              width: double.infinity,
-              child: Stack(
-                clipBehavior: Clip.hardEdge,
-                children: [
-                  const Positioned.fill(
-                    child: ColoredBox(color: AppColors.ustpNavy),
-                  ),
-                  const Positioned(
-                    top: -22,
-                    right: -24,
-                    child: _LoginBackdropCircle(diameter: 104),
-                  ),
-                  const Positioned(
-                    left: -34,
-                    bottom: -8,
-                    child: _LoginBackdropCircle(diameter: 112),
-                  ),
-                  Positioned(
-                    left: 20,
-                    bottom: 16,
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        Image.asset(
-                          'assets/images/ustp-logo-mark.png',
-                          width: 22,
-                          height: 27,
-                          fit: BoxFit.contain,
-                          filterQuality: FilterQuality.high,
-                        ),
-                        const SizedBox(width: 10),
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const Text.rich(
-                              TextSpan(children: [
-                                TextSpan(
-                                  text: 'Compli',
-                                  style: TextStyle(color: AppColors.ustpWhite),
-                                ),
-                                TextSpan(
-                                  text: 'Track',
-                                  style: TextStyle(color: AppColors.ustpGold),
-                                ),
-                              ]),
-                              style: TextStyle(
-                                fontFamily: 'Poppins',
-                                fontSize: 14,
-                                height: 1.2,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                            const SizedBox(height: 2),
-                            const Text(
-                              'CLAVERIA CAMPUS',
-                              style: TextStyle(
-                                fontFamily: 'Inter',
-                                fontSize: 8,
-                                height: 1.2,
-                                color: Color(0xFFB8C6DC),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
+            const AuthBrandHeader(),
             Expanded(
               child: LayoutBuilder(
                 builder: (context, constraints) => SingleChildScrollView(
-                  padding: const EdgeInsets.fromLTRB(18, 16, 18, 20),
+                  padding: const EdgeInsets.fromLTRB(20, 25, 20, 24),
                   child: ConstrainedBox(
                     constraints:
                         BoxConstraints(minHeight: constraints.maxHeight - 36),
@@ -163,7 +92,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           'USTP Claveria Campus',
                           style: TextStyle(
                             fontFamily: 'Poppins',
-                            fontSize: 16,
+                            fontSize: 20,
                             height: 1.35,
                             fontWeight: FontWeight.w700,
                             color: AppColors.ustpDark,
@@ -174,12 +103,12 @@ class _LoginScreenState extends State<LoginScreen> {
                           'Regulatory Compliance & Accountability in one place.',
                           style: TextStyle(
                             fontFamily: 'Inter',
-                            fontSize: 10,
+                            fontSize: 12,
                             height: 1.4,
                             color: AppColors.ustpMuted,
                           ),
                         ),
-                        const SizedBox(height: 18),
+                        const SizedBox(height: 24),
                         const _LoginFieldLabel('Email'),
                         const SizedBox(height: 4),
                         TextField(
@@ -195,7 +124,7 @@ class _LoginScreenState extends State<LoginScreen> {
                             hintText: 'username@ustp.edu.ph',
                           ),
                         ),
-                        const SizedBox(height: 11),
+                        const SizedBox(height: 16),
                         const _LoginFieldLabel('Password'),
                         const SizedBox(height: 4),
                         TextField(
@@ -276,10 +205,10 @@ class _LoginScreenState extends State<LoginScreen> {
                             ),
                           ],
                         ),
-                        const SizedBox(height: 11),
+                        const SizedBox(height: 12),
                         SizedBox(
                           width: double.infinity,
-                          height: 38,
+                          height: 44,
                           child: ElevatedButton(
                             style: ElevatedButton.styleFrom(
                               backgroundColor: AppColors.ustpGold,
@@ -304,18 +233,18 @@ class _LoginScreenState extends State<LoginScreen> {
                                     'Log In',
                                     style: TextStyle(
                                       fontFamily: 'Inter',
-                                      fontSize: 10,
+                                      fontSize: 13,
                                       fontWeight: FontWeight.w700,
                                     ),
                                   ),
                           ),
                         ),
-                        const SizedBox(height: 11),
+                        const SizedBox(height: 16),
                         const Text(
                           'Accounts are provisioned by your Department Admin. Contact your Super Admin if you need access.',
                           style: TextStyle(
                             fontFamily: 'Inter',
-                            fontSize: 8,
+                            fontSize: 10,
                             height: 1.45,
                             color: AppColors.ustpMuted,
                           ),
@@ -333,21 +262,6 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 }
 
-class _LoginBackdropCircle extends StatelessWidget {
-  final double diameter;
-  const _LoginBackdropCircle({required this.diameter});
-
-  @override
-  Widget build(BuildContext context) => Container(
-        width: diameter,
-        height: diameter,
-        decoration: const BoxDecoration(
-          color: Color(0xFF102F68),
-          shape: BoxShape.circle,
-        ),
-      );
-}
-
 class _LoginFieldLabel extends StatelessWidget {
   final String text;
   const _LoginFieldLabel(this.text);
@@ -357,7 +271,7 @@ class _LoginFieldLabel extends StatelessWidget {
         text,
         style: const TextStyle(
           fontFamily: 'Inter',
-          fontSize: 10,
+          fontSize: 12,
           fontWeight: FontWeight.w600,
           color: AppColors.ustpDark,
         ),
@@ -371,10 +285,10 @@ InputDecoration _loginInputDecoration({String? hintText, Widget? suffixIcon}) =>
       isDense: true,
       filled: true,
       fillColor: AppColors.ustpWhite,
-      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 13, vertical: 12),
       hintStyle: const TextStyle(
         fontFamily: 'Inter',
-        fontSize: 11,
+        fontSize: 12,
         color: AppColors.ustpDark,
       ),
       border: OutlineInputBorder(
