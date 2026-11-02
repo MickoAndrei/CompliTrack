@@ -56,6 +56,9 @@ class User extends Authenticatable
         return [
             'createdAt' => 'datetime',
             'updatedAt' => 'datetime',
+            // Read timestamps created before this model used camelCase names.
+            'created_at' => 'datetime',
+            'updated_at' => 'datetime',
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'isActive' => 'boolean',

@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use DateTimeInterface;
 use App\Models\ArchiveDocument;
 use App\Models\ComplianceCheck;
 use App\Models\Department;
@@ -35,15 +36,30 @@ class ReportGeneratorService
 
         $users = $this->scopes->users($actor);
         if ($startDate || $endDate) {
-            if ($startDate) {
-                $users->where('createdAt', '>=', $startDate->copy()->utc());
-            }
-            if ($endDate) {
-                $users->where('createdAt', '<=', $endDate->copy()->utc());
-            }
-            $userGrowth = $users->get(['createdAt'])
-                ->filter(static fn (User $user) => $user->createdAt !== null)
-                ->groupBy(static fn (User $user) => $user->createdAt->format('Y-m'))
+            $dateRange = static function ($query) use ($startDate, $endDate): void {
+                if ($startDate) {
+                    $query->where('createdAt', '>=', $startDate->copy()->utc());
+                }
+                if ($endDate) {
+                    $query->where('createdAt', '<=', $endDate->copy()->utc());
+                }
+            };
+            $legacyDateRange = static function ($query) use ($startDate, $endDate): void {
+                if ($startDate) {
+                    $query->where('created_at', '>=', $startDate->copy()->utc());
+                }
+                if ($endDate) {
+                    $query->where('created_at', '<=', $endDate->copy()->utc());
+                }
+            };
+            $users->where(static function ($query) use ($dateRange, $legacyDateRange): void {
+                $query->where($dateRange)->orWhere($legacyDateRange);
+            });
+
+            $userGrowth = $users->get(['createdAt', 'created_at'])
+                ->map(static fn (User $user) => self::userCreationDate($user))
+                ->filter()
+                ->groupBy(static fn (Carbon $date) => $date->format('Y-m'))
                 ->map(static fn ($group, $month) => [
                     'month' => Carbon::createFromFormat('!Y-m', (string) $month)->format('M'),
                     'count' => $group->count(),
@@ -53,8 +69,13 @@ class ReportGeneratorService
             // trend is meaningful even when no one signed up in a particular month.
             $trendStart = now()->utc()->startOfMonth()->subMonths(5);
             $trendEnd = $trendStart->copy()->addMonths(6);
-            $userDates = $users->where('createdAt', '<', $trendEnd)->get(['createdAt'])
-                ->pluck('createdAt')
+            $userDates = $users
+                ->where(static function ($query) use ($trendEnd): void {
+                    $query->where('createdAt', '<', $trendEnd)
+                        ->orWhere('created_at', '<', $trendEnd);
+                })
+                ->get(['createdAt', 'created_at'])
+                ->map(static fn (User $user) => self::userCreationDate($user))
                 ->filter();
             $userGrowth = collect(range(0, 5))->map(function (int $offset) use ($trendStart, $userDates) {
                 $month = $trendStart->copy()->addMonths($offset);
@@ -129,5 +150,15 @@ class ReportGeneratorService
             'totalAuditors' => $this->scopes->users($actor)->where('roleId', 2)->where('isActive', true)->count(),
             'totalAuditees' => $this->scopes->users($actor)->where('roleId', 3)->where('isActive', true)->count(),
         ];
+    }
+
+    private static function userCreationDate(User $user): ?Carbon
+    {
+        $createdAt = $user->createdAt ?? $user->getAttribute('created_at');
+        if (! $createdAt instanceof DateTimeInterface) {
+            return null;
+        }
+
+        return Carbon::instance($createdAt)->utc();
     }
 }
