@@ -10,6 +10,9 @@ use MongoDB\Laravel\Auth\User as Authenticatable;
 
 class User extends Authenticatable
 {
+    public const CREATED_AT = 'createdAt';
+    public const UPDATED_AT = 'updatedAt';
+
     /** @use HasFactory<UserFactory> */
     use HasFactory, Notifiable;
 
@@ -51,6 +54,8 @@ class User extends Authenticatable
     protected function casts(): array
     {
         return [
+            'createdAt' => 'datetime',
+            'updatedAt' => 'datetime',
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'isActive' => 'boolean',
