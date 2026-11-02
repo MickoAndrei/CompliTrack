@@ -498,35 +498,20 @@ the auth routes requires `auth:sanctum`.
 
 ## Folder Structure
 
-See [`FILE_STRUCTURE.md`](FILE_STRUCTURE.md) for the complete file-by-file tree.
-Top level:
+See [`FILE_STRUCTURE.md`](FILE_STRUCTURE.md) for the current project layout,
+including the backend, Flutter app, realtime service, tests, and CI workflows.
 
 ```
-app/
-  Helpers/RoleHelper.php
-  Http/Controllers/Api/V1/     # Auth, User, Department, Archive, ComplianceCheck,
-                               # Notification, AuditLog, Report controllers
-  Http/Controllers/Web/        # Dashboard, Profile
-  Http/Middleware/             # RoleMiddleware, AuditLogMiddleware, EnsureUserIsActive
-  Models/                      # User, Role, Department, ArchiveDocument,
-                               # ComplianceCheck, Notification, AuditLog
-  Services/                    # ArchiveEncryption, ComplianceCheck,
-                               # NotificationDispatch, ReportGenerator, AuditLog
-config/                        # database.php (mongodb), sanctum, jwt, cors
-database/                      # migrations, seeders (Role, Department, SuperAdmin)
-resources/views/               # Blade: super-admin/, admin/, auditor/, auditee/,
-                               # auth/, components/, layouts/, partials/, errors/
-routes/                        # api.php, web.php
-tests/
-
-realtime/                      # Node.js + Socket.io + FCM service
-  src/{config,sockets,watchers,services,models,utils}/
-
-mobile/                        # Flutter app (all 4 roles)
-  lib/
-    core/{constants,theme,utils,network,services}/
-    data/{models,repositories}/
-    presentation/{navigation,screens,widgets}/
+.github/workflows/              # Flutter APK build and backend deployment
+app/                            # Laravel controllers, models, middleware, services
+config/                         # Laravel application configuration
+database/                       # Laravel migrations, factories, seeders
+mobile/                         # Flutter app, platform projects, and tests
+realtime/                       # Node.js, Express, and Socket.IO service
+resources/                      # Laravel Blade views, CSS, and JavaScript
+routes/                         # Laravel web and API routes
+scripts/                        # Shared semantic-version bump and tests
+tests/                          # Laravel feature and unit tests
 ```
 
 ---

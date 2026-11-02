@@ -1,10 +1,17 @@
-# CompliTrack — Full File Structure
+# CompliTrack — File-by-File Structure
 
-`← NEW` = path added during the CompliTrack V8 setup; it may be implemented or remain a scaffold.
+This listing includes every Git-tracked source file in the repository, including platform assets and the CI workflow files.
 
-```
+```text
 CompliTrack/
+├── .github/
+│   └── workflows/
+│       ├── build.yml
+│       └── deploy-backend.yml
 ├── app/
+│   ├── Casts/
+│   │   ├── NullableObjectId.php
+│   │   └── ObjectIdArray.php
 │   ├── Helpers/
 │   │   └── RoleHelper.php
 │   ├── Http/
@@ -21,12 +28,12 @@ CompliTrack/
 │   │   │   │       └── UserController.php
 │   │   │   ├── Web/
 │   │   │   │   ├── AuthController.php
-│   │   │   │   ├── DashboardController.php  ← NEW
-│   │   │   │   └── ProfileController.php  ← NEW
+│   │   │   │   ├── DashboardController.php
+│   │   │   │   └── ProfileController.php
 │   │   │   └── Controller.php
 │   │   └── Middleware/
-│   │       ├── AuditLogMiddleware.php  ← NEW
-│   │       ├── EnsureUserIsActive.php  ← NEW
+│   │       ├── AuditLogMiddleware.php
+│   │       ├── EnsureUserIsActive.php
 │   │       └── RoleMiddleware.php
 │   ├── Models/
 │   │   ├── ArchiveDocument.php
@@ -34,32 +41,45 @@ CompliTrack/
 │   │   ├── ComplianceCheck.php
 │   │   ├── Department.php
 │   │   ├── Notification.php
+│   │   ├── PasswordResetToken.php
+│   │   ├── PersonalAccessToken.php
 │   │   ├── Role.php
 │   │   └── User.php
+│   ├── Notifications/
+│   │   └── PasswordResetLink.php
 │   ├── Providers/
 │   │   ├── AppServiceProvider.php
-│   │   └── RateLimitServiceProvider.php  ← NEW
-│   └── Services/
-│       ├── ArchiveEncryptionService.php
-│       ├── AuditLogService.php  ← NEW
-│       ├── ComplianceCheckService.php
-│       ├── NotificationDispatchService.php
-│       └── ReportGeneratorService.php
+│   │   └── RateLimitServiceProvider.php
+│   ├── Services/
+│   │   ├── ArchiveEncryptionService.php
+│   │   ├── AuditLogService.php
+│   │   ├── ComplianceCheckService.php
+│   │   ├── CounterService.php
+│   │   ├── NotificationDispatchService.php
+│   │   ├── PasswordResetService.php
+│   │   ├── ReportGeneratorService.php
+│   │   └── RoleScopeService.php
+│   └── Support/
+│       └── MongoId.php
 ├── bootstrap/
+│   ├── cache/
+│   │   ├── .gitignore
+│   │   ├── packages.php
+│   │   └── services.php
 │   ├── app.php
 │   └── providers.php
 ├── config/
 │   ├── app.php
 │   ├── auth.php
 │   ├── cache.php
-│   ├── cors.php  ← NEW
+│   ├── cors.php
 │   ├── database.php
 │   ├── filesystems.php
-│   ├── jwt.php  ← NEW
+│   ├── jwt.php
 │   ├── logging.php
 │   ├── mail.php
 │   ├── queue.php
-│   ├── sanctum.php  ← NEW
+│   ├── sanctum.php
 │   ├── services.php
 │   └── session.php
 ├── database/
@@ -67,127 +87,262 @@ CompliTrack/
 │   │   └── UserFactory.php
 │   ├── migrations/
 │   │   ├── 0001_01_01_000000_create_framework_support_tables.php
+│   │   ├── 0001_01_01_000000_create_users_table.php
 │   │   ├── 0001_01_01_000001_create_cache_table.php
 │   │   ├── 0001_01_01_000002_create_jobs_table.php
-│   │   └── 2026_01_01_000001_create_mongo_indexes.php  ← NEW
-│   └── seeders/
-│       ├── DatabaseSeeder.php
-│       ├── DepartmentSeeder.php  ← NEW
-│       ├── RoleSeeder.php
-│       └── SuperAdminSeeder.php  ← NEW
+│   │   └── 2026_01_01_000001_create_mongo_indexes.php
+│   ├── seeders/
+│   │   ├── ArchiveDemoSeeder.php
+│   │   ├── DatabaseSeeder.php
+│   │   ├── DemoDataSeeder.php
+│   │   ├── DepartmentSeeder.php
+│   │   ├── RoleSeeder.php
+│   │   └── SuperAdminSeeder.php
+│   └── .gitignore
 ├── mobile/
+│   ├── android/
+│   │   ├── app/
+│   │   │   ├── src/
+│   │   │   │   ├── debug/
+│   │   │   │   │   └── AndroidManifest.xml
+│   │   │   │   ├── main/
+│   │   │   │   │   ├── kotlin/
+│   │   │   │   │   │   └── ph/
+│   │   │   │   │   │       └── edu/
+│   │   │   │   │   │           └── ustp/
+│   │   │   │   │   │               └── complitrack/
+│   │   │   │   │   │                   └── MainActivity.kt
+│   │   │   │   │   ├── res/
+│   │   │   │   │   │   ├── drawable/
+│   │   │   │   │   │   │   └── launch_background.xml
+│   │   │   │   │   │   ├── drawable-v21/
+│   │   │   │   │   │   │   └── launch_background.xml
+│   │   │   │   │   │   ├── mipmap-hdpi/
+│   │   │   │   │   │   │   └── ic_launcher.png
+│   │   │   │   │   │   ├── mipmap-mdpi/
+│   │   │   │   │   │   │   └── ic_launcher.png
+│   │   │   │   │   │   ├── mipmap-xhdpi/
+│   │   │   │   │   │   │   └── ic_launcher.png
+│   │   │   │   │   │   ├── mipmap-xxhdpi/
+│   │   │   │   │   │   │   └── ic_launcher.png
+│   │   │   │   │   │   ├── mipmap-xxxhdpi/
+│   │   │   │   │   │   │   └── ic_launcher.png
+│   │   │   │   │   │   ├── values/
+│   │   │   │   │   │   │   └── styles.xml
+│   │   │   │   │   │   └── values-night/
+│   │   │   │   │   │       └── styles.xml
+│   │   │   │   │   └── AndroidManifest.xml
+│   │   │   │   └── profile/
+│   │   │   │       └── AndroidManifest.xml
+│   │   │   └── build.gradle.kts
+│   │   ├── gradle/
+│   │   │   └── wrapper/
+│   │   │       └── gradle-wrapper.properties
+│   │   ├── .gitignore
+│   │   ├── build.gradle.kts
+│   │   ├── gradle.properties
+│   │   └── settings.gradle.kts
 │   ├── assets/
 │   │   ├── fonts/
-│   │   │   └── .gitkeep  ← NEW
+│   │   │   └── .gitkeep
 │   │   └── images/
-│   │       └── .gitkeep  ← NEW
+│   │       ├── .gitkeep
+│   │       └── ustp-logo-mark.png
+│   ├── ios/
+│   │   ├── Flutter/
+│   │   │   ├── AppFrameworkInfo.plist
+│   │   │   ├── Debug.xcconfig
+│   │   │   └── Release.xcconfig
+│   │   ├── Runner/
+│   │   │   ├── Assets.xcassets/
+│   │   │   │   ├── AppIcon.appiconset/
+│   │   │   │   │   ├── Contents.json
+│   │   │   │   │   ├── Icon-App-1024x1024@1x.png
+│   │   │   │   │   ├── Icon-App-20x20@1x.png
+│   │   │   │   │   ├── Icon-App-20x20@2x.png
+│   │   │   │   │   ├── Icon-App-20x20@3x.png
+│   │   │   │   │   ├── Icon-App-29x29@1x.png
+│   │   │   │   │   ├── Icon-App-29x29@2x.png
+│   │   │   │   │   ├── Icon-App-29x29@3x.png
+│   │   │   │   │   ├── Icon-App-40x40@1x.png
+│   │   │   │   │   ├── Icon-App-40x40@2x.png
+│   │   │   │   │   ├── Icon-App-40x40@3x.png
+│   │   │   │   │   ├── Icon-App-60x60@2x.png
+│   │   │   │   │   ├── Icon-App-60x60@3x.png
+│   │   │   │   │   ├── Icon-App-76x76@1x.png
+│   │   │   │   │   ├── Icon-App-76x76@2x.png
+│   │   │   │   │   └── Icon-App-83.5x83.5@2x.png
+│   │   │   │   └── LaunchImage.imageset/
+│   │   │   │       ├── Contents.json
+│   │   │   │       ├── LaunchImage.png
+│   │   │   │       ├── LaunchImage@2x.png
+│   │   │   │       ├── LaunchImage@3x.png
+│   │   │   │       └── README.md
+│   │   │   ├── Base.lproj/
+│   │   │   │   ├── LaunchScreen.storyboard
+│   │   │   │   └── Main.storyboard
+│   │   │   ├── AppDelegate.swift
+│   │   │   ├── Info.plist
+│   │   │   ├── Runner-Bridging-Header.h
+│   │   │   └── SceneDelegate.swift
+│   │   ├── Runner.xcodeproj/
+│   │   │   ├── project.xcworkspace/
+│   │   │   │   ├── xcshareddata/
+│   │   │   │   │   ├── IDEWorkspaceChecks.plist
+│   │   │   │   │   └── WorkspaceSettings.xcsettings
+│   │   │   │   └── contents.xcworkspacedata
+│   │   │   ├── xcshareddata/
+│   │   │   │   └── xcschemes/
+│   │   │   │       └── Runner.xcscheme
+│   │   │   └── project.pbxproj
+│   │   ├── Runner.xcworkspace/
+│   │   │   ├── xcshareddata/
+│   │   │   │   ├── IDEWorkspaceChecks.plist
+│   │   │   │   └── WorkspaceSettings.xcsettings
+│   │   │   └── contents.xcworkspacedata
+│   │   ├── RunnerTests/
+│   │   │   └── RunnerTests.swift
+│   │   ├── .gitignore
+│   │   └── Podfile
 │   ├── lib/
 │   │   ├── core/
 │   │   │   ├── constants/
-│   │   │   │   ├── api_constants.dart  ← NEW
-│   │   │   │   ├── app_colors.dart  ← NEW
-│   │   │   │   ├── app_icons.dart  ← NEW
-│   │   │   │   └── app_strings.dart  ← NEW
+│   │   │   │   ├── api_constants.dart
+│   │   │   │   ├── app_colors.dart
+│   │   │   │   ├── app_icons.dart
+│   │   │   │   └── app_strings.dart
 │   │   │   ├── network/
-│   │   │   │   ├── api_client.dart  ← NEW
-│   │   │   │   └── auth_interceptor.dart  ← NEW
+│   │   │   │   ├── api_client.dart
+│   │   │   │   ├── api_response.dart
+│   │   │   │   └── auth_interceptor.dart
 │   │   │   ├── services/
-│   │   │   │   ├── fcm_service.dart  ← NEW
-│   │   │   │   ├── secure_storage_service.dart  ← NEW
-│   │   │   │   └── socket_service.dart  ← NEW
+│   │   │   │   ├── fcm_service.dart
+│   │   │   │   ├── secure_storage_service.dart
+│   │   │   │   └── socket_service.dart
 │   │   │   ├── theme/
-│   │   │   │   └── ustp_theme.dart  ← NEW
+│   │   │   │   └── ustp_theme.dart
 │   │   │   └── utils/
-│   │   │       ├── date_formatter.dart  ← NEW
-│   │   │       ├── file_validator.dart  ← NEW
-│   │   │       ├── role_helper.dart  ← NEW
-│   │   │       └── validators.dart  ← NEW
+│   │   │       ├── date_formatter.dart
+│   │   │       ├── file_validator.dart
+│   │   │       ├── role_helper.dart
+│   │   │       └── validators.dart
 │   │   ├── data/
 │   │   │   ├── models/
-│   │   │   │   ├── archive_document_model.dart  ← NEW
-│   │   │   │   ├── audit_log_model.dart  ← NEW
-│   │   │   │   ├── compliance_check_model.dart  ← NEW
-│   │   │   │   ├── department_model.dart  ← NEW
-│   │   │   │   ├── notification_model.dart  ← NEW
-│   │   │   │   ├── role_model.dart  ← NEW
-│   │   │   │   └── user_model.dart  ← NEW
+│   │   │   │   ├── archive_document_model.dart
+│   │   │   │   ├── audit_log_model.dart
+│   │   │   │   ├── compliance_check_model.dart
+│   │   │   │   ├── department_model.dart
+│   │   │   │   ├── model_json.dart
+│   │   │   │   ├── notification_model.dart
+│   │   │   │   ├── role_model.dart
+│   │   │   │   ├── super_admin_dashboard_model.dart
+│   │   │   │   └── user_model.dart
 │   │   │   └── repositories/
-│   │   │       ├── archive_repository.dart  ← NEW
-│   │   │       ├── audit_log_repository.dart  ← NEW
-│   │   │       ├── auth_repository.dart  ← NEW
-│   │   │       ├── compliance_repository.dart  ← NEW
-│   │   │       ├── department_repository.dart  ← NEW
-│   │   │       ├── notification_repository.dart  ← NEW
-│   │   │       ├── report_repository.dart  ← NEW
-│   │   │       └── user_repository.dart  ← NEW
+│   │   │       ├── archive_repository.dart
+│   │   │       ├── audit_log_repository.dart
+│   │   │       ├── auth_repository.dart
+│   │   │       ├── compliance_repository.dart
+│   │   │       ├── department_repository.dart
+│   │   │       ├── notification_repository.dart
+│   │   │       ├── report_repository.dart
+│   │   │       ├── super_admin_repository.dart
+│   │   │       ├── system_health_repository.dart
+│   │   │       └── user_repository.dart
 │   │   ├── presentation/
 │   │   │   ├── navigation/
-│   │   │   │   ├── admin_shell.dart  ← NEW
-│   │   │   │   ├── app_router.dart  ← NEW
-│   │   │   │   ├── auditee_shell.dart  ← NEW
-│   │   │   │   ├── auditor_shell.dart  ← NEW
-│   │   │   │   └── super_admin_shell.dart  ← NEW
+│   │   │   │   ├── admin_shell.dart
+│   │   │   │   ├── app_router.dart
+│   │   │   │   ├── auditee_shell.dart
+│   │   │   │   ├── auditor_shell.dart
+│   │   │   │   └── super_admin_shell.dart
+│   │   │   ├── providers/
+│   │   │   │   └── auth_provider.dart
 │   │   │   ├── screens/
 │   │   │   │   ├── admin/
-│   │   │   │   │   ├── admin_dashboard_screen.dart  ← NEW
-│   │   │   │   │   ├── admin_notifications_screen.dart  ← NEW
-│   │   │   │   │   ├── admin_user_management_screen.dart  ← NEW
-│   │   │   │   │   ├── archive_repository_screen.dart  ← NEW
-│   │   │   │   │   ├── department_management_screen.dart  ← NEW
-│   │   │   │   │   └── reports_view_screen.dart  ← NEW
+│   │   │   │   │   ├── admin_dashboard_screen.dart
+│   │   │   │   │   ├── admin_notifications_screen.dart
+│   │   │   │   │   ├── admin_user_management_screen.dart
+│   │   │   │   │   ├── archive_repository_screen.dart
+│   │   │   │   │   ├── broadcast_notification_dialog.dart
+│   │   │   │   │   ├── department_management_screen.dart
+│   │   │   │   │   └── reports_view_screen.dart
 │   │   │   │   ├── auditee/
-│   │   │   │   │   ├── auditee_dashboard_screen.dart  ← NEW
-│   │   │   │   │   ├── finding_detail_screen.dart  ← NEW
-│   │   │   │   │   ├── help_reference_screen.dart  ← NEW
-│   │   │   │   │   ├── my_archives_screen.dart  ← NEW
-│   │   │   │   │   ├── my_findings_screen.dart  ← NEW
-│   │   │   │   │   ├── notifications_screen.dart  ← NEW
-│   │   │   │   │   └── upload_evidence_screen.dart  ← NEW
+│   │   │   │   │   ├── auditee_dashboard_screen.dart
+│   │   │   │   │   ├── finding_detail_screen.dart
+│   │   │   │   │   ├── help_reference_screen.dart
+│   │   │   │   │   ├── my_archives_screen.dart
+│   │   │   │   │   ├── my_findings_screen.dart
+│   │   │   │   │   ├── notifications_screen.dart
+│   │   │   │   │   └── upload_evidence_screen.dart
 │   │   │   │   ├── auditor/
-│   │   │   │   │   ├── archive_review_screen.dart  ← NEW
-│   │   │   │   │   ├── auditor_dashboard_screen.dart  ← NEW
-│   │   │   │   │   ├── auditor_notifications_screen.dart  ← NEW
-│   │   │   │   │   ├── check_detail_screen.dart  ← NEW
-│   │   │   │   │   ├── checks_list_screen.dart  ← NEW
-│   │   │   │   │   ├── corrective_board_screen.dart  ← NEW
-│   │   │   │   │   └── create_check_screen.dart  ← NEW
+│   │   │   │   │   ├── archive_review_screen.dart
+│   │   │   │   │   ├── auditor_dashboard_screen.dart
+│   │   │   │   │   ├── auditor_notifications_screen.dart
+│   │   │   │   │   ├── check_detail_screen.dart
+│   │   │   │   │   ├── checks_list_screen.dart
+│   │   │   │   │   ├── corrective_board_screen.dart
+│   │   │   │   │   └── create_check_screen.dart
 │   │   │   │   ├── auth/
-│   │   │   │   │   ├── forgot_password_screen.dart  ← NEW
-│   │   │   │   │   └── login_screen.dart  ← NEW
+│   │   │   │   │   ├── forgot_password_screen.dart
+│   │   │   │   │   ├── landing_screen.dart
+│   │   │   │   │   └── login_screen.dart
 │   │   │   │   ├── common/
-│   │   │   │   │   ├── forbidden_403_screen.dart  ← NEW
-│   │   │   │   │   └── profile_screen.dart  ← NEW
+│   │   │   │   │   ├── forbidden_403_screen.dart
+│   │   │   │   │   └── profile_screen.dart
 │   │   │   │   └── super_admin/
-│   │   │   │       ├── role_management_screen.dart  ← NEW
-│   │   │   │       ├── settings_readonly_screen.dart  ← NEW
-│   │   │   │       ├── super_admin_dashboard_screen.dart  ← NEW
-│   │   │   │       ├── system_logs_screen.dart  ← NEW
-│   │   │   │       └── user_management_screen.dart  ← NEW
+│   │   │   │       ├── role_management_screen.dart
+│   │   │   │       ├── settings_readonly_screen.dart
+│   │   │   │       ├── super_admin_dashboard_screen.dart
+│   │   │   │       ├── system_logs_screen.dart
+│   │   │   │       └── user_management_screen.dart
 │   │   │   └── widgets/
-│   │   │       ├── compliance_gauge.dart  ← NEW
-│   │   │       ├── empty_state.dart  ← NEW
-│   │   │       ├── encryption_indicator.dart  ← NEW
-│   │   │       ├── kpi_card.dart  ← NEW
-│   │   │       ├── manage_on_web_badge.dart  ← NEW
-│   │   │       ├── role_badge.dart  ← NEW
-│   │   │       ├── status_badge.dart  ← NEW
-│   │   │       ├── timeline_stepper.dart  ← NEW
-│   │   │       └── ustp_app_bar.dart  ← NEW
-│   │   ├── app.dart  ← NEW
-│   │   └── main.dart  ← NEW
+│   │   │       ├── admin_page_header.dart
+│   │   │       ├── auditor_page_header.dart
+│   │   │       ├── compliance_gauge.dart
+│   │   │       ├── empty_state.dart
+│   │   │       ├── encryption_indicator.dart
+│   │   │       ├── kpi_card.dart
+│   │   │       ├── manage_on_web_badge.dart
+│   │   │       ├── role_badge.dart
+│   │   │       ├── status_badge.dart
+│   │   │       ├── timeline_stepper.dart
+│   │   │       ├── ustp_app_bar.dart
+│   │   │       └── ustp_logo.dart
+│   │   ├── app.dart
+│   │   └── main.dart
 │   ├── test/
-│   │   ├── models_test.dart  ← NEW
-│   │   └── role_helper_test.dart  ← NEW
-│   ├── .env.example  ← NEW
-│   ├── .gitignore  ← NEW
-│   ├── README.md  ← NEW
-│   ├── analysis_options.yaml  ← NEW
-│   └── pubspec.yaml  ← NEW
+│   │   ├── file_validator_test.dart
+│   │   ├── models_test.dart
+│   │   ├── role_helper_test.dart
+│   │   └── widget_test.dart
+│   ├── web/
+│   │   ├── icons/
+│   │   │   ├── Icon-192.png
+│   │   │   ├── Icon-512.png
+│   │   │   ├── Icon-maskable-192.png
+│   │   │   └── Icon-maskable-512.png
+│   │   ├── favicon.png
+│   │   ├── index.html
+│   │   └── manifest.json
+│   ├── .gitignore
+│   ├── .metadata
+│   ├── analysis_options.yaml
+│   ├── devtools_options.yaml
+│   ├── pubspec.lock
+│   ├── pubspec.yaml
+│   └── README.md
 ├── public/
+│   ├── css/
+│   │   ├── admin-portal.css
+│   │   ├── auditee-portal.css
+│   │   ├── auditor-portal.css
+│   │   ├── auth-login.css
+│   │   └── super-admin-portal.css
 │   ├── fonts/
-│   │   └── .gitkeep  ← NEW
+│   │   └── .gitkeep
 │   ├── images/
-│   │   ├── .gitkeep  ← NEW
+│   │   ├── .gitkeep
+│   │   ├── DALE.jpg
 │   │   └── ustp-claveria-logo.jpg
 │   ├── .htaccess
 │   ├── favicon.ico
@@ -196,26 +351,29 @@ CompliTrack/
 ├── realtime/
 │   ├── src/
 │   │   ├── config/
-│   │   │   ├── db.js  ← NEW
-│   │   │   ├── env.js  ← NEW
-│   │   │   └── firebase.js  ← NEW
+│   │   │   ├── db.js
+│   │   │   ├── env.js
+│   │   │   └── firebase.js
 │   │   ├── models/
-│   │   │   └── notification.js  ← NEW
+│   │   │   └── notification.js
 │   │   ├── services/
-│   │   │   ├── fcmService.js  ← NEW
-│   │   │   └── notificationService.js  ← NEW
+│   │   │   ├── fcmService.js
+│   │   │   └── notificationService.js
 │   │   ├── sockets/
-│   │   │   ├── auth.js  ← NEW
-│   │   │   └── index.js  ← NEW
+│   │   │   ├── auth.js
+│   │   │   └── index.js
 │   │   ├── utils/
-│   │   │   └── logger.js  ← NEW
+│   │   │   └── logger.js
 │   │   ├── watchers/
-│   │   │   └── complianceChecksWatcher.js  ← NEW
-│   │   └── server.js  ← NEW
-│   ├── .env.example  ← NEW
-│   ├── .gitignore  ← NEW
-│   ├── README.md  ← NEW
-│   └── package.json  ← NEW
+│   │   │   └── complianceChecksWatcher.js
+│   │   └── server.js
+│   ├── test/
+│   │   └── watchers.test.js
+│   ├── .env.example
+│   ├── .gitignore
+│   ├── package-lock.json
+│   ├── package.json
+│   └── README.md
 ├── resources/
 │   ├── css/
 │   │   └── app.css
@@ -226,6 +384,7 @@ CompliTrack/
 │   └── views/
 │       ├── admin/
 │       │   ├── archives.blade.php
+│       │   ├── compliance-records.blade.php
 │       │   ├── dashboard.blade.php
 │       │   ├── departments.blade.php
 │       │   ├── notifications.blade.php
@@ -234,73 +393,105 @@ CompliTrack/
 │       ├── auditee/
 │       │   ├── archives.blade.php
 │       │   ├── dashboard.blade.php
-│       │   ├── finding-details.blade.php  ← NEW
+│       │   ├── finding-details.blade.php
 │       │   ├── help.blade.php
 │       │   ├── my-findings.blade.php
 │       │   ├── notifications.blade.php
 │       │   └── upload.blade.php
 │       ├── auditor/
 │       │   ├── archives.blade.php
-│       │   ├── check-create.blade.php  ← NEW
-│       │   ├── check-details.blade.php  ← NEW
+│       │   ├── check-create.blade.php
+│       │   ├── check-details.blade.php
 │       │   ├── checks.blade.php
 │       │   ├── corrective-actions.blade.php
 │       │   ├── dashboard.blade.php
 │       │   └── notifications.blade.php
 │       ├── auth/
+│       │   ├── brand-panel.blade.php
 │       │   ├── forgot-password.blade.php
 │       │   ├── login.blade.php
-│       │   └── profile.blade.php
-│       │   └── reset-password.blade.php ← NEW
+│       │   ├── profile.blade.php
+│       │   └── reset-password.blade.php
 │       ├── components/
-│       │   ├── alert-banner.blade.php  ← NEW
-│       │   ├── compliance-gauge.blade.php  ← NEW
-│       │   ├── data-table.blade.php  ← NEW
+│       │   ├── alert-banner.blade.php
+│       │   ├── compliance-gauge.blade.php
 │       │   ├── dashboard-page.blade.php
+│       │   ├── data-table.blade.php
 │       │   ├── kpi-card.blade.php
 │       │   ├── resource-page.blade.php
 │       │   ├── role-badge.blade.php
 │       │   ├── status-badge.blade.php
-│       │   ├── timeline-stepper.blade.php  ← NEW
-│       │   └── upload-zone.blade.php  ← NEW
+│       │   ├── timeline-stepper.blade.php
+│       │   └── upload-zone.blade.php
+│       ├── emails/
+│       │   └── reset-password.blade.php
 │       ├── errors/
-│       │   ├── 403.blade.php  ← NEW
-│       │   └── 404.blade.php  ← NEW
+│       │   ├── 403.blade.php
+│       │   └── 404.blade.php
 │       ├── layouts/
 │       │   └── app.blade.php
 │       ├── partials/
-│       │   ├── navbar.blade.php  ← NEW
-│       │   └── sidebar.blade.php  ← NEW
-│       └── super-admin/
-│           ├── dashboard.blade.php
-│           ├── departments.blade.php
-│           ├── logs.blade.php
-│           ├── roles.blade.php
-│           ├── settings.blade.php
-│           └── users.blade.php
+│       │   ├── navbar.blade.php
+│       │   └── sidebar.blade.php
+│       ├── super-admin/
+│       │   ├── archives.blade.php
+│       │   ├── dashboard.blade.php
+│       │   ├── departments.blade.php
+│       │   ├── logs.blade.php
+│       │   ├── roles.blade.php
+│       │   ├── settings.blade.php
+│       │   └── users.blade.php
+│       └── welcome.blade.php
 ├── routes/
 │   ├── api.php
 │   ├── console.php
 │   └── web.php
+├── scripts/
+│   ├── bump-version.js
+│   └── bump-version.test.js
+├── storage/
+│   ├── app/
+│   │   ├── private/
+│   │   │   └── .gitignore
+│   │   ├── public/
+│   │   │   └── .gitignore
+│   │   └── .gitignore
+│   ├── framework/
+│   │   ├── cache/
+│   │   │   ├── data/
+│   │   │   │   └── .gitignore
+│   │   │   └── .gitignore
+│   │   ├── sessions/
+│   │   │   └── .gitignore
+│   │   ├── testing/
+│   │   │   └── .gitignore
+│   │   ├── views/
+│   │   │   └── .gitignore
+│   │   └── .gitignore
+│   └── logs/
+│       └── .gitignore
 ├── tests/
 │   ├── Feature/
-│   │   ├── ArchiveEncryptionTest.php  ← NEW
-│   │   ├── AuthTest.php  ← NEW
-│   │   ├── ComplianceCheckTest.php  ← NEW
-│   │   ├── ExampleTest.php
-│   │   ├── NotificationTest.php  ← NEW
-│   │   └── RoleMiddlewareTest.php  ← NEW
+│   │   └── ExampleTest.php
 │   ├── Unit/
 │   │   └── ExampleTest.php
 │   └── TestCase.php
+├── .editorconfig
 ├── .env.example
+├── .gitattributes
 ├── .gitignore
-├── LICENSE
-├── README.md
 ├── artisan
+├── CHANGELOG.md
 ├── composer.json
-├── package.json
+├── composer.lock
+├── docker-compose.yml
+├── FILE_STRUCTURE.md
+├── LICENSE
 ├── package-lock.json
+├── package.json
 ├── phpunit.xml
+├── README.md
+├── start-complitrack.ps1
+├── stop-complitrack.ps1
 └── vite.config.js
 ```
