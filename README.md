@@ -288,6 +288,10 @@ using it:
 | `SERVER_SSH_KEY` | Private SSH key authorized on the server |
 | `SERVER_APP_PATH` | Absolute path to the checked-out CompliTrack repository on the server |
 
+Add these under the repository's **Settings → Secrets and variables → Actions**
+as repository secrets. Values in `.env` or local machine environment variables
+are not available to GitHub Actions.
+
 The server must have Git, PHP and Composer, Node.js (20 or newer), and PM2
 installed. The repository checkout must be on `CompliTrack` with no local changes;
 Laravel and realtime service environment files must already be configured on
