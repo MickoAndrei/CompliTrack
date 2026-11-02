@@ -1,6 +1,6 @@
 {
   "name": "complitrack-realtime",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "private": true,
   "description": "CompliTrack MongoDB change-stream and Socket.IO service",
   "main": "src/server.js",
