@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/constants/app_colors.dart';
-import '../../core/constants/app_icons.dart';
 
 class AuditeeShell extends StatelessWidget {
   final StatefulNavigationShell navigationShell;
@@ -40,28 +39,28 @@ class AuditeeShell extends StatelessWidget {
           ),
           items: const [
             BottomNavigationBarItem(
-              icon: Icon(AppIcons.dashboard, size: 20),
-              activeIcon: _AuditeeActiveIcon(icon: AppIcons.dashboard),
+              icon: Icon(Icons.grid_view_outlined, size: 22),
+              activeIcon: _AuditeeActiveIcon(icon: Icons.grid_view_rounded),
               label: 'Home',
             ),
             BottomNavigationBarItem(
-              icon: Icon(AppIcons.compliance, size: 20),
-              activeIcon: _AuditeeActiveIcon(icon: AppIcons.compliance),
+              icon: Icon(Icons.fact_check_outlined, size: 22),
+              activeIcon: _AuditeeActiveIcon(icon: Icons.fact_check_rounded),
               label: 'Status',
             ),
             BottomNavigationBarItem(
-              icon: Icon(AppIcons.archive, size: 20),
-              activeIcon: _AuditeeActiveIcon(icon: AppIcons.archive),
+              icon: Icon(Icons.inventory_2_outlined, size: 22),
+              activeIcon: _AuditeeActiveIcon(icon: Icons.inventory_2_rounded),
               label: 'Archive',
             ),
             BottomNavigationBarItem(
-              icon: Icon(AppIcons.help, size: 20),
-              activeIcon: _AuditeeActiveIcon(icon: AppIcons.help),
+              icon: Icon(Icons.help_outline_rounded, size: 22),
+              activeIcon: _AuditeeActiveIcon(icon: Icons.help_rounded),
               label: 'Standards',
             ),
             BottomNavigationBarItem(
-              icon: Icon(AppIcons.user, size: 20),
-              activeIcon: _AuditeeActiveIcon(icon: AppIcons.user),
+              icon: Icon(Icons.account_circle_outlined, size: 22),
+              activeIcon: _AuditeeActiveIcon(icon: Icons.account_circle),
               label: 'Profile',
             ),
           ],

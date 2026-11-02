@@ -4,6 +4,7 @@ import 'package:percent_indicator/circular_percent_indicator.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../data/models/compliance_check_model.dart';
 import '../../../data/repositories/compliance_repository.dart';
+import 'upload_evidence_screen.dart';
 import '../../widgets/ustp_app_bar.dart';
 
 class AuditeeDashboardScreen extends StatefulWidget {
@@ -135,7 +136,7 @@ class _AuditeeDashboardScreenState extends State<AuditeeDashboardScreen> {
                   ),
                   const SizedBox(height: 16),
                   _QuickUploadCard(
-                    onTap: () => context.go('/auditee/upload'),
+                    onTap: () => UploadEvidenceScreen.showQuick(context),
                   ),
                   const SizedBox(height: 16),
                   Row(
@@ -148,23 +149,6 @@ class _AuditeeDashboardScreenState extends State<AuditeeDashboardScreen> {
                           fontSize: 14,
                           fontWeight: FontWeight.w700,
                           color: AppColors.ustpDark,
-                        ),
-                      ),
-                      TextButton(
-                        onPressed: () => context.go('/auditee/status'),
-                        style: TextButton.styleFrom(
-                          padding: EdgeInsets.zero,
-                          minimumSize: const Size(0, 30),
-                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                        ),
-                        child: const Text(
-                          'View all',
-                          style: TextStyle(
-                            fontFamily: 'Inter',
-                            fontSize: 11,
-                            fontWeight: FontWeight.w600,
-                            color: AppColors.ustpNavy,
-                          ),
                         ),
                       ),
                     ],
@@ -427,10 +411,19 @@ class _QuickUploadCard extends StatelessWidget {
             SizedBox(
               width: double.infinity,
               height: 36,
-              child: ElevatedButton.icon(
+              child: ElevatedButton(
                 onPressed: onTap,
-                icon: const Icon(Icons.cloud_upload_outlined, size: 15),
-                label: const Text('Quick Upload'),
+                child: const FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.cloud_upload_outlined, size: 16),
+                      SizedBox(width: 7),
+                      Text('Quick Upload', maxLines: 1, softWrap: false),
+                    ],
+                  ),
+                ),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.ustpGold,
                   foregroundColor: AppColors.ustpNavy,

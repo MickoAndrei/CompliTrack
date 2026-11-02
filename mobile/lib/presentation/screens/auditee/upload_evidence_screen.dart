@@ -42,6 +42,18 @@ class UploadEvidenceScreen extends StatefulWidget {
     );
   }
 
+  static Future<void> showQuick(BuildContext context) {
+    return showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const Dialog(
+        insetPadding: EdgeInsets.symmetric(horizontal: 18, vertical: 24),
+        backgroundColor: Colors.transparent,
+        child: UploadEvidenceScreen(),
+      ),
+    );
+  }
+
   @override
   State<UploadEvidenceScreen> createState() => _UploadEvidenceScreenState();
 }

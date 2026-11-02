@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
-import '../../../core/constants/app_icons.dart';
 import '../../../data/models/compliance_check_model.dart';
 import '../../../data/repositories/compliance_repository.dart';
 import '../../../core/utils/role_helper.dart';
@@ -116,7 +115,7 @@ class _MyFindingsScreenState extends State<MyFindingsScreen> {
                   decoration: InputDecoration(
                     hintText: 'Search checks...',
                     hintStyle: const TextStyle(color: AppColors.ustpMuted),
-                    prefixIcon: const Icon(AppIcons.search, size: 20),
+                    prefixIcon: const Icon(Icons.search_rounded, size: 20),
                     isDense: true,
                     filled: true,
                     fillColor: AppColors.ustpWhite,
