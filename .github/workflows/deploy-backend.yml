@@ -1,0 +1,79 @@
+name: Deploy Backend
+
+on:
+  push:
+    branches:
+      - CompliTrack
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-backend-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  actions: write
+  contents: write
+
+jobs:
+  deploy:
+    if: github.event_name != 'push' || github.event.deleted == false
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          ref: CompliTrack
+
+      - name: Bump application versions
+        if: github.event_name == 'push'
+        env:
+          GITHUB_RUN_NUMBER: ${{ github.run_number }}
+          VERSION_COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
+        run: node scripts/bump-version.js
+
+      - name: Commit version changes
+        if: github.event_name == 'push'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add package.json package-lock.json realtime/package.json realtime/package-lock.json mobile/pubspec.yaml
+          version="$(npm pkg get version | tr -d '"')"
+          git commit -m "chore: bump version to ${version}"
+          git push origin HEAD:CompliTrack
+          gh workflow run build.yml --ref CompliTrack
+
+      - name: Deploy to server via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        env:
+          APP_PATH: ${{ secrets.SERVER_APP_PATH }}
+          PM2_APP_NAME: complitrack-realtime
+        with:
+          host: ${{ secrets.SERVER_IP }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          envs: APP_PATH,PM2_APP_NAME
+          script: |
+            set -e
+            cd "$APP_PATH"
+
+            git pull --ff-only origin CompliTrack
+
+            composer install --no-dev --no-interaction --prefer-dist --optimize-autoloader
+            php artisan migrate --force
+            php artisan config:cache
+            php artisan route:cache
+
+            npm ci
+            npm run build
+
+            cd "$APP_PATH/realtime"
+            npm ci --omit=dev
+            if pm2 describe "$PM2_APP_NAME" >/dev/null 2>&1; then
+              pm2 restart "$PM2_APP_NAME" --update-env
+            else
+              pm2 start src/server.js --name "$PM2_APP_NAME"
+            fi
+            pm2 save

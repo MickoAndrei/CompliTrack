@@ -16,4 +16,14 @@ class ExampleTest extends TestCase
 
         $response->assertStatus(200);
     }
+
+    public function test_the_version_endpoint_returns_the_package_version(): void
+    {
+        $response = $this->getJson('/api/v1/version');
+
+        $response->assertOk()
+            ->assertExactJson([
+                'version' => config('app.version'),
+            ]);
+    }
 }

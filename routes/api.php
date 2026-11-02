@@ -12,6 +12,9 @@ use App\Http\Middleware\EnsureUserIsActive;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('v1')->group(function () {
+    Route::get('/version', fn () => response()->json([
+        'version' => config('app.version'),
+    ]));
 
     // Auth (public)
     Route::post('/auth/login', [AuthController::class, 'login'])->middleware('throttle:5,1');

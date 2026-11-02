@@ -1,6 +1,7 @@
 const express = require('express');
 const http = require('node:http');
 const { loadConfig } = require('./config/env');
+const packageInfo = require('../package.json');
 const { connectToDatabase } = require('./config/db');
 const { initializeFirebase } = require('./config/firebase');
 const { createSocketServer } = require('./sockets');
@@ -50,7 +51,10 @@ async function start() {
   ]);
 
   server.listen(config.port, () => {
-    logger.info('Realtime service is listening.', { port: config.port });
+    logger.info('Realtime service is listening.', {
+      port: config.port,
+      version: packageInfo.version,
+    });
   });
 
   const stop = async () => {

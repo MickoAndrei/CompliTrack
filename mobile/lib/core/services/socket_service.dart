@@ -11,9 +11,11 @@ class SocketService {
   static final instance = SocketService._();
   final _storage = SecureStorageService();
   final _notifications = StreamController<Map<String, dynamic>>.broadcast();
+  final _serverVersions = StreamController<String>.broadcast();
   IO.Socket? _socket;
 
   Stream<Map<String, dynamic>> get notifications => _notifications.stream;
+  Stream<String> get serverVersions => _serverVersions.stream;
 
   Future<void> connect() async {
     final token = await _storage.getToken();
@@ -39,6 +41,9 @@ class SocketService {
           payload.map((key, value) => MapEntry(key.toString(), value)),
         );
       }
+    });
+    socket.on('server_version', (dynamic version) {
+      if (version is String) _serverVersions.add(version);
     });
     _socket = socket;
     socket.connect();
