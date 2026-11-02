@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
 import 'package:go_router/go_router.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_icons.dart';
@@ -21,6 +22,7 @@ class ProfileScreen extends StatefulWidget {
 class _ProfileScreenState extends State<ProfileScreen> {
   final _formKey = GlobalKey<FormState>();
   final _authRepository = AuthRepository();
+  late final Future<PackageInfo> _packageInfo;
   late final TextEditingController _fullNameController;
   final _currentPasswordController = TextEditingController();
   final _newPasswordController = TextEditingController();
@@ -33,6 +35,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   @override
   void initState() {
     super.initState();
+    _packageInfo = PackageInfo.fromPlatform();
     _fullNameController = TextEditingController(
       text: context.read<AuthProvider>().currentUser?.fullName ?? '',
     );
@@ -365,6 +368,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ],
           ),
         ),
+        const SizedBox(height: 12),
+        _AppVersionLabel(packageInfo: _packageInfo),
       ],
     );
 
@@ -629,6 +634,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ),
         ],
       ),
+      bottomNavigationBar: _AppVersionLabel(packageInfo: _packageInfo),
     );
   }
 
@@ -672,6 +678,37 @@ class _FieldLabel extends StatelessWidget {
         fontSize: 11,
         fontWeight: FontWeight.w600,
         color: AppColors.ustpDark,
+      ),
+    );
+  }
+}
+
+class _AppVersionLabel extends StatelessWidget {
+  const _AppVersionLabel({required this.packageInfo});
+
+  final Future<PackageInfo> packageInfo;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.all(12),
+      child: FutureBuilder<PackageInfo>(
+        future: packageInfo,
+        builder: (context, snapshot) {
+          final label = snapshot.hasData
+              ? 'App version ${snapshot.data!.version}+${snapshot.data!.buildNumber}'
+              : snapshot.hasError
+                  ? 'App version unavailable'
+                  : 'Loading app version...';
+          return Text(
+            label,
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              fontSize: 11,
+              color: AppColors.ustpMuted,
+            ),
+          );
+        },
       ),
     );
   }

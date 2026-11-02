@@ -19,7 +19,8 @@ class SuperAdminDashboardModel {
     final users = json['userGrowth'] ?? const [];
     final departments = json['deptCompliance'] ?? const [];
     if (users is! List || departments is! List) {
-      throw const FormatException('The server returned invalid dashboard series.');
+      throw const FormatException(
+          'The server returned invalid dashboard series.');
     }
 
     return SuperAdminDashboardModel(
@@ -45,6 +46,10 @@ class SuperAdminDashboardModel {
   static double _requiredDouble(Map<String, dynamic> json, String key) {
     final value = json[key];
     if (value is num) return value.toDouble();
+    if (value is String) {
+      final parsed = double.tryParse(value);
+      if (parsed != null && parsed.isFinite) return parsed;
+    }
     throw FormatException('Missing or invalid "$key" field.');
   }
 

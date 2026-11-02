@@ -2,6 +2,22 @@
 
 All notable changes to CompliTrack are documented here.
 
+## [Unreleased] - 2026-11-02
+
+### Added
+
+- Added MongoDB-backed authentication support for the Laravel web app, including environment and database configuration for MongoDB-backed user storage.
+- Added role-based web portal routing for Super Admin, Admin, Auditor, and Auditee users, plus password reset and profile update flows.
+
+### Changed
+
+- Updated the app configuration to support database-backed sessions, cache, queue setup, and MongoDB-aware user model behavior.
+- Refined authentication and profile handling to align with the portal structure and active-user role permissions.
+
+### Fixed
+
+- Corrected the browser-session authentication flow and protected-route setup for password reset and authenticated profile actions.
+
 ## [Unreleased] - 2026-10-23
 
 ### Added

@@ -275,6 +275,39 @@ Visit `http://localhost:8000/login`. The route exists, but the login view
 page will be blank until it is built. See [Getting Started](#getting-started)
 for running each service during development.
 
+## Backend deployment
+
+The `Deploy Backend` GitHub Actions workflow deploys on pushes to `CompliTrack` and
+can also be run manually. Configure these repository Actions secrets before
+using it:
+
+| Secret | Value |
+| --- | --- |
+| `SERVER_IP` | SSH host or IP address |
+| `SERVER_USER` | SSH username |
+| `SERVER_SSH_KEY` | Private SSH key authorized on the server |
+| `SERVER_APP_PATH` | Absolute path to the checked-out CompliTrack repository on the server |
+
+The server must have Git, PHP and Composer, Node.js (20 or newer), and PM2
+installed. The repository checkout must be on `CompliTrack` with no local changes;
+Laravel and realtime service environment files must already be configured on
+the server. The workflow installs production PHP dependencies, migrates and
+caches Laravel configuration/routes, builds the Laravel frontend assets,
+installs realtime production dependencies, and starts or restarts the
+`complitrack-realtime` PM2 process. On pushes, it increments the shared
+semantic version (patch by default; `#minor` or `#major` in the commit message
+selects a larger increment), commits the version changes, and dispatches the
+Flutter APK workflow. The Actions token needs permission to write repository
+contents and dispatch workflows, and branch rules must allow the workflow to
+push to `CompliTrack`.
+
+The shared application version is stored in the root and realtime
+`package.json` files and in `mobile/pubspec.yaml`; the Flutter build suffix uses
+the GitHub Actions run number. The mobile app requires Flutter 3.38.1 or later
+and displays its package version and build number on the profile screen.
+Laravel exposes its version at `GET /api/v1/version`, and the realtime socket
+emits `server_version` when a client connects.
+
 ---
 
 ## Git Workflow

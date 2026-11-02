@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:complitrack/data/models/compliance_check_model.dart';
+import 'package:complitrack/data/models/super_admin_dashboard_model.dart';
 import 'package:complitrack/data/models/user_model.dart';
 
 void main() {
@@ -46,6 +47,46 @@ void main() {
       expect(check.correctiveStatus, 'open');
       expect(check.linkedArchiveIds, ['66aabbccddeeff0011223388']);
       expect(check.statusHistory.single['status'], 'open');
+    });
+  });
+
+  group('SuperAdminDashboardModel', () {
+    test('parses storage usage returned as a numeric string', () {
+      final metrics = SuperAdminDashboardModel.fromJson({
+        'totalUsers': 10,
+        'totalDepts': 2,
+        'storageUsedGb': '3.42',
+        'activeAudits': 4,
+        'deptCompliance': [
+          {
+            'departmentCode': 'CET',
+            'departmentName': 'College of Engineering',
+            'totalChecks': 3,
+            'compliancePercentage': 66,
+          },
+        ],
+        'monthlyComplianceTrend': [
+          {'month': 'Nov', 'compliancePercentage': 66},
+        ],
+      });
+
+      expect(metrics.storageUsedGb, 3.42);
+      expect(metrics.userGrowth, isEmpty);
+      expect(metrics.deptCompliance.single.compliancePercentage, 66);
+    });
+
+    test('rejects invalid storage usage strings', () {
+      expect(
+        () => SuperAdminDashboardModel.fromJson({
+          'totalUsers': 10,
+          'totalDepts': 2,
+          'storageUsedGb': 'unavailable',
+          'activeAudits': 4,
+          'deptCompliance': [],
+          'userGrowth': [],
+        }),
+        throwsFormatException,
+      );
     });
   });
 }
