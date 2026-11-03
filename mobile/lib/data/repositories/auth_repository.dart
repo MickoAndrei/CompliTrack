@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:dio/dio.dart';
 import '../models/user_model.dart';
 import '../../core/network/api_client.dart';
@@ -37,6 +39,7 @@ class AuthRepository {
     await _storageService.saveToken(token);
     await _storageService.saveRoleId(user.roleId);
     await _storageService.saveUserId(user.id);
+    await _storageService.saveUser(jsonEncode(user.toJson()));
 
     return (token: token, user: user);
   }
@@ -95,27 +98,40 @@ class AuthRepository {
     }
 
     try {
-      final response = await _apiClient.dio.get('/api/v1/auth/me');
-      final body = _requireMap(response.data);
-      final userJson = body['data'] ?? body['user'];
-      if (userJson is! Map<String, dynamic>) {
-        throw const FormatException('The session response is missing its user.');
+      UserModel user;
+      final savedUser = await _storageService.getUser();
+      if (savedUser != null && savedUser.isNotEmpty) {
+        final decoded = jsonDecode(savedUser);
+        if (decoded is! Map<String, dynamic>) {
+          throw const FormatException('The saved session user is invalid.');
+        }
+        user = UserModel.fromJson(decoded);
+      } else {
+        // Migrate sessions created before the user profile was cached locally.
+        final response = await _apiClient.dio.get('/api/v1/auth/me');
+        final body = _requireMap(response.data);
+        final userJson = body['data'] ?? body['user'];
+        if (userJson is! Map<String, dynamic>) {
+          throw const FormatException('The session response is missing its user.');
+        }
+        user = UserModel.fromJson(userJson);
+        await _storageService.saveUser(jsonEncode(user.toJson()));
       }
-      final user = UserModel.fromJson(userJson);
-      if (user.roleId != roleId) {
+      if (user.roleId != roleId || user.id != await _storageService.getUserId()) {
         await _storageService.clearAll();
         return (token: null, roleId: null, user: null);
       }
       return (token: token, roleId: roleId, user: user);
+    } on FormatException {
+      await _storageService.clearAll();
+      rethrow;
     } on DioException catch (error) {
+      // A network failure during startup must not erase a valid local session.
       if (error.response?.statusCode == 401) {
         await _storageService.clearAll();
         return (token: null, roleId: null, user: null);
       }
       return (token: token, roleId: roleId, user: null);
-    } on FormatException {
-      await _storageService.clearAll();
-      rethrow;
     }
   }
 
