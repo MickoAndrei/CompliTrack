@@ -73,7 +73,7 @@ class _SuperAdminDashboardScreenState extends State<SuperAdminDashboardScreen> {
             onRefresh: _reload,
             child: ListView(
               physics: const AlwaysScrollableScrollPhysics(),
-              padding: const EdgeInsets.fromLTRB(14, 10, 14, 24),
+              padding: const EdgeInsets.fromLTRB(17, 12, 17, 24),
               children: [
                 Row(children: [
                   Expanded(
@@ -92,7 +92,7 @@ class _SuperAdminDashboardScreenState extends State<SuperAdminDashboardScreen> {
                           color: const Color(0xFF8B3DFF),
                           tint: const Color(0xFFF5F0FF))),
                 ]),
-                const SizedBox(height: 8),
+                const SizedBox(height: 10),
                 Row(children: [
                   Expanded(
                       child: _MetricCard(
@@ -110,11 +110,11 @@ class _SuperAdminDashboardScreenState extends State<SuperAdminDashboardScreen> {
                           color: const Color(0xFF00B984),
                           tint: const Color(0xFFE9FBF4))),
                 ]),
-                const SizedBox(height: 18),
+                const SizedBox(height: 24),
                 _GrowthCard(data: metrics.userGrowth),
-                const SizedBox(height: 14),
+                const SizedBox(height: 22),
                 _ComplianceCard(data: metrics.deptCompliance),
-                const SizedBox(height: 14),
+                const SizedBox(height: 20),
                 _RecentLogsCard(future: _auditLogsFuture),
                 const SizedBox(height: 14),
                 const _SystemHealthCard(),
@@ -139,42 +139,45 @@ class _MetricCard extends StatelessWidget {
   final Color color, tint;
 
   @override
-  Widget build(BuildContext context) => Container(
-        height: 60,
-        padding: const EdgeInsets.symmetric(horizontal: 10),
-        decoration: _cardDecoration(),
-        child: Row(children: [
-          Container(
-              width: 32,
-              height: 32,
-              decoration: BoxDecoration(
-                  color: tint, borderRadius: BorderRadius.circular(9)),
-              child: Icon(icon, size: 18, color: color)),
-          const SizedBox(width: 9),
-          Expanded(
-              child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                Text(value,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                        fontFamily: 'Poppins',
-                        fontSize: 14,
-                        height: 1.25,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.ustpDark)),
-                Text(label,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                        fontFamily: 'Inter',
-                        fontSize: 9,
-                        color: AppColors.ustpMuted)),
-              ])),
-        ]),
-      );
+  Widget build(BuildContext context) {
+    final compact = MediaQuery.sizeOf(context).width < 340;
+    return Container(
+      height: compact ? 60 : 76,
+      padding: EdgeInsets.symmetric(horizontal: compact ? 10 : 14),
+      decoration: _cardDecoration(),
+      child: Row(children: [
+        Container(
+            width: compact ? 32 : 40,
+            height: compact ? 32 : 40,
+            decoration: BoxDecoration(
+                color: tint, borderRadius: BorderRadius.circular(9)),
+            child: Icon(icon, size: compact ? 18 : 21, color: color)),
+        SizedBox(width: compact ? 9 : 11),
+        Expanded(
+            child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+              Text(value,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                      fontFamily: 'Poppins',
+                      fontSize: compact ? 14 : 18,
+                      height: 1.25,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.ustpDark)),
+              Text(label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                      fontFamily: 'Inter',
+                      fontSize: compact ? 9 : 11,
+                      color: AppColors.ustpMuted)),
+            ])),
+      ]),
+    );
+  }
 }
 
 class _GrowthCard extends StatelessWidget {
@@ -183,6 +186,7 @@ class _GrowthCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final compact = MediaQuery.sizeOf(context).width < 340;
     final hasGrowthData = data.any((point) => point.count > 0);
     final counts = data.map((point) => point.count).toList();
     final minCount =
@@ -193,8 +197,9 @@ class _GrowthCard extends StatelessWidget {
     final minY = (minCount - padding).clamp(0, maxCount).toDouble();
     final maxY = (maxCount + padding).toDouble();
     return Container(
-      height: 164,
-      padding: const EdgeInsets.fromLTRB(12, 12, 8, 8),
+      height: compact ? 164 : 209,
+      padding: EdgeInsets.fromLTRB(compact ? 12 : 16, compact ? 12 : 16,
+          compact ? 8 : 12, compact ? 8 : 12),
       decoration: _cardDecoration(),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [
@@ -203,19 +208,19 @@ class _GrowthCard extends StatelessWidget {
                   hasGrowthData
                       ? 'User Growth Trend (${data.first.count} -> ${data.last.count})'
                       : 'User Growth Trend',
-                  style: const TextStyle(
+                  style: TextStyle(
                       fontFamily: 'Poppins',
-                      fontSize: 10.5,
+                      fontSize: compact ? 10.5 : 13,
                       fontWeight: FontWeight.w700,
                       color: AppColors.ustpDark))),
           Text(
               data.length < 2 ? '' : '${data.first.month} - ${data.last.month}',
-              style: const TextStyle(
+              style: TextStyle(
                   fontFamily: 'Inter',
-                  fontSize: 9,
+                  fontSize: compact ? 9 : 11,
                   color: AppColors.ustpMuted)),
         ]),
-        const SizedBox(height: 8),
+        const SizedBox(height: 12),
         if (!hasGrowthData)
           const Expanded(
             child: Center(
@@ -223,7 +228,7 @@ class _GrowthCard extends StatelessWidget {
                 'No user growth data available',
                 style: TextStyle(
                     fontFamily: 'Inter',
-                    fontSize: 9,
+                    fontSize: 11,
                     color: AppColors.ustpMuted),
               ),
             ),
@@ -267,7 +272,7 @@ class _GrowthCard extends StatelessWidget {
                         return Text(data[i].month,
                             style: const TextStyle(
                                 fontFamily: 'Inter',
-                                fontSize: 8,
+                                fontSize: 10,
                                 color: AppColors.ustpMuted));
                       })),
             ),
@@ -293,83 +298,54 @@ class _GrowthCard extends StatelessWidget {
   }
 }
 
-class _ComplianceCard extends StatefulWidget {
+class _ComplianceCard extends StatelessWidget {
   const _ComplianceCard({required this.data});
   final List<DepartmentComplianceData> data;
 
   @override
-  State<_ComplianceCard> createState() => _ComplianceCardState();
-}
-
-class _ComplianceCardState extends State<_ComplianceCard> {
-  bool _mostCompliantFirst = true;
-
-  @override
   Widget build(BuildContext context) {
-    final departments = [...widget.data]..sort((a, b) => _mostCompliantFirst
-        ? b.compliancePercentage.compareTo(a.compliancePercentage)
-        : a.compliancePercentage.compareTo(b.compliancePercentage));
+    final compact = MediaQuery.sizeOf(context).width < 340;
+    final departments = data;
 
     return Container(
-      height: 178,
-      padding: const EdgeInsets.fromLTRB(12, 12, 12, 8),
+      height: compact ? 178 : 223,
+      padding: EdgeInsets.fromLTRB(compact ? 12 : 16, compact ? 12 : 16,
+          compact ? 12 : 16, compact ? 8 : 12),
       decoration: _cardDecoration(),
       child: Column(
         children: [
           Row(
             children: [
-              const Expanded(
+              Expanded(
                 child: Text(
                   'Compliance by Department (%)',
                   style: TextStyle(
                     fontFamily: 'Poppins',
-                    fontSize: 10.5,
+                    fontSize: compact ? 10.5 : 13,
                     fontWeight: FontWeight.w700,
                     color: AppColors.ustpDark,
                   ),
                 ),
               ),
-              PopupMenuButton<bool>(
-                initialValue: _mostCompliantFirst,
-                tooltip: 'Sort departments',
-                onSelected: (value) =>
-                    setState(() => _mostCompliantFirst = value),
-                itemBuilder: (context) => const [
-                  PopupMenuItem(value: true, child: Text('Most Compliant')),
-                  PopupMenuItem(value: false, child: Text('Least Compliant')),
-                ],
-                child: Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFF5F7FA),
-                    borderRadius: BorderRadius.circular(14),
-                    border: Border.all(color: const Color(0xFFE3EAF2)),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        _mostCompliantFirst
-                            ? 'Most Compliant'
-                            : 'Least Compliant',
-                        style: const TextStyle(
-                          fontFamily: 'Inter',
-                          fontSize: 8,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.ustpMuted,
-                        ),
-                      ),
-                      const SizedBox(width: 3),
-                      const Icon(Icons.expand_more,
-                          size: 13, color: AppColors.ustpMuted),
-                    ],
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF1F4F8),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: Text(
+                  'Read-only',
+                  style: TextStyle(
+                    fontFamily: 'Inter',
+                    fontSize: compact ? 8 : 10,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.ustpMuted,
                   ),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 12),
           Expanded(
             child: departments.isEmpty
                 ? const Center(
@@ -439,6 +415,7 @@ class _DepartmentBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final compact = MediaQuery.sizeOf(context).width < 340;
     final percentage = department.compliancePercentage.clamp(0, 100).toDouble();
 
     return Column(
@@ -450,7 +427,7 @@ class _DepartmentBar extends StatelessWidget {
               '${percentage.round()}%',
               style: const TextStyle(
                 fontFamily: 'Inter',
-                fontSize: 8,
+                fontSize: 10,
                 fontWeight: FontWeight.w600,
                 color: AppColors.ustpDark,
               ),
@@ -469,7 +446,7 @@ class _DepartmentBar extends StatelessWidget {
               return Align(
                 alignment: Alignment.bottomCenter,
                 child: Container(
-                  width: 22,
+                  width: compact ? 22 : 28,
                   height: barHeight,
                   decoration: const BoxDecoration(
                     color: AppColors.ustpGold,
@@ -490,7 +467,7 @@ class _DepartmentBar extends StatelessWidget {
               overflow: TextOverflow.ellipsis,
               style: const TextStyle(
                 fontFamily: 'Inter',
-                fontSize: 8,
+                fontSize: 10,
                 color: AppColors.ustpMuted,
               ),
             ),

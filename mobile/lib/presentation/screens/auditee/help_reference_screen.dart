@@ -72,7 +72,7 @@ class HelpReferenceScreen extends StatelessWidget {
                         'Need guidance on compliance criteria?',
                         style: TextStyle(
                           fontFamily: 'Poppins',
-                          fontSize: 13,
+                          fontSize: 15,
                           fontWeight: FontWeight.bold,
                           color: AppColors.ustpGold,
                         ),
@@ -81,8 +81,8 @@ class HelpReferenceScreen extends StatelessWidget {
                       Text(
                         'Explore government regulations and international standards mapping Philippine national requirements below.',
                         style: TextStyle(
-                          fontSize: 10,
-                          height: 1.4,
+                          fontSize: 11,
+                          height: 1.45,
                           color: AppColors.ustpWhite,
                         ),
                       ),
@@ -108,7 +108,7 @@ class HelpReferenceScreen extends StatelessWidget {
             'Mapped Compliance Standards',
             style: TextStyle(
               fontFamily: 'Poppins',
-              fontSize: 15,
+              fontSize: 16,
               fontWeight: FontWeight.bold,
               color: AppColors.ustpDark,
             ),
@@ -132,7 +132,7 @@ class _StandardCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: AppColors.ustpWhite,
         borderRadius: BorderRadius.circular(12),
@@ -171,7 +171,7 @@ class _StandardCard extends StatelessWidget {
           Text(
             standard.name,
             style: const TextStyle(
-              fontSize: 11,
+              fontSize: 13,
               fontWeight: FontWeight.w600,
               color: AppColors.ustpDark,
             ),
@@ -180,7 +180,7 @@ class _StandardCard extends StatelessWidget {
           Text(
             standard.description,
             style: const TextStyle(
-              fontSize: 10,
+              fontSize: 11,
               height: 1.45,
               color: AppColors.ustpMuted,
             ),

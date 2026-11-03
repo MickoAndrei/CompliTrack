@@ -8,6 +8,7 @@ import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
 import { MongoClient } from 'mongodb';
+import { createHmac, timingSafeEqual } from 'crypto';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -16,6 +17,63 @@ const app = express();
 const PORT = 3000;
 const HOST = '0.0.0.0';
 app.set('trust proxy', 1);
+
+function getJwtSecret() {
+  const secret = process.env.JWT_SECRET;
+  return typeof secret === 'string' && Buffer.byteLength(secret) >= 32
+    ? secret
+    : null;
+}
+
+function signAuthToken(user) {
+  const secret = getJwtSecret();
+  if (!secret) return null;
+
+  const now = Math.floor(Date.now() / 1000);
+  const encode = (value) => Buffer.from(JSON.stringify(value)).toString('base64url');
+  const unsignedToken = `${encode({ alg: 'HS256', typ: 'JWT' })}.${encode({
+    sub: user._id,
+    roleId: user.roleId,
+    iat: now,
+    exp: now + 7 * 24 * 60 * 60,
+    iss: 'complitrack',
+    aud: 'complitrack-mobile',
+  })}`;
+  const signature = createHmac('sha256', secret).update(unsignedToken).digest('base64url');
+  return `${unsignedToken}.${signature}`;
+}
+
+function verifyAuthToken(token) {
+  const secret = getJwtSecret();
+  if (!secret || typeof token !== 'string') return null;
+
+  const parts = token.split('.');
+  if (parts.length !== 3) return null;
+  const unsignedToken = `${parts[0]}.${parts[1]}`;
+  const expected = createHmac('sha256', secret).update(unsignedToken).digest();
+  let actual;
+  try {
+    actual = Buffer.from(parts[2], 'base64url');
+  } catch {
+    return null;
+  }
+  if (actual.length !== expected.length || !timingSafeEqual(actual, expected)) return null;
+
+  try {
+    const header = JSON.parse(Buffer.from(parts[0], 'base64url').toString('utf8'));
+    const claims = JSON.parse(Buffer.from(parts[1], 'base64url').toString('utf8'));
+    const now = Math.floor(Date.now() / 1000);
+    if (header.alg !== 'HS256' || header.typ !== 'JWT'
+      || claims.iss !== 'complitrack' || claims.aud !== 'complitrack-mobile'
+      || typeof claims.sub !== 'string' || !Number.isInteger(claims.exp) || claims.exp <= now) {
+      return null;
+    }
+    const user = users.find((candidate) => candidate._id === claims.sub && candidate.isActive);
+    return user && user.roleId === claims.roleId ? user : null;
+  } catch {
+    return null;
+  }
+}
 
 function viteAssetTag(entry) {
   try {
@@ -548,6 +606,10 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 // Session authentication resolver
 function getCurrentUser(req) {
+  const authorization = req.headers.authorization;
+  if (typeof authorization === 'string' && authorization.startsWith('Bearer ')) {
+    return verifyAuthToken(authorization.slice('Bearer '.length).trim());
+  }
   const userId = req.cookies.complitrack_user_id || req.headers['x-user-id'];
   if (!userId) return null;
   return users.find((u) => u._id === userId && u.isActive) || null;
@@ -615,6 +677,11 @@ app.post('/api/v1/auth/login', (req, res) => {
     return res.status(422).json({ message: 'These credentials do not match our records.' });
   }
 
+  const token = signAuthToken(user);
+  if (!token) {
+    return res.status(503).json({ message: 'JWT_SECRET must be configured with at least 32 characters.' });
+  }
+
   // Set session cookie
   res.cookie('complitrack_user_id', user._id, {
     path: '/',
@@ -627,7 +694,7 @@ app.post('/api/v1/auth/login', (req, res) => {
   logActivity('User Signed In', user, 'User', user._id);
 
   res.json({
-    token: `token-${user._id}-${Date.now()}`,
+    token,
     user: {
       _id: user._id,
       userCode: user.userCode,
