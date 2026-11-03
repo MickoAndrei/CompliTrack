@@ -289,7 +289,7 @@ InputDecoration _loginInputDecoration({String? hintText, Widget? suffixIcon}) =>
       hintStyle: const TextStyle(
         fontFamily: 'Inter',
         fontSize: 12,
-        color: AppColors.ustpDark,
+        color: AppColors.ustpMuted,
       ),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(10),
