@@ -97,7 +97,7 @@ class AuthRepository {
     try {
       final response = await _apiClient.dio.get('/api/v1/auth/me');
       final body = _requireMap(response.data);
-      final userJson = body['user'];
+      final userJson = body['data'] ?? body['user'];
       if (userJson is! Map<String, dynamic>) {
         throw const FormatException('The session response is missing its user.');
       }
