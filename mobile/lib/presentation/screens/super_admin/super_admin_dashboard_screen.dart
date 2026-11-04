@@ -692,24 +692,19 @@ class _HealthRow extends StatelessWidget {
     required this.status,
     required this.healthy,
     required this.checking,
-    this.disabled = false,
   });
 
   final String label;
   final String status;
   final bool healthy;
   final bool checking;
-  final bool disabled;
-
   @override
   Widget build(BuildContext context) {
     final color = checking
         ? AppColors.ustpMuted
         : healthy
             ? const Color(0xFF00A874)
-            : disabled
-                ? const Color(0xFFB7791F)
-                : AppColors.error;
+            : AppColors.error;
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 3),
