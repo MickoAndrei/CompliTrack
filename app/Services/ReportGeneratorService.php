@@ -34,31 +34,23 @@ class ReportGeneratorService
             ->count();
         $activeAudits = $openCars;
 
-        $users = $this->scopes->users($actor);
-        if ($startDate || $endDate) {
-            $dateRange = static function ($query) use ($startDate, $endDate): void {
-                if ($startDate) {
-                    $query->where('createdAt', '>=', $startDate->copy()->utc());
-                }
-                if ($endDate) {
-                    $query->where('createdAt', '<=', $endDate->copy()->utc());
-                }
-            };
-            $legacyDateRange = static function ($query) use ($startDate, $endDate): void {
-                if ($startDate) {
-                    $query->where('created_at', '>=', $startDate->copy()->utc());
-                }
-                if ($endDate) {
-                    $query->where('created_at', '<=', $endDate->copy()->utc());
-                }
-            };
-            $users->where(static function ($query) use ($dateRange, $legacyDateRange): void {
-                $query->where($dateRange)->orWhere($legacyDateRange);
-            });
+        // MongoDB can contain both BSON dates and legacy ISO date strings. Read
+        // timestamped users and normalize dates in PHP so mixed representations
+        // do not silently disappear from the growth series.
+        $userDates = $this->scopes->users($actor)
+            ->where(static function ($query): void {
+                $query->whereNotNull('createdAt')->orWhereNotNull('created_at');
+            })
+            ->get(['createdAt', 'created_at'])
+            ->map(static fn (User $user) => self::userCreationDate($user))
+            ->filter();
 
-            $userGrowth = $users->get(['createdAt', 'created_at'])
-                ->map(static fn (User $user) => self::userCreationDate($user))
-                ->filter()
+        if ($startDate || $endDate) {
+            $userGrowth = $userDates
+                ->filter(static function (Carbon $date) use ($startDate, $endDate): bool {
+                    return (! $startDate || $date->greaterThanOrEqualTo($startDate->copy()->utc()))
+                        && (! $endDate || $date->lessThanOrEqualTo($endDate->copy()->utc()));
+                })
                 ->groupBy(static fn (Carbon $date) => $date->format('Y-m'))
                 ->map(static fn ($group, $month) => [
                     'month' => Carbon::createFromFormat('!Y-m', (string) $month)->format('M'),
@@ -68,15 +60,6 @@ class ReportGeneratorService
             // Show six complete months and a cumulative user count so the dashboard
             // trend is meaningful even when no one signed up in a particular month.
             $trendStart = now()->utc()->startOfMonth()->subMonths(5);
-            $trendEnd = $trendStart->copy()->addMonths(6);
-            $userDates = $users
-                ->where(static function ($query) use ($trendEnd): void {
-                    $query->where('createdAt', '<', $trendEnd)
-                        ->orWhere('created_at', '<', $trendEnd);
-                })
-                ->get(['createdAt', 'created_at'])
-                ->map(static fn (User $user) => self::userCreationDate($user))
-                ->filter();
             $userGrowth = collect(range(0, 5))->map(function (int $offset) use ($trendStart, $userDates) {
                 $month = $trendStart->copy()->addMonths($offset);
                 $nextMonth = $month->copy()->addMonth();
@@ -155,10 +138,19 @@ class ReportGeneratorService
     private static function userCreationDate(User $user): ?Carbon
     {
         $createdAt = $user->createdAt ?? $user->getAttribute('created_at');
-        if (! $createdAt instanceof DateTimeInterface) {
+        if ($createdAt instanceof DateTimeInterface) {
+            return Carbon::instance($createdAt)->utc();
+        }
+
+        if (! is_string($createdAt) || trim($createdAt) === '') {
             return null;
         }
 
-        return Carbon::instance($createdAt)->utc();
+        try {
+            return Carbon::parse($createdAt)->utc();
+        } catch (\Throwable) {
+            return null;
+        }
     }
 }
+

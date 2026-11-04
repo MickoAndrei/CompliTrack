@@ -69,9 +69,15 @@ class UserGrowthData {
   const UserGrowthData({required this.month, required this.count});
 
   factory UserGrowthData.fromJson(Map<String, dynamic> json) {
+    final rawCount = json['count'];
+    final count = rawCount is num ? rawCount.toInt() : int.tryParse('$rawCount');
+    if (count == null || count < 0) {
+      throw const FormatException('Invalid user growth count.');
+    }
+
     return UserGrowthData(
       month: json['month'] as String,
-      count: json['count'] as int,
+      count: count,
     );
   }
 }
