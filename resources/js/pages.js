@@ -833,7 +833,7 @@ document.addEventListener('alpine:init', () => {
                     cards: [
                         ['totalUsers', 'Total Users', 'users'],
                         ['totalDepts', 'Departments', 'building-2'],
-                        ['storageUsedGb', 'Storage Used (GB)', 'hard-drive'],
+                        ['storageUsedGb', 'MongoDB Used (GB)', 'hard-drive'],
                         ['activeAudits', 'Active Audits', 'clipboard-check'],
                     ],
                     actions: [

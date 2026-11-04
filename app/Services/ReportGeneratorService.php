@@ -3,11 +3,11 @@
 namespace App\Services;
 
 use DateTimeInterface;
-use App\Models\ArchiveDocument;
 use App\Models\ComplianceCheck;
 use App\Models\Department;
 use App\Models\User;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 
 class ReportGeneratorService
 {
@@ -115,14 +115,25 @@ class ReportGeneratorService
             ->values()
             ->all();
 
-        $storageBytes = $this->scopes->archives($actor)->sum('fileSize');
+        $databaseStats = DB::connection('mongodb')->getMongoDB()->command(['dbStats' => 1])->toArray()[0] ?? null;
+        $mongoStorageBytes = (float) ($databaseStats->storageSize ?? 0) + (float) ($databaseStats->indexSize ?? 0);
+        $archiveFileBytes = (float) $this->scopes->archives($actor)->sum('fileSize');
 
         return [
             'totalChecks' => $totalChecks,
             'compliantChecks' => $compliantChecks,
             'totalUsers' => $this->scopes->users($actor)->where('isActive', true)->count(),
             'totalDepts' => $departments->count(),
-            'storageUsedGb' => round(((float) $storageBytes) / (1024 ** 3), 2),
+            'storageUsedGb' => round($mongoStorageBytes / (1024 ** 3), 2),
+            'archiveFileSizeGb' => round($archiveFileBytes / (1024 ** 3), 2),
+            'databaseStats' => [
+                'database' => config('database.connections.mongodb.database'),
+                'dataSizeBytes' => (int) ($databaseStats->dataSize ?? 0),
+                'storageSizeBytes' => (int) ($databaseStats->storageSize ?? 0),
+                'indexSizeBytes' => (int) ($databaseStats->indexSize ?? 0),
+                'collections' => (int) ($databaseStats->collections ?? 0),
+                'objects' => (int) ($databaseStats->objects ?? 0),
+            ],
             'activeAudits' => $activeAudits,
             'userGrowth' => $userGrowth->values()->all(),
             'deptCompliance' => $departmentCompliance,
