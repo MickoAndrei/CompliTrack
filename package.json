@@ -5,8 +5,7 @@
     "type": "module",
     "scripts": {
         "build": "vite build",
-        "dev": "vite",
-        "start": "node server.js"
+        "dev": "vite"
     },
     "devDependencies": {
         "@tailwindcss/vite": "^4.0.0",
@@ -18,12 +17,6 @@
     },
     "dependencies": {
         "alpinejs": "^3.17.5",
-        "bcryptjs": "^3.0.3",
-        "dotenv": "^18.0.9",
-        "express": "^4.21.2",
-        "lucide": "^1.66.0",
-        "mongodb": "^7.8.0",
-        "cookie-parser": "^1.4.7",
-        "multer": "^2.5.0"
+        "lucide": "^1.66.0"
     }
 }

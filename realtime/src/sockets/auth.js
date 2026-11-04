@@ -1,4 +1,4 @@
-const crypto = require('node:crypto');
+const jwt = require('jsonwebtoken');
 const { ObjectId } = require('mongodb');
 
 function extractToken(socket) {
@@ -14,26 +14,15 @@ function createSocketAuth(database) {
   return async (socket, next) => {
     try {
       const token = extractToken(socket);
-      const [id, plainText] = token.includes('|') ? token.split('|', 2) : ['', token];
-      const tokenDocument = id && ObjectId.isValid(id)
-        ? await database.collection('personal_access_tokens').findOne({ _id: new ObjectId(id) })
-        : await database.collection('personal_access_tokens').findOne({
-          token: crypto.createHash('sha256').update(plainText).digest('hex'),
-        });
 
-      const digest = crypto.createHash('sha256').update(plainText).digest('hex');
-      if (!tokenDocument || !crypto.timingSafeEqual(
-        Buffer.from(tokenDocument.token, 'hex'),
-        Buffer.from(digest, 'hex'),
-      )) {
-        throw new Error('The access token is invalid.');
-      }
-      if (tokenDocument.expires_at && new Date(tokenDocument.expires_at) <= new Date()) {
-        throw new Error('The access token has expired.');
+      // Verifies the signature and expiry (exp) in one call.
+      const payload = jwt.verify(token, process.env.JWT_SECRET, { algorithms: ['HS256'] });
+      if (!ObjectId.isValid(payload.sub)) {
+        throw new Error('The token subject is invalid.');
       }
 
       const user = await database.collection('users').findOne({
-        _id: tokenDocument.tokenable_id,
+        _id: new ObjectId(payload.sub),
         isActive: true,
       });
       if (!user) throw new Error('The account is inactive or no longer exists.');

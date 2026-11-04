@@ -23,7 +23,7 @@ Route::prefix('v1')->group(function () {
     Route::post('/auth/forgot-password', [AuthController::class, 'forgotPassword']);
     Route::post('/auth/reset-password', [AuthController::class, 'resetPassword']);
 
-    Route::middleware(['auth:sanctum', EnsureUserIsActive::class])->group(function () {
+    Route::middleware(['auth:sanctum,api', EnsureUserIsActive::class])->group(function () {
         Route::get('/auth/me', [AuthController::class, 'me']);
         Route::get('/auth/avatar', [AuthController::class, 'avatar']);
         Route::post('/auth/logout', [AuthController::class, 'logout']);
