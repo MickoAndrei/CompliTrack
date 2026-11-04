@@ -20,7 +20,7 @@
             <div class="chart-canvas-container chart-empty" x-show="!loading && !reportData?.deptCompliance?.length">No department compliance data yet.</div>
             <div class="chart-canvas-container chart-skeleton" x-show="loading" aria-label="Loading department chart"></div>
         </article>
-        <article class="chart-card"><div class="chart-header-flex"><h3 class="chart-card-title">Monthly Compliance Trend <span class="chart-range-readout" x-show="reportData?.userGrowth?.length" x-text="`(0 → ${userTrendMax(reportData?.userGrowth || [])})`"></span></h3><span class="chart-trend-readout">Users · Last six months</span></div>
+        <article class="chart-card"><div class="chart-header-flex"><h3 class="chart-card-title">User Growth Trend <span class="chart-range-readout" x-show="reportData?.userGrowth?.length" x-text="`(0 → ${userTrendMax(reportData?.userGrowth || [])})`"></span></h3><span class="chart-trend-readout">Users · Last six months</span></div>
             <div class="chart-canvas-container super-admin-trend" x-show="!loading && reportData?.userGrowth?.length">
                 <svg class="super-admin-trend-svg" viewBox="0 0 420 180" preserveAspectRatio="none" aria-hidden="true">
                     <line x1="0" :y1="trendY(0, reportData?.userGrowth || [])" x2="420" :y2="trendY(0, reportData?.userGrowth || [])" stroke="#cbd5e1" stroke-width="1.5"/>
