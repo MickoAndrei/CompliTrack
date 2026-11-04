@@ -4,6 +4,7 @@ use App\Http\Controllers\Api\V1\ArchiveController;
 use App\Http\Controllers\Api\V1\AuditLogController;
 use App\Http\Controllers\Api\V1\AuthController;
 use App\Http\Controllers\Api\V1\ComplianceCheckController;
+use App\Http\Controllers\Api\V1\DatabaseStatsController;
 use App\Http\Controllers\Api\V1\DepartmentController;
 use App\Http\Controllers\Api\V1\NotificationController;
 use App\Http\Controllers\Api\V1\ReportController;
@@ -61,6 +62,7 @@ Route::prefix('v1')->group(function () {
         // Super Admin only
         Route::middleware('role:0')->group(function () {
             Route::get('/logs', [AuditLogController::class, 'index']);
+            Route::get('/system/database-stats', DatabaseStatsController::class);
             Route::post('/users/{id}/reactivate', [UserController::class, 'reactivate']);
             Route::post('/departments/{id}/reactivate', [DepartmentController::class, 'reactivate']);
         });

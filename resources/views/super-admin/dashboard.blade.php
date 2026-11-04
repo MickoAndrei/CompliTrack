@@ -8,7 +8,7 @@
     <div class="stat-cards-grid">
         <article class="metric-stat-card"><div class="metric-info"><span class="metric-label">Total Users</span><span class="metric-number color-purple" x-text="loading ? '—' : (stats.totalUsers ?? 0)"></span></div><div class="metric-icon-box purple"><i data-lucide="users"></i></div></article>
         <article class="metric-stat-card"><div class="metric-info"><span class="metric-label">Total Departments</span><span class="metric-number color-slate" x-text="loading ? '—' : (stats.totalDepts ?? 0)"></span></div><div class="metric-icon-box slate"><i data-lucide="building-2"></i></div></article>
-        <article class="metric-stat-card"><div class="metric-info"><span class="metric-label">Storage Used</span><span class="metric-number color-dark" x-text="loading ? '—' : `${stats.storageUsedGb ?? 0} GB`"></span></div><div class="metric-icon-box blue"><i data-lucide="hard-drive"></i></div></article>
+        <article class="metric-stat-card"><div class="metric-info"><span class="metric-label">MongoDB Storage Used</span><span class="metric-number color-dark" x-text="loading ? '—' : `${stats.storageUsedGb ?? 0} GB`"></span></div><div class="metric-icon-box blue"><i data-lucide="hard-drive"></i></div></article>
         <article class="metric-stat-card"><div class="metric-info"><span class="metric-label">Open CARs</span><span class="metric-number color-danger" x-text="loading ? '—' : (stats.openCars ?? 0)"></span></div><div class="metric-icon-box danger"><i data-lucide="triangle-alert"></i></div></article>
     </div>
 
