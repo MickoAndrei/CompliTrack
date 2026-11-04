@@ -1,5 +1,7 @@
 # Changelog
 
+All notable changes to CompliTrack are documented here.
+
 ## [Unreleased] - 2026-11-04
 
 ### Added
@@ -101,4 +103,5 @@ All notable changes to CompliTrack are documented here.
 - Improved spacing and responsive layout on Roles and Settings pages.
 - Refined sign-out button sizing and neutral colors.
 - Updated sidebar and header profile images to use each signed-in user’s uploaded photo, with initials as the fallback.
+
 
