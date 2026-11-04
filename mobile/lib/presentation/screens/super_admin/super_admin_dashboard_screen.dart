@@ -624,9 +624,7 @@ class _SystemHealthCardState extends State<_SystemHealthCard> {
   @override
   Widget build(BuildContext context) {
     final api = _status?.apiAvailable;
-    final realtime = _status?.realtimeAvailable;
     final database = _status?.databaseAvailable;
-    final push = _status?.pushConfigured;
 
     return Container(
       padding: const EdgeInsets.fromLTRB(12, 10, 12, 9),
@@ -673,16 +671,6 @@ class _SystemHealthCardState extends State<_SystemHealthCard> {
             checking: _checking,
           ),
           _HealthRow(
-            label: 'Node.js Service',
-            status: _checking
-                ? 'Checking'
-                : realtime == true
-                    ? 'Operational'
-                    : 'Unavailable',
-            healthy: realtime == true,
-            checking: _checking,
-          ),
-          _HealthRow(
             label: 'MongoDB Cluster',
             status: _checking
                 ? 'Checking'
@@ -691,19 +679,6 @@ class _SystemHealthCardState extends State<_SystemHealthCard> {
                     : 'Unavailable',
             healthy: database == true,
             checking: _checking,
-          ),
-          _HealthRow(
-            label: 'FCM Push Service',
-            status: _checking
-                ? 'Checking'
-                : push == true
-                    ? 'Configured'
-                    : push == false
-                        ? 'Disabled'
-                        : 'Unavailable',
-            healthy: push == true,
-            checking: _checking,
-            disabled: push == false,
           ),
         ],
       ),

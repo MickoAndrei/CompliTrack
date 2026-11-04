@@ -39,7 +39,7 @@ Artisan::command('mongodb:check', function () {
 
 Artisan::command('complitrack:logout-all', function () {
     $driver = config('session.driver');
-    if ($driver === 'database') {
+    if ($driver === 'database' || $driver === 'mongodb') {
         DB::connection(config('session.connection'))->table(config('session.table', 'sessions'))->delete();
     } elseif ($driver === 'file') {
         File::cleanDirectory(config('session.files'));

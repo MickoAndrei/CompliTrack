@@ -46,12 +46,24 @@ function Stop-PidFile([string]$pidFile) {
 }
 
 function Ensure-MongoRunning {
-    Write-Host "Checking if MongoDB is reachable on port 27017..."
-    $connection = Test-NetConnection -ComputerName "127.0.0.1" -Port 27017 -WarningAction SilentlyContinue
-    if (-not $connection.TcpTestSucceeded) {
-        throw "MongoDB is not running or not reachable on port 27017. Please start your MongoDB server before running CompliTrack."
+    $envPath = Join-Path $repoRoot ".env"
+    $script:MongoEnvValues = @{}
+    foreach ($line in Get-Content $envPath) {
+        if ($line -match '^\s*(MONGODB_URI|MONGODB_DATABASE)\s*=\s*(.*?)\s*$') {
+            $value = $Matches[2].Trim().Trim('"').Trim("'")
+            $script:MongoEnvValues[$Matches[1]] = $value
+        }
     }
-    Write-Host "  [OK] MongoDB is running and reachable on port 27017."
+
+    if ([string]::IsNullOrWhiteSpace($script:MongoEnvValues['MONGODB_URI'])) {
+        throw "MONGODB_URI is missing or empty in .env."
+    }
+    if ([string]::IsNullOrWhiteSpace($script:MongoEnvValues['MONGODB_DATABASE'])) {
+        throw "MONGODB_DATABASE is missing or empty in .env."
+    }
+
+    Write-Host "MongoDB target from .env: database '$($script:MongoEnvValues['MONGODB_DATABASE'])'."
+    Write-Host "Laravel will verify connectivity against the configured MongoDB URI while seeding."
 }
 
 Write-Host "Checking required tools..."
@@ -185,9 +197,36 @@ if (-not ((Get-Content (Join-Path $repoRoot ".env")) -match '^APP_KEY=') -or ((G
 
 Ensure-MongoRunning
 
-Write-Host ""
-Write-Host "Running Laravel migrations..."
-php artisan migrate --force
+Write-Host "Clearing cached Laravel configuration so the current .env MongoDB settings are used..."
+php artisan config:clear
+if ($LASTEXITCODE -ne 0) { throw "Could not clear Laravel configuration cache." }
+
+# Remember completion per MongoDB target without storing the credential-bearing URI.
+$mongoTargetHashInput = "{0}|{1}" -f $script:MongoEnvValues['MONGODB_URI'], $script:MongoEnvValues['MONGODB_DATABASE']
+$sha256 = [System.Security.Cryptography.SHA256]::Create()
+try {
+    $mongoTargetHash = [BitConverter]::ToString($sha256.ComputeHash([Text.Encoding]::UTF8.GetBytes($mongoTargetHashInput))).Replace('-', '')
+} finally {
+    $sha256.Dispose()
+}
+$bootstrapMarker = Join-Path $repoRoot "storage\app\mongo-bootstrap-$mongoTargetHash.done"
+
+if (Test-Path $bootstrapMarker) {
+    Write-Host "MongoDB migrations and seeding already completed for this .env database target; skipping."
+} else {
+    Write-Host "Running Laravel migrations against the configured MongoDB database..."
+    php artisan migrate --force
+    if ($LASTEXITCODE -ne 0) { throw "MongoDB migrations failed. Check MONGODB_URI and MONGODB_DATABASE in .env." }
+
+    Write-Host "Seeding the configured MongoDB database..."
+    php artisan db:seed --force
+    if ($LASTEXITCODE -ne 0) { throw "MongoDB seeding failed. Check MONGODB_URI and MONGODB_DATABASE in .env." }
+
+    $markerDirectory = Split-Path -Parent $bootstrapMarker
+    New-Item -ItemType Directory -Force -Path $markerDirectory | Out-Null
+    Set-Content -Path $bootstrapMarker -Value "Completed $(Get-Date -Format o)"
+    Write-Host "  [OK] MongoDB migrations and seeding complete; future starts will skip them for this database target."
+}
 
 if (Test-PortInUse $appPort) {
     Write-Host "Laravel already running on port $appPort"

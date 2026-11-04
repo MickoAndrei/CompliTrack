@@ -11,6 +11,7 @@ use App\Http\Controllers\Api\V1\ReportController;
 use App\Http\Controllers\Api\V1\UserController;
 use App\Http\Middleware\EnsureUserIsActive;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\DB;
 
 Route::prefix('v1')->group(function () {
     Route::get('/version', fn () => response()->json([
@@ -63,6 +64,17 @@ Route::prefix('v1')->group(function () {
         Route::middleware('role:0')->group(function () {
             Route::get('/logs', [AuditLogController::class, 'index']);
             Route::get('/system/database-stats', DatabaseStatsController::class);
+            Route::get('/system/health', function () {
+                try {
+                    DB::connection('mongodb')->getMongoDB()->command(['ping' => 1]);
+
+                    return response()->json(['database' => 'ok']);
+                } catch (\Throwable $exception) {
+                    report($exception);
+
+                    return response()->json(['database' => 'unavailable'], 503);
+                }
+            });
             Route::post('/users/{id}/reactivate', [UserController::class, 'reactivate']);
             Route::post('/departments/{id}/reactivate', [DepartmentController::class, 'reactivate']);
         });

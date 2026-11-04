@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import '../../core/constants/app_colors.dart';
-import '../../core/services/socket_service.dart';
 import '../../data/repositories/notification_repository.dart';
 import '../providers/auth_provider.dart';
 import 'current_user_avatar.dart';
@@ -101,15 +100,16 @@ class UstpNotificationButton extends StatefulWidget {
 
 class _UstpNotificationButtonState extends State<UstpNotificationButton> {
   final NotificationRepository _repository = NotificationRepository();
-  StreamSubscription<Map<String, dynamic>>? _subscription;
+  Timer? _refreshTimer;
   bool _hasUnread = false;
 
   @override
   void initState() {
     super.initState();
     _refreshUnread();
-    _subscription =
-        SocketService.instance.notifications.listen(_onNotification);
+    _refreshTimer = Timer.periodic(const Duration(seconds: 30), (_) {
+      _refreshUnread();
+    });
   }
 
   @override
@@ -120,27 +120,8 @@ class _UstpNotificationButtonState extends State<UstpNotificationButton> {
 
   @override
   void dispose() {
-    _subscription?.cancel();
+    _refreshTimer?.cancel();
     super.dispose();
-  }
-
-  void _onNotification(Map<String, dynamic> payload) {
-    _refreshUnread();
-    if (!mounted || !TickerMode.valuesOf(context).enabled) return;
-    final lines = [
-      payload['title']?.toString().trim(),
-      payload['message']?.toString().trim(),
-    ].whereType<String>().where((text) => text.isNotEmpty).toList();
-    ScaffoldMessenger.maybeOf(context)?.showSnackBar(
-      SnackBar(
-        behavior: SnackBarBehavior.floating,
-        content: Text(
-          lines.isEmpty ? 'You have a new notification.' : lines.join('\n'),
-          maxLines: 3,
-          overflow: TextOverflow.ellipsis,
-        ),
-      ),
-    );
   }
 
   Future<void> _refreshUnread() async {

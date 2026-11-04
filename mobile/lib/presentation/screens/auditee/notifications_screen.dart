@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_icons.dart';
-import '../../../core/services/socket_service.dart';
 import '../../../data/models/notification_model.dart';
 import '../../../data/repositories/notification_repository.dart';
 
@@ -31,20 +30,20 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   bool _isMarkingRead = false;
   String? _error;
   List<NotificationModel> _notifications = [];
-  StreamSubscription<Map<String, dynamic>>? _subscription;
+  Timer? _refreshTimer;
 
   @override
   void initState() {
     super.initState();
     _loadNotifications();
-    _subscription = SocketService.instance.notifications.listen((_) {
+    _refreshTimer = Timer.periodic(const Duration(seconds: 30), (_) {
       if (mounted) _loadNotifications();
     });
   }
 
   @override
   void dispose() {
-    _subscription?.cancel();
+    _refreshTimer?.cancel();
     super.dispose();
   }
 
