@@ -8,13 +8,13 @@ class ApiConstants {
   static final baseUrl = _configuredUrl(
     'COMPLITRACK_API_URL',
     _apiUrlOverride,
-    'http://10.0.2.2:8000',
+    'https://127.16.90.35:8000',
   );
 
   static final realtimeUrl = _configuredUrl(
     'COMPLITRACK_REALTIME_URL',
     _realtimeUrlOverride,
-    'http://10.0.2.2:4000',
+    'https://127.16.90.35:8000',
   );
 
   static const apiPrefix = '/api/v1';
