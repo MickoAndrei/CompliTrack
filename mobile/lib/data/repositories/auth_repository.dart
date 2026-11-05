@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:typed_data';
 
 import 'package:dio/dio.dart';
 import '../models/user_model.dart';
@@ -31,8 +32,11 @@ class AuthRepository {
     final body = _requireMap(response.data);
     final token = body['token'];
     final userJson = body['user'];
-    if (token is! String || token.isEmpty || userJson is! Map<String, dynamic>) {
-      throw const FormatException('The login response is missing its token or user.');
+    if (token is! String ||
+        token.isEmpty ||
+        userJson is! Map<String, dynamic>) {
+      throw const FormatException(
+          'The login response is missing its token or user.');
     }
 
     final user = UserModel.fromJson(userJson);
@@ -50,6 +54,18 @@ class AuthRepository {
     } finally {
       await _storageService.clearAll();
     }
+  }
+
+  Future<void> uploadAvatar({
+    required Uint8List bytes,
+    required String filename,
+  }) async {
+    await _apiClient.dio.post(
+      '/api/v1/auth/avatar',
+      data: FormData.fromMap({
+        'avatar': MultipartFile.fromBytes(bytes, filename: filename),
+      }),
+    );
   }
 
   Future<void> requestPasswordReset(String email) async {
@@ -89,10 +105,15 @@ class AuthRepository {
     );
   }
 
-  Future<({String? token, int? roleId, UserModel? user})> getSavedSession() async {
+  Future<({String? token, int? roleId, UserModel? user})>
+      getSavedSession() async {
     final token = await _storageService.getToken();
     final roleId = await _storageService.getRoleId();
-    if (token == null || token.isEmpty || roleId == null || roleId < 0 || roleId > 3) {
+    if (token == null ||
+        token.isEmpty ||
+        roleId == null ||
+        roleId < 0 ||
+        roleId > 3) {
       await _storageService.clearAll();
       return (token: null, roleId: null, user: null);
     }
@@ -112,12 +133,14 @@ class AuthRepository {
         final body = _requireMap(response.data);
         final userJson = body['data'] ?? body['user'];
         if (userJson is! Map<String, dynamic>) {
-          throw const FormatException('The session response is missing its user.');
+          throw const FormatException(
+              'The session response is missing its user.');
         }
         user = UserModel.fromJson(userJson);
         await _storageService.saveUser(jsonEncode(user.toJson()));
       }
-      if (user.roleId != roleId || user.id != await _storageService.getUserId()) {
+      if (user.roleId != roleId ||
+          user.id != await _storageService.getUserId()) {
         await _storageService.clearAll();
         return (token: null, roleId: null, user: null);
       }

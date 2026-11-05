@@ -1,5 +1,6 @@
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_icons.dart';
@@ -89,9 +90,10 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       backgroundColor: AppColors.ustpLight,
       body: Column(
         children: [
-          const AdminPageHeader(
+          AdminPageHeader(
             title: 'Compliance Overview',
             subtitle: 'CET USTP Claveria Central Administration Console',
+            onProfileTap: () => context.go('/common/profile'),
           ),
           Expanded(
             child: FutureBuilder<_DashboardData>(

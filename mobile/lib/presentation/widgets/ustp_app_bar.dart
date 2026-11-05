@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import '../../core/constants/app_colors.dart';
 import '../../data/repositories/notification_repository.dart';
 import '../providers/auth_provider.dart';
+import '../screens/admin/admin_notifications_screen.dart';
 import 'current_user_avatar.dart';
 import 'ustp_logo.dart';
 
@@ -52,29 +53,29 @@ class _UstpAppBarState extends State<UstpAppBar> {
                   await widget.onNotificationTap!.call();
                   return;
                 }
-                final route = switch (auth.roleId) {
-                  0 => '/super-admin/notifications',
-                  1 => '/admin/notifications',
-                  2 => '/auditor/profile/notifications',
-                  3 => '/auditee/notifications',
-                  _ => '/login',
-                };
-                await context.push(route);
+                if (auth.roleId == 0 || auth.roleId == 1) {
+                  await AdminNotificationsScreen.showOverlay(context);
+                } else if (auth.roleId == 2) {
+                  await context.push('/auditor/profile/notifications');
+                } else {
+                  await context.push('/auditee/notifications');
+                }
               },
             ),
             const SizedBox(width: 8),
             GestureDetector(
-              onTap: () {
-                widget.onProfileTap?.call();
-                if (widget.onProfileTap == null) {
-                  context.go(
-                    auth.roleId == 2 ? '/auditor/profile' : '/common/profile',
-                  );
-                }
-              },
+              onTap: widget.onProfileTap ??
+                  () {
+                    final route = switch (auth.roleId) {
+                      2 => '/auditor/profile',
+                      3 => '/auditee/profile',
+                      _ => '/common/profile',
+                    };
+                    context.go(route);
+                  },
               child: CurrentUserAvatar(
-                name: auth.currentUser?.fullName ?? '',
                 radius: 16,
+                avatarVersion: auth.avatarVersion,
               ),
             ),
           ],

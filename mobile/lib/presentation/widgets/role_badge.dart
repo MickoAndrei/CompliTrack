@@ -1,6 +1,4 @@
 import 'package:flutter/material.dart';
-import '../../core/constants/app_colors.dart';
-import '../../core/constants/app_icons.dart';
 import '../../core/utils/role_helper.dart';
 
 class RoleBadge extends StatelessWidget {
@@ -13,38 +11,40 @@ class RoleBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final (bgColor, textColor, icon) = switch (roleId) {
-      0 => (AppColors.ustpGold, AppColors.ustpDark, AppIcons.superAdmin),
-      1 => (AppColors.info, AppColors.ustpWhite, null),
-      2 => (AppColors.ustpPurple, AppColors.ustpWhite, null),
-      3 => (AppColors.ustpMuted, AppColors.ustpWhite, null),
-      _ => (AppColors.ustpMuted, AppColors.ustpWhite, null),
+    final (bgColor, textColor) = switch (roleId) {
+      0 => (
+          const Color(0xFFFEF3C7),
+          const Color(0xFF1E293B)
+        ), // Super Admin soft gold
+      1 => (
+          const Color(0xFFE0F2FE),
+          const Color(0xFF0369A1)
+        ), // Admin soft blue
+      2 => (
+          const Color(0xFFF3E8FF),
+          const Color(0xFF7E22CE)
+        ), // Auditor soft purple
+      3 => (
+          const Color(0xFFF1F5F9),
+          const Color(0xFF334155)
+        ), // Auditee soft gray
+      _ => (const Color(0xFFF1F5F9), const Color(0xFF334155)),
     };
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
-        color: bgColor.withValues(alpha: 0.18),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: bgColor.withValues(alpha: 0.4)),
+        color: bgColor,
+        borderRadius: BorderRadius.circular(8),
       ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          if (icon != null) ...[
-            Icon(icon, size: 12, color: textColor),
-            const SizedBox(width: 4),
-          ],
-          Text(
-            RoleHelper.getRoleName(roleId),
-            style: TextStyle(
-              fontFamily: 'Inter',
-              fontSize: 11,
-              fontWeight: FontWeight.bold,
-              color: textColor == AppColors.ustpWhite ? bgColor : textColor,
-            ),
-          ),
-        ],
+      child: Text(
+        RoleHelper.getRoleName(roleId),
+        style: TextStyle(
+          fontFamily: 'Inter',
+          fontSize: 12.5,
+          fontWeight: FontWeight.w600,
+          color: textColor,
+        ),
       ),
     );
   }

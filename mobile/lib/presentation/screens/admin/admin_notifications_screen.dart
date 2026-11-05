@@ -133,7 +133,6 @@ class _AdminNotificationsScreenState extends State<AdminNotificationsScreen> {
       appBar: UstpAppBar(
         showNotificationBadge: false,
         onNotificationTap: () async {},
-        onProfileTap: () {},
       ),
       body: _isLoading
           ? const Center(

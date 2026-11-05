@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../data/models/audit_log_model.dart';
@@ -48,6 +49,7 @@ class _SuperAdminDashboardScreenState extends State<SuperAdminDashboardScreen> {
     return Scaffold(
       backgroundColor: AppColors.ustpLight,
       appBar: UstpAppBar(
+        onProfileTap: () => context.go('/common/profile'),
         onNotificationTap: () => AdminNotificationsScreen.showOverlay(context),
       ),
       body: FutureBuilder<SuperAdminDashboardModel>(

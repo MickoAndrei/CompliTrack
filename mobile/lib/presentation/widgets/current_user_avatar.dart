@@ -6,24 +6,32 @@ import '../../core/network/api_client.dart';
 class CurrentUserAvatar extends StatefulWidget {
   const CurrentUserAvatar({
     super.key,
-    required this.name,
     this.radius = 18,
+    this.avatarVersion = 0,
   });
 
-  final String name;
   final double radius;
+  final int avatarVersion;
 
   @override
   State<CurrentUserAvatar> createState() => _CurrentUserAvatarState();
 }
 
 class _CurrentUserAvatarState extends State<CurrentUserAvatar> {
-  late final Future<Uint8List?> _avatar;
+  late Future<Uint8List?> _avatar;
 
   @override
   void initState() {
     super.initState();
     _avatar = _loadAvatar();
+  }
+
+  @override
+  void didUpdateWidget(covariant CurrentUserAvatar oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.avatarVersion != widget.avatarVersion) {
+      _avatar = _loadAvatar();
+    }
   }
 
   Future<Uint8List?> _loadAvatar() async {
@@ -37,14 +45,6 @@ class _CurrentUserAvatarState extends State<CurrentUserAvatar> {
     } catch (_) {
       return null;
     }
-  }
-
-  String _initials() {
-    final parts = widget.name.trim().split(RegExp(r'\s+'));
-    if (parts.isEmpty || parts.first.isEmpty) return '?';
-    return parts.length == 1
-        ? parts.first.substring(0, 1).toUpperCase()
-        : '${parts.first[0]}${parts.last[0]}'.toUpperCase();
   }
 
   @override
@@ -62,16 +62,10 @@ class _CurrentUserAvatarState extends State<CurrentUserAvatar> {
               builder: (context, snapshot) => snapshot.data == null
                   ? ColoredBox(
                       color: const Color(0xFFF1F5F9),
-                      child: Center(
-                        child: Text(
-                          _initials(),
-                          style: const TextStyle(
-                            fontFamily: 'Inter',
-                            fontSize: 11,
-                            fontWeight: FontWeight.w700,
-                            color: Color(0xFF00205B),
-                          ),
-                        ),
+                      child: Icon(
+                        Icons.person,
+                        size: widget.radius * 1.15,
+                        color: const Color(0xFFCBD5E1),
                       ),
                     )
                   : Image.memory(snapshot.data!, fit: BoxFit.cover),

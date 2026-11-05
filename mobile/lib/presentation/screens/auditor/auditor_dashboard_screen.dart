@@ -37,6 +37,7 @@ class _AuditorDashboardScreenState extends State<AuditorDashboardScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: UstpAppBar(
+        onProfileTap: () => context.go('/auditor/profile'),
         onNotificationTap: () async =>
             context.go('/auditor/profile/notifications'),
       ),

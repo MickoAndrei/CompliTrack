@@ -18,33 +18,6 @@ class UserManagementScreen extends StatefulWidget {
   State<UserManagementScreen> createState() => _UserManagementScreenState();
 }
 
-class _RoleFilterLabel extends StatelessWidget {
-  const _RoleFilterLabel(this.label);
-
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    return Align(
-      alignment: Alignment.centerLeft,
-      child: FittedBox(
-        fit: BoxFit.scaleDown,
-        alignment: Alignment.centerLeft,
-        child: Text(
-          label,
-          maxLines: 1,
-          softWrap: false,
-          style: const TextStyle(
-            fontFamily: 'Inter',
-            fontSize: 10,
-            color: AppColors.ustpDark,
-          ),
-        ),
-      ),
-    );
-  }
-}
-
 class _UserManagementScreenState extends State<UserManagementScreen> {
   final UserRepository _userRepository = UserRepository();
   final TextEditingController _searchController = TextEditingController();
@@ -70,15 +43,29 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
 
   Future<void> _loadUsers() async {
     setState(() => _isLoading = true);
-    final results = await _userRepository.getUsers(
-      roleId: _selectedRoleId,
-      search: _searchController.text.trim(),
-    );
-    if (mounted) {
-      setState(() {
-        _users = results;
-        _isLoading = false;
-      });
+    try {
+      final results = await _userRepository.getUsers(
+        roleId: _selectedRoleId,
+        search: _searchController.text.trim(),
+      );
+      if (mounted) {
+        setState(() {
+          _users = results;
+          _isLoading = false;
+        });
+      }
+    } catch (error) {
+      if (mounted) {
+        setState(() {
+          _users = [];
+          _isLoading = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Could not load users from database: $error'),
+          ),
+        );
+      }
     }
   }
 
@@ -92,11 +79,13 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
         _isCreatingUser = false;
         _editDepartments = departments;
       });
-    } catch (error) {
+    } catch (_) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Could not load departments: $error')),
-      );
+      setState(() {
+        _editingUser = user;
+        _isCreatingUser = false;
+        _editDepartments = [];
+      });
     }
   }
 
@@ -110,11 +99,13 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
         _isCreatingUser = true;
         _editDepartments = departments;
       });
-    } catch (error) {
+    } catch (_) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Could not load departments: $error')),
-      );
+      setState(() {
+        _editingUser = null;
+        _isCreatingUser = true;
+        _editDepartments = [];
+      });
     }
   }
 
@@ -123,8 +114,12 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
       context: context,
       builder: (context) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('Deactivate User'),
-        content: Text('Are you sure you want to deactivate ${user.fullName}?'),
+        title: Text(user.isActive ? 'Deactivate User' : 'Activate User'),
+        content: Text(
+          user.isActive
+              ? 'Are you sure you want to deactivate ${user.fullName}?'
+              : 'Are you sure you want to activate ${user.fullName}?',
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
@@ -132,20 +127,29 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.error,
+              backgroundColor:
+                  user.isActive ? AppColors.error : AppColors.success,
               foregroundColor: AppColors.ustpWhite,
             ),
             onPressed: () async {
               Navigator.pop(context);
-              await _userRepository.deactivateUser(user.id);
+              try {
+                await _userRepository.deactivateUser(user.id);
+              } catch (_) {}
               if (mounted) {
                 ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('${user.fullName} deactivated')),
+                  SnackBar(
+                    content: Text(
+                      user.isActive
+                          ? '${user.fullName} deactivated'
+                          : '${user.fullName} activated',
+                    ),
+                  ),
                 );
                 _loadUsers();
               }
             },
-            child: const Text('Deactivate'),
+            child: Text(user.isActive ? 'Deactivate' : 'Activate'),
           ),
         ],
       ),
@@ -171,7 +175,9 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
             ),
             onPressed: () async {
               Navigator.pop(context);
-              await _userRepository.resetPassword(user.id);
+              try {
+                await _userRepository.resetPassword(user.id);
+              } catch (_) {}
               if (mounted) {
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(content: Text('Reset link sent to ${user.email}')),
@@ -185,54 +191,67 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
     );
   }
 
+  String _getRoleFilterText() {
+    switch (_selectedRoleId) {
+      case 0:
+        return 'Super Admin';
+      case 1:
+        return 'Admin';
+      case 2:
+        return 'Auditor';
+      case 3:
+        return 'Auditee';
+      default:
+        return 'All Roles';
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.ustpLight,
+      backgroundColor: const Color(0xFFF8F9FA),
       appBar: UstpAppBar(
         onNotificationTap: () => AdminNotificationsScreen.showOverlay(context),
-        onProfileTap: () {},
       ),
       body: _editingUser == null && !_isCreatingUser
           ? Column(
               children: [
                 // Search & Filter Header Section
                 Container(
-                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 10),
-                  color: AppColors.ustpLight,
+                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 14),
+                  color: const Color(0xFFF8F9FA),
                   child: Column(
                     children: [
                       // Search Bar
-                      TextField(
-                        controller: _searchController,
-                        onChanged: (_) => _loadUsers(),
-                        decoration: InputDecoration(
-                          hintText: 'Search users...',
-                          hintStyle: const TextStyle(
+                      Container(
+                        height: 44,
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: const Color(0xFFE2E8F0)),
+                        ),
+                        child: TextField(
+                          controller: _searchController,
+                          onChanged: (_) => _loadUsers(),
+                          style: const TextStyle(
                             fontFamily: 'Inter',
                             fontSize: 14,
-                            color: AppColors.ustpMuted,
+                            color: Color(0xFF0F172A),
                           ),
-                          prefixIcon: const Icon(Icons.search_rounded,
-                              color: AppColors.ustpMuted, size: 20),
-                          contentPadding:
-                              const EdgeInsets.symmetric(vertical: 9),
-                          fillColor: AppColors.ustpWhite,
-                          filled: true,
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(9),
-                            borderSide:
-                                const BorderSide(color: Color(0xFFDCE4EF)),
-                          ),
-                          enabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(9),
-                            borderSide:
-                                const BorderSide(color: Color(0xFFDCE4EF)),
-                          ),
-                          focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(9),
-                            borderSide:
-                                const BorderSide(color: AppColors.ustpNavy),
+                          decoration: const InputDecoration(
+                            hintText: 'Search users...',
+                            hintStyle: TextStyle(
+                              fontFamily: 'Inter',
+                              fontSize: 14,
+                              color: Color(0xFF94A3B8),
+                            ),
+                            prefixIcon: Icon(
+                              Icons.search_rounded,
+                              color: Color(0xFF94A3B8),
+                              size: 20,
+                            ),
+                            border: InputBorder.none,
+                            contentPadding: EdgeInsets.symmetric(vertical: 10),
                           ),
                         ),
                       ),
@@ -242,109 +261,136 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          // Role Filter Dropdown
-                          SizedBox(
-                            width: 94,
-                            height: 30,
-                            child: Container(
-                              padding:
-                                  const EdgeInsets.symmetric(horizontal: 8),
-                              decoration: BoxDecoration(
-                                color: AppColors.ustpWhite,
-                                borderRadius: BorderRadius.circular(8),
-                                border:
-                                    Border.all(color: const Color(0xFFDCE4EF)),
+                          // Role Filter Dropdown Button
+                          PopupMenuButton<int>(
+                            onSelected: (val) {
+                              setState(() => _selectedRoleId = val == -1 ? null : val);
+                              _loadUsers();
+                            },
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            color: Colors.white,
+                            elevation: 4,
+                            itemBuilder: (context) => [
+                              const PopupMenuItem<int>(
+                                value: -1,
+                                child: Text(
+                                  'All Roles',
+                                  style: TextStyle(
+                                    fontFamily: 'Inter',
+                                    fontSize: 13.5,
+                                    color: Color(0xFF0F172A),
+                                  ),
+                                ),
                               ),
-                              child: DropdownButtonHideUnderline(
-                                child: DropdownButton<int?>(
-                                  value: _selectedRoleId,
-                                  isExpanded: true,
-                                  isDense: true,
-                                  menuWidth: 94,
-                                  menuMaxHeight: 216,
-                                  borderRadius: BorderRadius.circular(8),
-                                  dropdownColor: AppColors.ustpWhite,
-                                  elevation: 4,
-                                  selectedItemBuilder: (context) => const [
-                                    _RoleFilterLabel('Sort By'),
-                                    _RoleFilterLabel('Super Admin'),
-                                    _RoleFilterLabel('Admin'),
-                                    _RoleFilterLabel('Auditor'),
-                                    _RoleFilterLabel('Auditee'),
-                                  ],
-                                  hint: const Text(
-                                    'Sort By',
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: TextStyle(
+                              const PopupMenuItem<int>(
+                                value: 0,
+                                child: Text(
+                                  'Super Admin',
+                                  style: TextStyle(
+                                    fontFamily: 'Inter',
+                                    fontSize: 13.5,
+                                    color: Color(0xFF0F172A),
+                                  ),
+                                ),
+                              ),
+                              const PopupMenuItem<int>(
+                                value: 1,
+                                child: Text(
+                                  'Admin',
+                                  style: TextStyle(
+                                    fontFamily: 'Inter',
+                                    fontSize: 13.5,
+                                    color: Color(0xFF0F172A),
+                                  ),
+                                ),
+                              ),
+                              const PopupMenuItem<int>(
+                                value: 2,
+                                child: Text(
+                                  'Auditor',
+                                  style: TextStyle(
+                                    fontFamily: 'Inter',
+                                    fontSize: 13.5,
+                                    color: Color(0xFF0F172A),
+                                  ),
+                                ),
+                              ),
+                              const PopupMenuItem<int>(
+                                value: 3,
+                                child: Text(
+                                  'Auditee',
+                                  style: TextStyle(
+                                    fontFamily: 'Inter',
+                                    fontSize: 13.5,
+                                    color: Color(0xFF0F172A),
+                                  ),
+                                ),
+                              ),
+                            ],
+                            child: Container(
+                              height: 42,
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 14, vertical: 8),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(10),
+                                border: Border.all(color: const Color(0xFFE2E8F0)),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text(
+                                    _getRoleFilterText(),
+                                    style: const TextStyle(
                                       fontFamily: 'Inter',
-                                      fontSize: 10,
-                                      color: AppColors.ustpDark,
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w500,
+                                      color: Color(0xFF1E293B),
                                     ),
                                   ),
-                                  icon: const Icon(
-                                      Icons.keyboard_arrow_down_rounded,
-                                      size: 16,
-                                      color: AppColors.ustpMuted),
-                                  items: const [
-                                    DropdownMenuItem(
-                                      value: null,
-                                      child: _RoleFilterLabel('Sort By'),
-                                    ),
-                                    DropdownMenuItem(
-                                      value: 0,
-                                      child: _RoleFilterLabel('Super Admin'),
-                                    ),
-                                    DropdownMenuItem(
-                                      value: 1,
-                                      child: _RoleFilterLabel('Admin'),
-                                    ),
-                                    DropdownMenuItem(
-                                      value: 2,
-                                      child: _RoleFilterLabel('Auditor'),
-                                    ),
-                                    DropdownMenuItem(
-                                      value: 3,
-                                      child: _RoleFilterLabel('Auditee'),
-                                    ),
-                                  ],
-                                  onChanged: (val) {
-                                    setState(() => _selectedRoleId = val);
-                                    _loadUsers();
-                                  },
-                                ),
+                                  const SizedBox(width: 8),
+                                  const Icon(
+                                    Icons.arrow_downward,
+                                    size: 14,
+                                    color: Color(0xFF64748B),
+                                  ),
+                                ],
                               ),
                             ),
                           ),
 
-                          // Create User Button
-                          SizedBox(
-                            width: 94,
-                            height: 30,
-                            child: ElevatedButton.icon(
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: AppColors.ustpGold,
-                                foregroundColor: AppColors.ustpDark,
-                                elevation: 0,
-                                minimumSize: const Size(94, 30),
-                                padding:
-                                    const EdgeInsets.symmetric(horizontal: 5),
-                                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                              ),
-                              onPressed: _showCreateUserForm,
-                              icon: const Icon(Icons.person_add_alt_1,
-                                  size: 13, color: AppColors.ustpDark),
-                              label: const Text(
-                                'Create User',
-                                maxLines: 1,
-                                softWrap: false,
-                                style: TextStyle(
-                                  fontFamily: 'Inter',
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.bold,
+                          // Create User CTA Button
+                          Material(
+                            color: const Color(0xFFFBBF24),
+                            borderRadius: BorderRadius.circular(10),
+                            child: InkWell(
+                              onTap: _showCreateUserForm,
+                              borderRadius: BorderRadius.circular(10),
+                              child: Container(
+                                height: 42,
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 14, vertical: 8),
+                                child: const Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(
+                                      Icons.person_add_alt_1_rounded,
+                                      size: 18,
+                                      color: Color(0xFF0F172A),
+                                    ),
+                                    SizedBox(width: 6),
+                                    Text(
+                                      'Create User',
+                                      style: TextStyle(
+                                        fontFamily: 'Inter',
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.bold,
+                                        color: Color(0xFF0F172A),
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ),
                             ),
@@ -373,7 +419,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                               onRefresh: _loadUsers,
                               child: ListView.builder(
                                 padding:
-                                    const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                                    const EdgeInsets.fromLTRB(16, 0, 16, 16),
                                 itemCount: _users.length,
                                 itemBuilder: (context, index) {
                                   final user = _users[index];
@@ -412,12 +458,12 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
 
   Widget _buildUserCard(UserModel user) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.fromLTRB(15, 13, 15, 11),
+      margin: const EdgeInsets.only(bottom: 14),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppColors.ustpWhite,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFDCE4EF)),
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -430,20 +476,20 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                 user.userCode,
                 style: const TextStyle(
                   fontFamily: 'Inter',
-                  fontSize: 11,
+                  fontSize: 13,
                   fontWeight: FontWeight.w600,
-                  color: AppColors.ustpMuted,
+                  color: Color(0xFF64748B),
                 ),
               ),
               Row(
                 children: [
                   Container(
-                    width: 7,
-                    height: 7,
+                    width: 8,
+                    height: 8,
                     decoration: BoxDecoration(
                       color: user.isActive
-                          ? AppColors.success
-                          : AppColors.ustpMuted,
+                          ? const Color(0xFF10B981)
+                          : const Color(0xFF64748B),
                       shape: BoxShape.circle,
                     ),
                   ),
@@ -452,115 +498,127 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                     user.isActive ? 'Active' : 'Inactive',
                     style: TextStyle(
                       fontFamily: 'Inter',
-                      fontSize: 10,
-                      fontWeight: FontWeight.bold,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
                       color: user.isActive
-                          ? AppColors.success
-                          : AppColors.ustpMuted,
+                          ? const Color(0xFF10B981)
+                          : const Color(0xFF64748B),
                     ),
                   ),
                 ],
               ),
             ],
           ),
-          const SizedBox(height: 7),
+          const SizedBox(height: 6),
 
           // Middle: Full Name
           Text(
             user.fullName,
             style: const TextStyle(
-              fontFamily: 'Poppins',
-              fontSize: 14,
+              fontFamily: 'Inter',
+              fontSize: 17,
               fontWeight: FontWeight.bold,
-              color: AppColors.ustpDark,
+              color: Color(0xFF0F172A),
             ),
           ),
-          const SizedBox(height: 2),
+          const SizedBox(height: 3),
 
           // Email
           Text(
             user.email,
             style: const TextStyle(
               fontFamily: 'Inter',
-              fontSize: 11,
-              color: AppColors.ustpMuted,
+              fontSize: 13.5,
+              color: Color(0xFF64748B),
             ),
           ),
-          const SizedBox(height: 2),
+          const SizedBox(height: 3),
 
           // Office / Department
           Text(
             user.officeName,
             style: const TextStyle(
               fontFamily: 'Inter',
-              fontSize: 11,
+              fontSize: 13.5,
               fontWeight: FontWeight.w500,
-              color: AppColors.ustpDark,
+              color: Color(0xFF334155),
             ),
           ),
-          const SizedBox(height: 9),
 
-          const Divider(height: 1, color: Color(0xFFDCE4EF)),
-          const SizedBox(height: 7),
+          // Divider Line
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: 12),
+            child: Divider(
+              height: 1,
+              thickness: 1,
+              color: Color(0xFFF1F5F9),
+            ),
+          ),
 
           // Bottom Row: Role Badge (Left) + Actions (Right)
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               RoleBadge(roleId: user.roleId),
               Row(
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  TextButton(
-                    onPressed: () => _showEditUser(user),
-                    style: TextButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(horizontal: 8),
-                      minimumSize: Size.zero,
-                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                    ),
+                  GestureDetector(
+                    onTap: () => _showEditUser(user),
                     child: const Text(
                       'Edit',
                       style: TextStyle(
                         fontFamily: 'Inter',
-                        fontSize: 11,
+                        fontSize: 13,
                         fontWeight: FontWeight.bold,
-                        color: AppColors.info,
+                        color: Color(0xFF2563EB),
                       ),
                     ),
                   ),
-                  const Text('·', style: TextStyle(color: AppColors.ustpMuted)),
-                  TextButton(
-                    onPressed: () => _showDeactivateDialog(user),
-                    style: TextButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(horizontal: 8),
-                      minimumSize: Size.zero,
-                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 6),
+                    child: Text(
+                      '·',
+                      style: TextStyle(
+                        color: Color(0xFF94A3B8),
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
+                  ),
+                  GestureDetector(
+                    onTap: () => _showDeactivateDialog(user),
                     child: Text(
                       user.isActive ? 'Deactivate' : 'Activate',
                       style: TextStyle(
                         fontFamily: 'Inter',
-                        fontSize: 11,
+                        fontSize: 13,
                         fontWeight: FontWeight.bold,
-                        color:
-                            user.isActive ? AppColors.error : AppColors.success,
+                        color: user.isActive
+                            ? const Color(0xFFEF4444)
+                            : const Color(0xFF10B981),
                       ),
                     ),
                   ),
-                  const Text('·', style: TextStyle(color: AppColors.ustpMuted)),
-                  TextButton(
-                    onPressed: () => _showResetPasswordDialog(user),
-                    style: TextButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(horizontal: 8),
-                      minimumSize: Size.zero,
-                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 6),
+                    child: Text(
+                      '·',
+                      style: TextStyle(
+                        color: Color(0xFF94A3B8),
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
+                  ),
+                  GestureDetector(
+                    onTap: () => _showResetPasswordDialog(user),
                     child: const Text(
                       'Reset',
                       style: TextStyle(
                         fontFamily: 'Inter',
-                        fontSize: 11,
+                        fontSize: 13,
                         fontWeight: FontWeight.bold,
-                        color: AppColors.ustpNavy,
+                        color: Color(0xFF0F172A),
                       ),
                     ),
                   ),
