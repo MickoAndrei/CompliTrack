@@ -40,11 +40,11 @@ class SuperAdminShell extends StatelessWidget {
           ),
           items: const [
             BottomNavigationBarItem(
-              icon: Icon(Icons.dashboard_outlined),
+              icon: Icon(Icons.grid_view_rounded),
               label: 'Dashboard',
             ),
             BottomNavigationBarItem(
-              icon: Icon(Icons.person_outline_rounded),
+              icon: Icon(Icons.person_rounded),
               label: 'User',
             ),
             BottomNavigationBarItem(

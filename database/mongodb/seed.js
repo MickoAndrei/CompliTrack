@@ -11,7 +11,11 @@ const roles = [
 ];
 
 for (const role of roles) {
-  database.roles.updateOne({ roleId: role.roleId }, { $setOnInsert: role }, { upsert: true });
+  database.roles.updateOne(
+    { roleId: role.roleId },
+    { $setOnInsert: { ...role, createdAt: new Date() } },
+    { upsert: true }
+  );
 }
 
 database.departments.updateOne(

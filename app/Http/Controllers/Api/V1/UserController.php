@@ -314,6 +314,7 @@ class UserController extends Controller
     {
         $data = $user->toArray();
         $data['_id'] = (string) $user->getKey();
+        $data['roleSlug'] = $user->roleSlug ?? [0 => 'super_admin', 1 => 'admin', 2 => 'auditor', 3 => 'auditee'][(int) $user->roleId] ?? 'unknown';
         $data['isActive'] = (int) $user->roleId === 0 || $this->isStoredAsActive($user->getRawOriginal('isActive'));
         unset($data['id'], $data['password']);
         $department = $user->departmentId ? Department::find($user->departmentId) : null;

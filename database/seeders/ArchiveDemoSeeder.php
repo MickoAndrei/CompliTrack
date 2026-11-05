@@ -14,34 +14,44 @@ class ArchiveDemoSeeder extends Seeder
     {
         $documents = [
             [
-                'fileCode' => 'DEMO-ARCH-IT-001',
+                'fileCode' => 'FM-USTP-IT-01',
                 'departmentCode' => 'DEMO-IT',
                 'uploaderEmail' => 'demo.auditee.it@example.test',
-                'name' => 'DEMO-IT-Information-Security-Policy.pdf',
-                'standard' => 'ISO9001-9.2',
-                'tags' => ['[DEMO]', 'information security', 'policy'],
-                'title' => 'Information Security Policy',
-                'body' => 'Sample evidence for the Information Technology department.\nApproved policy review: 2026-01-15.',
+                'name' => 'ISO-9001-Cert-2026.pdf',
+                'standard' => 'ISO 9001',
+                'tags' => ['[DEMO]', 'ISO 9001', 'certificate'],
+                'title' => 'ISO 9001 Quality Management Certification 2026',
+                'body' => 'FM-USTP-IT-01\nUNIVERSITY OF SCIENCE AND TECHNOLOGY OF SOUTHERN PHILIPPINES\nQuality Management System Certification Record.',
             ],
             [
-                'fileCode' => 'DEMO-ARCH-IT-002',
+                'fileCode' => 'FM-USTP-ENVI-07',
                 'departmentCode' => 'DEMO-IT',
                 'uploaderEmail' => 'demo.auditee.it@example.test',
-                'name' => 'DEMO-IT-Procedure-Review-Record.pdf',
-                'standard' => 'ISO9001-9.2',
-                'tags' => ['[DEMO]', 'procedure', 'review'],
-                'title' => 'Procedure Review Record',
-                'body' => 'Sample evidence for the Information Technology department.\nNext review due: 2026-12-01.',
+                'name' => 'ARTA-Checklist-Q3.docx',
+                'standard' => 'ARTA 7',
+                'tags' => ['[DEMO]', 'ARTA', 'checklist'],
+                'title' => 'ARTA Q3 Compliance Checklist',
+                'body' => 'FM-USTP-ENVI-07\nUNIVERSITY OF SCIENCE AND TECHNOLOGY OF SOUTHERN PHILIPPINES\nAnti-Red Tape Act Q3 Compliance Verification.',
             ],
             [
-                'fileCode' => 'DEMO-ARCH-ENG-001',
+                'fileCode' => 'FM-USTP-FOOD-03',
                 'departmentCode' => 'DEMO-ENG',
                 'uploaderEmail' => 'demo.auditee.eng@example.test',
-                'name' => 'DEMO-ENG-Equipment-Calibration-Log.pdf',
-                'standard' => 'ISO9001-9.2',
-                'tags' => ['[DEMO]', 'equipment', 'calibration'],
-                'title' => 'Equipment Calibration Log',
-                'body' => 'Sample evidence for the Engineering department.\nCalibration records reviewed: 2026-02-03.',
+                'name' => 'Fire-Safety-Report.pdf',
+                'standard' => 'ARTA 3',
+                'tags' => ['[DEMO]', 'fire safety', 'report'],
+                'title' => 'Campus Fire Safety & Compliance Inspection Report',
+                'body' => 'FM-USTP-FOOD-03\nUNIVERSITY OF SCIENCE AND TECHNOLOGY OF SOUTHERN PHILIPPINES\nSafety Audit & Incident Prevention Report.',
+            ],
+            [
+                'fileCode' => 'FM-USTP-AGRO-14',
+                'departmentCode' => 'DEMO-ENG',
+                'uploaderEmail' => 'demo.auditee.eng@example.test',
+                'name' => 'Lab-Inspection-Photos.jpg',
+                'standard' => 'ISO 14001',
+                'tags' => ['[DEMO]', 'laboratory', 'inspection'],
+                'title' => 'Laboratory Equipment & Environmental Inspection Log',
+                'body' => 'FM-USTP-AGRO-14\nUNIVERSITY OF SCIENCE AND TECHNOLOGY OF SOUTHERN PHILIPPINES\nEnvironmental Management System Audit Trail.',
             ],
         ];
 
@@ -72,7 +82,7 @@ class ArchiveDemoSeeder extends Seeder
                 $archive->fill([
                     'originalName' => $document['name'],
                     'encryptedPath' => $path,
-                    'mimeType' => 'application/pdf',
+                    'mimeType' => str_ends_with(strtolower($document['name']), '.pdf') ? 'application/pdf' : (str_ends_with(strtolower($document['name']), '.jpg') ? 'image/jpeg' : 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'),
                     'fileSize' => strlen($plaintext),
                     'checksum' => hash('sha256', $plaintext),
                     'departmentId' => $department->getKey(),
@@ -88,7 +98,7 @@ class ArchiveDemoSeeder extends Seeder
             $archive->save();
         }
 
-        $this->command?->info('Seeded 3 encrypted demo archive documents.');
+        $this->command?->info('Seeded 4 USTP QMS coded demo archive documents.');
     }
 
     private function makePdf(string $title, string $body): string

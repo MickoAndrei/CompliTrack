@@ -7,8 +7,9 @@ import '../../../data/models/archive_document_model.dart';
 import '../../../data/models/department_model.dart';
 import '../../../data/repositories/archive_repository.dart';
 import '../../../data/repositories/department_repository.dart';
-import '../../widgets/admin_page_header.dart';
 import '../../widgets/empty_state.dart';
+import '../../widgets/ustp_app_bar.dart';
+import '../admin/admin_notifications_screen.dart';
 
 class ArchiveRepositoryScreen extends StatefulWidget {
   const ArchiveRepositoryScreen({super.key});
@@ -22,8 +23,8 @@ class _ArchiveRepositoryScreenState extends State<ArchiveRepositoryScreen> {
   final _repository = ArchiveRepository();
   final _departmentsRepository = DepartmentRepository();
   String _selectedDept = 'All Departments';
-  String _selectedStandard = 'ISO & ARTA';
-  String _selectedDate = 'This Quarter';
+  String _selectedStandard = 'All Standards';
+  String _selectedDate = 'Any Date';
   bool _isLoading = true;
   Object? _error;
   List<ArchiveDocumentModel> _documents = [];
@@ -44,11 +45,12 @@ class _ArchiveRepositoryScreenState extends State<ArchiveRepositoryScreen> {
     try {
       final results = await Future.wait([
         _repository.getArchiveDocuments(
-          department: _selectedDept,
-          referenceStandard: _selectedStandard,
-          dateFilter: _selectedDate,
+          department: _selectedDept == 'All Departments' ? null : _selectedDept,
+          referenceStandard:
+              _selectedStandard == 'All Standards' ? null : _selectedStandard,
+          dateFilter: _selectedDate == 'Any Date' ? 'All Dates' : _selectedDate,
         ),
-        _departmentsRepository.getDepartments(campus: 'CET Claveria'),
+        _departmentsRepository.getDepartments(),
       ]);
       if (!mounted) return;
       setState(() {
@@ -122,24 +124,34 @@ class _ArchiveRepositoryScreenState extends State<ArchiveRepositoryScreen> {
     showDialog<void>(
       context: context,
       builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: Text(doc.originalName),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            Text('Document Code: ${doc.fileCode}'),
+            const SizedBox(height: 4),
             Text('Department: ${doc.departmentCode}'),
+            const SizedBox(height: 4),
             Text('Standard: ${doc.referenceStandard}'),
+            const SizedBox(height: 4),
             Text('Uploaded by: ${doc.uploadedBy}'),
+            const SizedBox(height: 4),
             Text('File size: ${_formatSize(doc.fileSize)}'),
-            const SizedBox(height: 8),
+            const SizedBox(height: 12),
             const Text(
-              'Use Download to open the verified document on this device.',
-              style: TextStyle(color: AppColors.ustpMuted, fontSize: 12),
+              'USTP QMS verified official document record.',
+              style: TextStyle(color: Color(0xFF64748B), fontSize: 13),
             ),
           ],
         ),
         actions: [
-          TextButton(
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.ustpNavy,
+              foregroundColor: Colors.white,
+            ),
             onPressed: () => Navigator.pop(context),
             child: const Text('Close'),
           ),
@@ -151,245 +163,300 @@ class _ArchiveRepositoryScreenState extends State<ArchiveRepositoryScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.ustpLight,
+      backgroundColor: const Color(0xFFF8F9FA),
+      appBar: UstpAppBar(
+        onNotificationTap: () => AdminNotificationsScreen.showOverlay(context),
+      ),
       body: Column(
         children: [
-          const AdminPageHeader(
-            title: 'Document Archive',
-            subtitle: 'System-wide repository for verified compliance records',
-          ),
-          Expanded(
-            child: Column(
+          // Filter Header Row matching mockup: All Departments, All Standards, Any Date (fitted 1-to-1)
+          Container(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 14),
+            color: const Color(0xFFF8F9FA),
+            child: Row(
               children: [
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(12, 10, 12, 8),
-                  child: Column(
-                    children: [
-                      Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.all(10),
-                        decoration: BoxDecoration(
-                          color: AppColors.ustpWhite,
-                          border: const Border(
-                            left: BorderSide(
-                              color: AppColors.ustpMuted,
-                              width: 3,
-                            ),
-                          ),
-                          borderRadius: BorderRadius.circular(8),
+                // All Departments Dropdown
+                Expanded(
+                  child: PopupMenuButton<String>(
+                    initialValue: _selectedDept,
+                    onSelected: (val) {
+                      setState(() => _selectedDept = val);
+                      _loadArchives();
+                    },
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    color: Colors.white,
+                    elevation: 4,
+                    itemBuilder: (context) => [
+                      const PopupMenuItem(
+                        value: 'All Departments',
+                        child: Text('All Departments',
+                            style: TextStyle(
+                                fontFamily: 'Inter',
+                                fontSize: 13,
+                                color: Color(0xFF0F172A))),
+                      ),
+                      for (final dept in _departments)
+                        PopupMenuItem(
+                          value: dept.departmentCode,
+                          child: Text(dept.departmentName,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                  fontFamily: 'Inter',
+                                  fontSize: 13,
+                                  color: Color(0xFF0F172A))),
                         ),
-                        child: const Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Icon(
-                              AppIcons.lock,
-                              size: 16,
-                              color: AppColors.ustpMuted,
-                            ),
-                            SizedBox(width: 7),
-                            Expanded(
-                              child: Text(
-                                'Read-only — Admin cannot delete archive documents once verified.',
-                                style: TextStyle(
-                                  color: AppColors.ustpMuted,
-                                  fontSize: 10,
-                                ),
+                    ],
+                    child: Container(
+                      height: 38,
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: const Color(0xFFE2E8F0)),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Expanded(
+                            child: Text(
+                              _selectedDept,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                fontFamily: 'Inter',
+                                fontSize: 11.5,
+                                fontWeight: FontWeight.w500,
+                                color: Color(0xFF1E293B),
                               ),
                             ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      _FilterDropdown<String>(
-                        label: 'Dept:',
-                        value: _selectedDept,
-                        items: [
-                          const DropdownMenuItem(
-                            value: 'All Departments',
-                            child: Text('All Departments'),
                           ),
-                          for (final department in _departments)
-                            DropdownMenuItem(
-                              value: department.departmentCode,
-                              child: Text(department.departmentName),
-                            ),
+                          const Icon(Icons.keyboard_arrow_down_rounded,
+                              size: 18, color: Color(0xFF64748B)),
                         ],
-                        onChanged: (value) {
-                          if (value == null) return;
-                          setState(() => _selectedDept = value);
-                          _loadArchives();
-                        },
                       ),
-                      const SizedBox(height: 6),
-                      _FilterDropdown<String>(
-                        label: 'Standard:',
-                        value: _selectedStandard,
-                        items: const [
-                          DropdownMenuItem(
-                            value: 'ISO & ARTA',
-                            child: Text('ISO & ARTA'),
-                          ),
-                          DropdownMenuItem(
-                            value: 'ISO9001-9.2',
-                            child: Text('ISO 9001'),
-                          ),
-                          DropdownMenuItem(
-                            value: 'ARTA-3days',
-                            child: Text('ARTA 3'),
-                          ),
-                          DropdownMenuItem(
-                            value: 'ARTA-7days',
-                            child: Text('ARTA 7'),
-                          ),
-                          DropdownMenuItem(
-                            value: 'ARTA-20days',
-                            child: Text('ARTA 20'),
-                          ),
-                        ],
-                        onChanged: (value) {
-                          if (value == null) return;
-                          setState(() => _selectedStandard = value);
-                          _loadArchives();
-                        },
-                      ),
-                      const SizedBox(height: 6),
-                      _FilterDropdown<String>(
-                        label: 'Upload Date:',
-                        value: _selectedDate,
-                        items: const [
-                          DropdownMenuItem(
-                            value: 'This Quarter',
-                            child: Text('This Quarter'),
-                          ),
-                          DropdownMenuItem(
-                            value: 'Last 30 Days',
-                            child: Text('Last 30 Days'),
-                          ),
-                          DropdownMenuItem(
-                            value: 'All Dates',
-                            child: Text('All Dates'),
-                          ),
-                        ],
-                        onChanged: (value) {
-                          if (value == null) return;
-                          setState(() => _selectedDate = value);
-                          _loadArchives();
-                        },
-                      ),
-                    ],
+                    ),
                   ),
                 ),
+                const SizedBox(width: 6),
+
+                // All Standards Dropdown
                 Expanded(
-                  child: _isLoading
-                      ? const Center(
-                          child: CircularProgressIndicator(
-                            color: AppColors.ustpNavy,
+                  child: PopupMenuButton<String>(
+                    initialValue: _selectedStandard,
+                    onSelected: (val) {
+                      setState(() => _selectedStandard = val);
+                      _loadArchives();
+                    },
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    color: Colors.white,
+                    elevation: 4,
+                    itemBuilder: (context) => const [
+                      PopupMenuItem(
+                        value: 'All Standards',
+                        child: Text('All Standards',
+                            style: TextStyle(
+                                fontFamily: 'Inter',
+                                fontSize: 13,
+                                color: Color(0xFF0F172A))),
+                      ),
+                      PopupMenuItem(
+                        value: 'ISO 9001',
+                        child: Text('ISO 9001',
+                            style: TextStyle(
+                                fontFamily: 'Inter',
+                                fontSize: 13,
+                                color: Color(0xFF0F172A))),
+                      ),
+                      PopupMenuItem(
+                        value: 'ARTA 7',
+                        child: Text('ARTA 7',
+                            style: TextStyle(
+                                fontFamily: 'Inter',
+                                fontSize: 13,
+                                color: Color(0xFF0F172A))),
+                      ),
+                      PopupMenuItem(
+                        value: 'ARTA 3',
+                        child: Text('ARTA 3',
+                            style: TextStyle(
+                                fontFamily: 'Inter',
+                                fontSize: 13,
+                                color: Color(0xFF0F172A))),
+                      ),
+                      PopupMenuItem(
+                        value: 'ISO 14001',
+                        child: Text('ISO 14001',
+                            style: TextStyle(
+                                fontFamily: 'Inter',
+                                fontSize: 13,
+                                color: Color(0xFF0F172A))),
+                      ),
+                    ],
+                    child: Container(
+                      height: 38,
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: const Color(0xFFE2E8F0)),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Expanded(
+                            child: Text(
+                              _selectedStandard,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                fontFamily: 'Inter',
+                                fontSize: 11.5,
+                                fontWeight: FontWeight.w500,
+                                color: Color(0xFF1E293B),
+                              ),
+                            ),
                           ),
-                        )
-                      : _error != null
-                          ? _ArchiveLoadError(
-                              error: _error!,
-                              onRetry: _loadArchives,
-                            )
-                          : _documents.isEmpty
-                              ? RefreshIndicator(
-                                  onRefresh: _loadArchives,
-                                  child: ListView(
-                                    physics:
-                                        const AlwaysScrollableScrollPhysics(),
-                                    children: const [
-                                      SizedBox(height: 50),
-                                      EmptyState(
-                                        title: 'No archives found',
-                                        subtitle:
-                                            'No documents match the selected filters.',
-                                        icon: AppIcons.archive,
-                                      ),
-                                    ],
-                                  ),
-                                )
-                              : RefreshIndicator(
-                                  color: AppColors.ustpNavy,
-                                  onRefresh: _loadArchives,
-                                  child: ListView.builder(
-                                    physics:
-                                        const AlwaysScrollableScrollPhysics(),
-                                    padding: const EdgeInsets.fromLTRB(
-                                      12,
-                                      0,
-                                      12,
-                                      16,
-                                    ),
-                                    itemCount: _documents.length,
-                                    itemBuilder: (context, index) =>
-                                        _ArchiveCard(
-                                      document: _documents[index],
-                                      isBusy: _busyDocuments
-                                          .contains(_documents[index].id),
-                                      onPreview: () =>
-                                          _previewDetails(_documents[index]),
-                                      onDownload: () =>
-                                          _download(_documents[index]),
-                                      onVerify: () =>
-                                          _verifyChecksum(_documents[index]),
-                                    ),
-                                  ),
-                                ),
+                          const Icon(Icons.keyboard_arrow_down_rounded,
+                              size: 18, color: Color(0xFF64748B)),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 6),
+
+                // Any Date Dropdown
+                Expanded(
+                  child: PopupMenuButton<String>(
+                    initialValue: _selectedDate,
+                    onSelected: (val) {
+                      setState(() => _selectedDate = val);
+                      _loadArchives();
+                    },
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    color: Colors.white,
+                    elevation: 4,
+                    itemBuilder: (context) => const [
+                      PopupMenuItem(
+                        value: 'Any Date',
+                        child: Text('Any Date',
+                            style: TextStyle(
+                                fontFamily: 'Inter',
+                                fontSize: 13,
+                                color: Color(0xFF0F172A))),
+                      ),
+                      PopupMenuItem(
+                        value: 'This Quarter',
+                        child: Text('This Quarter',
+                            style: TextStyle(
+                                fontFamily: 'Inter',
+                                fontSize: 13,
+                                color: Color(0xFF0F172A))),
+                      ),
+                      PopupMenuItem(
+                        value: 'Last 30 Days',
+                        child: Text('Last 30 Days',
+                            style: TextStyle(
+                                fontFamily: 'Inter',
+                                fontSize: 13,
+                                color: Color(0xFF0F172A))),
+                      ),
+                    ],
+                    child: Container(
+                      height: 38,
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: const Color(0xFFE2E8F0)),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Expanded(
+                            child: Text(
+                              _selectedDate,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                fontFamily: 'Inter',
+                                fontSize: 11.5,
+                                fontWeight: FontWeight.w500,
+                                color: Color(0xFF1E293B),
+                              ),
+                            ),
+                          ),
+                          const Icon(Icons.keyboard_arrow_down_rounded,
+                              size: 18, color: Color(0xFF64748B)),
+                        ],
+                      ),
+                    ),
+                  ),
                 ),
               ],
             ),
           ),
-        ],
-      ),
-    );
-  }
-}
 
-class _FilterDropdown<T> extends StatelessWidget {
-  const _FilterDropdown({
-    required this.label,
-    required this.value,
-    required this.items,
-    required this.onChanged,
-  });
-
-  final String label;
-  final T value;
-  final List<DropdownMenuItem<T>> items;
-  final ValueChanged<T?> onChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      height: 38,
-      padding: const EdgeInsets.symmetric(horizontal: 9),
-      decoration: BoxDecoration(
-        color: AppColors.ustpWhite,
-        border: Border.all(color: const Color(0xFFE5EAF1)),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Row(
-        children: [
-          Text(
-            label,
-            style: const TextStyle(color: AppColors.ustpMuted, fontSize: 10),
-          ),
-          const SizedBox(width: 6),
+          // Archive Cards List
           Expanded(
-            child: DropdownButtonHideUnderline(
-              child: DropdownButton<T>(
-                value: value,
-                isExpanded: true,
-                icon: const Icon(AppIcons.chevronDown, size: 15),
-                style: const TextStyle(
-                  color: AppColors.ustpDark,
-                  fontSize: 10,
-                  fontWeight: FontWeight.w600,
-                ),
-                items: items,
-                onChanged: onChanged,
-              ),
-            ),
+            child: _isLoading
+                ? const Center(
+                    child:
+                        CircularProgressIndicator(color: AppColors.ustpNavy),
+                  )
+                : _error != null
+                    ? _ArchiveLoadError(
+                        error: _error!,
+                        onRetry: _loadArchives,
+                      )
+                    : _documents.isEmpty
+                        ? RefreshIndicator(
+                            color: AppColors.ustpNavy,
+                            onRefresh: _loadArchives,
+                            child: ListView(
+                              physics:
+                                  const AlwaysScrollableScrollPhysics(),
+                              children: const [
+                                SizedBox(height: 80),
+                                EmptyState(
+                                  title: 'No archives found',
+                                  subtitle:
+                                      'No documents match the selected filters.',
+                                  icon: AppIcons.archive,
+                                ),
+                              ],
+                            ),
+                          )
+                        : RefreshIndicator(
+                            color: AppColors.ustpNavy,
+                            onRefresh: _loadArchives,
+                            child: ListView.builder(
+                              physics:
+                                  const AlwaysScrollableScrollPhysics(),
+                              padding:
+                                  const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                              itemCount: _documents.length,
+                              itemBuilder: (context, index) {
+                                final doc = _documents[index];
+                                return _ArchiveCard(
+                                  document: doc,
+                                  isBusy: _busyDocuments.contains(doc.id),
+                                  onPreview: () => _previewDetails(doc),
+                                  onDownload: () => _download(doc),
+                                  onVerify: () => _verifyChecksum(doc),
+                                );
+                              },
+                            ),
+                          ),
           ),
         ],
       ),
@@ -415,35 +482,39 @@ class _ArchiveCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isPdf = document.originalName.toLowerCase().endsWith('.pdf');
-    final fileColor = isPdf ? AppColors.error : AppColors.info;
+    final isImage = document.originalName.toLowerCase().endsWith('.jpg') ||
+        document.originalName.toLowerCase().endsWith('.png');
+    final fileColor = isPdf ? const Color(0xFF2563EB) : (isImage ? const Color(0xFF10B981) : const Color(0xFFF59E0B));
+
     return Container(
-      margin: const EdgeInsets.only(bottom: 8),
-      padding: const EdgeInsets.fromLTRB(11, 10, 11, 8),
+      margin: const EdgeInsets.only(bottom: 14),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppColors.ustpWhite,
-        border: Border.all(color: const Color(0xFFE5EAF1)),
-        borderRadius: BorderRadius.circular(10),
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Top Row: File Icon + Filename + Verified/Unverified Badge
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Container(
-                width: 27,
-                height: 29,
+                width: 36,
+                height: 36,
                 decoration: BoxDecoration(
-                  color: fileColor.withValues(alpha: 0.08),
-                  borderRadius: BorderRadius.circular(6),
+                  color: fileColor.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(8),
                 ),
                 child: Icon(
-                  isPdf ? AppIcons.document : AppIcons.spreadsheet,
+                  isImage ? Icons.image_rounded : Icons.description_rounded,
                   color: fileColor,
-                  size: 16,
+                  size: 20,
                 ),
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -453,19 +524,57 @@ class _ArchiveCard extends StatelessWidget {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
-                        color: AppColors.ustpDark,
-                        fontFamily: 'Poppins',
-                        fontSize: 11,
+                        color: Color(0xFF0F172A),
+                        fontFamily: 'Inter',
+                        fontSize: 15,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
+                    const SizedBox(height: 2),
                     Text(
-                      '${document.referenceStandard} · ${document.departmentCode}',
+                      '${document.departmentCode} · ${document.referenceStandard}',
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
-                        color: AppColors.ustpMuted,
-                        fontSize: 9,
+                        color: Color(0xFF64748B),
+                        fontFamily: 'Inter',
+                        fontSize: 13,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              // Verified / Unverified Badge
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: document.isVerified
+                      ? const Color(0xFFECFDF5)
+                      : const Color(0xFFFEF2F2),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      document.isVerified ? Icons.check : Icons.warning_rounded,
+                      size: 12,
+                      color: document.isVerified
+                          ? const Color(0xFF10B981)
+                          : const Color(0xFFEF4444),
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      document.isVerified ? 'Verified' : 'Unverified',
+                      style: TextStyle(
+                        fontFamily: 'Inter',
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                        color: document.isVerified
+                            ? const Color(0xFF10B981)
+                            : const Color(0xFFEF4444),
                       ),
                     ),
                   ],
@@ -473,47 +582,75 @@ class _ArchiveCard extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 7),
+          const SizedBox(height: 10),
+
+          // Uploaded by metadata
           Text(
-            'Uploaded by ${document.uploadedBy}',
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(color: AppColors.ustpDark, fontSize: 9),
+            'Uploaded by ${document.uploadedBy} · ${DateFormat('yyyy-MM-dd').format(document.createdAt)}',
+            style: const TextStyle(
+              fontFamily: 'Inter',
+              fontSize: 12,
+              color: Color(0xFF94A3B8),
+            ),
           ),
-          const SizedBox(height: 5),
+
+          // Divider Line
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: 12),
+            child: Divider(
+              height: 1,
+              thickness: 1,
+              color: Color(0xFFF1F5F9),
+            ),
+          ),
+
+          // Bottom Actions Row: Preview, Download, Verify (Left) + Delete (Right)
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text(
-                'UPLOAD DATE',
-                style: TextStyle(color: AppColors.ustpMuted, fontSize: 8),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Preview Button
+                  _ActionButton(
+                    icon: Icons.visibility_outlined,
+                    label: 'Preview',
+                    onPressed: onPreview,
+                  ),
+                  const SizedBox(width: 8),
+                  // Download Button
+                  _ActionButton(
+                    icon: Icons.download_rounded,
+                    label: isBusy ? 'Wait…' : 'Download',
+                    onPressed: isBusy ? null : onDownload,
+                  ),
+                  if (!document.isVerified) ...[
+                    const SizedBox(width: 8),
+                    // Verify Checksum Button
+                    _ActionButton(
+                      icon: Icons.security_rounded,
+                      label: 'Verify',
+                      onPressed: isBusy ? null : onVerify,
+                    ),
+                  ],
+                ],
               ),
-              Text(
-                DateFormat('MMM d, yyyy').format(document.createdAt),
-                style: const TextStyle(
-                  color: AppColors.ustpDark,
-                  fontSize: 9,
+              // Delete / Trash Icon Button
+              IconButton(
+                constraints: const BoxConstraints(),
+                padding: EdgeInsets.zero,
+                onPressed: () {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                        content: Text('Admin/Super Admin archive items are read-only.')),
+                  );
+                },
+                icon: const Icon(
+                  Icons.delete_outline_rounded,
+                  color: Color(0xFFEF4444),
+                  size: 20,
                 ),
               ),
-            ],
-          ),
-          const Divider(height: 13, color: Color(0xFFE8EDF4)),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.end,
-            children: [
-              _ArchiveAction(label: 'Preview', onPressed: onPreview),
-              const _ArchiveActionDivider(),
-              _ArchiveAction(
-                label: isBusy ? 'Please wait…' : 'Download',
-                onPressed: isBusy ? null : onDownload,
-              ),
-              if (!document.isVerified) ...[
-                const _ArchiveActionDivider(),
-                _ArchiveAction(
-                  label: 'Verify',
-                  onPressed: isBusy ? null : onVerify,
-                ),
-              ],
             ],
           ),
         ],
@@ -522,37 +659,47 @@ class _ArchiveCard extends StatelessWidget {
   }
 }
 
-class _ArchiveAction extends StatelessWidget {
-  const _ArchiveAction({required this.label, required this.onPressed});
+class _ActionButton extends StatelessWidget {
+  const _ActionButton({
+    required this.icon,
+    required this.label,
+    required this.onPressed,
+  });
 
+  final IconData icon;
   final String label;
   final VoidCallback? onPressed;
 
   @override
-  Widget build(BuildContext context) => TextButton(
-        onPressed: onPressed,
-        style: TextButton.styleFrom(
-          minimumSize: Size.zero,
-          padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
-          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-        ),
-        child: Text(
-          label,
-          style: const TextStyle(
-            color: AppColors.ustpNavy,
-            fontSize: 9,
-            fontWeight: FontWeight.w600,
+  Widget build(BuildContext context) {
+    return Material(
+      color: const Color(0xFFF1F5F9),
+      borderRadius: BorderRadius.circular(8),
+      child: InkWell(
+        onTap: onPressed,
+        borderRadius: BorderRadius.circular(8),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, size: 14, color: const Color(0xFF0F172A)),
+              const SizedBox(width: 4),
+              Text(
+                label,
+                style: const TextStyle(
+                  fontFamily: 'Inter',
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: Color(0xFF0F172A),
+                ),
+              ),
+            ],
           ),
         ),
-      );
-}
-
-class _ArchiveActionDivider extends StatelessWidget {
-  const _ArchiveActionDivider();
-
-  @override
-  Widget build(BuildContext context) =>
-      Container(height: 12, width: 1, color: const Color(0xFFCBD5E1));
+      ),
+    );
+  }
 }
 
 class _ArchiveLoadError extends StatelessWidget {
@@ -571,7 +718,7 @@ class _ArchiveLoadError extends StatelessWidget {
               Text(
                 'Could not load archives.\n$error',
                 textAlign: TextAlign.center,
-                style: const TextStyle(color: AppColors.ustpMuted),
+                style: const TextStyle(color: Color(0xFF64748B)),
               ),
               const SizedBox(height: 8),
               OutlinedButton.icon(

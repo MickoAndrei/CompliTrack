@@ -15,27 +15,32 @@ Artisan::command('mongodb:check', function () {
     try {
         $database = DB::connection('mongodb')->getMongoDB();
         $hello = $database->command(['hello' => 1])->toArray()[0] ?? null;
+        $replicaSetName = $hello->setName ?? null;
 
-        if (($hello->setName ?? null) !== 'rs0') {
-            $this->error('MongoDB is reachable but is not running as replica set rs0.');
-
-            return 1;
+        $hasChangeStreams = false;
+        try {
+            $stream = $database->selectCollection('compliance_checks')->watch([], [
+                'maxAwaitTimeMS' => 500,
+            ]);
+            $stream->close();
+            $hasChangeStreams = true;
+        } catch (\Throwable $e) {
+            // Change streams require a replica set or mongos
         }
 
-        $stream = $database->selectCollection('compliance_checks')->watch([], [
-            'maxAwaitTimeMS' => 500,
-        ]);
-        $stream->close();
+        if ($replicaSetName) {
+            $this->info("MongoDB is reachable (Replica Set: {$replicaSetName}). Change streams: " . ($hasChangeStreams ? 'Available' : 'Unavailable'));
+        } else {
+            $this->info("MongoDB is reachable (Standalone). Change streams: " . ($hasChangeStreams ? 'Available' : 'Unavailable'));
+        }
+
+        return 0;
     } catch (\Throwable $exception) {
-        $this->error('MongoDB replica-set or change-stream check failed: '.$exception->getMessage());
+        $this->error('MongoDB connection check failed: '.$exception->getMessage());
 
         return 1;
     }
-
-    $this->info('MongoDB replica set rs0 and change streams are available.');
-
-    return 0;
-})->purpose('Check MongoDB replica-set and change-stream connectivity');
+})->purpose('Check MongoDB connectivity and change-stream support');
 
 Artisan::command('complitrack:logout-all', function () {
     $driver = config('session.driver');

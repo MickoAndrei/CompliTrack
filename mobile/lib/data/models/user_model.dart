@@ -1,3 +1,4 @@
+import '../../core/utils/role_helper.dart';
 import 'model_json.dart';
 
 class UserModel {
@@ -28,13 +29,14 @@ class UserModel {
   });
 
   factory UserModel.fromJson(Map<String, dynamic> json) {
+    final roleId = ModelJson.requiredInt(json, 'roleId');
     return UserModel(
       id: ModelJson.requiredString(json, '_id', alias: 'id'),
       userCode: ModelJson.requiredString(json, 'userCode'),
       fullName: ModelJson.requiredString(json, 'fullName'),
       email: ModelJson.requiredString(json, 'email'),
-      roleId: ModelJson.requiredInt(json, 'roleId'),
-      roleSlug: ModelJson.requiredString(json, 'roleSlug'),
+      roleId: roleId,
+      roleSlug: ModelJson.optionalString(json, 'roleSlug') ?? RoleHelper.getRoleSlug(roleId),
       departmentId: ModelJson.optionalString(json, 'departmentId'),
       departmentName: ModelJson.optionalString(json, 'departmentName'),
       officeName: ModelJson.optionalString(json, 'officeName') ?? '',

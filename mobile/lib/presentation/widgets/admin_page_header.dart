@@ -13,14 +13,17 @@ class AdminPageHeader extends StatelessWidget {
     super.key,
     required this.title,
     required this.subtitle,
+    this.onProfileTap,
   });
 
   final String title;
   final String subtitle;
+  final VoidCallback? onProfileTap;
 
   @override
   Widget build(BuildContext context) {
-    final userName = context.watch<AuthProvider>().currentUser?.fullName;
+    final auth = context.watch<AuthProvider>();
+    final userName = auth.currentUser?.fullName;
     return Container(
       color: AppColors.ustpNavy,
       child: SafeArea(
@@ -44,7 +47,15 @@ class AdminPageHeader extends StatelessWidget {
                   ),
                   const SizedBox(width: 8),
                   GestureDetector(
-                    onTap: () => context.go('/common/profile'),
+                    onTap: onProfileTap ??
+                        () {
+                          final route = switch (auth.roleId) {
+                            2 => '/auditor/profile',
+                            3 => '/auditee/profile',
+                            _ => '/common/profile',
+                          };
+                          context.go(route);
+                        },
                     child: CircleAvatar(
                       radius: 17,
                       backgroundColor: AppColors.ustpWhite,

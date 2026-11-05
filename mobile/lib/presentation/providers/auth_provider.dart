@@ -14,11 +14,18 @@ class AuthProvider extends ChangeNotifier {
   int _roleId = -1;
   UserModel? _currentUser;
   bool _isInitializing = true;
+  int _avatarVersion = 0;
 
   bool get isLoggedIn => _isLoggedIn;
   int get roleId => _roleId;
   UserModel? get currentUser => _currentUser;
   bool get isInitializing => _isInitializing;
+  int get avatarVersion => _avatarVersion;
+
+  void refreshAvatar() {
+    _avatarVersion++;
+    notifyListeners();
+  }
 
   Future<void> _initSession() async {
     try {
@@ -43,7 +50,8 @@ class AuthProvider extends ChangeNotifier {
   }
 
   Future<bool> login(String email, String password) async {
-    final result = await _authRepository.login(email: email, password: password);
+    final result =
+        await _authRepository.login(email: email, password: password);
     if (result != null) {
       _isLoggedIn = true;
       _roleId = result.user.roleId;

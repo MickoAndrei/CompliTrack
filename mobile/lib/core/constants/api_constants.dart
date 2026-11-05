@@ -8,7 +8,7 @@ class ApiConstants {
   static final baseUrl = _configuredUrl(
     'COMPLITRACK_API_URL',
     _apiUrlOverride,
-    'http://10.0.2.2:8000',
+    'http://10.222.10.1:8000',
   );
 
   static final realtimeUrl = _configuredUrl(

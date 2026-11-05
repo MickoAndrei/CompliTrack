@@ -39,17 +39,26 @@ class _SystemLogsScreenState extends State<SystemLogsScreen> {
 
   Future<void> _loadLogs() async {
     setState(() => _isLoading = true);
-    final results = await _repository.getAuditLogs(
-      userId: _selectedUser,
-      action: _selectedAction,
-      dateRange: _selectedDateRange,
-      search: _searchController.text.trim(),
-    );
-    if (mounted) {
-      setState(() {
-        _logs = results;
-        _isLoading = false;
-      });
+    try {
+      final results = await _repository.getAuditLogs(
+        userId: _selectedUser,
+        action: _selectedAction,
+        dateRange: _selectedDateRange,
+        search: _searchController.text.trim(),
+      );
+      if (mounted) {
+        setState(() {
+          _logs = results;
+          _isLoading = false;
+        });
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() {
+          _logs = [];
+          _isLoading = false;
+        });
+      }
     }
   }
 
@@ -87,10 +96,10 @@ class _SystemLogsScreenState extends State<SystemLogsScreen> {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: const Row(
           children: [
-            Icon(AppIcons.lock, color: AppColors.warning, size: 22),
+            Icon(Icons.download_rounded, color: AppColors.ustpNavy, size: 22),
             SizedBox(width: 8),
             Text(
-              'Manage on Web',
+              'Export CSV',
               style: TextStyle(
                 fontFamily: 'Poppins',
                 fontSize: 18,
@@ -100,7 +109,7 @@ class _SystemLogsScreenState extends State<SystemLogsScreen> {
           ],
         ),
         content: const Text(
-          'Exporting system logs to CSV is restricted on mobile devices. Please log in to the Web Application to export full audit logs.',
+          'Exporting system logs to CSV is restricted on mobile devices. Please use the Web Application to export full audit logs.',
           style: TextStyle(fontFamily: 'Inter', fontSize: 14),
         ),
         actions: [
@@ -117,41 +126,66 @@ class _SystemLogsScreenState extends State<SystemLogsScreen> {
     );
   }
 
+  String _getActionDisplayName(String action) {
+    switch (action) {
+      case 'Reset password':
+        return 'Password Reset';
+      case 'Closed CAR':
+        return 'Closed CAR';
+      case 'Created department':
+        return 'Department Created';
+      case 'Uploaded evidence':
+        return 'Evidence Uploaded';
+      default:
+        return action;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.ustpLight,
+      backgroundColor: const Color(0xFFF8F9FA),
       appBar: UstpAppBar(
         onNotificationTap: () => AdminNotificationsScreen.showOverlay(context),
-        onProfileTap: () {},
       ),
       body: Column(
         children: [
-          // Filter & Search Controls Header
+          // Filter & Search Controls Header Section
           Container(
-            padding: const EdgeInsets.all(16),
-            color: AppColors.ustpWhite,
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 14),
+            color: const Color(0xFFF8F9FA),
             child: Column(
               children: [
                 // Search Input Box
-                TextField(
-                  controller: _searchController,
-                  onChanged: (_) => _loadLogs(),
-                  decoration: InputDecoration(
-                    hintText: 'Search logs...',
-                    hintStyle: const TextStyle(
+                Container(
+                  height: 44,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: const Color(0xFFE2E8F0)),
+                  ),
+                  child: TextField(
+                    controller: _searchController,
+                    onChanged: (_) => _loadLogs(),
+                    style: const TextStyle(
                       fontFamily: 'Inter',
                       fontSize: 14,
-                      color: AppColors.ustpMuted,
+                      color: Color(0xFF0F172A),
                     ),
-                    prefixIcon: const Icon(AppIcons.search,
-                        color: AppColors.ustpMuted, size: 20),
-                    contentPadding: const EdgeInsets.symmetric(vertical: 12),
-                    fillColor: AppColors.ustpLight,
-                    filled: true,
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide.none,
+                    decoration: const InputDecoration(
+                      hintText: 'Search logs...',
+                      hintStyle: TextStyle(
+                        fontFamily: 'Inter',
+                        fontSize: 14,
+                        color: Color(0xFF94A3B8),
+                      ),
+                      prefixIcon: Icon(
+                        Icons.search_rounded,
+                        color: Color(0xFF94A3B8),
+                        size: 20,
+                      ),
+                      border: InputBorder.none,
+                      contentPadding: EdgeInsets.symmetric(vertical: 10),
                     ),
                   ),
                 ),
@@ -163,130 +197,211 @@ class _SystemLogsScreenState extends State<SystemLogsScreen> {
                   child: Row(
                     children: [
                       // All Users Filter Dropdown
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 10, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: AppColors.ustpLight,
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(
-                              color:
-                                  AppColors.ustpMuted.withValues(alpha: 0.2)),
+                      PopupMenuButton<String?>(
+                        initialValue: _selectedUser,
+                        onSelected: (val) {
+                          setState(() => _selectedUser = val);
+                          _loadLogs();
+                        },
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
                         ),
-                        child: DropdownButtonHideUnderline(
-                          child: DropdownButton<String?>(
-                            value: _selectedUser,
-                            hint: const Text(
-                              'All Users',
-                              style: TextStyle(
-                                fontFamily: 'Inter',
-                                fontSize: 12,
-                                fontWeight: FontWeight.w600,
-                                color: AppColors.ustpDark,
+                        color: Colors.white,
+                        elevation: 4,
+                        itemBuilder: (context) => [
+                          const PopupMenuItem<String?>(
+                            value: null,
+                            child: Text('All Users',
+                                style: TextStyle(
+                                    fontFamily: 'Inter',
+                                    fontSize: 13.5,
+                                    color: Color(0xFF0F172A))),
+                          ),
+                          const PopupMenuItem<String?>(
+                            value: 'Rafael Domingo',
+                            child: Text('Rafael Domingo',
+                                style: TextStyle(
+                                    fontFamily: 'Inter',
+                                    fontSize: 13.5,
+                                    color: Color(0xFF0F172A))),
+                          ),
+                          const PopupMenuItem<String?>(
+                            value: 'Kristine Salcedo',
+                            child: Text('Kristine Salcedo',
+                                style: TextStyle(
+                                    fontFamily: 'Inter',
+                                    fontSize: 13.5,
+                                    color: Color(0xFF0F172A))),
+                          ),
+                          const PopupMenuItem<String?>(
+                            value: 'Ma. Teresa Uy',
+                            child: Text('Ma. Teresa Uy',
+                                style: TextStyle(
+                                    fontFamily: 'Inter',
+                                    fontSize: 13.5,
+                                    color: Color(0xFF0F172A))),
+                          ),
+                          const PopupMenuItem<String?>(
+                            value: 'System',
+                            child: Text('System',
+                                style: TextStyle(
+                                    fontFamily: 'Inter',
+                                    fontSize: 13.5,
+                                    color: Color(0xFF0F172A))),
+                          ),
+                        ],
+                        child: Container(
+                          height: 38,
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 12, vertical: 8),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(color: const Color(0xFFE2E8F0)),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                _selectedUser ?? 'All Users',
+                                style: const TextStyle(
+                                  fontFamily: 'Inter',
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w500,
+                                  color: Color(0xFF1E293B),
+                                ),
                               ),
-                            ),
-                            icon: const Icon(AppIcons.chevronDown,
-                                size: 16, color: AppColors.ustpDark),
-                            items: const [
-                              DropdownMenuItem(
-                                  value: null, child: Text('All Users')),
-                              DropdownMenuItem(
-                                  value: 'Rafael Domingo',
-                                  child: Text('Rafael Domingo')),
-                              DropdownMenuItem(
-                                  value: 'Kristine Salcedo',
-                                  child: Text('Kristine Salcedo')),
-                              DropdownMenuItem(
-                                  value: 'Ma. Teresa Uy',
-                                  child: Text('Ma. Teresa Uy')),
-                              DropdownMenuItem(
-                                  value: 'System', child: Text('System')),
+                              const SizedBox(width: 8),
+                              const Icon(
+                                Icons.arrow_downward,
+                                size: 14,
+                                color: Color(0xFF64748B),
+                              ),
                             ],
-                            onChanged: (val) {
-                              setState(() => _selectedUser = val);
-                              _loadLogs();
-                            },
                           ),
                         ),
                       ),
                       const SizedBox(width: 8),
 
                       // All Actions Filter Dropdown
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 10, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: AppColors.ustpLight,
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(
-                              color:
-                                  AppColors.ustpMuted.withValues(alpha: 0.2)),
+                      PopupMenuButton<String?>(
+                        initialValue: _selectedAction,
+                        onSelected: (val) {
+                          setState(() => _selectedAction = val);
+                          _loadLogs();
+                        },
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
                         ),
-                        child: DropdownButtonHideUnderline(
-                          child: DropdownButton<String?>(
-                            value: _selectedAction,
-                            hint: const Text(
-                              'All Actions',
-                              style: TextStyle(
-                                fontFamily: 'Inter',
-                                fontSize: 12,
-                                fontWeight: FontWeight.w600,
-                                color: AppColors.ustpDark,
+                        color: Colors.white,
+                        elevation: 4,
+                        itemBuilder: (context) => [
+                          const PopupMenuItem<String?>(
+                            value: null,
+                            child: Text('All Actions',
+                                style: TextStyle(
+                                    fontFamily: 'Inter',
+                                    fontSize: 13.5,
+                                    color: Color(0xFF0F172A))),
+                          ),
+                          const PopupMenuItem<String?>(
+                            value: 'Reset password',
+                            child: Text('Password Reset',
+                                style: TextStyle(
+                                    fontFamily: 'Inter',
+                                    fontSize: 13.5,
+                                    color: Color(0xFF0F172A))),
+                          ),
+                          const PopupMenuItem<String?>(
+                            value: 'Closed CAR',
+                            child: Text('Closed CAR',
+                                style: TextStyle(
+                                    fontFamily: 'Inter',
+                                    fontSize: 13.5,
+                                    color: Color(0xFF0F172A))),
+                          ),
+                          const PopupMenuItem<String?>(
+                            value: 'Created department',
+                            child: Text('Department Created',
+                                style: TextStyle(
+                                    fontFamily: 'Inter',
+                                    fontSize: 13.5,
+                                    color: Color(0xFF0F172A))),
+                          ),
+                          const PopupMenuItem<String?>(
+                            value: 'Uploaded evidence',
+                            child: Text('Evidence Uploaded',
+                                style: TextStyle(
+                                    fontFamily: 'Inter',
+                                    fontSize: 13.5,
+                                    color: Color(0xFF0F172A))),
+                          ),
+                        ],
+                        child: Container(
+                          height: 38,
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 12, vertical: 8),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(color: const Color(0xFFE2E8F0)),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                _selectedAction == null
+                                    ? 'All Actions'
+                                    : _getActionDisplayName(_selectedAction!),
+                                style: const TextStyle(
+                                  fontFamily: 'Inter',
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w500,
+                                  color: Color(0xFF1E293B),
+                                ),
                               ),
-                            ),
-                            icon: const Icon(AppIcons.chevronDown,
-                                size: 16, color: AppColors.ustpDark),
-                            items: const [
-                              DropdownMenuItem(
-                                  value: null, child: Text('All Actions')),
-                              DropdownMenuItem(
-                                  value: 'Reset password',
-                                  child: Text('Password Reset')),
-                              DropdownMenuItem(
-                                  value: 'Closed CAR',
-                                  child: Text('Closed CAR')),
-                              DropdownMenuItem(
-                                  value: 'Created department',
-                                  child: Text('Department Created')),
-                              DropdownMenuItem(
-                                  value: 'Uploaded evidence',
-                                  child: Text('Evidence Uploaded')),
+                              const SizedBox(width: 8),
+                              const Icon(
+                                Icons.arrow_downward,
+                                size: 14,
+                                color: Color(0xFF64748B),
+                              ),
                             ],
-                            onChanged: (val) {
-                              setState(() => _selectedAction = val);
-                              _loadLogs();
-                            },
                           ),
                         ),
                       ),
                       const SizedBox(width: 8),
 
                       // Date Range Filter Button
-                      OutlinedButton.icon(
-                        style: OutlinedButton.styleFrom(
+                      GestureDetector(
+                        onTap: _pickDateRange,
+                        child: Container(
+                          height: 38,
                           padding: const EdgeInsets.symmetric(
-                              horizontal: 12, vertical: 10),
-                          side: BorderSide(
-                              color:
-                                  AppColors.ustpMuted.withValues(alpha: 0.2)),
-                          backgroundColor: _selectedDateRange != null
-                              ? AppColors.ustpNavy.withValues(alpha: 0.08)
-                              : AppColors.ustpLight,
-                          shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12)),
-                        ),
-                        onPressed: _pickDateRange,
-                        icon: const Icon(Icons.calendar_today_outlined,
-                            size: 14, color: AppColors.ustpDark),
-                        label: Text(
-                          _selectedDateRange == null
-                              ? 'Date Range'
-                              : '${DateFormat('MMM d').format(_selectedDateRange!.start)} - ${DateFormat('MMM d').format(_selectedDateRange!.end)}',
-                          style: const TextStyle(
-                            fontFamily: 'Inter',
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                            color: AppColors.ustpDark,
+                              horizontal: 12, vertical: 8),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(color: const Color(0xFFE2E8F0)),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(Icons.calendar_today_rounded,
+                                  size: 13, color: Color(0xFF64748B)),
+                              const SizedBox(width: 6),
+                              Text(
+                                _selectedDateRange == null
+                                    ? 'Date Range'
+                                    : '${DateFormat('MMM d').format(_selectedDateRange!.start)} - ${DateFormat('MMM d').format(_selectedDateRange!.end)}',
+                                style: const TextStyle(
+                                  fontFamily: 'Inter',
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w500,
+                                  color: Color(0xFF1E293B),
+                                ),
+                              ),
+                            ],
                           ),
                         ),
                       ),
@@ -295,28 +410,39 @@ class _SystemLogsScreenState extends State<SystemLogsScreen> {
                 ),
                 const SizedBox(height: 12),
 
-                // Export CSV Row (Right Aligned)
+                // Export CSV Button (Right Aligned)
                 Align(
                   alignment: Alignment.centerRight,
-                  child: ElevatedButton.icon(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.ustpGold,
-                      foregroundColor: AppColors.ustpDark,
-                      elevation: 0,
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 16, vertical: 10),
-                      shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12)),
-                    ),
-                    onPressed: _showExportDisabledNotice,
-                    icon: const Icon(AppIcons.lock,
-                        size: 16, color: AppColors.ustpDark),
-                    label: const Text(
-                      'Export CSV',
-                      style: TextStyle(
-                        fontFamily: 'Inter',
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold,
+                  child: Material(
+                    color: const Color(0xFFFBBF24),
+                    borderRadius: BorderRadius.circular(10),
+                    child: InkWell(
+                      onTap: _showExportDisabledNotice,
+                      borderRadius: BorderRadius.circular(10),
+                      child: Container(
+                        height: 38,
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 14, vertical: 8),
+                        child: const Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.file_download_outlined,
+                              size: 16,
+                              color: Color(0xFF0F172A),
+                            ),
+                            SizedBox(width: 6),
+                            Text(
+                              'Export CSV',
+                              style: TextStyle(
+                                fontFamily: 'Inter',
+                                fontSize: 13.5,
+                                fontWeight: FontWeight.bold,
+                                color: Color(0xFF0F172A),
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   ),
@@ -329,7 +455,8 @@ class _SystemLogsScreenState extends State<SystemLogsScreen> {
           Expanded(
             child: _isLoading
                 ? const Center(
-                    child: CircularProgressIndicator(color: AppColors.ustpNavy))
+                    child: CircularProgressIndicator(
+                        color: AppColors.ustpNavy))
                 : _logs.isEmpty
                     ? const EmptyState(
                         title: 'No audit logs found',
@@ -339,36 +466,35 @@ class _SystemLogsScreenState extends State<SystemLogsScreen> {
                     : RefreshIndicator(
                         color: AppColors.ustpNavy,
                         onRefresh: _loadLogs,
-                        child: SingleChildScrollView(
-                          padding: const EdgeInsets.all(16),
+                        child: ListView(
+                          padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
                           physics: const AlwaysScrollableScrollPhysics(),
-                          child: Container(
-                            decoration: BoxDecoration(
-                              color: AppColors.ustpWhite,
-                              borderRadius: BorderRadius.circular(16),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withValues(alpha: 0.04),
-                                  blurRadius: 8,
-                                  offset: const Offset(0, 2),
-                                ),
-                              ],
-                            ),
-                            child: ListView.separated(
-                              shrinkWrap: true,
-                              physics: const NeverScrollableScrollPhysics(),
-                              itemCount: _logs.length,
-                              separatorBuilder: (context, index) =>
-                                  const Divider(
-                                height: 1,
-                                color: AppColors.ustpLight,
+                          children: [
+                            Container(
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(16),
+                                border: Border.all(
+                                    color: const Color(0xFFE2E8F0)),
                               ),
-                              itemBuilder: (context, index) {
-                                final log = _logs[index];
-                                return _buildAuditLogRow(log);
-                              },
+                              child: ListView.separated(
+                                shrinkWrap: true,
+                                physics:
+                                    const NeverScrollableScrollPhysics(),
+                                itemCount: _logs.length,
+                                separatorBuilder: (context, index) =>
+                                    const Divider(
+                                  height: 1,
+                                  thickness: 1,
+                                  color: Color(0xFFF1F5F9),
+                                ),
+                                itemBuilder: (context, index) {
+                                  final log = _logs[index];
+                                  return _buildAuditLogRow(log);
+                                },
+                              ),
                             ),
-                          ),
+                          ],
                         ),
                       ),
           ),
@@ -392,10 +518,10 @@ class _SystemLogsScreenState extends State<SystemLogsScreen> {
               Text(
                 log.userName,
                 style: const TextStyle(
-                  fontFamily: 'Poppins',
-                  fontSize: 14,
+                  fontFamily: 'Inter',
+                  fontSize: 14.5,
                   fontWeight: FontWeight.bold,
-                  color: AppColors.ustpDark,
+                  color: Color(0xFF0F172A),
                 ),
               ),
               Text(
@@ -403,7 +529,7 @@ class _SystemLogsScreenState extends State<SystemLogsScreen> {
                 style: const TextStyle(
                   fontFamily: 'Inter',
                   fontSize: 12,
-                  color: AppColors.ustpMuted,
+                  color: Color(0xFF64748B),
                 ),
               ),
             ],
@@ -415,9 +541,9 @@ class _SystemLogsScreenState extends State<SystemLogsScreen> {
             log.action,
             style: const TextStyle(
               fontFamily: 'Inter',
-              fontSize: 13,
-              color: AppColors.ustpMuted,
-              fontWeight: FontWeight.w500,
+              fontSize: 13.5,
+              color: Color(0xFF64748B),
+              fontWeight: FontWeight.w400,
             ),
           ),
         ],
