@@ -2,6 +2,24 @@
 
 All notable changes to CompliTrack are documented here.
 
+## [Unreleased] - 2026-11-04
+
+### Added
+
+- Added a protected MongoDB health endpoint and live database statistics for the Super Admin dashboard.
+
+### Changed
+
+- Configured Laravel services to use MongoDB and updated the startup script to migrate and seed each configured database target once.
+- Updated mobile system health checks to use the authenticated API, and refreshed notification lists and unread counts every 30 seconds.
+- Refined the Super Admin user-growth trend and removed the dashboard offline banner.
+
+### Fixed
+
+- Updated the logout-all command to clear sessions stored in MongoDB.
+
+All notable changes to CompliTrack are documented here.
+
 ## [Unreleased] - 2026-11-02
 
 ### Added
@@ -85,3 +103,5 @@ All notable changes to CompliTrack are documented here.
 - Improved spacing and responsive layout on Roles and Settings pages.
 - Refined sign-out button sizing and neutral colors.
 - Updated sidebar and header profile images to use each signed-in user’s uploaded photo, with initials as the fallback.
+
+

@@ -11,6 +11,7 @@ use App\Http\Controllers\Api\V1\ReportController;
 use App\Http\Controllers\Api\V1\UserController;
 use App\Http\Middleware\EnsureUserIsActive;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\DB;
 
 Route::prefix('v1')->group(function () {
     Route::get('/version', fn () => response()->json([
@@ -22,7 +23,7 @@ Route::prefix('v1')->group(function () {
     Route::post('/auth/forgot-password', [AuthController::class, 'forgotPassword']);
     Route::post('/auth/reset-password', [AuthController::class, 'resetPassword']);
 
-    Route::middleware(['auth:sanctum', EnsureUserIsActive::class])->group(function () {
+    Route::middleware(['auth:sanctum,api', EnsureUserIsActive::class])->group(function () {
         Route::get('/auth/me', [AuthController::class, 'me']);
         Route::get('/auth/avatar', [AuthController::class, 'avatar']);
         Route::post('/auth/logout', [AuthController::class, 'logout']);
@@ -63,6 +64,17 @@ Route::prefix('v1')->group(function () {
         Route::middleware('role:0')->group(function () {
             Route::get('/logs', [AuditLogController::class, 'index']);
             Route::get('/system/database-stats', DatabaseStatsController::class);
+            Route::get('/system/health', function () {
+                try {
+                    DB::connection('mongodb')->getMongoDB()->command(['ping' => 1]);
+
+                    return response()->json(['database' => 'ok']);
+                } catch (\Throwable $exception) {
+                    report($exception);
+
+                    return response()->json(['database' => 'unavailable'], 503);
+                }
+            });
             Route::post('/users/{id}/reactivate', [UserController::class, 'reactivate']);
             Route::post('/departments/{id}/reactivate', [DepartmentController::class, 'reactivate']);
         });

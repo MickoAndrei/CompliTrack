@@ -3,7 +3,6 @@ import 'dart:ui' show ImageFilter;
 import 'package:flutter/material.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_icons.dart';
-import '../../../core/services/socket_service.dart';
 import '../../../data/models/notification_model.dart';
 import '../../../data/repositories/notification_repository.dart';
 import 'broadcast_notification_dialog.dart';
@@ -55,20 +54,20 @@ class _AdminNotificationsScreenState extends State<AdminNotificationsScreen> {
   bool _isMarkingRead = false;
   String? _error;
   List<NotificationModel> _notifications = [];
-  StreamSubscription<Map<String, dynamic>>? _subscription;
+  Timer? _refreshTimer;
 
   @override
   void initState() {
     super.initState();
     _loadNotifications();
-    _subscription = SocketService.instance.notifications.listen((_) {
+    _refreshTimer = Timer.periodic(const Duration(seconds: 30), (_) {
       if (mounted) _loadNotifications();
     });
   }
 
   @override
   void dispose() {
-    _subscription?.cancel();
+    _refreshTimer?.cancel();
     super.dispose();
   }
 
@@ -342,20 +341,20 @@ class _AdminNotificationsOverlayState extends State<AdminNotificationsOverlay> {
   bool _isMarkingRead = false;
   String? _error;
   List<NotificationModel> _notifications = [];
-  StreamSubscription<Map<String, dynamic>>? _subscription;
+  Timer? _refreshTimer;
 
   @override
   void initState() {
     super.initState();
     _loadNotifications();
-    _subscription = SocketService.instance.notifications.listen((_) {
+    _refreshTimer = Timer.periodic(const Duration(seconds: 30), (_) {
       if (mounted) _loadNotifications();
     });
   }
 
   @override
   void dispose() {
-    _subscription?.cancel();
+    _refreshTimer?.cancel();
     super.dispose();
   }
 

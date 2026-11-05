@@ -1,7 +1,4 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
-import '../../core/services/socket_service.dart';
 import '../../data/models/user_model.dart';
 import '../../data/repositories/auth_repository.dart';
 
@@ -30,7 +27,6 @@ class AuthProvider extends ChangeNotifier {
       if (_isLoggedIn) {
         _roleId = session.roleId!;
         _currentUser = session.user;
-        unawaited(SocketService.instance.connect());
       }
     } catch (error, stackTrace) {
       FlutterError.reportError(FlutterErrorDetails(
@@ -52,7 +48,6 @@ class AuthProvider extends ChangeNotifier {
       _isLoggedIn = true;
       _roleId = result.user.roleId;
       _currentUser = result.user;
-      unawaited(SocketService.instance.connect());
       notifyListeners();
       return true;
     }
@@ -66,7 +61,6 @@ class AuthProvider extends ChangeNotifier {
       _isLoggedIn = false;
       _roleId = -1;
       _currentUser = null;
-      SocketService.instance.disconnect();
       notifyListeners();
     }
   }

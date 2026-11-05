@@ -6,15 +6,25 @@ namespace App\Models;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Notifications\Notifiable;
+use Laravel\Sanctum\HasApiTokens;
+use Tymon\JWTAuth\Contracts\JWTSubject;
 use MongoDB\Laravel\Auth\User as Authenticatable;
 
-class User extends Authenticatable
+class User extends Authenticatable implements JWTSubject
 {
     public const CREATED_AT = 'createdAt';
     public const UPDATED_AT = 'updatedAt';
 
+    public function getJWTIdentifier(){
+        return (string) $this->getKey();
+    }
+
+    public function getJWTCustomClaims(){
+        return ['roleId'=>(int) $this->roleId];
+    }
+
     /** @use HasFactory<UserFactory> */
-    use HasFactory, Notifiable;
+    use HasApiTokens, HasFactory, Notifiable;
 
     protected $connection = 'mongodb';
     protected $collection = 'users';

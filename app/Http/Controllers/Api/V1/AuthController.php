@@ -10,7 +10,6 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Laravel\Sanctum\Http\Middleware\EnsureFrontendRequestsAreStateful;
-use Laravel\Sanctum\TransientToken;
 
 class AuthController extends Controller
 {
@@ -44,25 +43,26 @@ class AuthController extends Controller
             return response()->json(['user' => $user->toArray()]);
         }
 
-        $token = $user->createToken('mobile', ['*'], now()->addDays(30));
+        $token = auth('api')->login($user);
 
         return response()->json([
-            'token' => $token->plainTextToken,
+            'token' => $token,
+            'tokenType' => 'bearer',
+            'expiresIn' => auth('api')->factory()->getTTL()*60,
             'user' => $user->toArray(),
         ]);
     }
 
     public function logout(Request $request)
     {
-        $token = $request->user()->currentAccessToken();
-        if ($token instanceof TransientToken) {
+        if ($request->hasSession() && Auth::guard('web')->check()){
             Auth::guard('web')->logout();
             if ($request->hasSession()) {
                 $request->session()->invalidate();
                 $request->session()->regenerateToken();
             }
         } else {
-            $token?->delete();
+            $auth('api')->logout(); // blacklist the JWT
         }
 
         return response()->json(['message' => 'Logged out.']);
