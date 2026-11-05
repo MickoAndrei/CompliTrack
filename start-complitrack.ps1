@@ -258,6 +258,12 @@ $buildArgs = "/d /s /c `"`"$npmCommand`" run build > `"$logDir\frontend-build.lo
 & $env:ComSpec $buildArgs | Out-Null
 Write-Host "  [OK] Frontend build complete"
 
+$hotFile = Join-Path $repoRoot "public\hot"
+if (Test-Path $hotFile) {
+    Remove-Item $hotFile -Force -ErrorAction SilentlyContinue
+    Write-Host "  [OK] Removed public/hot file"
+}
+
 if (Test-PortInUse 5173) {
     Write-Host "Vite dev server already running"
 } else {
