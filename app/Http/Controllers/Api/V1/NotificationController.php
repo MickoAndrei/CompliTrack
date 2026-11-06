@@ -19,6 +19,8 @@ class NotificationController extends Controller
     public function index(Request $request)
     {
         $query = $this->scopes->notifications($request->user());
+        if ($request->boolean('unread')) { $query->where('isRead', false); }
+        if ($request->filled('type')) { $query->where('type', $request->query('type')); }
         if ($request->filled('search')) {
             $search = '/'.preg_quote(trim((string) $request->query('search')), '/').'/i';
             $query->where(function ($query) use ($search) {
@@ -88,7 +90,6 @@ class NotificationController extends Controller
                 'title' => 'Broadcast Notification',
                 'message' => trim($data['message']),
                 'isRead' => false,
-                'fcmSent' => false,
             ]);
         }
 
@@ -111,6 +112,11 @@ class NotificationController extends Controller
         $data = $notification->toArray();
         $data['_id'] = (string) $notification->getKey();
         unset($data['id']);
+        if (empty($data['destination']) && $notification->relatedCheckId) {
+            $data['destination'] = (int) auth()->user()->roleId === 3
+                ? '/auditee/finding-details/'.$notification->relatedCheckId
+                : '/auditor/checks/'.$notification->relatedCheckId;
+        }
 
         return $data;
     }

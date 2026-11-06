@@ -18,7 +18,6 @@ class AuthController extends Controller
         $validated = $request->validate([
             'email' => ['required', 'email', 'max:255'],
             'password' => ['required', 'string'],
-            'fcmToken' => ['sometimes', 'nullable', 'string', 'max:4096'],
             'remember' => ['sometimes', 'boolean'],
         ]);
 
@@ -31,9 +30,6 @@ class AuthController extends Controller
             $user->isActive = true;
         }
         $user->lastLoginAt = now()->utc();
-        if (array_key_exists('fcmToken', $validated)) {
-            $user->fcmToken = $validated['fcmToken'];
-        }
         $user->save();
 
         if (EnsureFrontendRequestsAreStateful::fromFrontend($request)) {

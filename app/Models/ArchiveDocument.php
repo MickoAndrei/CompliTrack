@@ -15,7 +15,7 @@ class ArchiveDocument extends Model
     protected $fillable = [
         'fileCode', 'originalName', 'encryptedPath', 'mimeType', 'fileSize',
         'checksum', 'departmentId', 'uploadedByUserId', 'referenceStandard',
-        'tags', 'isEncrypted', 'encryptionIv', 'encryptionTag',
+        'tags', 'isEncrypted', 'encryptionIv', 'encryptionTag', 'auditId', 'requestId',
     ];
 
     protected $hidden = ['encryptedPath', 'encryptionIv', 'encryptionTag'];

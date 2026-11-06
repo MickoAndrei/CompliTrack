@@ -1,114 +1,37 @@
+const { ObjectId } = require('mongodb');
 const logger = require('../utils/logger');
-const { notifyForCheckChange } = require('../services/notificationService');
-const fcmService = require('../services/fcmService');
 
-const STATE_ID = 'compliance_checks_watcher';
-const BROADCAST_STATE_ID = 'admin_broadcast_notifications_watcher';
-
-const wait = (milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds));
-
-async function watchComplianceChecks({ database, io, signal }) {
-  const stateCollection = database.collection('change_stream_state');
-  const checks = database.collection('compliance_checks');
-
-  while (!signal.aborted) {
-    let stream;
-    try {
-      const state = await stateCollection.findOne({ _id: STATE_ID });
-      stream = checks.watch([], {
-        fullDocument: 'updateLookup',
-        ...(state?.resumeToken ? { resumeAfter: state.resumeToken } : {}),
-      });
-      signal.addEventListener('abort', () => stream.close(), { once: true });
-
-      for await (const change of stream) {
-        await notifyForCheckChange({ database, io, change });
-        await stateCollection.updateOne(
-          { _id: STATE_ID },
-          { $set: { resumeToken: change._id, updatedAt: new Date() } },
-          { upsert: true },
-        );
-      }
-    } catch (exception) {
-      if (!signal.aborted) {
-        logger.error('Compliance change-stream interrupted; reconnecting.', exception);
-        await wait(2000);
-      }
-    } finally {
-      if (stream) await stream.close();
-    }
-  }
-}
-
-async function watchBroadcastNotifications({ database, io, signal }) {
-  const stateCollection = database.collection('change_stream_state');
+async function pollNotifications({ database, io, now = new Date() }) {
   const notifications = database.collection('notifications');
-
-  while (!signal.aborted) {
-    let stream;
-    try {
-      const state = await stateCollection.findOne({ _id: BROADCAST_STATE_ID });
-      stream = notifications.watch([
-        {
-          $match: {
-            operationType: 'insert',
-            'fullDocument.type': 'admin_broadcast',
-          },
-        },
-      ], {
-        fullDocument: 'default',
-        ...(state?.resumeToken ? { resumeAfter: state.resumeToken } : {}),
-      });
-      signal.addEventListener('abort', () => stream.close(), { once: true });
-
-      for await (const change of stream) {
-        const notification = change.fullDocument;
-        const recipientUserId = notification?.recipientUserId;
-        if (recipientUserId) {
-          const notificationId = notification._id.toString();
-          const recipientId = recipientUserId.toString();
-          io.to(`user:${recipientId}`).emit('notification', {
-            ...notification,
-            _id: notificationId,
-            recipientUserId: recipientId,
-            senderUserId: notification.senderUserId?.toString() ?? null,
-          });
-
-          const user = await database.collection('users').findOne(
-            { _id: recipientUserId },
-            { projection: { fcmToken: 1 } },
-          );
-          const delivered = await fcmService.sendToToken(
-            user?.fcmToken,
-            notification,
-            {
-              notificationId,
-              type: notification.type,
-            },
-          );
-          if (delivered) {
-            await notifications.updateOne(
-              { _id: notification._id },
-              { $set: { fcmSent: true } },
-            );
-          }
-        }
-
-        await stateCollection.updateOne(
-          { _id: BROADCAST_STATE_ID },
-          { $set: { resumeToken: change._id, updatedAt: new Date() } },
-          { upsert: true },
-        );
-      }
-    } catch (exception) {
-      if (!signal.aborted) {
-        logger.error('Broadcast notification change stream interrupted; reconnecting.', exception);
-        await wait(2000);
-      }
-    } finally {
-      if (stream) await stream.close();
+  // Lease prevents competing workers from dispatching the same persisted record.
+  for (let i = 0; i < 100; i++) {
+    const lease = new ObjectId().toString();
+    const notification = await notifications.findOneAndUpdate({ realtimeDeliveredAt: { $exists: false },
+      $or: [{ realtimeLeaseUntil: { $exists: false } }, { realtimeLeaseUntil: { $lt: now } }] },
+    { $set: { realtimeLease: lease, realtimeLeaseUntil: new Date(now.getTime() + 30000) } },
+    { sort: { createdAt: 1, _id: 1 }, returnDocument: 'after' });
+    if (!notification) break;
+    const recipient = notification.recipientUserId?.toString();
+    const user = recipient && ObjectId.isValid(recipient) ? await database.collection('users').findOne({ _id: new ObjectId(recipient), isActive: true }) : null;
+    if (user) {
+      const { realtimeLease, realtimeLeaseUntil, ...payload } = notification;
+      io.to(`user:${recipient}`).emit('notification', { ...payload, _id: notification._id.toString(),
+        recipientUserId: recipient, senderUserId: notification.senderUserId?.toString() ?? null,
+        relatedCheckId: notification.relatedCheckId?.toString() ?? null });
     }
+    await notifications.updateOne({ _id: notification._id, realtimeLease: lease },
+      { $set: { realtimeDeliveredAt: new Date() }, $unset: { realtimeLease: '', realtimeLeaseUntil: '' } });
   }
 }
 
-module.exports = { watchComplianceChecks, watchBroadcastNotifications };
+async function runPolling(action, context) {
+  while (!context.signal.aborted) {
+    try { await action(context); } catch (error) { logger.error('Notification polling failed; retrying.', error); }
+    if (!context.signal.aborted) await new Promise(resolve => {
+      const finish = () => { clearTimeout(timer); context.signal.removeEventListener('abort', finish); resolve(); };
+      const timer = setTimeout(finish, 2000); context.signal.addEventListener('abort', finish, { once: true });
+    });
+  }
+}
+module.exports = { pollNotifications,
+  watchBroadcastNotifications: context => runPolling(pollNotifications, context) };

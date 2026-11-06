@@ -1,8 +1,10 @@
 @extends('layouts.app')
-@section('title', 'Upload Evidence')
-@section('heading', 'Upload Evidence')
+@section('title', 'Provide Evidence')
+@section('heading', 'Provide Evidence')
 @section('content')
-<section x-data="evidenceUploadPage()" class="max-w-3xl">
+<nav class="workflow-actions" aria-label="Evidence purpose"><a href="/auditee/evidence-requests">During Audit</a><a href="/auditee/upload" aria-current="page">Corrective Evidence</a></nav>
+<p class="workflow-muted" style="margin:16px 0">For references or physical originals without an upload, open the relevant result from <a href="/auditee/my-findings?actionable=1">My Audit Results</a>. A file submission never closes a CAR.</p>
+<section x-data="evidenceUploadPage()" data-evidence-upload class="max-w-3xl">
     <div class="mb-6"><h2 class="font-heading text-2xl font-bold text-ustp-navy">Upload corrective evidence</h2><p class="mt-1 text-sm text-ustp-muted">Select an open non-compliant finding and attach supporting evidence.</p></div>
     <div x-cloak x-show="error || message" x-transition class="fixed right-6 top-6 z-[100] flex min-h-[52px] w-[calc(100%-3rem)] max-w-sm items-center rounded-lg border-l-4 bg-ustp-navy py-4 pr-5 text-[13px] font-medium leading-5 text-white shadow-[0_10px_25px_rgba(5,27,68,0.18)]" :class="error ? 'border-red-500' : 'border-ustp-gold'" style="padding-left: 24px" :role="error ? 'alert' : 'status'" aria-live="polite">
         <span class="min-w-0 flex-1" x-text="error || message"></span>
@@ -19,6 +21,7 @@
             <span class="mt-2 block text-xs text-ustp-muted">PDF, DOCX, PNG, or JPG · maximum 20 MB</span>
         </label>
         <div class="flex items-start gap-3 rounded-xl bg-ustp-light p-4 text-sm text-ustp-muted"><i data-lucide="lock-keyhole" class="mt-0.5 size-5 shrink-0 text-ustp-navy"></i><span>File will be encrypted with AES-256-GCM when securely stored.</span></div>
+        <label class="block text-sm"><input type="checkbox" required> I have permission to store this document; protected QMS records must not be copied without authorization.</label>
         <button :disabled="saving" type="submit" class="rounded-xl bg-ustp-navy px-5 py-3 text-sm font-semibold text-white hover:bg-ustp-gold hover:text-ustp-navy disabled:opacity-60" x-text="saving ? 'Uploading…' : 'Upload evidence'"></button>
     </form>
 </section>

@@ -214,7 +214,6 @@ class DemoDataSeeder extends Seeder
                     'message' => $notification['message'],
                     'relatedCheckId' => $checks[$notification['check']]->getKey(),
                     'isRead' => $notification['isRead'],
-                    'fcmSent' => false,
                 ],
             );
         }

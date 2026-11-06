@@ -16,20 +16,21 @@
     'allowBroadcast' => false,
 ])
 @php($roleId = (int) auth()->user()->roleId)
+@php($visualRole = $roleId === 3 ? 2 : $roleId)
 @php($searchLabel = match ($title) { 'User Management' => 'User', 'Archive Repository' => 'Archive', 'Audit Logs' => 'Audit Logs', default => strtolower($title) })
-@php($panelClass = match ($roleId) { 0 => 'app-view-panel active', 2, 3 => 'view-panel active', default => '' })
+@php($panelClass = match ($visualRole) { 0, 2 => 'app-view-panel active', 3 => 'view-panel active', default => '' })
 <section class="{{ $panelClass }}" x-data="resourcePage({ endpoint: @js($endpoint), columns: @js($columns), perPage: {{ (int) $perPage }}, detailBase: @js($detailBase), allowStatusUpdates: {{ $allowStatusUpdates ? 'true' : 'false' }}, allowArchiveActions: {{ $allowArchiveActions ? 'true' : 'false' }}, allowNotificationActions: {{ $allowNotificationActions ? 'true' : 'false' }}, allowUserCreate: {{ $allowUserCreate ? 'true' : 'false' }}, allowUserActions: {{ $allowUserActions ? 'true' : 'false' }}, actorRoleId: {{ $actorRoleId === null ? 'null' : (int) $actorRoleId }}, allowDepartmentCreate: {{ $allowDepartmentCreate ? 'true' : 'false' }}, allowDepartmentActions: {{ $allowDepartmentActions ? 'true' : 'false' }}, allowBroadcast: {{ $allowBroadcast ? 'true' : 'false' }} })" x-init="load()">
     <div x-cloak x-show="successPopupVisible" x-transition class="fixed right-6 top-6 z-[100] flex min-h-[52px] w-[calc(100%-3rem)] max-w-sm items-center rounded-lg border-l-4 bg-ustp-navy pr-5 py-4 text-[13px] font-medium leading-5 text-white shadow-[0_10px_25px_rgba(5,27,68,0.18)]" :class="successPopupType === 'error' ? 'border-red-500' : 'border-ustp-gold'" style="padding-left: 24px" :role="successPopupType === 'error' ? 'alert' : 'status'" aria-live="polite">
         <span class="min-w-0 flex-1" x-text="successPopupMessage"></span>
     </div>
-    @php($toolbarClass = match ($roleId) { 0, 2 => 'table-filter-bar', 1 => 'toolbar', 3 => 'toolbar-row', default => 'toolbar' })
-    @php($controlClass = match ($roleId) { 0, 2 => 'filter-left-controls', 1 => 'toolbar-left', 3 => '', default => 'toolbar-left' })
+    @php($toolbarClass = match ($visualRole) { 0, 2 => 'table-filter-bar', 1 => 'toolbar', 3 => 'toolbar-row', default => 'toolbar' })
+    @php($controlClass = match ($visualRole) { 0, 2 => 'filter-left-controls', 1 => 'toolbar-left', 3 => '', default => 'toolbar-left' })
     <div class="{{ $toolbarClass }}">
         <div class="{{ $controlClass }}">
-            <label class="{{ match ($roleId) { 0, 2 => 'search-input-wrapper', 1 => 'search-box', 3 => 'search-input-box', default => 'search-box' } }}">
+            <label class="{{ match ($visualRole) { 0, 2 => 'search-input-wrapper', 1 => 'search-box', 3 => 'search-input-box', default => 'search-box' } }}">
                 <i data-lucide="search" aria-hidden="true"></i>
                 <span class="sr-only">Search {{ $searchLabel }}</span>
-                <input type="search" x-model="search" @input.debounce.350ms="load(1)" placeholder="Search {{ $searchLabel }}" aria-label="Search {{ $searchLabel }}" class="{{ $roleId === 0 ? 'input-search-field' : '' }}">
+                <input type="search" x-model="search" @input.debounce.350ms="load(1)" placeholder="Search {{ $searchLabel }}" aria-label="Search {{ $searchLabel }}" class="{{ in_array($roleId, [0, 2], true) ? 'input-search-field' : '' }}">
             </label>
             <label x-show="endpoint === 'logs'" x-cloak class="flex items-center gap-2 text-[12.5px] font-medium text-ustp-muted">
                 <span>Sort by</span>
@@ -67,9 +68,9 @@
             <p class="archive-empty-description">Records will appear here when available.</p>
         </div>
     </template>
-    <div x-show="!loading && !error && rows.length > 0" x-cloak class="{{ in_array($roleId, [0, 3], true) ? 'content-card' : ($roleId === 1 ? 'table-card' : ($roleId === 2 ? 'card' : 'overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-slate-200/70')) }} {{ $roleId === 0 ? 'table-card-bordered' : '' }}">
-        <div class="{{ match ($roleId) { 0 => 'responsive-table-wrapper', 2 => 'table-container', default => 'overflow-x-auto' } }}">
-            <table class="min-w-full divide-y divide-slate-100 text-left text-sm {{ match ($roleId) { 0, 3 => 'data-table', 2 => 'compliance-table', default => '' } }}">
+    <div x-show="!loading && !error && rows.length > 0" x-cloak class="{{ in_array($roleId, [0, 2, 3], true) ? 'content-card' : ($roleId === 1 ? 'table-card' : ($roleId === 2 ? 'card' : 'overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-slate-200/70')) }} {{ in_array($roleId, [0, 2], true) ? 'table-card-bordered' : '' }}">
+        <div class="{{ match ($visualRole) { 0 => 'responsive-table-wrapper', 2 => 'table-container', default => 'overflow-x-auto' } }}">
+            <table class="min-w-full divide-y divide-slate-100 text-left text-sm {{ match ($visualRole) { 0, 3 => 'data-table', 2 => 'compliance-table', default => '' } }}">
                 <thead class="bg-slate-50 text-xs uppercase tracking-wide text-ustp-muted">
                     <tr><template x-for="column in columns" :key="column.key"><th scope="col" class="whitespace-nowrap px-5 py-3 font-semibold" x-text="column.label"></th></template><th x-show="allowArchiveActions || allowNotificationActions || allowUserActions || allowDepartmentActions" scope="col" class="px-5 py-3 font-semibold">Actions</th></tr>
                 </thead>

@@ -14,7 +14,7 @@ class Notification extends Model
 
     protected $fillable = [
         'recipientUserId', 'senderUserId', 'type', 'title', 'message',
-        'relatedCheckId', 'isRead', 'fcmSent', 'dedupeKey',
+        'relatedCheckId', 'isRead', 'dedupeKey', 'destination',
     ];
 
     protected $casts = [
@@ -22,6 +22,6 @@ class Notification extends Model
         'senderUserId' => NullableObjectId::class,
         'relatedCheckId' => NullableObjectId::class,
         'isRead' => 'boolean',
-        'fcmSent' => 'boolean',
     ];
+    protected $hidden = ['realtimeLease', 'realtimeLeaseUntil', 'realtimeDeliveredAt'];
 }

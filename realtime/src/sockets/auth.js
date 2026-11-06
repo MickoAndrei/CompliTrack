@@ -10,13 +10,13 @@ function extractToken(socket) {
   return token;
 }
 
-function createSocketAuth(database) {
+function createSocketAuth(database, secret = process.env.JWT_SECRET) {
   return async (socket, next) => {
     try {
       const token = extractToken(socket);
 
       // Verifies the signature and expiry (exp) in one call.
-      const payload = jwt.verify(token, process.env.JWT_SECRET, { algorithms: ['HS256'] });
+      const payload = jwt.verify(token, secret, { algorithms: ['HS256'] });
       if (!ObjectId.isValid(payload.sub)) {
         throw new Error('The token subject is invalid.');
       }
@@ -28,6 +28,7 @@ function createSocketAuth(database) {
       if (!user) throw new Error('The account is inactive or no longer exists.');
 
       socket.user = user;
+      socket.user.tokenExpiresAt = payload.exp * 1000;
       next();
     } catch (exception) {
       next(new Error('Unauthorized.'));

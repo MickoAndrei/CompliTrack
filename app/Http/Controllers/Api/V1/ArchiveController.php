@@ -81,7 +81,10 @@ class ArchiveController extends Controller
     {
         $data = $request->validate([
             'file' => ['required', 'file', 'max:20480'],
-            'checkId' => ['required', 'string', 'regex:/^[a-f0-9]{24}$/'],
+            'checkId' => ['required_without:auditId', 'nullable', 'string', 'regex:/^[a-f0-9]{24}$/'],
+            'auditId' => ['required_without:checkId', 'nullable', 'string', 'regex:/^[a-f0-9]{24}$/'],
+            'requestId' => ['required_with:auditId', 'string', 'uuid'],
+            'copyAuthorized' => ['sometimes', 'accepted'],
             'referenceStandard' => ['required', 'in:ARTA-3days,ARTA-7days,ARTA-20days,ISO9001-9.2'],
             'tags' => ['sometimes', 'array'],
             'tags.*' => ['string', 'max:50'],
@@ -98,6 +101,19 @@ class ArchiveController extends Controller
         }
 
         $actor = $request->user();
+        $check = null; $audit = null;
+        if (!empty($data['auditId'])) {
+            $request->validate(['copyAuthorized' => 'required|accepted']);
+            abort_unless((int) $actor->roleId === 3, 403);
+            $workflow = app(\App\Services\AuditeeEvidenceService::class);
+            $audit = $workflow->audit($actor, $data['auditId']);
+            $index = $workflow->requestIndex($audit, $data['requestId'], $actor);
+            $evidenceRequest = $audit->evidenceRequests[$index];
+            abort_unless(in_array($audit->status, ['draft', 'ready', 'returned'], true)
+                && in_array($evidenceRequest['status'], ['requested', 'needs_information'], true)
+                && ($evidenceRequest['allowUpload'] ?? false)
+                && $evidenceRequest['referenceStandard'] === $data['referenceStandard'], 403);
+        } else {
         $check = ComplianceCheck::find(MongoId::parse($data['checkId'], 'checkId'));
         if (! $check || $check->referenceStandard !== $data['referenceStandard']) {
             throw ValidationException::withMessages([
@@ -105,8 +121,9 @@ class ArchiveController extends Controller
             ]);
         }
         $this->authorizeCheckUpload($actor, $check);
+        }
 
-        $departmentId = MongoId::parse((string) $check->departmentId, 'departmentId');
+        $departmentId = MongoId::parse((string) ($audit ?? $check)->departmentId, 'departmentId');
         $plaintext = $contents;
         $checksum = hash('sha256', $plaintext);
         $encrypted = $this->encryption->encrypt($plaintext);
@@ -132,19 +149,23 @@ class ArchiveController extends Controller
                 'isEncrypted' => true,
                 'encryptionIv' => $encrypted['iv'],
                 'encryptionTag' => $encrypted['tag'],
+                'auditId' => $audit ? (string) $audit->getKey() : null,
+                'requestId' => $data['requestId'] ?? null,
             ]);
 
+            if ($check) {
             $linked = $check->getConnection()->getMongoDB()
                 ->selectCollection($check->getTable())
                 ->updateOne(
-                    ['_id' => $check->getKey(), 'result' => 'non_compliant'],
+                    ['_id' => MongoId::parse((string) $check->getKey()), 'result' => 'non_compliant', 'correctiveStatus' => ['$in' => ['open', 'in_progress']]],
                     ['$addToSet' => ['linkedArchiveIds' => $archive->getKey()]],
                 );
             if ($linked->getMatchedCount() !== 1) {
                 abort(409, 'The selected check is no longer eligible for evidence.');
             }
+            }
 
-            if ((int) $actor->roleId === 3) {
+            if ($check && (int) $actor->roleId === 3) {
                 Notification::create([
                     'recipientUserId' => $check->auditorId,
                     'senderUserId' => $actor->getKey(),
@@ -153,7 +174,6 @@ class ArchiveController extends Controller
                     'message' => "{$actor->fullName} uploaded evidence for {$check->checkCode}.",
                     'relatedCheckId' => $check->getKey(),
                     'isRead' => false,
-                    'fcmSent' => false,
                 ]);
             }
 
@@ -197,7 +217,7 @@ class ArchiveController extends Controller
 
     private function authorizeCheckUpload(User $actor, ComplianceCheck $check): void
     {
-        if ($check->result !== 'non_compliant') {
+        if ($check->result !== 'non_compliant' || !in_array($check->correctiveStatus, ['open', 'in_progress'], true)) {
             abort(403, 'Evidence can only be linked to a non-compliant check.');
         }
 
@@ -213,7 +233,9 @@ class ArchiveController extends Controller
 
         abort_unless(
             (int) $actor->roleId === 3
-                && (string) $check->auditeeId === (string) $actor->getKey(),
+                && (string) $check->auditeeId === (string) $actor->getKey()
+                && (string) $check->departmentId === (string) $actor->departmentId,
+                // Uploads never grant cross-department access.
             403,
         );
     }
@@ -297,10 +319,21 @@ class ArchiveController extends Controller
             'png' => str_starts_with($contents, "\x89PNG\r\n\x1a\n"),
             'jpg', 'jpeg' => str_starts_with($contents, "\xff\xd8\xff"),
             // DOCX is a ZIP package; verify its ZIP signature without requiring fileinfo.
-            'docx' => str_starts_with($contents, "PK\x03\x04")
-                || str_starts_with($contents, "PK\x05\x06")
-                || str_starts_with($contents, "PK\x07\x08"),
+            'docx' => $this->isDocx($contents),
             default => false,
         };
+    }
+
+    private function isDocx(string $contents): bool
+    {
+        if (!class_exists(\ZipArchive::class)) { return false; }
+        $path = tempnam(sys_get_temp_dir(), 'ct-docx-');
+        try {
+            file_put_contents($path, $contents);
+            $zip = new \ZipArchive();
+            if ($zip->open($path) !== true) { return false; }
+            $valid = $zip->locateName('[Content_Types].xml') !== false && $zip->locateName('word/document.xml') !== false;
+            $zip->close(); return $valid;
+        } finally { if (is_file($path)) { unlink($path); } }
     }
 }

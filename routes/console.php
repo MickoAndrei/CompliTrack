@@ -22,7 +22,7 @@ Artisan::command('mongodb:check', function () {
             $stream = $database->selectCollection('compliance_checks')->watch([], [
                 'maxAwaitTimeMS' => 500,
             ]);
-            $stream->close();
+            unset($stream);
             $hasChangeStreams = true;
         } catch (\Throwable $e) {
             // Change streams require a replica set or mongos

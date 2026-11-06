@@ -2,21 +2,21 @@
 @php($roleNames = ['Super Admin', 'Admin', 'Auditor', 'Auditee'])
 @php($userAvatarUrl = auth()->user()->avatarPath ? url('/api/v1/auth/avatar') : null)
 @php($userInitials = collect(explode(' ', auth()->user()->fullName ?? 'U'))->filter()->take(2)->map(fn ($part) => mb_substr($part, 0, 1))->implode(''))
-<header class="{{ $roleId === 0 ? 'top-header-bar' : ($roleId === 1 ? 'topbar' : 'top-header') }}">
-    <div class="{{ $roleId === 0 ? 'header-left' : ($roleId === 1 ? 'topbar-left' : 'header-titles') }}">
-        <button type="button" class="{{ $roleId === 0 ? 'menu-toggle' : 'rounded-lg p-2 text-ustp-dark hover:bg-ustp-light lg:hidden' }}" aria-label="Open navigation" @click="sidebarOpen = true">
+<header class="{{ in_array($roleId, [0, 2, 3], true) ? 'top-header-bar' : ($roleId === 1 ? 'topbar' : 'top-header') }}">
+    <div class="{{ in_array($roleId, [0, 2, 3], true) ? 'header-left' : ($roleId === 1 ? 'topbar-left' : 'header-titles') }}">
+        <button type="button" class="{{ in_array($roleId, [0, 2, 3], true) ? 'menu-toggle' : 'rounded-lg p-2 text-ustp-dark hover:bg-ustp-light lg:hidden' }}" aria-label="Open navigation" @click="sidebarOpen = true">
             <i data-lucide="menu" class="size-5"></i>
         </button>
         <div>
             @if ($roleId === 1)
                 <h2>@yield('heading', 'CompliTrack')</h2>
             @else
-                <h1 class="{{ $roleId === 0 ? 'header-page-title' : 'page-title' }}">@yield('heading', 'CompliTrack')</h1>
+                <h1 class="{{ in_array($roleId, [0, 2, 3], true) ? 'header-page-title' : 'page-title' }}">@yield('heading', 'CompliTrack')</h1>
             @endif
-            <p class="{{ $roleId === 0 ? 'header-page-subtitle' : ($roleId === 1 ? '' : 'page-subtitle') }}">USTP Claveria · Compliance Management</p>
+            <p class="{{ in_array($roleId, [0, 2, 3], true) ? 'header-page-subtitle' : ($roleId === 1 ? '' : 'page-subtitle') }}">@if ($roleId === 2){{ request()->is('profile') ? 'Account details & security' : 'My assigned audits, checklists, and findings' }}@else @yield('subtitle', 'USTP Claveria · Compliance Management') @endif</p>
         </div>
     </div>
-    <div class="{{ $roleId === 0 ? 'header-right' : ($roleId === 1 ? 'topbar-right' : 'header-actions') }}">
+    <div class="{{ in_array($roleId, [0, 2, 3], true) ? 'header-right' : ($roleId === 1 ? 'topbar-right' : 'header-actions') }}">
         @if ($roleId === 0)
             <div class="relative" x-data="activityNotifications()" @click.outside="close()" @keydown.escape.window="close()">
                 <button type="button" @click="toggle()" class="notification-bell-btn" aria-label="Recent activity" :aria-expanded="open.toString()" aria-haspopup="true">
@@ -102,13 +102,13 @@
                 </div>
             </div>
         @else
-            <a href="{{ match ($roleId) { 1 => '/admin/notifications', 2 => '/auditor/notifications', 3 => '/auditee/notifications', default => '/profile' } }}" class="{{ $roleId === 1 ? 'notif-btn' : 'icon-btn' }}" aria-label="Notifications">
+            <a href="{{ match ($roleId) { 1 => '/admin/notifications', 2 => '/auditor/notifications', 3 => '/auditee/notifications', default => '/profile' } }}" class="{{ $roleId === 1 ? 'notif-btn' : 'notification-bell-btn' }}" aria-label="Notifications">
                 <i data-lucide="bell" class="size-5"></i>
             </a>
         @endif
-        @if ($roleId === 0)
+        @if (in_array($roleId, [0, 2, 3], true))
             <div class="header-divider"></div>
-            <a href="/profile" class="header-user-badge">
+            <a href="/profile" class="header-user-badge" aria-label="Open my profile">
                 @if ($userAvatarUrl)
                     <img src="{{ $userAvatarUrl }}" alt="" class="header-avatar" data-user-avatar>
                     <span class="header-avatar header-avatar-initials hidden" data-user-avatar-fallback>{{ $userInitials }}</span>

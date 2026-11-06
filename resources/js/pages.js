@@ -302,7 +302,10 @@ document.addEventListener('alpine:init', () => {
     }));
 
     Alpine.data('resourcePage', (config) => ({
+        notificationTimer: null,
         endpoint: config.endpoint,
+        unreadOnly: false,
+        typeFilter: '',
         columns: config.columns,
         perPage: config.perPage || 10,
         detailBase: config.detailBase,
@@ -357,9 +360,11 @@ document.addEventListener('alpine:init', () => {
             };
             window.addEventListener('focus', this.refreshOnFocus);
             document.addEventListener('visibilitychange', this.refreshOnFocus);
+            if (this.endpoint === 'notifications') this.notificationTimer = window.setInterval(this.refreshOnFocus, 10000);
         },
 
         destroy() {
+            window.clearInterval(this.notificationTimer);
             window.removeEventListener('focus', this.refreshOnFocus);
             document.removeEventListener('visibilitychange', this.refreshOnFocus);
             window.clearTimeout(this.successPopupTimeout);
@@ -399,6 +404,7 @@ document.addEventListener('alpine:init', () => {
                     params: {
                         page,
                         perPage: this.perPage,
+                        ...(this.endpoint === 'notifications' ? { unread: this.unreadOnly, type: this.typeFilter } : {}),
                         ...(this.search ? { search: this.search } : {}),
                         ...(this.endpoint === 'logs' ? {
                             sortBy: this.sortBy.split(':')[0],
@@ -868,10 +874,13 @@ document.addEventListener('alpine:init', () => {
                         ['totalChecks', 'Total Checks', 'clipboard-check'],
                         ['compliantChecks', 'Compliant', 'circle-check'],
                         ['openCars', 'Open CARs', 'circle-alert'],
-                        ['closedCars', 'Closed', 'archive-check'],
+                        ['closedCars', 'Closed CARs', 'archive-check'],
+                        ['nonconformities', 'Nonconformities', 'triangle-alert'],
+                        ['pendingChecks', 'Pending Checks', 'clock-3'],
                     ],
                     actions: [
                         ['View Checks', '/auditor/checks', 'clipboard-check'],
+                        ['My Assigned Audits', '/audits', 'clipboard-list'],
                         ['Create Check', '/auditor/check-create', 'circle-plus'],
                         ['Corrective Actions', '/auditor/corrective-actions', 'kanban'],
                         ['Archive Review', '/auditor/archives', 'archive'],
@@ -931,6 +940,10 @@ document.addEventListener('alpine:init', () => {
                         ? 0
                         : Math.round((this.stats.compliantChecks / this.stats.totalChecks) * 1000) / 10;
                     this.recentChecks = responseData(checksResponse);
+                    if (this.roleId === 2) {
+                        const metrics = await axios.get(apiPath('auditor/metrics'));
+                        Object.assign(this.stats, metrics.data.data);
+                    }
                 }
             } catch (error) {
                 this.error = responseMessage(error, 'Unable to load dashboard data. Please try again.');
@@ -1054,8 +1067,10 @@ document.addEventListener('alpine:init', () => {
         },
         async init() {
             try {
-                const { data } = await axios.get(apiPath('compliance-checks'), { params: { result: 'non_compliant', perPage: 100 } });
+                const { data } = await axios.get(apiPath('compliance-checks'), { params: { result: 'non_compliant', actionable: true, perPage: 100 } });
                 this.checks = (data.data || []).filter((check) => check.auditeeId === document.body.dataset.userId);
+                const requestedCheck = this.$el.dataset.checkId || new URLSearchParams(window.location.search).get('checkId');
+                if (this.checks.some((check) => check._id === requestedCheck)) this.selectedCheckId = requestedCheck;
             } catch (error) {
                 this.error = responseMessage(error, 'Unable to load checks that can receive evidence.');
             } finally {
@@ -1085,6 +1100,7 @@ document.addEventListener('alpine:init', () => {
                 this.showPopup('success', 'Evidence uploaded and encrypted successfully.');
                 this.file = null;
                 this.$refs.fileInput.value = '';
+                this.$dispatch('auditee-evidence-uploaded');
             } catch (error) {
                 this.showPopup('error', responseMessage(error, 'Evidence could not be uploaded.'));
             } finally {

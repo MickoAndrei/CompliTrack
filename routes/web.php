@@ -15,6 +15,15 @@ Route::middleware('throttle:5,1')->group(function () {
 });
 
 Route::middleware(['auth'])->group(function () {
+    Route::middleware('role:1,2')->group(function () {
+        Route::post('/audits/{id}/requests', [\App\Http\Controllers\Web\AuditeeController::class, 'createRequest']);
+        Route::post('/audits/{id}/requests/{requestId}/review', [\App\Http\Controllers\Web\AuditeeController::class, 'review']);
+        Route::post('/audits/{id}/requests/{requestId}/publish', [\App\Http\Controllers\Web\AuditeeController::class, 'publish']);
+        Route::get('/audits', [\App\Http\Controllers\Web\AuditController::class, 'index']);
+        Route::post('/audits', [\App\Http\Controllers\Web\AuditController::class, 'store']);
+        Route::get('/audits/{id}', [\App\Http\Controllers\Web\AuditController::class, 'show']);
+        Route::post('/audits/{id}', [\App\Http\Controllers\Web\AuditController::class, 'update']);
+    });
     Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
     Route::patch('/profile/password', [ProfileController::class, 'updatePassword'])
         ->name('profile.password.update');
@@ -48,11 +57,14 @@ Route::middleware(['auth'])->group(function () {
         Route::view('/notifications', 'auditor.notifications');
     });
     Route::middleware('role:3')->prefix('auditee')->group(function () {
-        Route::view('/dashboard', 'auditee.dashboard');
-        Route::view('/my-findings', 'auditee.my-findings');
-        Route::view('/finding-details/{id}', 'auditee.finding-details');
+        Route::get('/dashboard', [\App\Http\Controllers\Web\AuditeeController::class, 'dashboard']);
+        Route::get('/evidence-requests', [\App\Http\Controllers\Web\AuditeeController::class, 'requests']);
+        Route::post('/evidence-requests/{id}/{requestId}', [\App\Http\Controllers\Web\AuditeeController::class, 'respond']);
+        Route::post('/finding-details/{id}/response', [\App\Http\Controllers\Web\AuditeeController::class, 'correctiveResponse']);
+        Route::get('/my-findings', [\App\Http\Controllers\Web\AuditeeController::class, 'results']);
+        Route::get('/finding-details/{id}', [\App\Http\Controllers\Web\AuditeeController::class, 'finding']);
         Route::view('/upload', 'auditee.upload');
-        Route::view('/archives', 'auditee.archives');
+        Route::get('/archives', [\App\Http\Controllers\Web\AuditeeController::class, 'archives']);
         Route::view('/notifications', 'auditee.notifications');
         Route::view('/help', 'auditee.help');
     });

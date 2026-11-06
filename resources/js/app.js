@@ -2,6 +2,9 @@ import './bootstrap';
 import Alpine from 'alpinejs';
 import { createIcons, icons } from 'lucide';
 import './pages';
+import './auditor-overview';
+import './auditee-results';
+import './auditee-result-modal';
 
 window.Alpine = Alpine;
 

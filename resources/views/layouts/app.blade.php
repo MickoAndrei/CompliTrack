@@ -17,8 +17,8 @@
             $portalStyles = [
                 0 => 'css/super-admin-portal.css',
                 1 => 'css/admin-portal.css',
-                2 => 'css/auditor-portal.css',
-                3 => 'css/auditee-portal.css',
+                2 => 'css/super-admin-portal.css',
+                3 => 'css/super-admin-portal.css',
             ];
             $portalRole = (int) auth()->user()->roleId;
         @endphp
@@ -26,16 +26,17 @@
             <link rel="stylesheet" href="{{ asset($portalStyles[$portalRole]) }}">
         @endif
     @endauth
+    @auth @if (in_array($portalRole, [2, 3], true))<link rel="stylesheet" href="{{ asset('css/auditor-ui.css') }}?v={{ filemtime(public_path('css/auditor-ui.css')) }}">@endif @endauth
 </head>
-<body class="min-h-screen" data-user-id="{{ auth()->id() }}">
+<body class="min-h-screen" data-user-id="{{ auth()->id() }}" data-portal-role="{{ auth()->user()?->roleId }}">
     @auth
-        @php($portalLayout = $portalRole === 3 ? 'app-layout' : 'app-container')
-        @php($mainLayout = $portalRole === 2 ? 'main-content' : 'main-wrapper')
+        @php($portalLayout = 'app-container')
+        @php($mainLayout = 'main-wrapper')
         @php($contentLayout = match ($portalRole) {
             0 => 'view-content-container',
             1 => 'content-area',
-            2 => 'content-body',
-            3 => 'content-viewport',
+            2 => 'view-content-container',
+            3 => 'view-content-container',
             default => '',
         })
         <div class="{{ $portalLayout }}" x-data="{ sidebarOpen: false }">

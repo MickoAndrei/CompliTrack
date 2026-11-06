@@ -19,7 +19,7 @@ class RoleScopeService
         return match ((int) $actor->roleId) {
             0 => $query,
             1 => $query->whereIn('roleId', [2, 3])
-                ->whereIn('departmentId', $this->cetDepartmentIds()),
+                ->whereIn('departmentId', array_merge($this->cetDepartmentIds(), array_map('strval', $this->cetDepartmentIds()))),
             2 => $query->where('roleId', 3)
                 ->whereIn('departmentId', $this->assignedDepartmentIds($actor)),
             3 => $query->where('_id', $actor->getKey()),
@@ -48,7 +48,8 @@ class RoleScopeService
             0 => $query,
             1 => $query->whereIn('departmentId', $this->cetDepartmentIds()),
             2 => $query->whereIn('departmentId', $this->assignedDepartmentIds($actor)),
-            3 => $query->where('uploadedByUserId', $actor->getKey()),
+            3 => $query->whereIn('uploadedByUserId', [new ObjectId((string) $actor->getKey()), (string) $actor->getKey()])
+                ->whereIn('departmentId', [new ObjectId((string) $actor->departmentId), (string) $actor->departmentId]),
             default => $query->whereRaw(['_id' => null]),
         };
     }
@@ -60,15 +61,15 @@ class RoleScopeService
         return match ((int) $actor->roleId) {
             0 => $query,
             1 => $query->whereIn('departmentId', $this->cetDepartmentIds()),
-            2 => $query->where('auditorId', $actor->getKey()),
-            3 => $query->where('auditeeId', $actor->getKey()),
+            2 => $query->where('auditorId', new ObjectId((string) $actor->getKey())),
+            3 => $query->where('auditeeId', new ObjectId((string) $actor->getKey())),
             default => $query->whereRaw(['_id' => null]),
         };
     }
 
     public function notifications(User $actor)
     {
-        return Notification::where('recipientUserId', $actor->getKey());
+        return Notification::where('recipientUserId', new ObjectId((string) $actor->getKey()));
     }
 
     public function auditLogs(User $actor)
@@ -92,7 +93,7 @@ class RoleScopeService
 
         return in_array(
             (string) $departmentId,
-            $this->assignedDepartmentIds($actor, includeHomeDepartment: true),
+            array_map('strval', $this->assignedDepartmentIds($actor, includeHomeDepartment: (int) $actor->roleId === 3)),
             true,
         );
     }
@@ -112,8 +113,8 @@ class RoleScopeService
 
     private function cetDepartmentIds(): array
     {
-        return Department::where('collegeName', 'CET')->pluck('_id')
-            ->map(static fn ($id) => $id instanceof ObjectId ? $id : new ObjectId((string) $id))
+        return Department::where('collegeName', 'CET')->get(['_id'])
+            ->map(static fn ($department) => new ObjectId((string) $department->getKey()))
             ->all();
     }
 

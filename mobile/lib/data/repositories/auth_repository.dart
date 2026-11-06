@@ -19,14 +19,12 @@ class AuthRepository {
   Future<({String token, UserModel user})?> login({
     required String email,
     required String password,
-    String? fcmToken,
   }) async {
     final response = await _apiClient.dio.post(
       '/api/v1/auth/login',
       data: {
         'email': email,
         'password': password,
-        if (fcmToken != null) 'fcmToken': fcmToken,
       },
     );
     final body = _requireMap(response.data);

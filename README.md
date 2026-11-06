@@ -31,7 +31,7 @@ The system is intentionally scoped to three core functions:
 |---|----------|--------------|
 | 1 | 🗄️ **Archive Files** | Secure, encrypted repository (AES‑256‑GCM) for compliance evidence (PDF, DOCX, images). Organized by Department/Office, tagged by reference standard. |
 | 2 | ✅ **Check Compliance** | Auditors create a `ComplianceCheck` record marking **Compliant** / **Non‑Compliant** based on archived evidence. |
-| 3 | 🔔 **Notify Corrective Action Status** | Non‑compliant checks auto‑create a corrective action (`open → in_progress → closed`) and notify the Auditee in‑app + push on every change. Compliant checks also notify the Auditee once, so a passed check is never silent. |
+| 3 | 🔔 **Notify Corrective Action Status** | Non‑compliant checks auto‑create a corrective action (`open → in_progress → closed`) and notify the Auditee in‑app + foreground realtime on every change. Compliant checks also notify the Auditee once, so a passed check is never silent. |
 
 **Workflow:** Auditor checks → if Non‑Compliant, open CAR → notify Auditee → Auditee uploads fix → Auditor reviews → `in_progress` / `closed` → notify Auditee. If Compliant, notify Auditee immediately with no CAR opened.
 
@@ -76,7 +76,7 @@ The system is intentionally scoped to three core functions:
 - 📁 Encrypted evidence archive with checksum verification (SHA‑256) and per‑file IV
 - 📋 Compliance check creation linked to archived evidence and reference standards
 - 🔄 Corrective Action Tracker with a full status timeline (`open → in_progress → closed`)
-- 🔔 Real-time in-app + push notifications (Socket.io + Firebase Cloud Messaging)
+- 🔔 Real-time in-app + foreground realtime notifications (Socket.io + MongoDB polling)
 - 📊 Role-specific dashboards with KPIs, compliance gauges, and trend charts
 - 📱 Cross-platform mobile app (Flutter) for all four roles, built around Auditor and Auditee field use
 - 🧾 Full audit logging of every write operation (user, action, IP address)
@@ -96,7 +96,7 @@ The system is intentionally scoped to three core functions:
 | Database | MongoDB 7.0 (`mongodb/laravel-mongodb`) for CompliTrack application data; SQLite for Laravel framework tables |
 | Auth | Laravel Sanctum (Web) · JWT via `tymon/jwt-auth` (Mobile) |
 | Storage | Local encrypted disk + optional S3-compatible (MinIO) |
-| Push Notifications | Firebase Cloud Messaging (FCM, HTTP v1), dispatched via the Node service |
+| Notification delivery | Persisted MongoDB notifications + authenticated Socket.IO; HTTP polling for web |
 | Frontend Web | Laravel Blade + Tailwind CSS 4 (via Vite) + Alpine.js |
 | Icons | [Lucide Icons](https://lucide.dev) — single icon library across Web & Mobile |
 
@@ -138,10 +138,9 @@ Client (Web Blade + Flutter App)
 Laravel API Gateway (PHP)  ──────►  MongoDB + Encrypted Storage
         │
         ▼
-Node.js microservice (watches MongoDB change streams)
+Node.js microservice (polls persisted notifications)
         │
         ├──► Socket.io (live in-app updates)
-        └──► Firebase Cloud Messaging (push notifications)
 ```
 
 Login issues a **Laravel Sanctum** session (Web) or a **JWT bearer token** (Mobile). The client stores `roleId` from the auth response and routes to the matching dashboard (`/super-admin`, `/admin`, `/auditor`, `/auditee`).
@@ -252,7 +251,7 @@ in `.env`; it does not contain a default account password.
 ```bash
 cd realtime
 npm install
-cp .env.example .env       # MongoDB URI, Firebase service account, Socket.io port
+cp .env.example .env       # MongoDB URI, JWT secret, Socket.io port
 cd ..
 ```
 
@@ -386,7 +385,6 @@ git checkout Development
 - Node.js 20+ and npm/yarn
 - MongoDB 7.0 (local or Atlas) and the PHP `mongodb` extension
 - Flutter 3.24+ / Dart 3.5+ (for the mobile app)
-- Firebase project (for FCM push notifications)
 
 > Already installed everything? See the [Installation](#installation) section
 > above if not. The commands below are for day-to-day development once
@@ -437,7 +435,6 @@ MAIL_MAILER=smtp
 MAIL_HOST=
 MAIL_PORT=587
 
-FCM_SERVER_KEY=            # legacy placeholder — see note below
 NODE_SOCKET_URL=http://localhost:4000
 ```
 
@@ -447,11 +444,26 @@ For a physical mobile device or a non-Android-simulator target, override the
 default Android-emulator API host at build time:
 `flutter run --dart-define=COMPLITRACK_API_URL=http://<your-host>:8000`.
 
-> **FCM note:** Google's legacy FCM server keys no longer work. Push
-> notifications use the FCM HTTP v1 API, which needs a Firebase
-> **service-account JSON** configured in the `realtime/` service
-> (`realtime/src/config/firebase.js`). `FCM_SERVER_KEY` should be replaced
-> with a service-account path once that is wired up.
+Notifications do not require Firebase or change streams. Closed-app OS push is not supported.
+
+### Notification service
+
+Laravel persists assignment, checklist/audit submission, review, and CAR notifications in MongoDB.
+Node polls undelivered notification records every two seconds and emits to authenticated user rooms.
+The web notification list refreshes through the authorized HTTP API; Flutter uses its existing Socket.IO client.
+Offline notifications remain available from the API. Socket delivery is best effort; stable notification IDs
+and event dedupe keys prevent normal retry duplication, with client suppression for replayed socket IDs.
+
+Start the service with `cd realtime` then `npm start`. It reads MongoDB and JWT configuration from
+the root application `.env` by default, falling back to `realtime/.env`; explicit process environment
+overrides take precedence. Port/CORS settings remain in `realtime/.env`. No environment files need
+to be rewritten. Use the same JWT signing secret and algorithm (HS256) as Laravel.
+
+Test with `npm test` in `realtime`; set `RUN_MONGO_NOTIFICATION_TESTS=1` to include the real MongoDB
+integration test, which creates and removes only a randomly named isolated database. Run backend
+integration tests with `php vendor/phpunit/phpunit/phpunit -c phpunit.audit.xml` from the root.
+The notification dedupe/polling indexes are included in `database/mongodb/init.js`; an existing database
+can apply only those indexes with the guarded backup-first `php scripts/apply-notification-indexes.php`.
 
 ---
 
@@ -460,11 +472,11 @@ default Android-emulator API host at build time:
 MongoDB collections (schema enforced via Laravel validation):
 
 - `roles` — the 4 fixed roles and their permission lists
-- `users` — `userCode`, `roleId`, `departmentId`, `fcmToken`, etc.
+- `users` — `userCode`, `roleId`, `departmentId`, etc.
 - `departments` — CET departments/offices
 - `archive_documents` — encrypted evidence files, checksum, reference standard
 - `compliance_checks` — result, `correctiveStatus`, full `statusHistory`
-- `notifications` — in-app + FCM delivery records
+- `notifications` — persisted in-app delivery records
 - `audit_logs` — every POST/PATCH/DELETE, with `userId` and IP
 
 ---
@@ -543,7 +555,7 @@ Found a security issue? Please don't open a public issue. Use GitHub's
     - [ ] Auth endpoints, users/department CRUD
 - [ ] Phase 2 — Archive module with encryption, upload/download
 - [ ] Phase 3 — Compliance checks, corrective status, notifications collection
-- [ ] Phase 4 — Node.js realtime service + FCM integration
+- [ ] Phase 4 — Node.js realtime service + notification polling
 - [ ] Phase 5 — Blade dashboards per role
 - [ ] Phase 6 — Flutter mobile app (all four roles)
 - [ ] Phase 7 — Testing, audit logs, PDF reports, deployment

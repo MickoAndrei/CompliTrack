@@ -48,6 +48,7 @@ Route::prefix('v1')->group(function () {
         Route::get('/archives/{id}/verify-checksum', [ArchiveController::class, 'verifyChecksum']);
 
         // Compliance checks (Auditor creates, all roles can view per scope)
+        Route::middleware('role:2')->get('/auditor/metrics', [\App\Http\Controllers\Web\AuditController::class, 'metrics']);
         Route::get('/compliance-checks', [ComplianceCheckController::class, 'index']);
         Route::post('/compliance-checks', [ComplianceCheckController::class, 'store']);
         Route::get('/compliance-checks/{id}', [ComplianceCheckController::class, 'show']);

@@ -17,7 +17,7 @@ class _StubAuthRepository extends AuthRepository {
 
 void main() {
   testWidgets('App renders smoke test', (WidgetTester tester) async {
-    await dotenv.load(fileName: '.env');
+    dotenv.loadFromString(envString: 'COMPLITRACK_API_URL=http://10.0.2.2:8000\nCOMPLITRACK_REALTIME_URL=http://10.0.2.2:4000');
     expect(ApiConstants.baseUrl, 'http://10.0.2.2:8000');
     expect(ApiConstants.realtimeUrl, 'http://10.0.2.2:4000');
     await tester.pumpWidget(

@@ -14,7 +14,6 @@ function makeNotification({
     message,
     relatedCheckId,
     isRead: false,
-    fcmSent: false,
     dedupeKey,
     createdAt: new Date(),
   };

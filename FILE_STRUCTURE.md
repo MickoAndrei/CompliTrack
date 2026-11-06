@@ -216,7 +216,6 @@ CompliTrack/
 │   │   │   │   ├── api_response.dart
 │   │   │   │   └── auth_interceptor.dart
 │   │   │   ├── services/
-│   │   │   │   ├── fcm_service.dart
 │   │   │   │   ├── secure_storage_service.dart
 │   │   │   │   └── socket_service.dart
 │   │   │   ├── theme/
@@ -353,11 +352,9 @@ CompliTrack/
 │   │   ├── config/
 │   │   │   ├── db.js
 │   │   │   ├── env.js
-│   │   │   └── firebase.js
 │   │   ├── models/
 │   │   │   └── notification.js
 │   │   ├── services/
-│   │   │   ├── fcmService.js
 │   │   │   └── notificationService.js
 │   │   ├── sockets/
 │   │   │   ├── auth.js

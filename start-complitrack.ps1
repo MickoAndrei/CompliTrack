@@ -153,7 +153,6 @@ MONGODB_URI=mongodb://127.0.0.1:27017/?directConnection=true
 MONGODB_DATABASE=complitrack
 PORT=4000
 SOCKET_CORS_ORIGIN=http://localhost:8000
-FIREBASE_CREDENTIALS=
 "@ | Set-Content (Join-Path $repoRoot "realtime\.env")
             Write-Host "  [OK] Created default realtime\.env"
         }

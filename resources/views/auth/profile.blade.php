@@ -7,6 +7,9 @@
     $profileInitials = collect(explode(' ', $profileUser->fullName ?? 'U'))->filter()->take(2)->map(fn ($part) => mb_substr($part, 0, 1))->implode('');
     $avatarUrl = $profileUser->avatarPath ? url('/api/v1/auth/avatar') : null;
 @endphp
+@if((int) $profileUser->roleId === 2)
+    @include('auditor.profile')
+@else
 <section class="account-profile-page mx-auto w-full max-w-4xl px-4 py-8 sm:px-6 lg:px-8" x-data="profilePage({ avatarUrl: @js($avatarUrl) })">
     <header class="account-profile-heading mb-6">
         <p class="mb-2 text-xs font-bold uppercase tracking-[0.16em] text-ustp-muted">Your account</p>
@@ -72,4 +75,5 @@
         </div>
     </div>
 </section>
+@endif
 @endsection

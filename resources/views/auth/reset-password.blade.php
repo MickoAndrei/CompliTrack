@@ -20,10 +20,10 @@
 
             <form method="POST" action="{{ route('password.update') }}" class="auth-form reset-auth-form" id="resetPasswordForm" novalidate>
                 @csrf
-                <input type="hidden" name="token" value="{{ old('token', $token ?? '') }}">
+                <input type="hidden" name="token" value="{{ $token ?? old('token', '') }}">
                 <div class="form-group">
                     <label for="resetEmail" class="form-label">Institutional email</label>
-                    <input id="resetEmail" type="email" name="email" value="{{ old('email', $email ?? '') }}" class="form-input" autocomplete="email" required>
+                    <input id="resetEmail" type="email" name="email" value="{{ $email ?? old('email', '') }}" class="form-input" autocomplete="email" required>
                 </div>
                 <div class="form-group">
                     <label for="newPassword" class="form-label">New password</label>
