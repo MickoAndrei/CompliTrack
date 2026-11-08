@@ -2,6 +2,33 @@
 
 All notable changes to CompliTrack are documented here.
 
+## [Unreleased] - 2026-11-09
+
+### Added
+
+- Added CET QMS Archives with authorized department and college folders, document categories, version history, controlled audit sharing, and digital-reference and physical-original records.
+- Added backup-first MongoDB migration, mock DOCX import, verification tools, and idempotent development scenarios that reuse the existing Admin/Audit Team Leader and equivalent accounts without changing their credentials.
+- Added a corrective-action timeline using recorded status and submission history, including revision cycles, current actions, authorized closure, and animated gold checks for completed steps.
+- Added stacked evidence previews for PDF, images, and formatted Word documents, preserving tables, images, headings, and page breaks without replacing the audit-result popup.
+- Added a local development proxy and ngrok setup instructions for the web and realtime services.
+
+### Changed
+
+- Redesigned Auditee evidence requests with responsive cards, actual summary counts, search, status filters, and request-detail popups while retaining corrective-evidence workflows.
+- Kept corrective uploads inside Audit Result Details and made dashboard actions open the appropriate tab directly.
+- Updated profile forms, password-change handling, and responsive profile styling.
+- Added browser, view, workflow, and MongoDB authorization regression coverage for the archive and evidence interfaces.
+
+### Fixed
+
+- Restricted archive browsing, downloads, evidence sharing, and organizational summaries to authorized records; private auditor drafts and restricted documents remain protected.
+- Preserved existing MongoDB identifiers, organizational relationships, stored CAR statuses, and the distinction between the Admin/Audit Team Leader and Cluster Head responsibilities.
+- Corrected Auditee View actions, hover styling, nested-popup focus and cleanup, and mobile evidence-preview sizing.
+
+### Removed
+
+- Removed the separate Auditee finding-details page in favor of the existing Audit Result Details popup.
+
 ## [Unreleased] - 2026-11-06
 
 ### Added

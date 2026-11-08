@@ -24,21 +24,41 @@ class AuditeeController extends Controller
                 ->map(fn ($entry) => ['auditCode' => $audit->auditCode, 'auditTitle' => $audit->title, 'auditStatus' => $audit->status] + $entry));
         $notifications = $this->scopes->notifications($request->user())->orderBy('createdAt', 'desc')->limit(4)->get();
         $published = $this->published($request->user());
-        return view('auditee.dashboard', compact('checks', 'requests', 'notifications', 'published'));
+        $oversight = app(\App\Services\QmsOversightService::class)->summary($request->user());
+        return view('auditee.dashboard', compact('checks', 'requests', 'notifications', 'published', 'oversight'));
     }
 
     public function requests(Request $request)
     {
         abort_unless($request->user()->isActive && (int) $request->user()->roleId === 3, 403);
-        $query = Audit::where('departmentId', MongoId::parse((string) $request->user()->departmentId))
-            ->where('evidenceRequests.auditeeId', (string) $request->user()->getKey());
-        if ($request->filled('search')) { $query->where('title', 'regex', '/'.preg_quote((string) $request->query('search'), '/').'/i'); }
-        if (in_array($request->query('auditStatus'), ['draft','ready','returned','submitted','accepted'], true)) { $query->where('status', $request->query('auditStatus')); }
-        if (in_array($request->query('requestStatus'), ['requested','response_submitted','reviewed','needs_information'], true)) {
-            $query->whereRaw(['evidenceRequests' => ['$elemMatch' => ['auditeeId' => (string) $request->user()->getKey(), 'status' => $request->query('requestStatus')]]]);
+        $request->validate(['search' => 'nullable|string|max:120',
+            'auditStatus' => 'nullable|in:draft,ready,returned,submitted,accepted',
+            'requestStatus' => 'nullable|in:requested,response_submitted,reviewed,needs_information,under_review',
+            'requestId' => 'nullable|uuid', 'auditId' => 'nullable|string|regex:/^[a-f0-9]{24}$/i', 'page' => 'nullable|integer|min:1']);
+        if ($request->ajax() && $request->filled('requestId')) {
+            return view('auditee.evidence-request-detail', $this->evidence->requestDetail($request->user(), $request->query('requestId'), $request->query('auditId')));
         }
-        $audits = $query->orderBy('updatedAt', 'desc')->paginate(10)->withQueryString();
-        return view('auditee.evidence-requests', compact('audits'));
+        $audits = $this->evidence->addressedAudits($request->user())->orderBy('updatedAt', 'desc')
+            ->get(['auditCode', 'title', 'departmentName', 'auditorId', 'status', 'evidenceRequests']);
+        $auditors = User::whereIn('_id', $audits->pluck('auditorId')->filter()->unique()->values()->all())->get(['fullName'])->keyBy(fn ($user) => (string) $user->getKey());
+        $records = $audits->flatMap(fn ($audit) => collect($audit->evidenceRequests ?? [])
+            ->filter(fn ($entry) => $entry['auditeeId'] === (string) $request->user()->getKey())
+            ->map(fn ($entry) => $this->evidence->requestCard($audit, $entry, $auditors->get((string) $audit->auditorId)?->fullName)))->values();
+        $summary = ['active' => $records->where('status', '!=', 'reviewed')->count(),
+            'awaiting' => $records->whereIn('status', ['requested', 'needs_information'])->count(),
+            'submitted' => $records->where('status', 'response_submitted')->count(),
+            'completed' => $records->where('status', 'reviewed')->count()];
+        $filtered = $records->filter(function ($record) use ($request) {
+            if ($request->filled('auditStatus') && $record['auditStatus'] !== $request->query('auditStatus')) { return false; }
+            $status = $request->query('requestStatus');
+            if ($status === 'requested' && !in_array($record['status'], ['requested', 'needs_information'], true)) { return false; }
+            if ($status === 'under_review' && $record['statusLabel'] !== 'Under Review') { return false; }
+            if ($status && !in_array($status, ['requested', 'under_review'], true) && $record['status'] !== $status) { return false; }
+            return !$request->filled('search') || str_contains(mb_strtolower(implode(' ', [$record['title'], $record['description'], $record['auditCode'], $record['auditTitle'], $record['department'], $record['auditor']])), mb_strtolower(trim($request->query('search'))));
+        })->values();
+        $requests = new \Illuminate\Pagination\LengthAwarePaginator($filtered->forPage($request->integer('page', 1), 12)->values(), $filtered->count(), 12,
+            $request->integer('page', 1), ['path' => $request->url(), 'query' => $request->except(['page', 'auditId', 'requestId'])]);
+        return view('auditee.evidence-requests', compact('requests', 'summary'));
     }
 
     public function createRequest(Request $request, string $id)
@@ -77,7 +97,9 @@ class AuditeeController extends Controller
             'reference' => 'nullable|string|max:500', 'notes' => 'required|string|max:5000',
             'availability' => 'required_if:method,physical-original|nullable|in:available,to-arrange']);
         foreach ($requests[$index]['responses'] as $response) {
-            if ($response['submissionKey'] === $data['submissionKey']) { return back()->with('status', 'Response already saved.'); }
+            if ($response['submissionKey'] === $data['submissionKey']) {
+                return $request->expectsJson() ? response()->json(['message' => 'Response already saved.']) : back()->with('status', 'Response already saved.');
+            }
         }
         abort_unless(in_array($requests[$index]['status'], ['requested', 'needs_information'], true), 403);
         abort_if(count($requests[$index]['responses']) >= 100, 422, 'This request has reached its response limit.');
@@ -109,7 +131,8 @@ class AuditeeController extends Controller
             app(NotificationDispatchService::class)->persist($audit->auditorId, 'response:'.$data['submissionKey'], 'evidence_submitted',
                 'Evidence response submitted', $audit->auditCode.' has a response ready for review.', $request->user()->getKey(), null, '/audits/'.$id.'#evidence-requests');
         }
-        return back()->with('status', 'Evidence response saved.');
+        return $request->expectsJson() ? response()->json(['message' => $request->input('action') === 'draft' ? 'Draft saved. You can return to finish your response.' : 'Evidence submitted for auditor review.'])
+            : back()->with('status', 'Evidence response saved.');
     }
 
     public function review(Request $request, string $id, string $requestId)
@@ -180,10 +203,19 @@ class AuditeeController extends Controller
     {
         abort_unless($request->user()->isActive && (int) $request->user()->roleId === 3, 403);
         $check = $this->scopes->checks($request->user())->where('_id', MongoId::parse($id))->firstOrFail();
+        if (!$request->ajax()) {
+            return redirect('/auditee/my-findings?detail='.urlencode((string) $check->getKey()));
+        }
         $archives = $this->scopes->archives($request->user())->whereIn('_id', array_map(fn ($id) => MongoId::parse((string) $id), $check->linkedArchiveIds ?? []))->get();
         $auditorName = User::find($check->auditorId)?->fullName;
         $departmentName = \App\Models\Department::find($check->departmentId)?->departmentName;
-        return view('auditee.finding-details', compact('check', 'archives', 'auditorName', 'departmentName'));
+        $actorIds = collect($check->statusHistory ?? [])->pluck('changedByUserId')
+            ->merge(collect($check->evidenceResponses ?? [])->pluck('author'))->filter()
+            ->map(fn ($id) => (string) $id)->unique()->filter(fn ($id) => preg_match('/^[a-f0-9]{24}$/i', $id));
+        $roles = $actorIds->isEmpty() ? [] : User::whereIn('_id', $actorIds->map(fn ($id) => MongoId::parse($id))->values()->all())
+            ->get(['roleId'])->mapWithKeys(fn ($actor) => [(string) $actor->getKey() => $actor->roleId])->all();
+        $carTimeline = \App\Support\CarTimeline::forCheck($check, $roles);
+        return view('auditee.result-detail-content', compact('check', 'archives', 'auditorName', 'departmentName', 'carTimeline'));
     }
 
     public function results(Request $request)
@@ -220,15 +252,7 @@ class AuditeeController extends Controller
     public function archives(Request $request)
     {
         abort_unless($request->user()->isActive, 403);
-        $query = $this->scopes->archives($request->user());
-        $request->validate(['year' => 'nullable|digits:4']);
-        if ($request->filled('year')) {
-            $start = \Illuminate\Support\Carbon::create((int) $request->query('year'), 1, 1)->startOfDay();
-            $query->where('createdAt', '>=', $start)->where('createdAt', '<', $start->copy()->addYear());
-        }
-        if ($request->filled('search')) { $query->where('originalName', 'regex', '/'.preg_quote((string) $request->query('search'), '/').'/i'); }
-        $archives = $query->orderBy('createdAt','desc')->paginate(20)->withQueryString();
-        return view('auditee.archives', compact('archives'));
+        return view('auditee.archives');
     }
 
     public function correctiveResponse(Request $request, string $id)

@@ -11,6 +11,7 @@
         <p>{{ $audit->departmentName }} · {{ $audit->schedule }} · {{ ucfirst($audit->status) }}</p>
         <p>Auditor: {{ \App\Models\User::find($audit->auditorId)?->fullName }} · Reviewer: {{ \App\Models\User::find($audit->reviewerId)?->fullName }}</p>
         <p><strong>Scope:</strong> {{ $audit->scope }}</p><p><strong>Criteria:</strong> {{ $audit->criteria }}</p>
+        @if(!empty($audit->planArchiveIds))<div class="workflow-actions">@foreach($audit->planArchiveIds as $attachment)<a href="/api/v1/archives/{{ $attachment }}/download">{{ \App\Models\ArchiveDocument::find($attachment)?->title ?? 'Authorized audit attachment' }}</a>@endforeach</div>@endif
         <progress value="{{ $progress['evaluated'] }}" max="{{ max(1,$progress['total']) }}" aria-label="Checklist progress" class="w-full"></progress>
         <p>{{ $progress['percent'] }}% · {{ $progress['C'] }} compliant · {{ $progress['N'] }} nonconformance · {{ $progress['O'] }} observation · {{ $progress['pending'] }} pending</p>
     </header>

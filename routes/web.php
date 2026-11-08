@@ -25,6 +25,8 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/audits/{id}', [\App\Http\Controllers\Web\AuditController::class, 'update']);
     });
     Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
+    Route::patch('/profile', [ProfileController::class, 'updateProfile'])
+        ->name('profile.update');
     Route::patch('/profile/password', [ProfileController::class, 'updatePassword'])
         ->name('profile.password.update');
     Route::view('/profile', 'auth.profile');

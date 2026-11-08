@@ -4,6 +4,8 @@ let detailRequest;
 let scrollLocks = [];
 let modalSession = 0;
 let uploadUrl;
+let uploadRequest;
+let requestedTab = 'overview';
 
 function selectTab(root, key) {
     root.querySelectorAll('[data-result-tab]').forEach(tab => {
@@ -20,6 +22,7 @@ function dialogElement() { return document.querySelector('#audit-result-modal');
 
 async function loadDetail(selectedTab = 'overview') {
     const dialog = dialogElement();
+    uploadRequest?.abort();
     detailRequest?.abort();
     const controller = new AbortController();
     detailRequest = controller;
@@ -55,14 +58,17 @@ async function loadDetail(selectedTab = 'overview') {
 
 async function loadUpload(url) {
     const dialog = dialogElement();
+    const slot = dialog.querySelector('[data-result-upload-slot]');
+    if (!slot) return;
+    selectTab(dialog, 'corrective');
     uploadUrl = url;
-    detailRequest?.abort();
+    uploadRequest?.abort();
     const controller = new AbortController();
-    detailRequest = controller;
-    const body = dialog.querySelector('[data-result-modal-body]');
-    body.setAttribute('aria-busy', 'true');
-    body.replaceChildren(dialog.querySelector('[data-result-modal-skeleton]').content.cloneNode(true));
-    dialog.querySelector('[data-result-modal-tabs]').innerHTML = '<button type="button" class="workflow-secondary result-upload-back" data-result-upload-back>← Back to audit result</button>';
+    uploadRequest = controller;
+    dialog.querySelector('[data-corrective-reference]').hidden = true;
+    slot.hidden = false;
+    slot.setAttribute('aria-busy', 'true');
+    slot.innerHTML = '<p role="status">Loading authorized file upload…</p>';
     try {
         const response = await fetch(url, { credentials: 'same-origin', signal: controller.signal,
             headers: { Accept: 'text/html', 'X-Requested-With': 'XMLHttpRequest' } });
@@ -72,30 +78,52 @@ async function loadUpload(url) {
         if (!upload) throw new Error('Upload form missing');
         if (controller.signal.aborted || !dialog.open) return;
         upload.dataset.checkId = new URL(url, window.location.href).searchParams.get('checkId') || '';
-        body.replaceChildren(upload);
-        dialog.querySelector('[data-result-upload-back]').focus({ preventScroll: true });
+        const back = document.createElement('button');
+        back.type = 'button';
+        back.className = 'workflow-secondary result-upload-back';
+        back.dataset.resultUploadBack = '';
+        back.textContent = 'Use a reference or original instead';
+        slot.replaceChildren(back, upload);
+        back.focus({ preventScroll: true });
     } catch (error) {
         if (error.name !== 'AbortError' && dialog.open) {
-            body.innerHTML = '<div role="alert"><p>The upload form could not be loaded.</p><button type="button" class="workflow-secondary" data-result-upload-retry>Retry</button></div>';
+            slot.innerHTML = '<div role="alert"><p>The upload form could not be loaded.</p><button type="button" class="workflow-secondary" data-result-upload-retry>Retry</button><button type="button" class="workflow-secondary" data-result-upload-back>Use a reference or original instead</button></div>';
         }
     } finally {
-        if (detailRequest === controller) body.setAttribute('aria-busy', 'false');
+        if (uploadRequest === controller) slot.setAttribute('aria-busy', 'false');
     }
 }
 
-function openDetail(control) {
+function hideUpload() {
+    uploadRequest?.abort();
+    const dialog = dialogElement();
+    const slot = dialog?.querySelector('[data-result-upload-slot]');
+    if (!slot) return;
+    slot.replaceChildren();
+    slot.hidden = true;
+    dialog.querySelector('[data-corrective-reference]').hidden = false;
+    dialog.querySelector('#corrective-evidence a[href^="/auditee/upload"]')?.focus({ preventScroll: true });
+}
+
+document.addEventListener('auditee-evidence-upload-cancel', hideUpload);
+
+function openDetail(control, tabOverride) {
     const dialog = dialogElement();
     originatingControl = control;
     modalSession += 1;
     detailUrl = control.href;
+    const tab = tabOverride || control.dataset?.resultModalTab || new URL(control.href, window.location.href).hash.slice(1);
+    requestedTab = ['overview', 'evidence', 'corrective'].includes(tab) ? tab : 'overview';
     dialog.querySelector('[data-result-modal-heading]').innerHTML = '<h2 id="audit-result-modal-title">Audit Result Details</h2>';
     dialog.querySelector('[data-result-modal-message]').textContent = '';
-    scrollLocks = [...new Set([document.documentElement, document.body, document.querySelector('#main-content')])]
-        .filter(Boolean).map(element => ({ element, overflow: element.style.overflow }));
+    if (!scrollLocks.length) {
+        scrollLocks = [...new Set([document.documentElement, document.body, document.querySelector('#main-content')])]
+            .filter(Boolean).map(element => ({ element, overflow: element.style.overflow }));
+    }
     scrollLocks.forEach(({ element }) => { element.style.overflow = 'hidden'; });
     dialog.showModal();
     dialog.querySelector('[data-result-modal-close]').focus({ preventScroll: true });
-    loadDetail();
+    loadDetail(requestedTab);
 }
 
 document.addEventListener('click', event => {
@@ -105,7 +133,7 @@ document.addEventListener('click', event => {
         loadUpload(upload.href);
         return;
     }
-    if (event.target.closest('[data-result-upload-back]')) loadDetail('corrective');
+    if (event.target.closest('[data-result-upload-back]')) hideUpload();
     if (event.target.closest('[data-result-upload-retry]')) loadUpload(uploadUrl);
     const control = event.target.closest('[data-result-modal-open]');
     if (control && dialogElement() && event.button === 0 && !event.ctrlKey && !event.metaKey && !event.shiftKey && !event.altKey) {
@@ -114,7 +142,7 @@ document.addEventListener('click', event => {
         return;
     }
     if (event.target.closest('[data-result-modal-close]')) dialogElement()?.close();
-    if (event.target.closest('[data-result-modal-retry]')) loadDetail();
+    if (event.target.closest('[data-result-modal-retry]')) loadDetail(requestedTab);
     const tab = event.target.closest('[data-result-tab]');
     if (tab) selectTab(tab.closest('#audit-result-modal') || tab.closest('[data-result-detail]'), tab.dataset.resultTab);
 });
@@ -128,6 +156,7 @@ document.addEventListener('auditee-evidence-uploaded', event => {
 });
 
 document.addEventListener('keydown', event => {
+    if (document.querySelector('#evidence-preview-modal')?.open) return;
     const tab = event.target.closest('[data-result-tab]');
     if (tab && ['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) {
         event.preventDefault();
@@ -150,13 +179,26 @@ document.addEventListener('keydown', event => {
 const dialog = dialogElement();
 if (dialog) {
     dialog.addEventListener('close', () => {
+        if (dialog.open) return;
+        document.querySelector('#evidence-preview-modal')?.close();
+        uploadRequest?.abort();
         modalSession += 1;
         detailRequest?.abort();
         scrollLocks.forEach(({ element, overflow }) => { element.style.overflow = overflow; });
+        scrollLocks = [];
         dialog.querySelector('[data-result-modal-body]').replaceChildren();
         dialog.querySelector('[data-result-modal-tabs]').replaceChildren();
         if (originatingControl?.isConnected) originatingControl.focus({ preventScroll: true });
     });
+    const requestedDetail = new URL(window.location.href).searchParams.get('detail');
+    if (/^[a-f\d]{24}$/i.test(requestedDetail || '')) {
+        const control = [...document.querySelectorAll('[data-result-modal-open]')]
+            .find(element => new URL(element.href).pathname === `/auditee/finding-details/${requestedDetail}`);
+        openDetail(control || { href: `/auditee/finding-details/${requestedDetail}` }, window.location.hash.slice(1));
+        const url = new URL(window.location.href);
+        url.searchParams.delete('detail');
+        window.history.replaceState(window.history.state, '', url);
+    }
 }
 
 document.querySelectorAll('[data-result-detail]').forEach(root => selectTab(root, 'overview'));

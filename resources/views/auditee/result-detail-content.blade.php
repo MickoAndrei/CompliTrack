@@ -1,6 +1,6 @@
 @php
-    $hasCar = $check->result === 'non_compliant' && in_array($check->correctiveStatus, ['open', 'in_progress', 'closed'], true);
-    $needsEvidence = $hasCar && $check->correctiveStatus !== 'closed';
+    $hasCar = $check->result === 'non_compliant' && filled($check->correctiveStatus);
+    $needsEvidence = $hasCar && in_array($check->correctiveStatus, ['open', 'in_progress'], true);
 @endphp
 <div data-result-detail class="result-detail">
     <header data-result-detail-header class="result-detail-header">
@@ -24,7 +24,7 @@
         </section>
         <section role="tabpanel" id="result-panel-evidence" aria-labelledby="result-tab-evidence" data-result-panel="evidence" tabindex="0">
             <h2>Evidence Reviewed and References</h2>
-            @forelse($archives as $archive)<article class="workflow-response"><a href="/api/v1/archives/{{ $archive->getKey() }}/download">{{ $archive->originalName }}</a><p class="workflow-muted">Authorized linked evidence</p></article>@empty<p class="results-empty">No accessible files are linked to this result.</p>@endforelse
+            @forelse($archives as $archive)<article class="workflow-response evidence-file-row"><div><strong>{{ $archive->originalName }}</strong><p class="workflow-muted">Authorized linked evidence</p></div><div class="evidence-file-actions"><a class="workflow-secondary" data-evidence-preview data-file-name="{{ $archive->originalName }}" href="/api/v1/archives/{{ $archive->getKey() }}/download" aria-haspopup="dialog" aria-label="Preview {{ $archive->originalName }}">Preview</a><a href="/api/v1/archives/{{ $archive->getKey() }}/download" aria-label="Download {{ $archive->originalName }}">Download</a></div></article>@empty<p class="results-empty">No accessible files are linked to this result.</p>@endforelse
             @forelse($check->evidenceResponses ?? [] as $response)
             <article class="workflow-response"><h3>{{ ucfirst(str_replace('-', ' ', $response['method'])) }}</h3><p class="workflow-muted">Submitted {{ $response['at'] }}</p>@if(!empty($response['reference']))<p>Reference: {{ $response['reference'] }}</p>@endif<p>{{ $response['notes'] }}</p>@if($response['method'] === 'physical-original')<p>Original availability: {{ str_replace('-', ' ', $response['availability'] ?? 'not recorded') }}</p><p>Physical-original signature verification: Not recorded. Availability does not confirm verification.</p>@endif</article>
             @empty<p class="workflow-muted">No corrective evidence references submitted yet.</p>@endforelse
@@ -33,14 +33,16 @@
         <section role="tabpanel" id="result-panel-corrective" aria-labelledby="result-tab-corrective" data-result-panel="corrective" tabindex="0">
             <div class="results-section-heading"><h2>Corrective Action</h2><x-status-badge class="results-status-badge" :status="$hasCar ? $check->correctiveStatus : 'none'" :label="$hasCar ? ucfirst(str_replace('_', ' ', $check->correctiveStatus)) : 'No CAR'"/></div>
             <p>Deadline: {{ $check->dueDate?->format('M j, Y') ?? 'Not recorded' }}</p>
-            @if($needsEvidence)<div class="results-next-action"><h3>Next action: provide corrective evidence</h3><p>Review the finding and provide authorized supporting evidence for auditor review.</p></div>@else<p class="results-empty">{{ $hasCar ? 'This corrective action is closed. No response is required.' : 'No corrective response is required for this result.' }}</p>@endif
-            <h3>Status history</h3>
-            @forelse($check->statusHistory ?? [] as $event)<article class="workflow-response"><x-status-badge class="results-status-badge" :status="$event['status']"/><p>{{ $event['remarks'] ?? 'No remarks recorded.' }}</p></article>@empty<p class="workflow-muted">No status history recorded.</p>@endforelse
+            @if($needsEvidence)<div class="results-next-action"><h3>Next action: provide corrective evidence</h3><p>Review the finding and provide authorized supporting evidence for auditor review.</p></div>@else<p class="results-empty">{{ $check->correctiveStatus === 'closed' && $hasCar ? 'This corrective action is closed. No response is required.' : ($hasCar ? 'This CAR is read-only in its recorded status. Contact your auditor for the next step.' : 'No corrective response is required for this result.') }}</p>@endif
+            <div class="corrective-detail-grid">
+            @include('auditee.car-timeline')
             @if($needsEvidence)
             <section id="corrective-evidence" class="results-detail-block"><h3>Provide Corrective Evidence</h3><p>Provide a reference or arrange an original for inspection, or <a href="/auditee/upload?checkId={{ $check->getKey() }}">upload an authorized file</a>. Submission does not change the result or close the CAR.</p>
-                @include('auditee.evidence-response-form', ['entry' => [], 'responseAction' => '/auditee/finding-details/'.$check->getKey().'/response', 'canDraft' => false])
+                <div data-corrective-reference>@include('auditee.evidence-response-form', ['entry' => [], 'responseAction' => '/auditee/finding-details/'.$check->getKey().'/response', 'canDraft' => false])</div>
+                <div data-result-upload-slot hidden></div>
             </section>
             @endif
+            </div>
         </section>
     </div>
 </div>

@@ -1,7 +1,7 @@
 @php($draft = $entry['draft'] ?? [])
 <form method="POST" action="{{ $responseAction }}" enctype="multipart/form-data" class="workflow-form" x-data="{ method: @js($draft['method'] ?? 'digital-reference') }">
     @csrf
-    @isset($audit)<input type="hidden" name="version" value="{{ $audit->version }}">@endisset
+    @if(isset($audit) || isset($version))<input type="hidden" name="version" value="{{ $version ?? $audit->version }}">@endif
     <input type="hidden" name="submissionKey" value="{{ (string) \Illuminate\Support\Str::uuid() }}">
     <label>Evidence method<select name="method" x-model="method"><option value="digital-reference">Digital reference (no copy)</option><option value="physical-original">Physical original</option><option value="interview-process">Interview / process demonstration</option>@if($entry['allowUpload'] ?? false)<option value="file">Authorized file upload</option>@endif</select></label>
     <label>Permitted reference / location (optional)<input name="reference" maxlength="500" value="{{ $draft['reference'] ?? '' }}"></label>

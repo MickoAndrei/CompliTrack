@@ -2,27 +2,27 @@
 @section('title', 'Provide Evidence')
 @section('heading', 'Provide Evidence')
 @section('content')
+<div class="corrective-upload-page">
 <nav class="workflow-actions" aria-label="Evidence purpose"><a href="/auditee/evidence-requests">During Audit</a><a href="/auditee/upload" aria-current="page">Corrective Evidence</a></nav>
-<p class="workflow-muted" style="margin:16px 0">For references or physical originals without an upload, open the relevant result from <a href="/auditee/my-findings?actionable=1">My Audit Results</a>. A file submission never closes a CAR.</p>
-<section x-data="evidenceUploadPage()" data-evidence-upload class="max-w-3xl">
-    <div class="mb-6"><h2 class="font-heading text-2xl font-bold text-ustp-navy">Upload corrective evidence</h2><p class="mt-1 text-sm text-ustp-muted">Select an open non-compliant finding and attach supporting evidence.</p></div>
-    <div x-cloak x-show="error || message" x-transition class="fixed right-6 top-6 z-[100] flex min-h-[52px] w-[calc(100%-3rem)] max-w-sm items-center rounded-lg border-l-4 bg-ustp-navy py-4 pr-5 text-[13px] font-medium leading-5 text-white shadow-[0_10px_25px_rgba(5,27,68,0.18)]" :class="error ? 'border-red-500' : 'border-ustp-gold'" style="padding-left: 24px" :role="error ? 'alert' : 'status'" aria-live="polite">
-        <span class="min-w-0 flex-1" x-text="error || message"></span>
-    </div>
-    <template x-if="loading"><div class="h-60 animate-pulse rounded-2xl bg-white"></div></template>
-    <form x-show="!loading" @submit.prevent="submit()" class="space-y-5 rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-200/70">
-        <label class="block text-sm font-medium">Finding
-            <select x-model="selectedCheckId" required class="mt-2 w-full rounded-xl border border-slate-200 px-4 py-3">
-                <option value="">Select a non-compliant check</option><template x-for="check in checks" :key="check._id"><option :value="check._id" x-text="`${check.checkCode} · ${check.referenceStandard}`"></option></template>
-            </select>
-        </label>
-        <label class="block text-sm font-medium">Evidence file
-            <input x-ref="fileInput" type="file" accept=".pdf,.docx,.png,.jpg,.jpeg" @change="file = $event.target.files[0] || null" required class="mt-2 block w-full rounded-xl border border-slate-200 p-3 text-sm">
-            <span class="mt-2 block text-xs text-ustp-muted">PDF, DOCX, PNG, or JPG · maximum 20 MB</span>
-        </label>
-        <div class="flex items-start gap-3 rounded-xl bg-ustp-light p-4 text-sm text-ustp-muted"><i data-lucide="lock-keyhole" class="mt-0.5 size-5 shrink-0 text-ustp-navy"></i><span>File will be encrypted with AES-256-GCM when securely stored.</span></div>
-        <label class="block text-sm"><input type="checkbox" required> I have permission to store this document; protected QMS records must not be copied without authorization.</label>
-        <button :disabled="saving" type="submit" class="rounded-xl bg-ustp-navy px-5 py-3 text-sm font-semibold text-white hover:bg-ustp-gold hover:text-ustp-navy disabled:opacity-60" x-text="saving ? 'Uploading…' : 'Upload evidence'"></button>
+<section x-data="evidenceUploadPage()" data-evidence-upload class="corrective-upload" aria-labelledby="corrective-upload-title">
+    <form @submit.prevent="submit()" class="corrective-upload-card" :aria-busy="loading || saving">
+        <header class="corrective-upload-header"><h2 id="corrective-upload-title">Upload corrective evidence</h2><p>Attach authorized evidence to an open non-compliant finding.</p></header>
+        <div x-cloak x-show="error || message" class="corrective-upload-feedback" :class="error ? 'is-error' : 'is-success'" :role="error ? 'alert' : 'status'" aria-live="polite"><span x-text="error || message"></span></div>
+        <div class="corrective-upload-field"><label for="corrective-upload-check">Related finding</label><select id="corrective-upload-check" x-model="selectedCheckId" required :disabled="loading || saving"><option value="" x-text="loading ? 'Loading assigned findings…' : checks.length ? 'Select a non-compliant finding' : 'No open non-compliant findings available'">Select a non-compliant finding</option><template x-for="check in checks" :key="check._id"><option :value="check._id" x-text="`${check.checkCode} · ${check.referenceStandard}`"></option></template></select></div>
+        <div class="corrective-upload-field"><label for="corrective-upload-reference">Reference standard</label><input id="corrective-upload-reference" type="text" :value="selectedReferenceStandard" readonly aria-readonly="true" placeholder="Select a finding first"></div>
+        <div class="corrective-upload-file-field">
+            <input id="corrective-upload-file" x-ref="fileInput" type="file" accept=".pdf,.docx,.png,.jpg,.jpeg" @change="selectFile($event.target.files[0])" :disabled="loading || saving" class="sr-only" tabindex="-1"><label for="corrective-upload-file" class="sr-only">Choose corrective evidence file</label>
+            <button type="button" class="corrective-upload-dropzone" :class="{ 'is-dragging': dragging, 'has-file': file }" :disabled="loading || saving" aria-label="Choose corrective evidence file or drop a file here" aria-describedby="corrective-upload-hint" @click="$refs.fileInput.click()" @dragover.prevent="dragging = !saving && !loading" @dragleave.prevent="if (!$el.contains($event.relatedTarget)) dragging = false" @drop.prevent="handleDrop($event)">
+                <span x-show="!file" class="corrective-upload-file-content"><i data-lucide="cloud-upload" aria-hidden="true"></i><span class="corrective-upload-drop-title">Drop a file here or browse</span><span id="corrective-upload-hint" class="corrective-upload-hint">PDF, DOCX, PNG, JPG — maximum 20 MB</span></span>
+                <span x-cloak x-show="file" class="corrective-upload-file-content" aria-live="polite"><i data-lucide="file-check-2" aria-hidden="true"></i><span class="corrective-upload-file-name" x-text="file?.name"></span><span class="corrective-upload-hint" x-text="file ? `${formatFileSize(file.size)} · Click to replace` : ''"></span></span>
+            </button>
+            <button x-cloak x-show="file" type="button" @click="clearFile()" :disabled="saving" class="corrective-upload-remove">Remove selected file</button>
+        </div>
+        <div class="corrective-upload-encryption"><i data-lucide="lock-keyhole" aria-hidden="true"></i><span>Encrypted storage · AES-256-GCM</span></div>
+        <label class="corrective-upload-permission"><input type="checkbox" required :disabled="saving"><span>I have permission to store this file, including any protected QMS records.</span></label>
+        <p class="corrective-upload-help">References or originals? <a href="/auditee/my-findings?actionable=1">My Audit Results</a>. Uploading does not close the CAR.</p>
+        <div class="corrective-upload-actions"><button type="button" @click="cancelUpload()" :disabled="saving" class="workflow-secondary">Cancel</button><button :disabled="loading || saving || !file || !selectedCheckId" type="submit" class="auditor-gold-button"><span x-text="saving ? 'Uploading…' : 'Submit Evidence'">Submit Evidence</span></button></div>
     </form>
 </section>
+</div>
 @endsection

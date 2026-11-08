@@ -1,0 +1,304 @@
+:is(.view-content-container, .content-area):has(.super-admin-profile-page) {
+  min-height: calc(100vh - 76px);
+  padding: 6px 20px 36px;
+  background: #f3f6fa;
+}
+
+.super-admin-profile-page {
+  width: min(100%, 368px);
+  margin: 0 auto;
+}
+
+.super-admin-profile-card {
+  overflow: hidden;
+  border: 1px solid #e6edf5;
+  border-radius: 14px;
+  background: #fff;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, .04);
+}
+
+.super-admin-profile-identity {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 20px 22px 12px;
+}
+
+.super-admin-profile-avatar {
+  position: relative;
+  width: 86px;
+  height: 86px;
+  overflow: visible;
+  border: 2px solid #fbbf24;
+  border-radius: 50%;
+  background: #fff;
+}
+
+.super-admin-profile-avatar > .profile-photo,
+.super-admin-profile-avatar > .super-admin-profile-crest {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  border-radius: 50%;
+}
+
+.super-admin-profile-crest {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: radial-gradient(circle, #fff 58%, #fff8df 100%);
+  color: #d99a00;
+}
+
+.super-admin-profile-crest span {
+  font-family: Georgia, serif;
+  font-size: 19px;
+  font-weight: 700;
+}
+
+.super-admin-profile-camera {
+  position: absolute;
+  right: -5px;
+  bottom: -3px;
+  display: inline-flex;
+  width: 30px;
+  height: 30px;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid #fff;
+  border-radius: 50%;
+  background: #0b1938;
+  color: #fff;
+  cursor: pointer;
+  box-shadow: 0 2px 5px rgba(15, 23, 42, .18);
+}
+
+.super-admin-profile-camera:hover { background: #173765; }
+.super-admin-profile-camera:disabled { cursor: wait; opacity: .65; }
+.super-admin-profile-camera svg { width: 15px; height: 15px; }
+
+.super-admin-profile-identity h2 {
+  margin: 10px 0 4px;
+  color: #0f172a;
+  font-size: 14px;
+  font-weight: 750;
+  line-height: 1.4;
+}
+
+.super-admin-profile-role {
+  min-width: 0 !important;
+  padding: 2px 10px !important;
+  font-size: 10px !important;
+  line-height: 1.4 !important;
+}
+
+.super-admin-profile-avatar-hint {
+  margin: 6px 0 0;
+  color: #64748b;
+  font-size: 9px;
+}
+
+.super-admin-profile-form,
+.super-admin-password-form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 0 22px;
+}
+
+.super-admin-profile-form {
+  padding: 12px 0 18px;
+  border-top: 1px solid #edf1f6;
+}
+
+.super-admin-password-form {
+  padding: 18px 0 19px;
+  border-top: 1px solid #edf1f6;
+}
+
+.super-admin-password-form h3 {
+  margin: 0 0 2px;
+  color: #0f172a;
+  font-size: 12px;
+  font-weight: 750;
+}
+
+.super-admin-profile-field {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 4px;
+  color: #0f172a;
+  font-size: 10px;
+  font-weight: 650;
+}
+
+.super-admin-profile-field input {
+  width: 100%;
+  height: 31px;
+  padding: 0 11px;
+  border: 1px solid #d5deea;
+  border-radius: 6px;
+  background: #fff;
+  color: #1e293b;
+  font: inherit;
+  font-size: 10px;
+  font-weight: 400;
+}
+
+.super-admin-profile-field input:focus {
+  border-color: #64748b;
+  outline: 2px solid rgba(100, 116, 139, .16);
+  outline-offset: 1px;
+}
+
+.super-admin-profile-field input[readonly] {
+  border-color: transparent;
+  background: #f1f5f9;
+  color: #475569;
+  cursor: default;
+}
+
+.profile-field-error,
+.profile-form-error {
+  color: #b91c1c;
+  font-size: 10px;
+  font-weight: 500;
+}
+
+.profile-form-error { margin: -4px 0 0; }
+
+.super-admin-profile-save,
+.super-admin-password-submit {
+  display: inline-flex;
+  min-height: 33px;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #f2b900;
+  border-radius: 7px;
+  background: #fcc419;
+  color: #0b1938;
+  cursor: pointer;
+  font: inherit;
+  font-size: 10px;
+  font-weight: 750;
+  transition: background .15s ease;
+}
+
+.super-admin-profile-save:hover,
+.super-admin-password-submit:hover {
+  background: #fab005;
+}
+
+.super-admin-password-form {
+  padding-top: 18px;
+}
+
+.super-admin-password-submit { margin-top: 2px; }
+
+.super-admin-profile-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 0 22px;
+  padding: 19px 0 10px;
+  border-top: 1px solid #edf1f6;
+}
+
+.super-admin-profile-actions form { margin: 0; }
+
+.super-admin-switch-account,
+.super-admin-profile-logout {
+  display: inline-flex;
+  width: 100%;
+  min-height: 34px;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  border: 1px solid #fecaca;
+  border-radius: 7px;
+  background: #fee2e2;
+  color: #dc2626;
+  cursor: pointer;
+  font: inherit;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.super-admin-switch-account:hover,
+.super-admin-profile-logout:hover {
+  background: #fecaca;
+}
+
+.super-admin-profile-logout svg { width: 14px; height: 14px; }
+
+.super-admin-switch-hint {
+  margin: 0;
+  padding: 0 22px 16px;
+  color: #64748b;
+  font-size: 9px;
+  text-align: center;
+}
+
+.profile-feedback {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 0 0 10px;
+  padding: 9px 12px;
+  border: 1px solid #a7f3d0;
+  border-radius: 7px;
+  background: #ecfdf5;
+  color: #065f46;
+  font-size: 11px;
+}
+
+.profile-feedback.is-error {
+  border-color: #fecaca;
+  background: #fef2f2;
+  color: #b91c1c;
+}
+
+.profile-feedback button {
+  display: inline-flex;
+  flex: 0 0 auto;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+
+.profile-feedback svg { width: 14px; height: 14px; }
+
+/* Keep role colors explicit for both the badge and read-only role field. */
+.super-admin-profile-page [data-profile-role] {
+  text-shadow: none;
+  box-shadow: none;
+  font-weight: 650;
+}
+
+.super-admin-profile-page :is(span, input)[data-profile-role="0"] {
+  color: #00205b;
+  background-color: #ffc72c;
+}
+
+.super-admin-profile-page :is(span, input)[data-profile-role="1"] {
+  color: #0369a1;
+  background-color: #e0f2fe;
+}
+
+.super-admin-profile-page :is(span, input)[data-profile-role="2"] {
+  color: #7e22ce;
+  background-color: #f3e8ff;
+}
+
+.super-admin-profile-page :is(span, input)[data-profile-role="3"] {
+  color: #15803d;
+  background-color: #dcfce7;
+}
+
+@media (max-width: 520px) {
+  :is(.view-content-container, .content-area):has(.super-admin-profile-page) { padding: 8px 14px 28px; }
+  .super-admin-profile-page { width: 100%; }
+}

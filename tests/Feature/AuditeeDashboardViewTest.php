@@ -56,5 +56,12 @@ class AuditeeDashboardViewTest extends TestCase
         $actions = substr($html, strpos($html, 'id="next-actions-title"'), strpos($html, 'id="compliance-title"') - strpos($html, 'id="next-actions-title"'));
         $this->assertStringNotContainsString('LOCKED-TEST', $actions);
         $this->assertStringContainsString('READY-TEST', $actions);
+        $document = new \DOMDocument();
+        @$document->loadHTML($html);
+        $xpath = new \DOMXPath($document);
+        $this->assertSame(1, $xpath->query('//dialog[@id="audit-result-modal"]')->length);
+        $this->assertSame(2, $xpath->query('//a[@data-result-modal-open and substring-before(concat(@href, "#"), "#")="/auditee/finding-details/'.$check->getKey().'"]')->length);
+        $this->assertSame(0, $xpath->query('//a[@data-result-modal-open and starts-with(@href, "/auditee/evidence-requests")]')->length);
+        $this->assertSame(1, $xpath->query('//a[@data-result-modal-tab="corrective" and contains(@href, "#corrective")]')->length);
     }
 }

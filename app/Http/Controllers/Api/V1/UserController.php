@@ -212,7 +212,13 @@ class UserController extends Controller
             ? ($data['departmentId'] ? MongoId::parse($data['departmentId'], 'departmentId') : null)
             : ($user->departmentId ? MongoId::parse((string) $user->departmentId, 'departmentId') : null);
         $assignedIds = $data['assignedDepartmentIds'] ?? ($user->assignedDepartmentIds ?? []);
-        $this->validateDepartmentAssignment($request->user(), $roleId, $departmentId, $assignedIds);
+        $oldAssignments = array_map('strval', $user->assignedDepartmentIds ?? []);
+        $newAssignments = array_map('strval', $assignedIds);
+        sort($oldAssignments); sort($newAssignments);
+        // Unverified legacy ownership blocks new assignments, not unrelated account maintenance.
+        if ($roleId !== (int) $user->roleId || (string) $departmentId !== (string) $user->departmentId || $oldAssignments !== $newAssignments) {
+            $this->validateDepartmentAssignment($request->user(), $roleId, $departmentId, $assignedIds);
+        }
 
         $data['roleId'] = $roleId;
         $data['roleSlug'] = [0 => 'super_admin', 1 => 'admin', 2 => 'auditor', 3 => 'auditee'][$roleId];
@@ -303,7 +309,7 @@ class UserController extends Controller
         foreach (array_unique(array_map('strval', $ids)) as $id) {
             $objectId = MongoId::parse($id, 'assignedDepartmentIds');
             $department = Department::find($objectId);
-            if (! $department || ! $department->isActive
+            if (! $department || ! $department->isActive || in_array($department->unitType, ['college_office', 'legacy_unclassified'], true)
                 || ((int) $actor->roleId === 1 && $department->collegeName !== 'CET')) {
                 abort(422, 'The selected department is unavailable or outside your scope.');
             }

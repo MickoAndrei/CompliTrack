@@ -5,6 +5,9 @@ import './pages';
 import './auditor-overview';
 import './auditee-results';
 import './auditee-result-modal';
+import './auditee-evidence-preview';
+import './auditee-evidence-requests';
+import './qms-archives';
 
 window.Alpine = Alpine;
 

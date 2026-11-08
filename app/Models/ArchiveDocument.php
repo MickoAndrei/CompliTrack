@@ -16,6 +16,10 @@ class ArchiveDocument extends Model
         'fileCode', 'originalName', 'encryptedPath', 'mimeType', 'fileSize',
         'checksum', 'departmentId', 'uploadedByUserId', 'referenceStandard',
         'tags', 'isEncrypted', 'encryptionIv', 'encryptionTag', 'auditId', 'requestId',
+        'collegeId', 'ownershipVerified', 'recordType', 'title', 'description', 'categoryId',
+        'documentReference', 'physicalLocation', 'signatureRequired', 'signatureStatus',
+        'visibility', 'accessUserIds', 'downloadAllowed', 'copyAuthorized', 'sharedAuditIds',
+        'versionGroupId', 'versionNumber', 'previousVersionId', 'qmsSchemaVersion',
     ];
 
     protected $hidden = ['encryptedPath', 'encryptionIv', 'encryptionTag'];
@@ -23,6 +27,10 @@ class ArchiveDocument extends Model
     protected $casts = [
         'departmentId' => NullableObjectId::class,
         'uploadedByUserId' => NullableObjectId::class,
+        'collegeId' => NullableObjectId::class,
+        'categoryId' => NullableObjectId::class,
+        'versionGroupId' => NullableObjectId::class,
+        'previousVersionId' => NullableObjectId::class,
         'isEncrypted' => 'boolean',
     ];
 }

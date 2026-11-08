@@ -102,6 +102,14 @@ The system is intentionally scoped to three core functions:
 
 ### Database Configuration
 
+The current CET QMS Archives implementation, migration, authorization rules,
+verification commands, and legacy ownership decisions are documented in
+[QMS_ARCHIVES_IMPLEMENTATION.md](docs/QMS_ARCHIVES_IMPLEMENTATION.md).
+
+For the development-only mock document importer, existing Admin/ATL reuse,
+representative organizational accounts, and audit/CAR scenarios, see
+[QMS_DEVELOPMENT_DATA.md](docs/QMS_DEVELOPMENT_DATA.md).
+
 CompliTrack uses both databases for different purposes:
 
 - **MongoDB** stores application data, including users, roles, departments,

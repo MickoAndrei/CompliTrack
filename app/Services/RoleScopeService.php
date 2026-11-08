@@ -29,7 +29,7 @@ class RoleScopeService
 
     public function departments(User $actor)
     {
-        $query = Department::query();
+        $query = Department::whereNotIn('unitType', ['college_office', 'legacy_unclassified']);
 
         return match ((int) $actor->roleId) {
             0 => $query,
@@ -42,16 +42,7 @@ class RoleScopeService
 
     public function archives(User $actor)
     {
-        $query = ArchiveDocument::query();
-
-        return match ((int) $actor->roleId) {
-            0 => $query,
-            1 => $query->whereIn('departmentId', $this->cetDepartmentIds()),
-            2 => $query->whereIn('departmentId', $this->assignedDepartmentIds($actor)),
-            3 => $query->whereIn('uploadedByUserId', [new ObjectId((string) $actor->getKey()), (string) $actor->getKey()])
-                ->whereIn('departmentId', [new ObjectId((string) $actor->departmentId), (string) $actor->departmentId]),
-            default => $query->whereRaw(['_id' => null]),
-        };
+        return app(QmsArchiveAccess::class)->documents($actor);
     }
 
     public function checks(User $actor)

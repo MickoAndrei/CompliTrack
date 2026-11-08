@@ -1051,6 +1051,33 @@ document.addEventListener('alpine:init', () => {
         checks: [],
         selectedCheckId: '',
         file: null,
+        dragging: false,
+        get selectedReferenceStandard() {
+            return this.checks.find(check => check._id === this.selectedCheckId)?.referenceStandard || '';
+        },
+        selectFile(file) {
+            if (this.loading || this.saving) return;
+            this.file = file || null;
+            this.dragging = false;
+        },
+        handleDrop(event) {
+            this.dragging = false;
+            this.selectFile(event.dataTransfer?.files?.[0]);
+        },
+        clearFile() {
+            if (this.saving) return;
+            this.file = null;
+            this.$refs.fileInput.value = '';
+        },
+        formatFileSize(bytes) {
+            return bytes < 1024 * 1024 ? `${(bytes / 1024).toFixed(1)} KB` : `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+        },
+        cancelUpload() {
+            if (this.saving) return;
+            const dialog = this.$el.closest('dialog');
+            if (dialog) this.$dispatch('auditee-evidence-upload-cancel');
+            else window.location.assign('/auditee/dashboard');
+        },
         loading: true,
         saving: false,
         message: null,

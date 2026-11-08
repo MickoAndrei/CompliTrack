@@ -9,6 +9,20 @@ use Tests\TestCase;
 
 class AuditeeResultsViewTest extends TestCase
 {
+    public function test_authorized_files_offer_separate_preview_and_download_actions(): void
+    {
+        $this->actor();
+        $check = new \App\Models\ComplianceCheck(['checkCode' => 'PREVIEW-TEST', 'result' => 'non_compliant', 'correctiveStatus' => 'open']);
+        $check->setAttribute('_id', new \MongoDB\BSON\ObjectId());
+        $archive = new \App\Models\ArchiveDocument(['originalName' => '<script>document</script>.pdf']);
+        $archive->setAttribute('_id', new \MongoDB\BSON\ObjectId());
+        $this->view('auditee.result-detail-content', ['check' => $check, 'archives' => collect([$archive])])
+            ->assertSee('data-evidence-preview', false)->assertSee('Preview')->assertSee('Download')
+            ->assertSee('/api/v1/archives/'.$archive->getKey().'/download')->assertDontSee('<script>document</script>', false);
+        $this->view('auditee.result-modal')->assertSee('id="audit-result-modal"', false)
+            ->assertSee('id="evidence-preview-modal"', false)->assertSee('Back to audit result');
+    }
+
     private function actor(): User
     {
         $user = new User(['fullName' => 'Results test', 'roleId' => 3, 'isActive' => true]);
@@ -53,14 +67,18 @@ class AuditeeResultsViewTest extends TestCase
             'result' => 'non_compliant', 'correctiveStatus' => 'open', 'remarks' => '<script>private input</script>']);
         $check->setAttribute('_id', new \MongoDB\BSON\ObjectId());
         $data = ['check' => $check, 'archives' => collect(), 'auditorName' => 'Test Auditor', 'departmentName' => 'Test Department'];
-        $this->view('auditee.finding-details', $data)->assertSee('N — Non-Conformance')->assertSee('Provide Corrective Evidence')
+        $this->view('auditee.result-detail-content', $data)->assertSee('N — Non-Conformance')->assertSee('Provide Corrective Evidence')
             ->assertSee('/auditee/finding-details/'.$check->getKey().'/response')->assertSee('Check item / requirement')
             ->assertSee('No accessible files')->assertDontSee('<script>private input</script>', false)
             ->assertSee('data-result-panel="overview"', false)->assertSee('data-result-panel="evidence"', false)
             ->assertSee('data-result-panel="corrective"', false)->assertSee('Review date: Not recorded')
             ->assertSee('No separate audit question is recorded');
         $check->correctiveStatus = 'closed';
-        $this->view('auditee.finding-details', $data)->assertSee('This corrective action is closed.')
+        $this->view('auditee.result-detail-content', $data)->assertSee('This corrective action is closed.')
             ->assertDontSee('Provide Corrective Evidence')->assertDontSee('name="submissionKey"', false);
+        $check->result = 'compliant';
+        $check->correctiveStatus = null;
+        $this->view('auditee.result-detail-content', $data)->assertSee('No corrective action (CAR) is recorded for this audit result.')
+            ->assertDontSee('class="car-timeline"', false)->assertDontSee('name="submissionKey"', false);
     }
 }

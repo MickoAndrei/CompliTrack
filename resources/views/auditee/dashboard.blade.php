@@ -17,6 +17,7 @@
         ->sortByDesc('at')->take(5);
 @endphp
 <div class="workflow-page auditee-dashboard">
+    @include('auditee.organizational-oversight')
     <div class="auditor-summary-grid">
         @foreach([['Audit Results', $published->count(), 'clipboard-check', '/auditee/my-findings', 'Shared accepted checklist decisions'], ['Open CARs', $openCars->count(), 'triangle-alert', '/auditee/my-findings?actionable=1', 'Legacy checks requiring follow-up'], ['Pending Evidence', $pendingRequests->count(), 'files', '/auditee/evidence-requests', 'Requests awaiting your response'], ['Closed CARs', $closedCars->count(), 'check-check', '/auditee/my-findings?archived=1', 'Closed legacy corrective actions']] as [$label, $count, $icon, $url, $hint])
         <a class="auditor-summary-card" href="{{ $url }}"><div><h3>{{ $label }}</h3><i data-lucide="{{ $icon }}" @class(['auditor-red' => $label === 'Open CARs', 'auditor-green' => $label === 'Closed CARs']) aria-hidden="true"></i></div><strong>{{ $count }}</strong><p class="sr-only">{{ $hint }}</p>@if($label === 'Audit Results')<p class="sr-only">{{ $checks->count() }} legacy checks reported separately</p>@endif</a>
@@ -25,7 +26,7 @@
     <section class="workflow-card" aria-labelledby="next-actions-title">
         <div class="dashboard-section-heading"><h2 id="next-actions-title">My Next Actions</h2><span class="dashboard-badge">{{ $actions->count() }} {{ $actions->count() === 1 ? 'action' : 'actions' }}</span></div>
         @forelse($actions->take(4) as $action)
-        <article class="dashboard-record dashboard-action"><div><h3>{{ $action['title'] }}</h3><p>{{ $action['code'] }} <span class="dashboard-badge">{{ ucfirst(str_replace('_', ' ', $action['status'])) }}</span></p><p>{{ $action['description'] }}</p></div><a class="dashboard-action-link" href="{{ $action['url'] }}">View action <span aria-hidden="true">&rarr;</span><span class="sr-only"> for {{ $action['code'] }}</span></a></article>
+        <article class="dashboard-record dashboard-action"><div><h3>{{ $action['title'] }}</h3><p>{{ $action['code'] }} <span class="dashboard-badge">{{ ucfirst(str_replace('_', ' ', $action['status'])) }}</span></p><p>{{ $action['description'] }}</p></div><a class="dashboard-action-link" @if(str_starts_with($action['url'], '/auditee/finding-details/')) data-result-modal-open data-result-modal-tab="corrective" aria-haspopup="dialog" @endif href="{{ $action['url'] }}{{ str_starts_with($action['url'], '/auditee/finding-details/') ? '#corrective' : '' }}">View action <span aria-hidden="true">&rarr;</span><span class="sr-only"> for {{ $action['code'] }}</span></a></article>
         @empty
         <div class="dashboard-empty"><i data-lucide="circle-check" aria-hidden="true"></i><div><h3>You're up to date</h3><p>No corrective actions or evidence requests are ready for your response.</p></div></div>
         @endforelse
@@ -66,10 +67,11 @@
     <section class="workflow-card" aria-labelledby="activity-title">
         <div class="dashboard-section-heading"><h2 id="activity-title">Recent Activity</h2><a href="/auditee/notifications">All notifications</a></div>
         @forelse($activity as $entry)
-        <article class="dashboard-record"><div class="dashboard-section-heading"><h3><a href="{{ $entry['url'] }}">{{ $entry['title'] }}</a></h3>@if($entry['at'])<time datetime="{{ $entry['at']->toIso8601String() }}">{{ $entry['at']->format('M j, Y') }}</time>@endif</div><p>{{ $entry['detail'] }}</p></article>
+        <article class="dashboard-record"><div class="dashboard-section-heading"><h3><a @if(str_starts_with($entry['url'], '/auditee/finding-details/')) data-result-modal-open aria-haspopup="dialog" @endif href="{{ $entry['url'] }}">{{ $entry['title'] }}</a></h3>@if($entry['at'])<time datetime="{{ $entry['at']->toIso8601String() }}">{{ $entry['at']->format('M j, Y') }}</time>@endif</div><p>{{ $entry['detail'] }}</p></article>
         @empty
         <div class="dashboard-empty"><i data-lucide="bell" aria-hidden="true"></i><div><h3>No activity yet</h3><p>New results and audit updates will appear here.</p></div></div>
         @endforelse
     </section>
 </div>
+@include('auditee.result-modal')
 @endsection

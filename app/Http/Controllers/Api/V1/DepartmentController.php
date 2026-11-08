@@ -61,6 +61,13 @@ class DepartmentController extends Controller
             return response()->json(['message' => 'The department code has already been taken.'], 422);
         }
 
+        $this->validateCetDepartment($data['collegeName'], $data['departmentName']);
+        if ($data['collegeName'] === 'CET') {
+            abort_if(Department::where('collegeName', 'CET')->where('departmentName', $data['departmentName'])->exists(), 422, 'This CET department already exists.');
+            $college = \App\Models\College::where('collegeCode', 'CET')->firstOrFail();
+            $data += ['collegeId' => $college->getKey(), 'unitType' => 'academic_department', 'ownershipVerified' => true];
+        }
+
         $department = Department::create($data + [
             'isActive' => true,
             'headUserId' => null,
@@ -95,6 +102,15 @@ class DepartmentController extends Controller
         if ((int) $request->user()->roleId === 1
             && ($data['collegeName'] ?? $department->collegeName) !== 'CET') {
             abort(403, 'Admins may only manage CET departments.');
+        }
+        $this->validateCetDepartment($data['collegeName'] ?? $department->collegeName, $data['departmentName'] ?? $department->departmentName);
+        if (($data['collegeName'] ?? $department->collegeName) === 'CET') {
+            abort_if(Department::where('collegeName', 'CET')->where('departmentName', $data['departmentName'] ?? $department->departmentName)
+                ->where('_id', '!=', $department->getKey())->exists(), 422, 'This CET department already exists. Organizational merges require a reviewed migration.');
+        }
+        if ($department->ownershipVerified) {
+            abort_if(isset($data['departmentName']) && $data['departmentName'] !== $department->departmentName
+                || isset($data['collegeName']) && $data['collegeName'] !== $department->collegeName, 422, 'Verified organizational ownership cannot be changed through a department rename.');
         }
         if (!empty($data['headUserId'])) {
             $head = User::where('_id', MongoId::parse($data['headUserId'], 'headUserId'))
@@ -164,5 +180,12 @@ class DepartmentController extends Controller
         unset($data['id']);
 
         return $data;
+    }
+
+    private function validateCetDepartment(string $college, string $name): void
+    {
+        if (in_array(strtolower(trim($college)), ['cet', 'college of engineering and technology', 'collage of engineering and technology'], true)) {
+            abort_unless($college === 'CET' && in_array($name, array_values(config('qms.departments')), true), 422, 'CET contains only the five approved academic departments. The Office of the Dean is a college office.');
+        }
     }
 }

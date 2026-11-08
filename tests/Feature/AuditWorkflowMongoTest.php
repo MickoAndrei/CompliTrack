@@ -50,7 +50,7 @@ class AuditWorkflowMongoTest extends TestCase
 
     public function test_authorized_assignment_appears_and_opens_without_exposing_other_audits(): void
     {
-        $department = Department::create(['departmentName' => 'Test IT', 'collegeName' => 'CET', 'isActive' => true]);
+        $department = Department::create(['ownershipVerified' => true, 'departmentName' => 'Test IT', 'collegeName' => 'CET', 'isActive' => true]);
         $departmentId = new ObjectId((string) $department->getKey());
         $admin = User::create(['fullName' => 'Test Admin', 'roleId' => 1, 'isActive' => true, 'departmentId' => $departmentId]);
         $auditor = User::create(['fullName' => 'Test Auditor', 'roleId' => 2, 'isActive' => true, 'departmentId' => (string) $departmentId, 'assignedDepartmentIds' => [$departmentId]]);
@@ -76,7 +76,7 @@ class AuditWorkflowMongoTest extends TestCase
 
     private function fixture(): array
     {
-        $department = Department::create(['departmentName' => 'Test IT', 'collegeName' => 'CET', 'isActive' => true]);
+        $department = Department::create(['ownershipVerified' => true, 'departmentName' => 'Test IT', 'collegeName' => 'CET', 'isActive' => true]);
         $id = new ObjectId((string) $department->getKey());
         $admin = User::create(['fullName' => 'Reviewer', 'roleId' => 1, 'isActive' => true, 'departmentId' => $id]);
         $auditor = User::create(['fullName' => 'Auditor', 'roleId' => 2, 'isActive' => true, 'departmentId' => $id, 'assignedDepartmentIds' => [$id]]);
@@ -177,9 +177,11 @@ class AuditWorkflowMongoTest extends TestCase
         $check = \App\Models\ComplianceCheck::create(['checkCode' => 'TEST-CAR', 'auditorId' => $auditor->getKey(),
             'auditeeId' => $auditee->getKey(), 'departmentId' => $audit->departmentId, 'result' => 'non_compliant',
             'correctiveStatus' => 'in_progress', 'statusHistory' => []]);
-        $archive = \App\Models\ArchiveDocument::create(['fileCode' => 'TEST-PRIVATE', 'departmentId' => $audit->departmentId,
+        $archive = \App\Models\ArchiveDocument::create(['ownershipVerified' => true, 'fileCode' => 'TEST-PRIVATE', 'departmentId' => $audit->departmentId,
             'uploadedByUserId' => $auditee->getKey(), 'originalName' => 'Private.pdf']);
         $this->actingAs($auditor)->getJson('/api/v1/compliance-checks')->assertOk()->assertJsonPath('meta.total', 1);
+        $this->getJson('/api/v1/archives')->assertOk()->assertJsonPath('meta.total', 0);
+        $check->update(['linkedArchiveIds' => [$archive->getKey()]]);
         $this->getJson('/api/v1/archives')->assertOk()->assertJsonPath('meta.total', 1);
         $this->patchJson('/api/v1/compliance-checks/'.$check->getKey().'/status', ['correctiveStatus' => 'closed'])->assertUnprocessable();
         $this->patchJson('/api/v1/compliance-checks/'.$check->getKey().'/status', ['correctiveStatus' => 'closed', 'remarks' => 'Corrective action verified'])->assertOk();
@@ -194,6 +196,131 @@ class AuditWorkflowMongoTest extends TestCase
         $this->get('/auditor/archives')->assertOk();
         $this->get('/auditor/corrective-actions')->assertOk();
         $this->get('/auditor/notifications')->assertOk();
+    }
+
+    public function test_car_timeline_reuses_status_records_preserves_reopening_and_enforces_closure_permissions(): void
+    {
+        [$admin, $auditor, $audit] = $this->fixture();
+        $person = User::create(['fullName' => 'CAR Recipient', 'roleId' => 3, 'isActive' => true, 'departmentId' => $audit->departmentId]);
+        $other = User::create(['fullName' => 'Other Recipient', 'roleId' => 3, 'isActive' => true, 'departmentId' => $audit->departmentId]);
+        $created = $this->actingAs($auditor)->postJson('/api/v1/compliance-checks', ['departmentId' => (string) $audit->departmentId,
+            'auditeeId' => (string) $person->getKey(), 'referenceStandard' => 'ISO9001-9.2', 'result' => 'non_compliant'])->assertCreated();
+        $id = $created->json('data._id');
+        $statusUrl = '/api/v1/compliance-checks/'.$id.'/status';
+        $this->patchJson($statusUrl, ['correctiveStatus' => 'closed', 'remarks' => 'Skip review'])->assertUnprocessable();
+        $this->actingAs($person)->patchJson($statusUrl, ['correctiveStatus' => 'closed', 'remarks' => 'Self closure'])->assertForbidden();
+        $this->actingAs($admin)->patchJson($statusUrl, ['correctiveStatus' => 'in_progress'])->assertForbidden();
+        $this->travel(1)->minutes();
+        $this->actingAs($auditor)->patchJson($statusUrl, ['correctiveStatus' => 'in_progress'])->assertOk();
+        $respond = function () use ($person, $id) {
+            $this->actingAs($person)->postJson('/auditee/finding-details/'.$id.'/response', [
+                'submissionKey' => (string) \Illuminate\Support\Str::uuid(), 'method' => 'digital-reference', 'notes' => 'Authorized corrective evidence'])->assertOk();
+        };
+        $respond();
+        $this->assertSame('in_progress', \App\Models\ComplianceCheck::findOrFail($id)->correctiveStatus);
+        $this->travel(1)->minutes();
+        $this->actingAs($auditor)->patchJson($statusUrl, ['correctiveStatus' => 'closed', 'remarks' => 'Verified corrective evidence'])->assertOk();
+        $this->actingAs($person)->postJson('/auditee/finding-details/'.$id.'/response', [
+            'submissionKey' => (string) \Illuminate\Support\Str::uuid(), 'method' => 'digital-reference', 'notes' => 'Attempt after closure'])->assertForbidden();
+        $this->travel(1)->minutes();
+        $this->actingAs($auditor)->patchJson($statusUrl, ['correctiveStatus' => 'open', 'remarks' => 'Returned for further corrective evidence'])->assertOk();
+        $respond();
+        $respond();
+        $check = \App\Models\ComplianceCheck::findOrFail($id);
+        $this->assertSame('open', $check->correctiveStatus);
+        $this->assertNull($check->closedAt);
+        $this->assertCount(4, $check->statusHistory);
+        $this->assertCount(3, $check->evidenceResponses);
+        $notificationCount = \App\Models\Notification::count();
+        $detailUrl = '/auditee/finding-details/'.$id;
+        $response = $this->get($detailUrl, ['X-Requested-With' => 'XMLHttpRequest'])->assertOk()
+            ->assertSee('Status Timeline')->assertSee('Corrective evidence resubmitted')->assertSee('Responsible role: Auditor')
+            ->assertSee('Responsible role: Auditee')->assertSee('Awaiting auditor verification')->assertDontSee('This corrective action is closed.');
+        $timeline = collect($response->viewData('carTimeline'));
+        $this->assertSame(['open'], $timeline->where('state', 'current')->pluck('status')->all());
+        $this->assertSame('completed', $timeline->where('kind', 'status')->firstWhere('status', 'closed')['state']);
+        $this->assertSame($notificationCount, \App\Models\Notification::count());
+        $this->actingAs($other)->get($detailUrl, ['X-Requested-With' => 'XMLHttpRequest'])->assertNotFound();
+        $this->patchJson($statusUrl, ['correctiveStatus' => 'closed', 'remarks' => 'Unauthorized'])->assertForbidden();
+    }
+
+    public function test_evidence_cards_count_requests_filter_and_guard_popup_access(): void
+    {
+        [$admin, $auditor, $audit] = $this->fixture();
+        $person = User::create(['fullName' => 'Card Recipient', 'roleId' => 3, 'isActive' => true, 'departmentId' => $audit->departmentId]);
+        $other = User::create(['fullName' => 'Other Recipient', 'roleId' => 3, 'isActive' => true, 'departmentId' => $audit->departmentId]);
+        $entries = [];
+        foreach (['requested', 'needs_information', 'response_submitted', 'reviewed'] as $number => $status) {
+            $entries[] = ['id' => (string) \Illuminate\Support\Str::uuid(), 'auditeeId' => (string) $person->getKey(),
+                'title' => 'Permitted request '.$number, 'description' => 'Evidence description '.$number,
+                'status' => $status, 'referenceStandard' => 'ISO9001-9.2', 'allowUpload' => false, 'responses' => [],
+                'dueDate' => $number === 0 ? '2026-12-20' : null, 'createdAt' => now()->toIso8601String()];
+        }
+        $private = array_merge($entries[0], ['id' => (string) \Illuminate\Support\Str::uuid(), 'auditeeId' => (string) $other->getKey(), 'description' => 'PRIVATE REQUEST TEXT']);
+        $audit->update(['evidenceRequests' => [...$entries, $private], 'reviewNotes' => 'PRIVATE AUDITOR NOTES',
+            'items' => [['question' => 'PRIVATE CHECKLIST DRAFT']]]);
+        $ajax = ['X-Requested-With' => 'XMLHttpRequest'];
+        $this->actingAs($person)->get('/auditee/evidence-requests')->assertOk()
+            ->assertViewHas('summary', ['active' => 3, 'awaiting' => 2, 'submitted' => 1, 'completed' => 1])
+            ->assertViewHas('requests', fn ($requests) => $requests->total() === 4)
+            ->assertSee('Dec 20, 2026')->assertSee('Awaiting Response')->assertSee('Submitted')->assertSee('Completed')
+            ->assertDontSee('PRIVATE')->assertSee('data-evidence-open', false)->assertSee('id="evidence-request-modal"', false);
+        $this->get('/auditee/evidence-requests?requestStatus=requested')->assertOk()->assertViewHas('requests', fn ($requests) => $requests->total() === 2);
+        $this->get('/auditee/evidence-requests?requestStatus=reviewed')->assertOk()->assertViewHas('requests', fn ($requests) => $requests->total() === 1);
+        foreach ([$audit->auditCode, 'Evidence description 0', 'Auditor', 'Test IT'] as $term) {
+            $this->get('/auditee/evidence-requests?search='.urlencode($term))->assertOk()->assertSee('Permitted request 0')->assertDontSee('PRIVATE');
+        }
+        $this->get('/auditee/evidence-requests?search=no-match')->assertOk()->assertSee('No matching requests')
+            ->assertViewHas('summary', fn ($summary) => $summary['active'] === 3);
+        $detailUrl = '/auditee/evidence-requests?auditId='.$audit->getKey().'&requestId='.$entries[0]['id'];
+        $this->get($detailUrl, $ajax)->assertOk()->assertViewIs('auditee.evidence-request-detail')->assertDontSee('<html', false)
+            ->assertSee('Evidence requirements')->assertSee('Submission history')->assertSee('Digital document reference')
+            ->assertSee('Physical original')->assertSee('File copying is not authorized')->assertDontSee('type="file"', false)->assertDontSee('PRIVATE');
+        $this->get('/auditee/evidence-requests?requestId='.$private['id'], $ajax)->assertNotFound();
+        $this->actingAs($other)->get($detailUrl, $ajax)->assertNotFound();
+        $this->actingAs($auditor)->get($detailUrl, $ajax)->assertForbidden();
+        $this->actingAs($person);
+        $audit->update(['status' => 'submitted']);
+        $this->get('/auditee/evidence-requests?requestStatus=under_review')->assertOk()->assertSee('Under Review')
+            ->assertViewHas('requests', fn ($requests) => $requests->total() === 1);
+        $this->get($detailUrl, $ajax)->assertOk()->assertDontSee('name="submissionKey"', false)->assertSee('read-only');
+        $this->postJson('/auditee/evidence-requests/'.$audit->getKey().'/'.$entries[0]['id'], [
+            'version' => $audit->version, 'submissionKey' => (string) \Illuminate\Support\Str::uuid(), 'action' => 'submit',
+            'method' => 'digital-reference', 'notes' => 'Locked attempt'])->assertForbidden();
+        $audit->update(['departmentId' => new ObjectId()]);
+        $this->get($detailUrl, $ajax)->assertNotFound();
+        $this->get('/auditee/evidence-requests')->assertOk()->assertViewHas('summary', ['active' => 0, 'awaiting' => 0, 'submitted' => 0, 'completed' => 0]);
+        $person->update(['isActive' => false]);
+        $this->actingAs($person)->get('/auditee/evidence-requests')->assertForbidden();
+    }
+
+    public function test_evidence_popup_json_drafts_submission_validation_and_pagination(): void
+    {
+        [$admin, $auditor, $audit] = $this->fixture();
+        $person = User::create(['fullName' => 'Popup Recipient', 'roleId' => 3, 'isActive' => true, 'departmentId' => $audit->departmentId]);
+        $entries = collect(range(1, 13))->map(fn ($i) => ['id' => (string) \Illuminate\Support\Str::uuid(),
+            'auditeeId' => (string) $person->getKey(), 'description' => 'Request '.$i, 'status' => 'requested',
+            'referenceStandard' => 'ISO9001-9.2', 'responses' => [], 'allowUpload' => false])->all();
+        $audit->update(['evidenceRequests' => $entries]);
+        $this->actingAs($person)->get('/auditee/evidence-requests?page=2')->assertOk()
+            ->assertViewHas('requests', fn ($requests) => $requests->total() === 13 && $requests->count() === 1);
+        $url = '/auditee/evidence-requests/'.$audit->getKey().'/'.$entries[0]['id'];
+        $data = ['version' => $audit->version, 'submissionKey' => (string) \Illuminate\Support\Str::uuid(),
+            'method' => 'digital-reference', 'notes' => 'Permitted response', 'action' => 'draft'];
+        $this->postJson($url, $data)->assertOk()->assertJsonPath('message', 'Draft saved. You can return to finish your response.');
+        $this->assertSame('requested', $audit->fresh()->evidenceRequests[0]['status']);
+        $detailUrl = '/auditee/evidence-requests?requestId='.$entries[0]['id'];
+        $this->get($detailUrl, ['X-Requested-With' => 'XMLHttpRequest'])->assertOk()->assertSee('Permitted response');
+        $this->postJson($url, array_merge($data, ['action' => 'submit']))->assertConflict();
+        $data['version'] = $audit->fresh()->version;
+        $this->postJson($url, array_merge($data, ['method' => 'file']))->assertForbidden();
+        $this->postJson($url, array_merge($data, ['notes' => '']))->assertUnprocessable()->assertJsonValidationErrors('notes');
+        $this->postJson($url, array_merge($data, ['action' => 'submit']))->assertOk()->assertJsonPath('message', 'Evidence submitted for auditor review.');
+        $this->postJson($url, array_merge($data, ['action' => 'submit']))->assertOk()->assertJsonPath('message', 'Response already saved.');
+        $this->assertCount(1, $audit->fresh()->evidenceRequests[0]['responses']);
+        $this->get($detailUrl, ['X-Requested-With' => 'XMLHttpRequest'])->assertOk()->assertSee('Permitted response')->assertDontSee('name="submissionKey"', false);
+        $this->getJson('/auditee/evidence-requests?search[]=invalid')->assertUnprocessable();
+        $this->getJson('/auditee/evidence-requests?requestId=invalid')->assertUnprocessable();
     }
 
     public function test_auditee_requests_drafts_reviews_and_private_notes_are_scoped(): void
@@ -215,7 +342,7 @@ class AuditWorkflowMongoTest extends TestCase
         $this->get('/audits/'.$audit->getKey())->assertForbidden();
         $payload = ['submissionKey' => $key, 'method' => 'digital-reference', 'notes' => 'Factual response', 'reference' => 'Permitted code'];
         $this->post($url, $payload + ['version' => $audit->fresh()->version, 'action' => 'draft'])->assertRedirect()->assertSessionHasNoErrors();
-        $this->get('/auditee/evidence-requests')->assertOk()->assertSee('Factual response');
+        $this->get('/auditee/evidence-requests?requestId='.$entry['id'], ['X-Requested-With' => 'XMLHttpRequest'])->assertOk()->assertSee('Factual response');
         $this->assertSame('requested', $audit->fresh()->evidenceRequests[0]['status']);
         $this->post($url, $payload + ['version' => $audit->fresh()->version, 'action' => 'submit'])->assertRedirect()->assertSessionHasNoErrors();
         $this->post($url, $payload + ['version' => 1, 'action' => 'submit'])->assertRedirect()->assertSessionHasNoErrors();
@@ -234,7 +361,7 @@ class AuditWorkflowMongoTest extends TestCase
         $this->saveAction($audit, 'submit')->assertRedirect()->assertSessionHasNoErrors();
         $this->actingAs($admin);
         $this->saveAction($audit, 'accept', ['reviewNotes' => 'Accepted'])->assertRedirect()->assertSessionHasNoErrors();
-        $this->actingAs($person)->get('/auditee/evidence-requests')->assertOk()->assertSee('Original signature inspected')->assertDontSee('CONFIDENTIAL');
+        $this->actingAs($person)->get('/auditee/evidence-requests?requestId='.$entry['id'], ['X-Requested-With' => 'XMLHttpRequest'])->assertOk()->assertSee('Original signature inspected')->assertDontSee('CONFIDENTIAL');
         $this->get('/auditee/my-findings')->assertOk()->assertDontSee('Requirement reviewed');
         $publishUrl = '/audits/'.$audit->getKey().'/requests/'.$entry['id'].'/publish';
         $this->post($publishUrl, ['version' => $audit->fresh()->version, 'publicSummary' => 'Not authorized'])->assertForbidden();
@@ -256,7 +383,8 @@ class AuditWorkflowMongoTest extends TestCase
         $other = User::create(['fullName' => 'Other', 'roleId' => 3, 'isActive' => true, 'departmentId' => (string) $audit->departmentId]);
         $check = \App\Models\ComplianceCheck::create(['checkCode' => 'TEST-EVIDENCE', 'auditorId' => $auditor->getKey(), 'auditeeId' => $person->getKey(),
             'departmentId' => $audit->departmentId, 'referenceStandard' => 'ISO9001-9.2', 'result' => 'non_compliant', 'correctiveStatus' => 'open', 'linkedArchiveIds' => []]);
-        $this->actingAs($person)->get('/auditee/finding-details/'.$check->getKey())->assertOk();
+        $this->actingAs($person)->get('/auditee/finding-details/'.$check->getKey())
+            ->assertRedirect('/auditee/my-findings?detail='.$check->getKey());
         $key = (string) \Illuminate\Support\Str::uuid();
         $this->post('/auditee/finding-details/'.$check->getKey().'/response', ['submissionKey' => $key, 'method' => 'physical-original', 'notes' => 'Ready for inspection', 'availability' => 'available'])->assertRedirect()->assertSessionHasNoErrors();
         $this->assertSame('open', $check->fresh()->correctiveStatus);
@@ -298,8 +426,10 @@ class AuditWorkflowMongoTest extends TestCase
             ->assertViewHas('summary', fn ($summary) => $summary['total'] === 3);
         $this->get('/auditee/my-findings?archived=1')->assertOk()->assertSee('RESULT-CLOSED')->assertDontSee('RESULT-OPEN');
         $this->get('/auditee/my-findings?result=observation')->assertOk()->assertViewHas('checks', fn ($checks) => $checks->total() === 0);
-        $this->get('/auditee/finding-details/'.$open->getKey())->assertOk()->assertSee('Released explanation')->assertSee('Check item / requirement')->assertSee('Provide Corrective Evidence');
+        $this->get('/auditee/finding-details/'.$open->getKey())->assertRedirect('/auditee/my-findings?detail='.$open->getKey());
         $this->get('/auditee/finding-details/'.$open->getKey(), ['X-Requested-With' => 'XMLHttpRequest'])->assertOk()
+            ->assertViewIs('auditee.result-detail-content')->assertDontSee('<html', false)
+            ->assertSee('Released explanation')->assertSee('Check item / requirement')->assertSee('Provide Corrective Evidence')
             ->assertSee('data-result-detail', false)->assertSee('Evidence Reviewed')->assertSee('Review date: Not recorded');
         $this->postJson('/auditee/finding-details/'.$open->getKey().'/response', ['submissionKey' => (string) \Illuminate\Support\Str::uuid(),
             'method' => 'physical-original', 'availability' => 'available', 'notes' => 'Permitted original ready for review'])->assertOk()
@@ -331,6 +461,16 @@ class AuditWorkflowMongoTest extends TestCase
             ->assertRedirect()->assertSessionHasNoErrors();
         $this->assertSame(1, \App\Models\ArchiveDocument::count());
         $this->assertNotEmpty($audit->fresh()->evidenceRequests[0]['responses'][0]['archiveId']);
+        $detailUrl = '/auditee/evidence-requests?requestId='.$entry['id'];
+        $archiveId = $audit->fresh()->evidenceRequests[0]['responses'][0]['archiveId'];
+        $this->get($detailUrl, ['X-Requested-With' => 'XMLHttpRequest'])->assertOk()
+            ->assertSee('/api/v1/archives/'.$archiveId.'/download')->assertDontSee('encryptedPath');
+        // Even a stored link cannot expose an archive after its ownership changes.
+        $archive = \App\Models\ArchiveDocument::findOrFail($archiveId);
+        $archive->update(['uploadedByUserId' => $auditor->getKey()]);
+        $this->get($detailUrl, ['X-Requested-With' => 'XMLHttpRequest'])->assertOk()
+            ->assertDontSee('/api/v1/archives/'.$archiveId.'/download');
+        $this->getJson('/api/v1/archives/'.$archiveId.'/download')->assertNotFound();
         $this->assertNull($audit->fresh()->items[0]['result']);
         $this->assertSame(0, \App\Models\ComplianceCheck::count());
     }

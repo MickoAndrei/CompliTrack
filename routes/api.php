@@ -44,6 +44,15 @@ Route::prefix('v1')->group(function () {
         // Archive module
         Route::post('/archives/upload', [ArchiveController::class, 'upload']);
         Route::get('/archives', [ArchiveController::class, 'index']);
+        Route::get('/archives/tree', [\App\Http\Controllers\Api\V1\QmsArchiveController::class, 'tree']);
+        Route::get('/archives/organization', [\App\Http\Controllers\Api\V1\QmsArchiveController::class, 'organization']);
+        Route::patch('/archives/organization/{id}', [\App\Http\Controllers\Api\V1\QmsArchiveController::class, 'assign']);
+        Route::patch('/archives/categories/{id}', [\App\Http\Controllers\Api\V1\QmsArchiveController::class, 'updateCategory']);
+        Route::get('/archives/{id}', [\App\Http\Controllers\Api\V1\QmsArchiveController::class, 'show']);
+        Route::post('/archives/{id}/versions', [ArchiveController::class, 'version']);
+        Route::patch('/archives/{id}/permissions', [\App\Http\Controllers\Api\V1\QmsArchiveController::class, 'permissions']);
+        Route::post('/archives/{id}/share', [\App\Http\Controllers\Api\V1\QmsArchiveController::class, 'share']);
+        Route::delete('/archives/{id}/share/{auditId}', [\App\Http\Controllers\Api\V1\QmsArchiveController::class, 'revokeShare']);
         Route::get('/archives/{id}/download', [ArchiveController::class, 'download']);
         Route::get('/archives/{id}/verify-checksum', [ArchiveController::class, 'verifyChecksum']);
 
