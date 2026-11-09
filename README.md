@@ -110,6 +110,9 @@ For the development-only mock document importer, existing Admin/ATL reuse,
 representative organizational accounts, and audit/CAR scenarios, see
 [QMS_DEVELOPMENT_DATA.md](docs/QMS_DEVELOPMENT_DATA.md).
 
+The Super Admin dashboard metrics, organizational responsibility controls, and
+verification results are documented in [SUPER_ADMIN_DASHBOARD.md](docs/SUPER_ADMIN_DASHBOARD.md).
+
 CompliTrack uses both databases for different purposes:
 
 - **MongoDB** stores application data, including users, roles, departments,

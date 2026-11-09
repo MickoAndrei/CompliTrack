@@ -112,6 +112,7 @@ class QmsArchiveController extends Controller
         abort_unless((int) $request->user()->roleId === 0, 403);
         return response()->json(['users' => User::where('isActive', true)->get(['fullName', 'email', 'roleId', 'departmentId', 'archiveResponsibility', 'archiveUnitIds', 'archiveCollegeIds'])
             ->map(fn ($user) => ['_id' => (string) $user->getKey(), 'name' => $user->fullName, 'email' => $user->email, 'roleId' => $user->roleId,
+                'departmentId' => $user->departmentId ? (string) $user->departmentId : null,
                 'responsibility' => $user->archiveResponsibility ?: 'faculty_staff', 'unitIds' => array_map('strval', $user->archiveUnitIds ?? []), 'collegeIds' => array_map('strval', $user->archiveCollegeIds ?? [])]),
             'responsibilities' => config('qms.responsibilities')]);
     }

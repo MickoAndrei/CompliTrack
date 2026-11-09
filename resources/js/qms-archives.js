@@ -5,24 +5,34 @@ document.addEventListener('alpine:init', () => {
         detail: null, versions: [], activity: [], form: {}, previous: null, accessOptions: { accounts: [], audits: [] }, auditId: '', navExpanded: false,
         organization: null, selectedUser: '', responsibility: 'faculty_staff', scopeUnits: [], scopeColleges: [],
         requestNumber: 0,
-        async init() { await this.refreshTree(); await this.load(); },
+        async init() {
+            await this.refreshTree(); await this.load();
+            if (this.tree.canManageOrganization && new URLSearchParams(window.location.search).get('manage') === 'responsibilities') {
+                await this.manageOrganization();
+            }
+        },
         message(error) { return Object.values(error.response?.data?.errors || {}).flat().join(' ') || error.response?.data?.message || 'The request could not be completed. Please try again.'; },
         async refreshTree() {
             try { this.tree = (await window.axios.get('/api/v1/archives/tree')).data; }
             catch (error) { this.error = this.message(error); }
         },
-        async load(reset = false) {
-            if (reset) this.page = 1;
+        async load(reset = false, requestedPage = this.page) {
+            const page = reset ? 1 : Math.max(1, Number(requestedPage) || 1);
             const number = ++this.requestNumber;
             this.loading = true; this.error = '';
             try {
-                const params = { page: this.page, perPage: 12, search: this.search || undefined, unitId: this.unitId || undefined,
+                const params = { page, perPage: 12, search: this.search || undefined, unitId: this.unitId || undefined,
                     categoryId: this.categoryId || undefined, recordType: this.recordType || undefined, collegeId: this.collegeId || undefined };
                 const response = await window.axios.get('/api/v1/archives', { params });
                 if (number !== this.requestNumber) return;
                 this.documents = response.data.data; this.meta = response.data.meta;
+                this.page = Number(this.meta.currentPage) || page;
             } catch (error) { if (number === this.requestNumber) this.error = this.message(error); }
             finally { if (number === this.requestNumber) this.loading = false; }
+        },
+        goToPage(page) {
+            if (this.loading || page < 1 || page > (Number(this.meta.lastPage) || 1)) return;
+            return this.load(false, page);
         },
         get unit() { return this.tree.units.find(unit => unit._id === this.unitId); },
         get college() { return this.tree.colleges.find(college => college._id === this.collegeId); },

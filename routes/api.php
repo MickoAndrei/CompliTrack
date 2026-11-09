@@ -72,6 +72,9 @@ Route::prefix('v1')->group(function () {
 
         // Super Admin only
         Route::middleware('role:0')->group(function () {
+            Route::get('/system/dashboard', [\App\Http\Controllers\Api\V1\SuperAdminDashboardController::class, 'summary']);
+            Route::get('/system/dashboard/health', [\App\Http\Controllers\Api\V1\SuperAdminDashboardController::class, 'health']);
+            Route::get('/dashboard/health', [\App\Http\Controllers\Api\V1\SuperAdminDashboardController::class, 'health']);
             Route::get('/logs', [AuditLogController::class, 'index']);
             Route::get('/system/database-stats', DatabaseStatsController::class);
             Route::get('/system/health', function () {

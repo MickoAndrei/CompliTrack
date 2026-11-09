@@ -43,38 +43,40 @@
     $homePaths = [0 => '/super-admin/dashboard', 1 => '/admin/dashboard', 2 => '/auditor/dashboard', 3 => '/auditee/dashboard'];
     $userAvatarUrl = auth()->user()->avatarPath ? url('/api/v1/auth/avatar') : null;
     $userInitials = collect(explode(' ', auth()->user()->fullName ?? 'U'))->filter()->take(2)->map(fn ($part) => mb_substr($part, 0, 1))->implode('');
+    $navigationGroups = $roleId === 0 ? [
+        ['label' => null, 'items' => array_slice($menus[0], 0, 1)],
+        ['label' => 'Organization', 'items' => array_slice($menus[0], 1, 3)],
+        ['label' => 'Records & System', 'items' => array_slice($menus[0], 4)],
+    ] : [['label' => null, 'items' => $menus[$roleId] ?? []]];
 @endphp
 <aside x-cloak :class="{ 'open': sidebarOpen }"
-       class="sidebar fixed inset-y-0 left-0 z-50 flex w-64 -translate-x-full flex-col bg-ustp-navy text-white transition-transform duration-200 lg:static lg:z-auto lg:translate-x-0">
-    @if (in_array($roleId, [0, 2, 3], true))<div class="sidebar-primary">@endif
-        <a href="{{ $homePaths[$roleId] ?? '/login' }}" class="{{ in_array($roleId, [0, 2, 3], true) ? 'sidebar-header' : 'sidebar-brand' }}">
-            <span class="{{ in_array($roleId, [0, 2, 3], true) ? 'brand-emblem-svg' : ($roleId === 3 ? 'logo-slot logo-slot--sm logo-slot--dark' : 'brand-logo') }}">
-                @if (in_array($roleId, [2, 3], true))
-                    <img src="{{ asset('images/ustp-claveria-logo.jpg') }}" alt="USTP Claveria" class="auditor-brand-logo">
-                @elseif ($roleId === 0)
-                    <svg class="super-admin-brand-crest" viewBox="0 0 40 40" fill="none" role="img" aria-label="USTP logo"><circle cx="20" cy="20" r="18.5" stroke="#fab005" stroke-width="1.5" stroke-dasharray="2.5 2" fill="#04153b"/><circle cx="20" cy="20" r="14.5" fill="#00205b" stroke="#3b5998" stroke-width=".8"/><path d="M20 8 24 15H16L20 8Z" fill="#fff" fill-opacity=".85"/><text x="20" y="26" fill="#fab005" font-family="sans-serif" font-size="7.5" font-weight="800" text-anchor="middle" letter-spacing=".4">USTP</text><path d="M11 30c4 3 14 3 18 0" stroke="#fff" stroke-width="1.2" stroke-linecap="round"/></svg>
-                @else
-                    <img src="{{ asset('images/ustp-claveria-logo.jpg') }}" alt="USTP Claveria" class="{{ $roleId === 3 ? 'logo-slot-img' : 'brand-logo-img' }}">
-                @endif
+       class="sidebar app-sidebar fixed inset-y-0 left-0 z-50 flex w-64 -translate-x-full flex-col bg-ustp-navy text-white transition-transform duration-200 lg:static lg:z-auto lg:translate-x-0">
+    <div class="sidebar-primary">
+        <a href="{{ $homePaths[$roleId] ?? '/login' }}" class="sidebar-header">
+            <span class="brand-emblem-svg">
+                <img src="{{ asset('images/ustp-claveria-logo.jpg') }}" alt="USTP Claveria" class="sidebar-brand-logo" width="40" height="40">
             </span>
-            @if ($roleId === 1)
-                <span class="brand-text"><h1>Compli<span>Track</span></h1><p>Claveria Campus</p></span>
-            @else
-                <span class="{{ in_array($roleId, [0, 2, 3], true) ? 'super-admin-brand-copy' : '' }}">
-                    <span class="{{ in_array($roleId, [0, 2, 3], true) ? 'brand-title' : ($roleId === 3 ? 'brand-title brand-white' : 'brand-title') }}">Compli<span class="{{ in_array($roleId, [0, 2, 3], true) ? 'track-highlight' : ($roleId === 2 ? 'gold-text' : 'brand-gold') }}">Track</span></span>
-                    <span class="brand-subtitle">{{ in_array($roleId, [0, 2, 3], true) ? 'CLAVERIA CAMPUS' : 'Claveria Campus' }}</span>
-                </span>
-            @endif
+            <span class="super-admin-brand-copy">
+                <span class="brand-title">Compli<span class="track-highlight">Track</span></span>
+                <span class="brand-subtitle">CLAVERIA CAMPUS</span>
+            </span>
         </a>
         <nav class="{{ 'sidebar-nav' }}" aria-label="Main navigation">
-            @foreach ($menus[$roleId] ?? [] as [$label, $href, $icon])
+            @foreach ($navigationGroups as $group)
+            @if ($group['label'])
+                <details class="sidebar-section" @if (collect($group['items'])->contains(fn ($item) => request()->is(ltrim($item[1], '/'), ltrim($item[1], '/').'/*')) || request()->is('super-admin/dashboard')) open @endif>
+                    <summary>{{ $group['label'] }}<i data-lucide="chevron-down" aria-hidden="true"></i></summary>
+            @endif
+            @foreach ($group['items'] as [$label, $href, $icon])
                 @php($active = request()->is(ltrim($href, '/'), ltrim($href, '/').'/*'))
                 <a href="{{ $href }}" @if ($active) aria-current="page" @endif
-                   class="{{ in_array($roleId, [0, 2, 3], true) ? 'nav-link-item' : 'nav-item' }} {{ $active ? 'active' : '' }}">
-                    <i data-lucide="{{ $icon }}" class="{{ in_array($roleId, [0, 2, 3], true) ? 'nav-icon' : ($roleId === 2 ? 'nav-icon' : '') }} size-5 shrink-0"></i>
+                   class="nav-link-item {{ $active ? 'active' : '' }}">
+                    <i data-lucide="{{ $icon }}" class="nav-icon size-5 shrink-0"></i>
                     <span>{{ $label }}</span>
                 </a>
             @endforeach
+            @if ($group['label'])</details>@endif
+            @endforeach
         </nav>
-    @if (in_array($roleId, [0, 2, 3], true))</div>@endif
+    </div>
 </aside>

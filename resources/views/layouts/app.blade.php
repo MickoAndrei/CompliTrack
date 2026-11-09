@@ -27,6 +27,9 @@
         @endif
     @endauth
     @auth @if (in_array($portalRole, [2, 3], true))<link rel="stylesheet" href="{{ asset('css/auditor-ui.css') }}?v={{ filemtime(public_path('css/auditor-ui.css')) }}">@endif @endauth
+    @auth
+        <link rel="stylesheet" href="{{ asset('css/sidebar.css') }}?v={{ filemtime(public_path('css/sidebar.css')) }}">
+    @endauth
     @stack('styles')
 </head>
 <body class="min-h-screen" data-user-id="{{ auth()->id() }}" data-portal-role="{{ auth()->user()?->roleId }}">

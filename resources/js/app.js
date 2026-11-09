@@ -8,6 +8,7 @@ import './auditee-result-modal';
 import './auditee-evidence-preview';
 import './auditee-evidence-requests';
 import './qms-archives';
+import './super-admin-dashboard';
 
 window.Alpine = Alpine;
 

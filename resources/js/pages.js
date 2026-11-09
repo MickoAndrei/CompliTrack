@@ -229,6 +229,18 @@ document.addEventListener('alpine:init', () => {
 
     Alpine.data('profilePage', ({ avatarUrl }) => ({
         avatarUrl: avatarUrl || '',
+        photoPreviewError: false,
+        openPhotoPreview() {
+            if (!this.avatarUrl || this.$refs.photoPreview.open) return;
+            this.photoPreviewError = false;
+            this.$refs.photoPreview.showModal();
+        },
+        closePhotoOnBackdrop(event) {
+            const dialog = this.$refs.photoPreview;
+            const bounds = dialog.getBoundingClientRect();
+            if (event.target === dialog && (event.clientX < bounds.left || event.clientX > bounds.right
+                || event.clientY < bounds.top || event.clientY > bounds.bottom)) dialog.close();
+        },
         uploading: false,
         error: null,
         message: null,

@@ -127,11 +127,7 @@
         </div>
         <div class="flex flex-col gap-3 border-t border-slate-100 px-5 py-4 text-sm sm:flex-row sm:items-center sm:justify-between">
             <p class="text-ustp-muted"><span x-text="meta.total || 0"></span> records</p>
-            <div class="flex items-center gap-2">
-                <button type="button" @click="load(page - 1)" :disabled="page <= 1 || loading" class="rounded-lg border border-slate-200 px-3 py-2 disabled:opacity-40">Previous</button>
-                <span class="text-ustp-muted">Page <span x-text="page"></span> of <span x-text="meta.lastPage || 1"></span></span>
-                <button type="button" @click="load(page + 1)" :disabled="page >= (meta.lastPage || 1) || loading" class="rounded-lg border border-slate-200 px-3 py-2 disabled:opacity-40">Next</button>
-            </div>
+            <x-pagination-controls :label="$title.' pages'" />
         </div>
     </div>
     <template x-if="message"><div class="mt-4"><x-alert-banner type="success"><span x-text="message"></span></x-alert-banner></div></template>

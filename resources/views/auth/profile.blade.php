@@ -28,10 +28,12 @@
     <article class="super-admin-profile-card">
         <header class="super-admin-profile-identity">
             <div class="super-admin-profile-avatar">
+                <button type="button" class="profile-photo-open" @click="openPhotoPreview()" :disabled="!avatarUrl" aria-label="View full-size profile picture" aria-haspopup="dialog">
                 <img x-show="avatarUrl" :src="avatarUrl" alt="Profile photo" class="profile-photo" data-user-avatar>
                 <span x-show="!avatarUrl" class="super-admin-profile-crest" data-user-avatar-fallback aria-hidden="true">
                     <span>USTP</span>
                 </span>
+                </button>
                 <input x-ref="avatarInput" type="file" accept="image/jpeg,image/png,image/webp" class="sr-only" @change="uploadAvatar($event)">
                 <button type="button" class="super-admin-profile-camera" @click="$refs.avatarInput.click()" :disabled="uploading" aria-label="Upload or update profile picture">
                     <i data-lucide="camera" aria-hidden="true"></i>
@@ -39,7 +41,7 @@
             </div>
             <h2>{{ $profileUser->fullName }}</h2>
             <x-role-badge :role-id="$profileUser->roleId" class="super-admin-profile-role" :data-profile-role="(int) $profileUser->roleId" />
-            <p class="super-admin-profile-avatar-hint" x-text="uploading ? 'Uploading photo…' : (avatarUrl ? 'Select the camera to update your photo' : 'Select the camera to add a profile photo')"></p>
+            <p class="super-admin-profile-avatar-hint" x-text="uploading ? 'Uploading photo…' : (avatarUrl ? 'Select your photo to enlarge it, or the camera to update it' : 'Select the camera to add a profile photo')"></p>
         </header>
 
         <form method="POST" action="{{ route('profile.update') }}" class="super-admin-profile-form">
@@ -97,5 +99,10 @@
         </div>
         <p class="super-admin-switch-hint">Switch Account securely ends this session and returns you to sign in.</p>
     </article>
+    <dialog class="profile-photo-preview" x-ref="photoPreview" aria-labelledby="profile-photo-preview-title" @click="closePhotoOnBackdrop($event)">
+        <header><h3 id="profile-photo-preview-title">Profile picture</h3><button type="button" @click="$refs.photoPreview.close()" aria-label="Close profile picture"><i data-lucide="x" aria-hidden="true"></i></button></header>
+        <img :src="avatarUrl || null" alt="Full-size profile picture" x-show="!photoPreviewError" x-on:error="photoPreviewError = true">
+        <p x-show="photoPreviewError" x-cloak role="alert">This profile picture could not be loaded. Close the preview and try again.</p>
+    </dialog>
 </section>
 @endsection
