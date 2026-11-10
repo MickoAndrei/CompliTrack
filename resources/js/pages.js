@@ -1094,13 +1094,36 @@ document.addEventListener('alpine:init', () => {
         loading: false,
         submitted: false,
         error: null,
+        watch: null,
+        watchTimer: null,
+        checkingReset: false,
+        resetStatus: 'pending',
+        destroy() { window.clearInterval(this.watchTimer); },
+        async checkReset() {
+            if (!this.watch || this.checkingReset) return;
+            this.checkingReset = true;
+            try {
+                const { data } = await axios.post(apiPath('auth/password-reset-status'), { watch: this.watch });
+                this.resetStatus = data.status;
+                if (data.status === 'completed') {
+                    window.clearInterval(this.watchTimer);
+                    window.location.assign('/login?reset=success');
+                } else if (data.status === 'expired') window.clearInterval(this.watchTimer);
+            } catch { /* Keep the inbox view usable during a temporary connection failure. */ }
+            finally { this.checkingReset = false; }
+        },
         async submit() {
+            if (this.loading) return;
             this.loading = true;
             this.error = null;
             try {
                 await axios.get('/sanctum/csrf-cookie');
-                await axios.post(apiPath('auth/forgot-password'), { email: this.email });
+                const { data } = await axios.post(apiPath('auth/forgot-password'), { email: this.email });
                 this.submitted = true;
+                this.watch = data.watch;
+                this.resetStatus = 'pending';
+                window.clearInterval(this.watchTimer);
+                this.watchTimer = window.setInterval(() => this.checkReset(), 5000);
             } catch (error) {
                 this.error = responseMessage(error, 'We could not submit your request. Please try again.');
             } finally {

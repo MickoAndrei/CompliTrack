@@ -116,6 +116,11 @@ verification results are documented in [SUPER_ADMIN_DASHBOARD.md](docs/SUPER_ADM
 Super Admin account management, organizational validation, preservation rules, and
 test results are documented in [USER_MANAGEMENT_IMPLEMENTATION.md](docs/USER_MANAGEMENT_IMPLEMENTATION.md).
 
+The existing Admin account serves as the Audit Team Leader workspace. Its scoped
+dashboard, submitted-audit review popup, corrective-action monitoring, authorization
+boundaries, and verification results are documented in
+[ATL_WORKSPACE_IMPLEMENTATION.md](docs/ATL_WORKSPACE_IMPLEMENTATION.md).
+
 CompliTrack uses both databases for different purposes:
 
 - **MongoDB** stores application data, including users, roles, departments,
@@ -479,6 +484,10 @@ default Android-emulator API host at build time:
 `flutter run --dart-define=COMPLITRACK_API_URL=http://<your-host>:8000`.
 
 Notifications do not require Firebase or change streams. Closed-app OS push is not supported.
+
+Password-reset emails use a dedicated PHPMailer SMTP transport instead of writing
+reset links to logs. For Microsoft 365 OAuth configuration and the credential-safe
+`php artisan mail:check` command, see [PASSWORD_RESET_EMAIL.md](docs/PASSWORD_RESET_EMAIL.md).
 
 ### Notification service
 

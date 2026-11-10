@@ -52,13 +52,13 @@ class QmsArchiveMigration
         $plaintext = json_encode(['database' => $db->getDatabaseName(), 'migration' => self::NAME, 'documents' => $snapshot, 'indexes' => $indexes], JSON_THROW_ON_ERROR);
         $encryption = app(ArchiveEncryptionService::class);
         $encrypted = $encryption->encrypt($plaintext);
-        if (!hash_equals(hash('sha256', $plaintext), hash('sha256', $encryption->decrypt($encrypted['ciphertext'], $encrypted['iv'], $encrypted['tag'])))) {
+        if (!hash_equals(hash('sha256', $plaintext), hash('sha256', $encryption->decrypt($encrypted['ciphertext'], $encrypted['iv'], $encrypted['tag'], $encrypted['keyId'])))) {
             throw new \RuntimeException('Migration backup verification failed.');
         }
         $directory = config('qms.backup_directory', storage_path('app/private/qms-migration-backups'));
         if (!is_dir($directory)) { mkdir($directory, 0700, true); }
         $backup = $directory.'/'.self::NAME.'-'.gmdate('Ymd-His').'-'.bin2hex(random_bytes(4)).'.enc.json';
-        $payload = json_encode(['ciphertext' => base64_encode($encrypted['ciphertext']), 'iv' => $encrypted['iv'], 'tag' => $encrypted['tag'], 'sha256' => hash('sha256', $plaintext)], JSON_THROW_ON_ERROR);
+        $payload = json_encode(['ciphertext' => base64_encode($encrypted['ciphertext']), 'iv' => $encrypted['iv'], 'tag' => $encrypted['tag'], 'keyId' => $encrypted['keyId'], 'sha256' => hash('sha256', $plaintext)], JSON_THROW_ON_ERROR);
         if (file_put_contents($backup, $payload, LOCK_EX) !== strlen($payload)) { throw new \RuntimeException('Could not save migration backup.'); }
         $now = new UTCDateTime();
         $college = $db->colleges->findOne(['collegeCode' => 'CET']);

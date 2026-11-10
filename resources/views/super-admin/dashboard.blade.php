@@ -8,7 +8,7 @@
 @section('content')
 <section class="sa-overview" x-data="superAdminDashboard" :aria-busy="loading">
     <header class="sa-page-heading"><div><h2>Super Admin Dashboard</h2><p>College of Engineering and Technology · USTP Claveria</p><p x-show="data" x-cloak x-text="data ? `Records refreshed ${date(data.generatedAt)}` : ''"></p></div><button type="button" @click="load(); loadHealth()" :disabled="loading || healthLoading">Refresh overview</button></header>
-    <p class="sa-error" role="alert" x-show="error" x-cloak x-text="error"></p>
+    <p x-page-notice class="sa-error" role="alert" x-show="error" x-cloak x-text="error"></p>
     <p class="sr-only" role="status" x-show="loading">Loading dashboard records…</p>
     <div class="sa-stats">
         @foreach ([['totalUsers', 'Total Users', 'users', 'purple', 'All registered accounts'], ['cetDepartments', 'CET Departments', 'building-2', 'slate', 'Academic departments only'], ['activeAudits', 'Active Audits', 'clipboard-check', 'blue', 'Draft, in progress & awaiting review'], ['openCars', 'Open CARs', 'triangle-alert', 'danger', 'Open and in progress'], ['archivedDocuments', 'Archived Documents', 'archive', 'slate', 'Authorized records, including versions'], ['archiveStorageBytes', 'Archive Storage Usage', 'hard-drive', 'blue', 'Stored file sizes, including versions']] as [$key, $label, $icon, $color, $hint])
@@ -62,7 +62,7 @@
         </figure>
     </article>
     <article class="sa-panel sa-health" :aria-busy="healthLoading"><header><div><h3>System Health</h3><p>Refreshes automatically every minute</p></div><button type="button" class="sa-health-refresh" @click="loadHealth()" :disabled="healthLoading" aria-label="Refresh system health"><i data-lucide="refresh-cw" :class="{'is-spinning': healthLoading}" aria-hidden="true"></i></button></header>
-        <p class="sa-error" role="alert" x-show="healthError" x-cloak x-text="healthError"></p>
+        <p x-page-notice class="sa-error" role="alert" x-show="healthError" x-cloak x-text="healthError"></p>
         <x-dashboard-skeleton type="health" x-show="healthLoading" />
         <dl class="system-health-list" x-show="!healthLoading" x-cloak><template x-for="service in health?.components || []" :key="service.name"><div class="system-health-row"><dt x-text="service.name"></dt><dd class="system-health-status" :class="{'is-operational': service.status === 'Operational', 'is-unavailable': service.status === 'Unavailable', 'is-not-configured': ['Not Configured', 'Unknown'].includes(service.status), 'is-configured': service.status === 'Configured'}"><span class="system-health-dot" aria-hidden="true"></span><span x-text="service.status"></span></dd></div></template></dl>
         <p class="sr-only" role="status" x-show="healthLoading">Checking system services…</p>

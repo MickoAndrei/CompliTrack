@@ -91,7 +91,7 @@ async function loadPreview() {
         body.replaceChildren(content);
     } catch (error) {
         if (controller.signal.aborted || !preview.open) return;
-        body.innerHTML = '<div class="evidence-preview-notice" role="alert"><p>The evidence preview could not be loaded. The file may be unavailable or your access may have changed.</p><button type="button" class="workflow-secondary" data-evidence-preview-retry>Retry preview</button></div>';
+        body.innerHTML = '<div x-page-notice class="evidence-preview-notice" role="alert"><p>The evidence preview could not be loaded. The file may be unavailable or your access may have changed.</p><button type="button" class="workflow-secondary" data-evidence-preview-retry>Retry preview</button></div>';
     } finally {
         if (request === controller) body.setAttribute('aria-busy', 'false');
     }

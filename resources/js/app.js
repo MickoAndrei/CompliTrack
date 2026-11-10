@@ -1,4 +1,5 @@
 import './bootstrap';
+import './page-notices';
 import Alpine from 'alpinejs';
 import { createIcons, icons } from 'lucide';
 import './pages';
@@ -9,6 +10,9 @@ import './auditee-evidence-preview';
 import './auditee-evidence-requests';
 import './qms-archives';
 import './super-admin-dashboard';
+import './system-settings';
+import './atl-workspace';
+import './car-history';
 
 window.Alpine = Alpine;
 

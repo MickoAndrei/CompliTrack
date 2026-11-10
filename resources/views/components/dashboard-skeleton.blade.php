@@ -1,9 +1,9 @@
-@props(['type' => 'activity', 'columns' => 3])
+@props(['type' => 'activity', 'columns' => 3, 'rows' => 5])
 <div {{ $attributes->class(['sa-loading-placeholder', 'sa-skeleton-'.$type]) }} aria-hidden="true">
     @if ($type === 'table')
         <div class="responsive-table-wrapper"><table class="sa-skeleton-table">
             <thead><tr>@foreach (range(1, $columns) as $column)<th><span class="sa-skeleton sa-skeleton-name"></span></th>@endforeach</tr></thead>
-            <tbody>@foreach (range(1, 5) as $row)<tr>@foreach (range(1, $columns) as $column)<td><span class="sa-skeleton sa-skeleton-detail"></span></td>@endforeach</tr>@endforeach</tbody>
+            <tbody>@foreach (range(1, $rows) as $row)<tr>@foreach (range(1, $columns) as $column)<td><span class="sa-skeleton sa-skeleton-detail"></span></td>@endforeach</tr>@endforeach</tbody>
         </table></div>
     @elseif ($type === 'comparison')
         @foreach (range(1, 5) as $row)

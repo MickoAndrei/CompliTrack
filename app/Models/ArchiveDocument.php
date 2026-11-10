@@ -15,14 +15,14 @@ class ArchiveDocument extends Model
     protected $fillable = [
         'fileCode', 'originalName', 'encryptedPath', 'mimeType', 'fileSize',
         'checksum', 'departmentId', 'uploadedByUserId', 'referenceStandard',
-        'tags', 'isEncrypted', 'encryptionIv', 'encryptionTag', 'auditId', 'requestId',
+        'tags', 'isEncrypted', 'encryptionIv', 'encryptionTag', 'encryptionKeyId', 'auditId', 'requestId',
         'collegeId', 'ownershipVerified', 'recordType', 'title', 'description', 'categoryId',
         'documentReference', 'physicalLocation', 'signatureRequired', 'signatureStatus',
         'visibility', 'accessUserIds', 'downloadAllowed', 'copyAuthorized', 'sharedAuditIds',
         'versionGroupId', 'versionNumber', 'previousVersionId', 'qmsSchemaVersion',
     ];
 
-    protected $hidden = ['encryptedPath', 'encryptionIv', 'encryptionTag'];
+    protected $hidden = ['encryptedPath', 'encryptionIv', 'encryptionTag', 'encryptionKeyId'];
 
     protected $casts = [
         'departmentId' => NullableObjectId::class,

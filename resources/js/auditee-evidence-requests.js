@@ -34,7 +34,7 @@ async function loadRequest() {
         }
     } catch (error) {
         if (controller.signal.aborted || !modal.open) return;
-        body.innerHTML = '<div class="evidence-load-error" role="alert"><h3>Request unavailable</h3><p>This request could not be loaded. It may no longer be available to you.</p><button type="button" class="workflow-secondary" data-evidence-retry>Retry</button></div>';
+        body.innerHTML = '<div x-page-notice class="evidence-load-error" role="alert"><h3>Request unavailable</h3><p>This request could not be loaded. It may no longer be available to you.</p><button type="button" class="workflow-secondary" data-evidence-retry>Retry</button></div>';
     } finally {
         if (pendingDetail === controller) body.setAttribute('aria-busy', 'false');
     }

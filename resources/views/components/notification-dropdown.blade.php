@@ -1,5 +1,5 @@
-@props(['activity' => false])
-<div x-cloak x-show="open" class="header-notification-panel" :style="{ height: `${previewLimit() * 68 + 134}px` }" role="dialog" aria-label="{{ $activity ? 'Recent activity' : 'Notifications' }}" :aria-busy="loading">
+@props(['activity' => false, 'notificationsUrl' => '/auditee/notifications', 'compact' => false])
+<div x-cloak x-show="open" class="header-notification-panel" :style="{ height: `${({{ $compact ? 'true' : 'false' }} && !loading ? Math.max(1, Math.min(previewLimit(), previewItems().length)) : previewLimit()) * 68 + 134}px` }" role="dialog" aria-label="{{ $activity ? 'Recent activity' : 'Notifications' }}" :aria-busy="loading">
     <header>
         <svg class="header-notification-heading-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
         <h2>{{ $activity ? 'Recent activity' : 'Notifications' }}</h2>
@@ -12,7 +12,7 @@
         <template x-for="row in previewLimit()" :key="row"><div class="header-notification-skeleton" aria-hidden="true"><span></span><span></span><span></span></div></template>
     </div>
     <div x-show="!loading" class="header-notification-content" :class="{ 'is-empty': !error && previewItems().length === 0 }">
-        <p x-show="error" role="alert" class="header-notification-error" x-text="error"></p>
+        <p x-page-notice x-show="error" role="alert" class="header-notification-error" x-text="error"></p>
         <div x-show="!error && previewItems().length === 0" class="header-notification-empty">
             <svg class="header-notification-empty-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="m8 12 3 3 5-6"/></svg>
             <p>You're all caught up.</p>
@@ -35,6 +35,6 @@
         <button type="button" @click="previewPage--" :disabled="loading || previewPage <= 1" aria-label="Previous notifications">Previous</button>
         <span x-text="`${previewPage} / ${previewPages()}`"></span>
         <button type="button" @click="previewPage++" :disabled="loading || previewPage >= previewPages()" aria-label="Next notifications">Next</button>
-        <a href="{{ $activity ? '/super-admin/logs' : '/auditee/notifications' }}">{{ $activity ? 'View audit logs' : 'View all notifications' }}</a>
+        <a href="{{ $activity ? '/super-admin/logs' : $notificationsUrl }}">{{ $activity ? 'View audit logs' : 'View all notifications' }}</a>
     </footer>
 </div>

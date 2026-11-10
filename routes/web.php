@@ -14,7 +14,7 @@ Route::middleware('throttle:5,1')->group(function () {
     Route::post('/reset-password', [AuthController::class, 'resetPassword'])->name('password.update');
 });
 
-Route::middleware(['auth'])->group(function () {
+Route::middleware(['auth', \App\Http\Middleware\SystemAccess::class])->group(function () {
     Route::middleware('role:1,2')->group(function () {
         Route::post('/audits/{id}/requests', [\App\Http\Controllers\Web\AuditeeController::class, 'createRequest']);
         Route::post('/audits/{id}/requests/{requestId}/review', [\App\Http\Controllers\Web\AuditeeController::class, 'review']);
@@ -44,7 +44,7 @@ Route::middleware(['auth'])->group(function () {
         Route::view('/dashboard', 'admin.dashboard');
         Route::view('/departments', 'admin.departments');
         Route::view('/users', 'admin.users');
-        Route::view('/compliance-records', 'admin.compliance-records');
+        Route::get('/compliance-records', [\App\Http\Controllers\Web\AtlWorkspaceController::class, 'records']);
         Route::view('/archives', 'admin.archives');
         Route::view('/reports', 'admin.reports');
         Route::view('/notifications', 'admin.notifications');

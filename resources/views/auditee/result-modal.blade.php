@@ -3,7 +3,7 @@
             <header class="audit-result-modal-header"><div data-result-modal-heading><h2 id="audit-result-modal-title">Audit Result Details</h2></div><button type="button" data-result-modal-close aria-label="Close audit result details" class="result-modal-close">&times;</button></header>
             <div class="audit-result-modal-tabs" data-result-modal-tabs></div>
             <div class="audit-result-modal-body" data-result-modal-body tabindex="-1"></div>
-            <footer class="audit-result-modal-footer"><p data-result-modal-message role="status"></p><button type="button" data-result-modal-close class="workflow-secondary">Close</button></footer>
+            <footer class="audit-result-modal-footer"><p x-page-notice data-result-modal-message role="status"></p><button type="button" data-result-modal-close class="workflow-secondary">Close</button></footer>
         </div>
         <template data-result-modal-skeleton>
             <span class="sr-only" role="status">Loading audit result…</span>

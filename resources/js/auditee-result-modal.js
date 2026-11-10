@@ -50,7 +50,7 @@ async function loadDetail(selectedTab = 'overview') {
         }
     } catch (error) {
         if (error.name === 'AbortError' || !dialog.open) return;
-        body.innerHTML = '<div role="alert"><p>This audit result could not be loaded. It may no longer be available to you.</p><button type="button" class="workflow-secondary" data-result-modal-retry>Retry</button></div>';
+        body.innerHTML = '<div x-page-notice role="alert"><p>This audit result could not be loaded. It may no longer be available to you.</p><button type="button" class="workflow-secondary" data-result-modal-retry>Retry</button></div>';
     } finally {
         if (detailRequest === controller) body.setAttribute('aria-busy', 'false');
     }
@@ -87,7 +87,7 @@ async function loadUpload(url) {
         back.focus({ preventScroll: true });
     } catch (error) {
         if (error.name !== 'AbortError' && dialog.open) {
-            slot.innerHTML = '<div role="alert"><p>The upload form could not be loaded.</p><button type="button" class="workflow-secondary" data-result-upload-retry>Retry</button><button type="button" class="workflow-secondary" data-result-upload-back>Use a reference or original instead</button></div>';
+            slot.innerHTML = '<div x-page-notice role="alert"><p>The upload form could not be loaded.</p><button type="button" class="workflow-secondary" data-result-upload-retry>Retry</button><button type="button" class="workflow-secondary" data-result-upload-back>Use a reference or original instead</button></div>';
         }
     } finally {
         if (uploadRequest === controller) slot.setAttribute('aria-busy', 'false');

@@ -403,11 +403,11 @@ class QmsDevelopmentData
         }
         $plaintext = json_encode(['database' => $db->getDatabaseName(), 'documents' => $snapshot, 'indexes' => $indexes], JSON_THROW_ON_ERROR);
         $encryption = app(ArchiveEncryptionService::class); $encrypted = $encryption->encrypt($plaintext);
-        $payload = json_encode(['ciphertext' => base64_encode($encrypted['ciphertext']), 'iv' => $encrypted['iv'], 'tag' => $encrypted['tag'], 'sha256' => hash('sha256', $plaintext)], JSON_THROW_ON_ERROR);
+        $payload = json_encode(['ciphertext' => base64_encode($encrypted['ciphertext']), 'iv' => $encrypted['iv'], 'tag' => $encrypted['tag'], 'keyId' => $encrypted['keyId'], 'sha256' => hash('sha256', $plaintext)], JSON_THROW_ON_ERROR);
         $path = $this->private.'/before-seed-'.gmdate('Ymd-His').'-'.bin2hex(random_bytes(4)).'.enc.json';
         if (file_put_contents($path, $payload, LOCK_EX) !== strlen($payload)) { throw new RuntimeException('Cannot save development-data backup.'); }
         $saved = json_decode(file_get_contents($path), true, flags: JSON_THROW_ON_ERROR);
-        if (!hash_equals($saved['sha256'], hash('sha256', $encryption->decrypt(base64_decode($saved['ciphertext']), $saved['iv'], $saved['tag'])))) { throw new RuntimeException('Development-data backup verification failed.'); }
+        if (!hash_equals($saved['sha256'], hash('sha256', $encryption->decrypt(base64_decode($saved['ciphertext']), $saved['iv'], $saved['tag'], $saved['keyId'] ?? null)))) { throw new RuntimeException('Development-data backup verification failed.'); }
         return $path;
     }
     private function pdf(string $title, string $body): string

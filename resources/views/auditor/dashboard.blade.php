@@ -3,7 +3,7 @@
 @section('heading', 'Auditor Dashboard')
 @section('content')
 <section class="auditor-dashboard" x-data="auditorOverview()" x-init="load()" :aria-busy="loading">
-    <div x-cloak x-show="error" class="auditor-load-error" role="alert"><span x-text="error"></span><button @click="load()">Retry</button></div>
+    <div x-page-notice x-cloak x-show="error" class="auditor-load-error" role="alert"><span x-text="error"></span><button @click="load()">Retry</button></div>
     <div class="auditor-summary-grid">
         @foreach([['Total Checks', 'totalChecks', 'clipboard-check', ''], ['Compliant', 'compliantChecks', 'circle-check', 'auditor-green'], ['Pending Checks', 'pendingChecks', 'clock-3', ''], ['Nonconformities', 'nonconformities', 'circle-alert', 'auditor-red'], ['Open CARs', 'openCars', 'triangle-alert', 'auditor-red'], ['Closed CARs', 'closedCars', 'check-check', 'auditor-green']] as [$label, $key, $icon, $iconClass])
         <article class="auditor-summary-card"><div><h3>{{ $label }}</h3><i data-lucide="{{ $icon }}" class="{{ $iconClass }}" aria-hidden="true"></i></div><strong x-text="loading ? '—' : (stats.{{ $key }} ?? 0)"></strong></article>

@@ -1,0 +1,53 @@
+.app-settings-page {
+  width: 100%;
+  margin: 0 auto;
+  padding: 0 0 24px;
+  max-width: none;
+  color: #071b3d;
+}
+.app-settings-page .settings-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px 16px; }
+.app-settings-page .settings-card { min-width: 0; padding: 18px; border: 1px solid #e8eef5; border-radius: 13px; background: #fff; box-shadow: 0 1px 3px rgba(15, 23, 42, .035); }
+.app-settings-page .settings-card h2 { margin: 0; font-size: 13px; font-weight: 700; line-height: 1.5; }
+.app-settings-page .settings-card p { margin: 3px 0 0; color: #7386a2; font-size: 11px; line-height: 1.6; }
+.app-settings-page .settings-card-heading, .app-settings-page .settings-card-footer { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.app-settings-page .settings-card-footer { margin-top: 13px; padding-top: 13px; border-top: 1px solid #edf2f7; min-height: 36px; }
+.app-settings-page .settings-control-label { font-size: 12px; font-weight: 600; }
+.app-settings-page .settings-muted { color: #7386a2; font-size: 12px; line-height: 1.5; }
+.app-settings-page .settings-switch { display: inline-flex; align-items: center; flex-shrink: 0; width: 36px; height: 20px; padding: 2px; border: 0; border-radius: 20px; background: #64748b; }
+.app-settings-page .settings-switch span { width: 16px; height: 16px; border-radius: 50%; background: white; box-shadow: 0 1px 2px #00000014; }
+.app-settings-page .settings-switch[aria-checked="true"] { background: #10b981; }
+.app-settings-page .settings-switch[aria-checked="true"] span { transform: translateX(16px); }
+.app-settings-page .settings-button { flex-shrink: 0; padding: 6px 13px; border: 1px solid transparent; border-radius: 7px; font-family: inherit; font-size: 11px; font-weight: 600; line-height: 1.3; }
+.app-settings-page .settings-button-outline { border-color: #0f1d36; background: #fff; color: #071b3d; }
+.app-settings-page .settings-button-gold { background: #ffbf24; color: #071b3d; }
+.app-settings-page .settings-button-danger { padding: 8px 14px; background: #f53f46; color: #fff; }
+.app-settings-page button:disabled, .app-settings-page input:disabled { cursor: not-allowed; }
+.app-settings-page .settings-text-button { padding: 2px 0; border: 0; background: transparent; color: #2563eb; font-size: 10px; font-weight: 600; cursor: pointer; }
+.app-settings-page .settings-text-button:hover { text-decoration: underline; }
+.app-settings-page button:focus-visible { outline: 2px solid #2563eb; outline-offset: 4px; }
+.app-settings-page .settings-danger-card { grid-column: 1 / -1; border-color: #ffbfc2; }
+.app-settings-page .settings-danger-card h2 { color: #e00000; }
+.app-settings-page .settings-danger-card ul { margin: 6px 0 0; padding-left: 17px; color: #7386a2; font-size: 11px; line-height: 1.8; list-style: disc; }
+.app-settings-page .settings-danger-card strong { font-weight: 600; }
+.app-settings-page .settings-availability { margin: 12px 0 0; color: #64748b; font-size: 11px; line-height: 1.6; }
+@media (max-width: 760px) {
+  .app-settings-page .settings-grid { grid-template-columns: 1fr; }
+  .app-settings-page .settings-card { padding: 16px; }
+}
+@media (max-width: 400px) {
+  .app-settings-page .settings-card-footer { flex-wrap: wrap; }
+}
+.app-settings-page button:disabled { opacity: .55; cursor: wait; }
+.app-settings-page .settings-feedback { margin: 0 0 14px; padding: 12px 15px; border: 1px solid #dbeafe; border-radius: 9px; background: #eff6ff; color: #1e40af; font-size: 12px; line-height: 1.6; }
+.app-settings-page .settings-success { background: #ecfdf5; border-color: #a7f3d0; color: #065f46; }
+.app-settings-page .settings-error { background: #fef2f2; border-color: #fecaca; color: #991b1b; }
+.app-settings-page .settings-card .settings-warning { color: #92400e; }
+.app-settings-page .settings-secondary-action { margin-top: 10px; }
+.app-settings-page .settings-dialog { position: fixed; margin: auto; width: min(460px, calc(100vw - 32px)); max-height: calc(100vh - 32px); overflow: auto; padding: 24px; border: 1px solid #e2e8f0; border-radius: 14px; color: #071b3d; background: white; box-shadow: 0 20px 70px #071b3d33; }
+.app-settings-page .settings-dialog::backdrop { background: #071b3d88; }
+.app-settings-page .settings-dialog h2 { font-size: 18px; font-weight: 700; }
+.app-settings-page .settings-dialog p { margin: 10px 0 16px; font-size: 13px; color: #64748b; line-height: 1.6; }
+.app-settings-page .settings-dialog label { display: block; margin: 14px 0 6px; font-size: 12px; font-weight: 600; }
+.app-settings-page .settings-dialog input { width: 100%; border: 1px solid #cbd5e1; border-radius: 7px; padding: 9px 12px; font-size: 14px; }
+.app-settings-page input:focus-visible { outline: 2px solid #2563eb; outline-offset: 2px; }
+

@@ -133,7 +133,7 @@ class UserManagementMongoTest extends TestCase
         $this->patchJson('/api/v1/users/'.$atl->getKey(), ['roleId' => 2])->assertUnprocessable();
         $this->patchJson('/api/v1/users/'.$atl->getKey(), ['departmentId' => (string) $this->units[1]->getKey()])->assertUnprocessable();
         $this->assertSame(1, $atl->fresh()->roleId);
-        $this->actingAs($atl)->patchJson('/api/v1/users/'.$atl->getKey(), ['isActive' => false])->assertNotFound();
+        $this->actingAs($atl)->patchJson('/api/v1/users/'.$atl->getKey(), ['isActive' => false])->assertForbidden();
     }
 
     public function test_deactivation_reactivation_and_inactive_department_cannot_be_bypassed_by_edit(): void
@@ -182,6 +182,19 @@ class UserManagementMongoTest extends TestCase
         $this->getJson('/api/v1/users/'.$user->getKey())->assertOk()->assertJsonFragment(['action' => 'Sent password reset link']);
     }
 
+    public function test_password_changes_do_not_create_return_or_log_reset_credentials(): void
+    {
+        Hash::driver('bcrypt')->setRounds(12);
+        \Illuminate\Support\Facades\Log::spy();
+        $count = PasswordResetToken::count();
+        $this->patchJson('/api/v1/auth/password', ['currentPassword' => 'Existing-test-password!',
+            'password' => 'Replacement-password!123', 'password_confirmation' => 'Replacement-password!123'])
+            ->assertOk()->assertJsonMissingPath('test_reset_link')->assertJsonMissingPath('stored_in');
+        $this->assertSame($count, PasswordResetToken::count());
+        $this->assertTrue(Hash::check('Replacement-password!123', $this->super->fresh()->password));
+        \Illuminate\Support\Facades\Log::shouldNotHaveReceived('info');
+    }
+
     public function test_reset_link_can_be_used_once_and_expired_links_cannot_change_credentials(): void
     {
         $user = $this->account(); $query = [];
@@ -200,6 +213,54 @@ class UserManagementMongoTest extends TestCase
         PasswordResetToken::create(['email' => $user->email, 'token' => hash('sha256', $query['token']), 'createdAt' => now()->subMinutes(11)]);
         $this->postJson('/api/v1/auth/reset-password', $payload)->assertUnprocessable();
         $this->assertSame($hash, $user->fresh()->password);
+    }
+
+    public function test_ngrok_reset_link_and_original_device_completion_tracking(): void
+    {
+        config(['app.url' => 'https://undercook-ecosystem-detract.ngrok-free.dev']);
+        $user = $this->account();
+        $request = $this->postJson('/api/v1/auth/forgot-password', ['email' => $user->email])->assertOk();
+        $watch = $request->json('watch');
+        $this->assertMatchesRegularExpression('/^[a-f0-9]{64}$/', $watch);
+        $query = [];
+        Notification::assertSentOnDemand(PasswordResetLink::class, function ($notification, $channels, $notifiable) use (&$query) {
+            $url = $notification->toMail($notifiable)->actionUrl;
+            $this->assertStringStartsWith('https://undercook-ecosystem-detract.ngrok-free.dev/reset-password?', $url);
+            parse_str(parse_url($url, PHP_URL_QUERY), $query);
+            return true;
+        });
+        $this->assertNotSame($watch, $query['token']);
+        $this->postJson('/api/v1/auth/password-reset-status', ['watch' => $watch])->assertOk()->assertJson(['status' => 'pending'])->assertJsonMissingPath('token')->assertJsonMissingPath('email');
+        Hash::driver('bcrypt')->setRounds(12);
+        $this->postJson('/api/v1/auth/reset-password', $query + ['password' => 'Replacement-password!123', 'password_confirmation' => 'Replacement-password!123'])->assertOk();
+        $this->postJson('/api/v1/auth/password-reset-status', ['watch' => $watch])->assertOk()->assertJson(['status' => 'completed']);
+        $this->assertTrue(Hash::check('Replacement-password!123', $user->fresh()->password));
+    }
+
+    public function test_email_link_reset_on_another_device_completes_the_inbox_watch(): void
+    {
+        $user = $this->account();
+        $watch = $this->postJson('/api/v1/auth/forgot-password', ['email' => $user->email])->json('watch');
+        $query = [];
+        Notification::assertSentOnDemand(PasswordResetLink::class, function ($notification, $channels, $notifiable) use (&$query) {
+            parse_str(parse_url($notification->toMail($notifiable)->actionUrl, PHP_URL_QUERY), $query);
+            return true;
+        });
+        Hash::driver('bcrypt')->setRounds(12);
+        $this->post('/reset-password', $query + ['password' => 'Replacement-password!123', 'password_confirmation' => 'Replacement-password!123'])->assertRedirect('/login');
+        $this->postJson('/api/v1/auth/password-reset-status', ['watch' => $watch])->assertOk()->assertJsonPath('status', 'completed');
+    }
+
+    public function test_reset_watch_does_not_disclose_accounts_or_authorize_password_changes(): void
+    {
+        $watch = $this->postJson('/api/v1/auth/forgot-password', ['email' => 'missing@example.test'])->assertOk()->json('watch');
+        $this->postJson('/api/v1/auth/password-reset-status', ['watch' => $watch])->assertOk()->assertExactJson(['status' => 'pending']);
+        $this->postJson('/api/v1/auth/password-reset-status', ['watch' => str_repeat('0', 64)])->assertOk()->assertExactJson(['status' => 'expired']);
+        $this->postJson('/api/v1/auth/password-reset-status', ['watch' => 'invalid'])->assertUnprocessable();
+        $this->postJson('/api/v1/auth/reset-password', ['email' => $this->super->email, 'token' => $watch, 'password' => 'Replacement-password!123', 'password_confirmation' => 'Replacement-password!123'])->assertUnprocessable();
+        $this->travel(11)->minutes();
+        $this->postJson('/api/v1/auth/password-reset-status', ['watch' => $watch])->assertOk()->assertJsonPath('status', 'expired');
+        $this->travelBack();
     }
 
     public function test_staff_may_belong_to_the_verified_college_office_without_becoming_a_college_officer(): void

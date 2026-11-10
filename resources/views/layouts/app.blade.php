@@ -9,6 +9,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Poppins:wght@600;700&display=swap" rel="stylesheet">
     @vite(['resources/css/app.css', 'resources/js/app.js'])
+    <link rel="stylesheet" href="{{ asset('css/page-notices.css') }}?v={{ filemtime(public_path('css/page-notices.css')) }}">
     @guest
         <link rel="stylesheet" href="{{ asset('css/auth-login.css') }}">
     @endguest
@@ -27,6 +28,7 @@
         @endif
     @endauth
     @auth @if (in_array($portalRole, [2, 3], true))<link rel="stylesheet" href="{{ asset('css/auditor-ui.css') }}?v={{ filemtime(public_path('css/auditor-ui.css')) }}">@endif @endauth
+    @auth @if ($portalRole === 1)<link rel="stylesheet" href="{{ asset('css/admin-ui.css') }}?v={{ filemtime(public_path('css/admin-ui.css')) }}">@endif @endauth
     @auth
         <link rel="stylesheet" href="{{ asset('css/sidebar.css') }}?v={{ filemtime(public_path('css/sidebar.css')) }}">
     @endauth
@@ -57,5 +59,6 @@
         @yield('content')
     @endauth
     @stack('scripts')
+    @auth @if ($portalRole === 1)<x-atl-review-modal />@endif @endauth
 </body>
 </html>

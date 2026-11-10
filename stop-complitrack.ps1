@@ -4,6 +4,7 @@ Set-Location $repoRoot
 $laravelPidFile = Join-Path $repoRoot ".laravel.pid"
 $vitePidFile = Join-Path $repoRoot ".vite.pid"
 $realtimePidFile = Join-Path $repoRoot ".realtime.pid"
+$schedulerPidFile = Join-Path $repoRoot ".scheduler.pid"
 
 function Test-CompliTrackProcess([int]$processId) {
     try {
@@ -82,6 +83,7 @@ function Stop-PortListener([int]$port) {
 Stop-PidFile $laravelPidFile
 Stop-PidFile $vitePidFile
 Stop-PidFile $realtimePidFile
+Stop-PidFile $schedulerPidFile
 
 # Also stop services that were started before PID files were written or restored.
 Stop-PortListener 8000

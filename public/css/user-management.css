@@ -24,7 +24,7 @@
 .um-table strong { display:block; min-width:110px; color:#00205b; font-size:13px; }
 .um-table small { display:block; margin-top:5px; font-size:10px; color:#64748b; }
 .um-table tbody tr:hover { background:#fafcff; }
-.um-role { display:inline-block; justify-self:start; color:#00205b; background:#eef3fa; border-radius:6px; padding:5px 8px; white-space:nowrap; }
+.um-role { display:inline-block; justify-self:start; border-radius:9999px; padding:5px 8px; white-space:nowrap; }
 .um-status { display:inline-block; justify-self:start; color:#15803d; background:#f0fdf4; border-radius:20px; padding:5px 9px; }
 .um-status.is-inactive { color:#64748b; background:#f1f5f9; }
 .um-menu-trigger { padding:2px 12px; font-size:25px; background:transparent; color:#00205b; border:1px solid #e2e8f0; }

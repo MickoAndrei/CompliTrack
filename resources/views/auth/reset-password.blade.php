@@ -12,10 +12,10 @@
             </div>
 
             @if (session('status'))
-                <div class="reset-status" role="status" data-auto-dismiss>{{ session('status') }}</div>
+                <div x-page-notice class="reset-status" role="status" data-auto-dismiss>{{ session('status') }}</div>
             @endif
             @if ($errors->any())
-                <div class="status-toast" role="alert" data-auto-dismiss>{{ $errors->first() }}</div>
+                <div x-page-notice class="status-toast" role="alert" data-auto-dismiss>{{ $errors->first() }}</div>
             @endif
 
             <form method="POST" action="{{ route('password.update') }}" class="auth-form reset-auth-form" id="resetPasswordForm" novalidate>

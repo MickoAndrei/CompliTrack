@@ -6,6 +6,8 @@ use DateTimeInterface;
 use App\Models\ComplianceCheck;
 use App\Models\Department;
 use App\Models\User;
+use App\Models\Audit;
+use App\Support\MongoId;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 
@@ -32,7 +34,12 @@ class ReportGeneratorService
         $openOverSevenDays = (clone $checks)->where('correctiveStatus', 'open')
             ->where('createdAt', '<', now()->utc()->subDays(7))
             ->count();
-        $activeAudits = $openCars;
+        $auditQuery = match ((int) $actor->roleId) {
+            0 => Audit::query(),
+            1, 2 => app(AtlWorkspace::class)->audits($actor),
+            default => Audit::whereRaw(['_id' => null]),
+        };
+        $activeAudits = $auditQuery->whereIn('status', ['draft', 'ready', 'submitted', 'returned'])->count();
 
         // MongoDB can contain both BSON dates and legacy ISO date strings. Read
         // timestamped users and normalize dates in PHP so mixed representations
@@ -73,7 +80,7 @@ class ReportGeneratorService
 
         $departmentCompliance = $departments->map(function (Department $department) use ($checks) {
             $departmentChecks = (clone $checks)
-                ->where('departmentId', $department->getKey())
+                ->whereIn('departmentId', [MongoId::parse((string) $department->getKey()), (string) $department->getKey()])
                 ->get(['createdAt', 'result', 'correctiveStatus']);
             $total = $departmentChecks->count();
             $compliant = $departmentChecks->where('result', 'compliant')->count();
@@ -87,6 +94,7 @@ class ReportGeneratorService
             return [
                 'departmentName' => $department->departmentName,
                 'departmentCode' => $department->departmentCode,
+                'assessedChecks' => $total,
                 'compliancePercentage' => $total === 0 ? 0.0 : round(($compliant / $total) * 100, 1),
                 'openCarAgingDays' => $agingDays,
             ];
@@ -107,6 +115,7 @@ class ReportGeneratorService
 
                 return [
                     'month' => $month->format('M'),
+                    'assessedChecks' => $total,
                     'compliancePercentage' => $total === 0
                         ? 0.0
                         : round(($compliant / $total) * 100, 1),

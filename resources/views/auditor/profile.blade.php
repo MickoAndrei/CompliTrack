@@ -6,7 +6,7 @@
         </button>
         <input x-ref="avatarInput" type="file" accept="image/jpeg,image/png,image/webp" class="sr-only" @change="uploadAvatar($event)">
         <h2>{{ $profileUser->fullName }}</h2><span class="auditor-role-badge">Auditor</span>
-        <p x-cloak x-show="error || message" x-text="error || message" role="status"></p>
+        <p x-page-notice x-cloak x-show="error || message" x-text="error || message" role="status"></p>
     </div>
     @include('auditor.audit-feedback')
     <form method="POST" action="{{ route('profile.password.update') }}" class="auditor-password-form">

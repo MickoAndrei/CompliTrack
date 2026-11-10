@@ -7,6 +7,6 @@
         'info' => 'border-info/20 bg-info/5 text-info',
     ];
 @endphp
-<div {{ $attributes->merge(['class' => 'rounded-xl border px-4 py-3 text-sm '.$styles[$type]]) }} role="alert">
+<div x-page-notice="'{{ $type }}'" {{ $attributes->merge(['class' => 'rounded-xl border px-4 py-3 text-sm '.$styles[$type]]) }} role="alert">
     {{ $slot }}
 </div>

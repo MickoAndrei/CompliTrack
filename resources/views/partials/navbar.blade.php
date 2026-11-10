@@ -25,13 +25,13 @@
                 </button>
                 <x-notification-dropdown :activity="true" />
             </div>
-        @elseif ($roleId === 3)
+        @elseif (in_array($roleId, [1, 3], true))
             <div class="relative" x-data="auditeeNotifications()" @click.outside="close()" @keydown.escape.window="close()">
-                <button type="button" @click="toggle()" class="notification-bell-btn" :aria-label="unreadCount > 0 ? `Notifications, ${unreadCount} unread` : 'Notifications'" :aria-expanded="open.toString()" aria-haspopup="true">
+                <button type="button" @click="toggle()" class="{{ $roleId === 1 ? 'notif-btn' : 'notification-bell-btn' }}" :aria-label="unreadCount > 0 ? `Notifications, ${unreadCount} unread` : 'Notifications'" :aria-expanded="open.toString()" aria-haspopup="dialog">
                     <i data-lucide="bell" class="size-5"></i>
                     <span x-show="unreadCount > 0" x-cloak class="header-notification-count" aria-hidden="true" x-text="unreadCount > 99 ? '99+' : unreadCount"></span>
                 </button>
-                <x-notification-dropdown />
+                <x-notification-dropdown :notifications-url="$roleId === 1 ? '/admin/notifications' : '/auditee/notifications'" :compact="$roleId === 1" />
             </div>
         @else
             <a href="{{ match ($roleId) { 1 => '/admin/notifications', 2 => '/auditor/notifications', 3 => '/auditee/notifications', default => '/profile' } }}" class="{{ $roleId === 1 ? 'notif-btn' : 'notification-bell-btn' }}" x-data="notificationBadge()" :aria-label="unreadCount > 0 ? `Notifications, ${unreadCount} unread` : 'Notifications'">
@@ -39,7 +39,7 @@
                 <span x-show="unreadCount > 0" x-cloak class="header-notification-count" aria-hidden="true" x-text="unreadCount > 99 ? '99+' : unreadCount"></span>
             </a>
         @endif
-        @if (in_array($roleId, [0, 2, 3], true))
+        @if (in_array($roleId, [0, 1, 2, 3], true))
             <div class="header-divider"></div>
             <a href="/profile" class="header-user-badge" aria-label="Open my profile">
                 @if ($userAvatarUrl)

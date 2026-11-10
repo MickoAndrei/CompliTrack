@@ -98,6 +98,7 @@ class AuthController extends Controller
         $user->save();
 
         $reset->delete();
+        $this->passwordResets->complete($reset->token);
         $this->auditLogs->record($request, 'Reset password via web', 'user', $user->getKey());
 
         return redirect()->route('login')->with('status', 'Password set! Login now.');

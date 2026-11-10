@@ -37,7 +37,7 @@
                 @endforeach
             </div>
         </form>
-        <div data-results-error hidden role="alert">Results could not be updated. <button type="button" data-results-retry class="workflow-secondary">Retry</button></div>
+        <div x-page-notice data-results-error hidden role="alert">Results could not be updated. <button type="button" data-results-retry class="workflow-secondary">Retry</button></div>
         <span class="sr-only" data-results-status role="status"></span>
         <div class="results-table-wrapper" role="region" aria-label="Legacy results and findings" tabindex="0">
             <table class="data-table results-table"><caption class="sr-only">Legacy compliance checks; accepted workspace decisions are listed separately above.</caption><thead><tr><th scope="col">Audit Item</th><th scope="col">Audit Result</th><th scope="col">Corrective Action Status</th></tr></thead><tbody data-results-rows>

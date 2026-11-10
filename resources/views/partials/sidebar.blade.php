@@ -13,9 +13,11 @@
         1 => [
             ['Dashboard', '/admin/dashboard', 'layout-dashboard'],
             ['Audit Assignments', '/audits', 'clipboard-list'],
+            ['Audit Reviews', '/audits?view=reviews', 'clipboard-check'],
+            ['Corrective Monitoring', '/admin/compliance-records?monitor=1', 'triangle-alert'],
+            ['Compliance Records', '/admin/compliance-records', 'list-checks'],
             ['Departments', '/admin/departments', 'building-2'],
             ['Users', '/admin/users', 'users'],
-            ['Compliance Records', '/admin/compliance-records', 'clipboard-check'],
             ['Archives', '/admin/archives', 'archive'],
             ['Reports', '/admin/reports', 'chart-no-axes-combined'],
             ['Notifications', '/admin/notifications', 'bell'],
@@ -57,6 +59,13 @@
             </span>
         </a>
         <nav class="{{ 'sidebar-nav' }}" aria-label="Main navigation">
+            @if($roleId === 1)
+                    @foreach($menus[$roleId] as [$label, $href, $icon])
+                    @php($path = ltrim(parse_url($href, PHP_URL_PATH), '/'))
+                    @php($active = request()->is($path, $path.'/*') && (parse_url($href, PHP_URL_QUERY) ?? '') === http_build_query(request()->only(['view', 'monitor'])))
+                    <a href="{{ $href }}" @if($active) aria-current="page" @endif class="nav-link-item {{ $active ? 'active' : '' }}"><i data-lucide="{{ $icon }}" class="nav-icon size-5 shrink-0" aria-hidden="true"></i><span>{{ $label }}</span></a>
+                    @endforeach
+            @else
             @foreach ($menus[$roleId] ?? [] as [$label, $href, $icon])
                 @php($active = request()->is(ltrim($href, '/'), ltrim($href, '/').'/*'))
                 <a href="{{ $href }}" @if ($active) aria-current="page" @endif
@@ -65,6 +74,7 @@
                     <span>{{ $label }}</span>
                 </a>
             @endforeach
+            @endif
         </nav>
     </div>
 </aside>

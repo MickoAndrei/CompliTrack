@@ -19,11 +19,12 @@ Route::prefix('v1')->group(function () {
     ]));
 
     // Auth (public)
-    Route::post('/auth/login', [AuthController::class, 'login'])->middleware('throttle:5,1');
+    Route::post('/auth/login', [AuthController::class, 'login'])->middleware(['throttle:5,1', \App\Http\Middleware\SystemAccess::class]);
     Route::post('/auth/forgot-password', [AuthController::class, 'forgotPassword']);
     Route::post('/auth/reset-password', [AuthController::class, 'resetPassword']);
+    Route::post('/auth/password-reset-status', [AuthController::class, 'resetStatus'])->middleware('throttle:60,1');
 
-    Route::middleware(['auth:sanctum,api', EnsureUserIsActive::class])->group(function () {
+    Route::middleware(['auth:sanctum,api', EnsureUserIsActive::class, \App\Http\Middleware\SystemAccess::class])->group(function () {
         Route::get('/auth/me', [AuthController::class, 'me']);
         Route::get('/auth/avatar', [AuthController::class, 'avatar']);
         Route::post('/auth/logout', [AuthController::class, 'logout']);
@@ -34,12 +35,17 @@ Route::prefix('v1')->group(function () {
         Route::middleware('role:0,1,2,3')->get('/directory/departments', [DepartmentController::class, 'index']);
         Route::middleware('role:0')->get('/directory/organization', [DepartmentController::class, 'organizationSummary']);
 
-        // Super Admin + Admin: user & department management
+        // Admin/ATL directories are read-only; account and department writes belong to Super Admin.
+        Route::middleware('role:1')->get('/admin/workspace', [\App\Http\Controllers\Web\AtlWorkspaceController::class, 'summary']);
         Route::middleware('role:0,1')->group(function () {
-            Route::apiResource('users', UserController::class)->parameters(['users' => 'id']);
-            Route::post('/users/{id}/reset-password', [UserController::class, 'resetPassword']);
-            Route::apiResource('departments', DepartmentController::class)->parameters(['departments' => 'id']);
+            Route::apiResource('users', UserController::class)->only(['index', 'show'])->parameters(['users' => 'id']);
+            Route::apiResource('departments', DepartmentController::class)->only(['index', 'show'])->parameters(['departments' => 'id']);
             Route::post('/notifications/broadcast', [NotificationController::class, 'broadcast']);
+        });
+        Route::middleware('role:0')->group(function () {
+            Route::apiResource('users', UserController::class)->only(['store', 'update', 'destroy'])->parameters(['users' => 'id']);
+            Route::post('/users/{id}/reset-password', [UserController::class, 'resetPassword']);
+            Route::apiResource('departments', DepartmentController::class)->only(['store', 'update', 'destroy'])->parameters(['departments' => 'id']);
         });
 
         // Archive module
@@ -73,6 +79,11 @@ Route::prefix('v1')->group(function () {
 
         // Super Admin only
         Route::middleware('role:0')->group(function () {
+            Route::get('/settings', [\App\Http\Controllers\Api\V1\SettingsController::class, 'show']);
+            Route::patch('/settings', [\App\Http\Controllers\Api\V1\SettingsController::class, 'update']);
+            Route::post('/settings/backup', [\App\Http\Controllers\Api\V1\SettingsController::class, 'backup']);
+            Route::post('/settings/rotate-key', [\App\Http\Controllers\Api\V1\SettingsController::class, 'rotate'])->middleware('throttle:5,1');
+            Route::post('/settings/wipe', [\App\Http\Controllers\Api\V1\SettingsController::class, 'wipe'])->middleware('throttle:3,1');
             Route::get('/system/dashboard', [\App\Http\Controllers\Api\V1\SuperAdminDashboardController::class, 'summary']);
             Route::get('/system/dashboard/health', [\App\Http\Controllers\Api\V1\SuperAdminDashboardController::class, 'health']);
             Route::get('/dashboard/health', [\App\Http\Controllers\Api\V1\SuperAdminDashboardController::class, 'health']);

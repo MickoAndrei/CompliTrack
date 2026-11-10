@@ -8,7 +8,7 @@
 <x-resource-page :skeleton-loading="true" title="Departments" description="Departments registered in the CET compliance workspace." endpoint="departments" :allow-department-create="true" :allow-department-actions="true" :actor-role-id="auth()->user()->roleId" :columns="[['key' => 'departmentCode', 'label' => 'Code'], ['key' => 'departmentName', 'label' => 'Department'], ['key' => 'collegeName', 'label' => 'College'], ['key' => 'campusName', 'label' => 'Campus'], ['key' => 'isActive', 'label' => 'Status']]" />
 <article class="sa-panel sa-organization" x-data="superAdminOrganization" :aria-busy="loading">
     <header><div><h3>Organizational Responsibilities</h3><p>Five CET academic departments and a separate college-level Office of the Dean.</p></div></header>
-    <p class="sr-only" role="status" x-show="loading">Loading assigned responsibilities…</p><p class="sa-error" role="alert" x-show="error" x-cloak x-text="error"></p>
+    <p class="sr-only" role="status" x-show="loading">Loading assigned responsibilities…</p><p x-page-notice class="sa-error" role="alert" x-show="error" x-cloak x-text="error"></p>
     <x-dashboard-skeleton type="table" :columns="3" x-show="loading" />
     <div class="sa-organization-records" x-show="!loading && !error" x-cloak>
     <div class="responsive-table-wrapper"><table><thead><tr><th>Academic Department</th><th>Department Head</th><th>Department Secretary</th></tr></thead><tbody><template x-for="unit in tree.units.filter(unit => unit.unitType === 'academic_department')" :key="unit._id"><tr><td x-text="unit.name"></td><td x-text="names('department_head', unit._id)"></td><td x-text="names('department_secretary', unit._id)"></td></tr></template></tbody></table></div>

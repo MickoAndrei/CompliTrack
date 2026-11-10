@@ -46,7 +46,7 @@
     <dialog id="evidence-request-modal" class="evidence-modal" aria-labelledby="evidence-modal-title" @if(request()->filled('requestId')) data-initial-request="{{ '/auditee/evidence-requests?'.http_build_query(request()->only(['auditId', 'requestId'])) }}" @endif>
         <header class="evidence-modal-header"><div><p class="evidence-eyebrow">During Audit</p><h2 id="evidence-modal-title">Evidence Request Details</h2></div><button type="button" class="evidence-modal-close" data-evidence-close aria-label="Close evidence request">&times;</button></header>
         <div class="evidence-modal-body" data-evidence-body tabindex="-1"></div>
-        <footer class="evidence-modal-footer"><p role="status" data-evidence-message></p><button type="button" class="workflow-secondary" data-evidence-close>Close</button></footer>
+        <footer class="evidence-modal-footer"><p x-page-notice role="status" data-evidence-message></p><button type="button" class="workflow-secondary" data-evidence-close>Close</button></footer>
     </dialog>
 </div>
 @endsection

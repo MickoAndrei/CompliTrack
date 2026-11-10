@@ -1,7 +1,7 @@
 @props(['roleId', 'heading' => null, 'subheading' => null])
 @php($visualRole = (int) $roleId === 3 ? 2 : (int) $roleId)
 @php($panelClass = match ($visualRole) { 0, 2 => 'app-view-panel active', 1 => 'view-section active', 3 => 'view-panel active', default => '' })
-<section class="{{ $panelClass }}" x-data="dashboardPage({ roleId: {{ (int) $roleId }}, heading: @js($heading), subheading: @js($subheading) })" x-init="load()">
+<section class="{{ $panelClass }} {{ (int) $roleId === 1 ? 'admin-dashboard' : '' }}" x-data="dashboardPage({ roleId: {{ (int) $roleId }}, heading: @js($heading), subheading: @js($subheading) })" x-init="load()" :aria-busy="loading">
     <template x-if="error">
         <div class="mb-5">
             <x-alert-banner type="error"><span x-text="error"></span></x-alert-banner>
@@ -15,8 +15,8 @@
         <template x-for="card in cards" :key="card.key">
             <article class="{{ match ($visualRole) { 0, 2 => 'metric-stat-card', 1 => 'stat-card', 3 => 'kpi-card', default => 'rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200/70' } }}">
                 @if ((int) $roleId === 1)
-                    <span class="stat-icon blue"><i :data-lucide="card.icon"></i></span>
-                    <div class="stat-info"><h3 x-text="loading ? '—' : (stats[card.key] ?? 0)"></h3><p x-text="card.label"></p></div>
+                    <div class="admin-stat-heading"><h3 x-text="card.label"></h3><span class="stat-icon" :class="{ purple: card.key === 'totalAuditors', blue: card.key === 'totalAuditees', green: card.key === 'complianceRate', amber: card.key === 'openCars' }"><i :data-lucide="card.icon" aria-hidden="true"></i></span></div>
+                    <strong class="admin-stat-number" x-text="loading ? '—' : (stats[card.key] ?? 0) + (card.key === 'complianceRate' ? '%' : '')"></strong>
                 @elseif (in_array((int) $roleId, [0, 2, 3], true))
                     <div class="metric-info"><span class="metric-label" x-text="card.label"></span><span class="metric-number color-purple" x-text="loading ? '—' : (stats[card.key] ?? 0)"></span></div>
                     <div class="metric-icon-box purple"><i :data-lucide="card.icon"></i></div>
@@ -34,7 +34,7 @@
         <div class="flex items-center justify-between"><div><p class="text-sm text-ustp-muted">Personal compliance rate</p><p class="mt-1 font-heading text-3xl font-bold text-ustp-navy" x-text="`${stats.complianceRate || 0}%`"></p></div><i data-lucide="chart-no-axes-column-increasing" class="size-8 text-ustp-gold"></i></div>
         <div class="mt-4 h-3 overflow-hidden rounded-full bg-slate-100"><div class="h-full rounded-full bg-ustp-navy transition-all" :style="`width: ${Math.min(100, stats.complianceRate || 0)}%`"></div></div>
     </div>
-    <div class="mt-6 grid gap-6 xl:grid-cols-2">
+    <div class="mt-6 grid gap-6 {{ (int) $roleId === 1 ? '' : 'xl:grid-cols-2' }}">
         <article class="{{ in_array((int) $roleId, [0, 2, 3], true) ? 'content-card' : (in_array((int) $roleId, [1, 2], true) ? 'card' : 'rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200/70') }}">
             <div class="mb-4 flex items-center justify-between">
                 <div><h3 class="font-heading text-lg font-semibold text-ustp-dark">Recent compliance checks</h3><p class="text-sm text-ustp-muted">Latest activity available to your role</p></div>
@@ -51,13 +51,15 @@
                 </table>
             </div>
         </article>
-        <article class="{{ in_array((int) $roleId, [0, 2, 3], true) ? 'content-card' : (in_array((int) $roleId, [1, 2], true) ? 'card' : 'rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200/70') }}">
+        @if ((int) $roleId !== 1)
+        <article class="{{ in_array((int) $roleId, [0, 2, 3], true) ? 'content-card' : 'card' }}">
             <h3 class="font-heading text-lg font-semibold text-ustp-dark">Quick actions</h3>
             <p class="mt-1 text-sm text-ustp-muted">Go directly to common tasks.</p>
             <div class="mt-5 grid gap-3 sm:grid-cols-2">
                 <template x-for="action in actions" :key="action.href"><a :href="action.href" class="flex items-center gap-3 rounded-xl border border-slate-200 p-4 transition hover:border-ustp-navy hover:bg-ustp-light"><i :data-lucide="action.icon" class="size-5 text-ustp-navy"></i><span class="text-sm font-semibold" x-text="action.label"></span></a></template>
             </div>
         </article>
+        @endif
     </div>
     <div x-show="reportData && [0, 1].includes(roleId)" class="mt-6 grid gap-6 xl:grid-cols-2">
         <article class="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200/70">

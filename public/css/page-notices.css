@@ -1,0 +1,10 @@
+.page-notice-source { display:none !important; }
+.page-notification { position:fixed; inset:auto 24px auto auto; box-sizing:border-box; display:flex; align-items:flex-start; flex-wrap:wrap; gap:10px; width:min(384px,calc(100vw - 32px)); margin:0; padding:16px 18px 16px 24px; border:0; border-left:4px solid #ffc72c; border-radius:8px; background:#00205b; color:white; box-shadow:0 10px 25px #051b442e; z-index:10000; font-family:Inter,sans-serif; font-size:13px; font-weight:500; line-height:1.6; }
+.page-notification > span { flex:1; min-width:0; overflow-wrap:anywhere; }
+.page-notification.is-error { border-left-color:#f87171; }
+.page-notification.is-warning { border-left-color:#ffc72c; }
+.page-notification-close { flex:0 0 24px; border:0; background:transparent; color:white; font-size:22px; line-height:1; cursor:pointer; }
+.page-notification-actions { display:flex; flex-wrap:wrap; gap:12px; width:100%; }
+.page-notification-actions button { border:0; background:transparent; color:#ffc72c; font:inherit; text-decoration:underline; cursor:pointer; }
+.page-notification button:focus-visible { outline:2px solid #ffc72c; outline-offset:3px; }
+@media(max-width:600px) { .page-notification { right:16px; } }

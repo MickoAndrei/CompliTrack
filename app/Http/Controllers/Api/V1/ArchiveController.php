@@ -165,6 +165,7 @@ class ArchiveController extends Controller
                 'isEncrypted' => true,
                 'encryptionIv' => $encrypted['iv'],
                 'encryptionTag' => $encrypted['tag'],
+                'encryptionKeyId' => $encrypted['keyId'],
                 'auditId' => $audit ? (string) $audit->getKey() : null,
                 'requestId' => $data['requestId'] ?? null,
             ]);
@@ -266,7 +267,7 @@ class ArchiveController extends Controller
             if (!$this->writeEncryptedFile($path, $encrypted['ciphertext'])) { throw new \RuntimeException('Unable to save encrypted archive.'); }
             $fileData = ['originalName' => basename($file->getClientOriginalName()), 'encryptedPath' => $path,
                 'mimeType' => self::MIME_TYPES[$extension], 'fileSize' => $file->getSize(), 'checksum' => hash('sha256', $file->getContent()),
-                'isEncrypted' => true, 'encryptionIv' => $encrypted['iv'], 'encryptionTag' => $encrypted['tag'], 'copyAuthorized' => true];
+                'isEncrypted' => true, 'encryptionIv' => $encrypted['iv'], 'encryptionTag' => $encrypted['tag'], 'encryptionKeyId' => $encrypted['keyId'], 'copyAuthorized' => true];
         }
         $metadata = [
             'fileCode' => $code, 'title' => $data['title'], 'originalName' => $data['title'], 'description' => $data['description'] ?? null,
@@ -332,6 +333,7 @@ class ArchiveController extends Controller
             $ciphertext,
             $archive->encryptionIv,
             $archive->encryptionTag,
+            $archive->encryptionKeyId,
         );
         if (! hash_equals($archive->checksum, hash('sha256', $plaintext))) {
             throw new \RuntimeException('Archive checksum verification failed.');

@@ -5,7 +5,7 @@
         <article><div><span>{{ $label }}</span><strong x-text="summary?.{{ $key }} ?? '—'"></strong></div><i data-lucide="{{ $icon }}" aria-hidden="true"></i></article>
         @endforeach
     </div>
-    <p class="um-notice" role="status" x-show="successPopupVisible" x-cloak x-text="successPopupMessage"></p>
+    <p x-page-notice="successPopupType" class="um-notice" role="status" x-show="successPopupVisible" x-cloak x-text="successPopupMessage"></p>
     <div class="um-filters">
         <label class="um-search">Search users<input type="search" x-model="search" @input.debounce.350ms="load(1)" maxlength="255" placeholder="Name, email or user code"></label>
         <label>Primary role<select x-model="filters.roleId" @change="load(1)"><option value="">All roles</option>@foreach ([0 => 'Super Admin', 1 => 'Admin', 2 => 'Auditor', 3 => 'Auditee'] as $id => $name)<option value="{{ $id }}">{{ $name }}</option>@endforeach</select></label>
@@ -15,14 +15,14 @@
         <button class="um-secondary" type="button" @click="clearUserFilters()">Clear filters</button>
     </div>
     <div class="um-loading" x-show="loading"><span class="sr-only" role="status">Loading users...</span><x-dashboard-skeleton type="table" :columns="7" /></div>
-    <div class="um-error" role="alert" x-show="error" x-cloak><p x-text="error"></p><button class="um-secondary" type="button" @click="load()">Retry</button></div>
+    <div x-page-notice class="um-error" role="alert" x-show="error" x-cloak><p x-text="error"></p><button class="um-secondary" type="button" @click="load()">Retry</button></div>
     <p class="um-empty" x-show="!loading && !error && rows.length === 0" x-cloak>No users match these filters. Try a different search or clear the filters.</p>
     <div class="um-table-wrap" x-show="!loading && !error && rows.length" x-cloak>
         <table class="um-table"><thead><tr><th>Full Name</th><th>Email</th><th>Primary Role</th><th>Organizational Responsibility</th><th>Assigned College / Department / Office</th><th>Account Status</th><th><span class="sr-only">Actions</span></th></tr></thead>
             <tbody><template x-for="row in rows" :key="row._id"><tr>
                 <td data-label="Full Name"><strong x-text="row.fullName"></strong><small x-text="row.userCode || 'No user code recorded'"></small></td>
                 <td data-label="Email" x-text="row.email"></td>
-                <td data-label="Primary Role"><span class="um-role" x-text="roleName(row.roleId)"></span><small x-show="row.isAuditTeamLeader">Audit Team Leader</small></td>
+                <td data-label="Primary Role"><span class="um-role" :class="roleClass(row.roleId)" x-text="roleName(row.roleId)"></span><small x-show="row.isAuditTeamLeader">Audit Team Leader</small></td>
                 <td data-label="Organizational Responsibility" x-text="responsibilityName(row.archiveResponsibility)"></td>
                 <td data-label="Assigned Organization" x-text="assignmentNames(row)"></td>
                 <td data-label="Account Status"><span class="um-status" :class="{'is-inactive': !row.isActive}" x-text="row.isActive ? 'Active' : 'Inactive'"></span></td>
@@ -41,7 +41,7 @@
     <form @submit.prevent="saveUser()">
         <header><div><span class="um-eyebrow">USER ACCOUNT</span><h2 id="um-editor-title" x-text="userForm._id ? 'Edit User' : 'Create User'"></h2><p>Account identity, organizational assignment and security.</p></div><button class="um-close" type="button" :disabled="saving" @click="$refs.userEditor.close()" aria-label="Close user editor">&#215;</button></header>
         <div class="um-dialog-body">
-            <div class="um-error" role="alert" tabindex="-1" x-show="formError" x-cloak><p x-text="formError"></p><ul><template x-for="(errors, field) in fieldErrors" :key="field"><li x-text="errors.join(' ')"></li></template></ul></div>
+            <div x-page-notice class="um-error" role="alert" tabindex="-1" x-show="formError" x-cloak><p x-text="formError"></p><ul><template x-for="(errors, field) in fieldErrors" :key="field"><li x-text="errors.join(' ')"></li></template></ul></div>
             <fieldset :disabled="saving"><legend>Account Information</legend><div class="um-fields"><label>Full name<input x-model="userForm.fullName" required maxlength="255" autocomplete="name" :aria-invalid="!!fieldErrors.fullName"></label><label>Email address<input x-model="userForm.email" type="email" required maxlength="255" autocomplete="email" :aria-invalid="!!fieldErrors.email"></label></div><p x-show="originalUser?.userCode" x-text="`User code: ${originalUser?.userCode || ''}`"></p></fieldset>
             <fieldset :disabled="saving"><legend>Organizational Assignment</legend><div class="um-fields">
                 <label>Organizational responsibility<select x-model="userForm.archiveResponsibility" @change="changeResponsibility()" :disabled="Number(userForm.roleId) === 2"><option value="">Not assigned</option><template x-for="responsibility in options.responsibilities" :key="responsibility"><option :value="responsibility" x-text="responsibilityName(responsibility)"></option></template></select></label>
@@ -60,7 +60,7 @@
 </dialog>
 <dialog class="um-dialog" x-ref="userDetails" aria-labelledby="um-details-title" @close="detailRequest++">
     <header><div><span class="um-eyebrow">ACCOUNT OVERVIEW</span><h2 id="um-details-title">User Details</h2></div><button class="um-close" type="button" @click="$refs.userDetails.close()" aria-label="Close user details">&#215;</button></header>
-    <div class="um-dialog-body" :aria-busy="detailLoading"><x-dashboard-skeleton type="activity" x-show="detailLoading" /><p class="um-error" role="alert" x-show="detailError" x-cloak x-text="detailError"></p>
+    <div class="um-dialog-body" :aria-busy="detailLoading"><x-dashboard-skeleton type="activity" x-show="detailLoading" /><p x-page-notice class="um-error" role="alert" x-show="detailError" x-cloak x-text="detailError"></p>
         <template x-if="details"><div class="um-details-content">
             <section><h3>Account Information</h3><dl class="um-detail-grid">@foreach (['fullName' => 'Full name', 'email' => 'Email', 'userCode' => 'User code'] as $key => $label)<div><dt>{{ $label }}</dt><dd x-text="details.{{ $key }} || 'Not recorded'"></dd></div>@endforeach<div><dt>Primary role</dt><dd x-text="details.scope.primaryRole"></dd></div><div><dt>Account status</dt><dd x-text="details.isActive ? 'Active' : 'Inactive'"></dd></div><div><dt>Created</dt><dd x-text="userDate(details.createdAt || details.created_at)"></dd></div><div><dt>Last login</dt><dd x-text="userDate(details.lastLoginAt)"></dd></div><div><dt>Last updated</dt><dd x-text="userDate(details.updatedAt || details.updated_at)"></dd></div></dl></section>
             <section><h3>Organizational Responsibilities</h3><p x-text="responsibilityName(details.archiveResponsibility)"></p><p x-text="assignmentNames(details)"></p><p x-show="details.officeName" x-text="details.officeName"></p></section>
@@ -70,5 +70,5 @@
     </div><footer><button class="um-secondary" type="button" @click="$refs.userDetails.close()">Close</button></footer>
 </dialog>
 <dialog class="um-dialog um-confirm" x-ref="userAction" aria-labelledby="um-action-title" @cancel="if (saving) $event.preventDefault()">
-    <header><h2 id="um-action-title" x-text="action === 'reset' ? 'Send password reset link?' : action === 'deactivate' ? 'Deactivate account?' : 'Reactivate account?'"></h2></header><div class="um-dialog-body"><p x-text="actionTarget ? `${actionTarget.fullName} · ${actionTarget.email}` : ''"></p><p x-show="action === 'deactivate'">This user will lose access. Their records and relationships will be retained.</p><p x-show="action === 'reset'">Send a secure, time-limited link to the account email. The current password stays valid until the user completes the reset.</p><p class="um-error" role="alert" x-show="actionError" x-text="actionError"></p></div><footer><button class="um-secondary" type="button" :disabled="saving" @click="$refs.userAction.close()">Cancel</button><button class="um-primary" type="button" :disabled="saving" @click="confirmUserAction()" x-text="saving ? 'Working...' : 'Confirm'"></button></footer>
+    <header><h2 id="um-action-title" x-text="action === 'reset' ? 'Send password reset link?' : action === 'deactivate' ? 'Deactivate account?' : 'Reactivate account?'"></h2></header><div class="um-dialog-body"><p x-text="actionTarget ? `${actionTarget.fullName} · ${actionTarget.email}` : ''"></p><p x-show="action === 'deactivate'">This user will lose access. Their records and relationships will be retained.</p><p x-show="action === 'reset'">Send a secure, time-limited link to the account email. The current password stays valid until the user completes the reset.</p><p x-page-notice class="um-error" role="alert" x-show="actionError" x-text="actionError"></p></div><footer><button class="um-secondary" type="button" :disabled="saving" @click="$refs.userAction.close()">Cancel</button><button class="um-primary" type="button" :disabled="saving" @click="confirmUserAction()" x-text="saving ? 'Working...' : 'Confirm'"></button></footer>
 </dialog>

@@ -12,6 +12,7 @@ $npmCommand = (Get-Command npm.cmd -ErrorAction SilentlyContinue).Source
 $laravelPidFile = Join-Path $repoRoot ".laravel.pid"
 $vitePidFile = Join-Path $repoRoot ".vite.pid"
 $realtimePidFile = Join-Path $repoRoot ".realtime.pid"
+$schedulerPidFile = Join-Path $repoRoot ".scheduler.pid"
 
 function Test-PortInUse([int]$port) {
     try {
@@ -258,6 +259,21 @@ if (Test-PortInUse $realtimePort) {
 }
 
 Write-Host ""
+Write-Host "Starting nightly-backup scheduler..."
+$schedulerRunning = $false
+if (Test-Path -LiteralPath $schedulerPidFile) {
+    $schedulerProcessId = 0
+    if ([int]::TryParse((Get-Content -LiteralPath $schedulerPidFile -Raw).Trim(), [ref]$schedulerProcessId)) {
+        $schedulerInfo = Get-CimInstance Win32_Process -Filter "ProcessId = $schedulerProcessId" -ErrorAction SilentlyContinue
+        $schedulerRunning = $schedulerInfo -and ([string]$schedulerInfo.CommandLine).Contains($repoRoot) -and ([string]$schedulerInfo.CommandLine).Contains('schedule:work')
+    }
+}
+if (-not $schedulerRunning) {
+    $schedulerArtisan = Join-Path $repoRoot "artisan"
+    $schedulerProcess = Start-Process -FilePath "php" -ArgumentList "`"$schedulerArtisan`" schedule:work" -WorkingDirectory $repoRoot -WindowStyle Hidden -RedirectStandardOutput "$logDir\scheduler.log" -RedirectStandardError "$logDir\scheduler.err.log" -PassThru
+    $schedulerProcess.Id | Set-Content -LiteralPath $schedulerPidFile
+}
+
 Write-Host "Building frontend..."
 $buildArgs = "/d /s /c `"`"$npmCommand`" run build > `"$logDir\frontend-build.log`" 2>&1`""
 & $env:ComSpec $buildArgs | Out-Null

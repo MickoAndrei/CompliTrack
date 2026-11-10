@@ -13,16 +13,16 @@
     $avatarUrl = $profileUser->avatarPath ? url('/api/v1/auth/avatar') : null;
 @endphp
 <section class="super-admin-profile-page" x-data="profilePage({ avatarUrl: @js($avatarUrl) })">
-    <div x-cloak x-show="error || message" x-transition class="profile-feedback" :class="error ? 'is-error' : 'is-success'" :role="error ? 'alert' : 'status'" aria-live="polite">
+    <div x-page-notice="error ? 'error' : 'success'" x-cloak x-show="error || message" x-transition class="profile-feedback" :class="error ? 'is-error' : 'is-success'" :role="error ? 'alert' : 'status'" aria-live="polite">
         <span x-text="error || message"></span>
         <button type="button" @click="error = null; message = null" aria-label="Dismiss message"><i data-lucide="x" aria-hidden="true"></i></button>
     </div>
 
     @if (session('status'))
-        <div class="profile-feedback is-success" role="status">{{ session('status') }}</div>
+        <div x-page-notice class="profile-feedback is-success" role="status">{{ session('status') }}</div>
     @endif
     @if ($profileUser->passwordChangeRequired)
-        <div class="profile-feedback is-error" role="alert">Your administrator issued a temporary password. Change it below before continuing to use CompliTrack.</div>
+        <div x-page-notice class="profile-feedback is-error" role="alert">Your administrator issued a temporary password. Change it below before continuing to use CompliTrack.</div>
     @endif
 
     <article class="super-admin-profile-card">
@@ -102,7 +102,7 @@
     <dialog class="profile-photo-preview" x-ref="photoPreview" aria-labelledby="profile-photo-preview-title" @click="closePhotoOnBackdrop($event)">
         <header><h3 id="profile-photo-preview-title">Profile picture</h3><button type="button" @click="$refs.photoPreview.close()" aria-label="Close profile picture"><i data-lucide="x" aria-hidden="true"></i></button></header>
         <img :src="avatarUrl || null" alt="Full-size profile picture" x-show="!photoPreviewError" x-on:error="photoPreviewError = true">
-        <p x-show="photoPreviewError" x-cloak role="alert">This profile picture could not be loaded. Close the preview and try again.</p>
+        <p x-page-notice x-show="photoPreviewError" x-cloak role="alert">This profile picture could not be loaded. Close the preview and try again.</p>
     </dialog>
 </section>
 @endsection

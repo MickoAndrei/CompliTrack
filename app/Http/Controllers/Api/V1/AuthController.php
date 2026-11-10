@@ -26,6 +26,10 @@ class AuthController extends Controller
             return response()->json(['message' => 'Invalid email or password.'], 401);
         }
 
+        if ((int) $user->roleId !== 0 && (app(\App\Services\SystemSettingsService::class)->read()['maintenanceEnabled'] ?? false)) {
+            abort(503, 'CompliTrack is undergoing maintenance. Please try again later.');
+        }
+
         if ((int) $user->roleId === 0 && ! $user->isActive) {
             $user->isActive = true;
         }
@@ -83,20 +87,8 @@ class AuthController extends Controller
         $user->password = Hash::make($validated['password'], ['rounds' => 12]);
         $user->save();
 
-        $rawToken = \Illuminate\Support\Str::random(64);
-        \App\Models\PasswordResetToken::create([
-            'email' => strtolower($user->email),
-            'token' => hash('sha256', $rawToken),
-            'createdAt' => now(),
-        ]);
-        $resetLink = url("/reset-password?token={$rawToken}&email={$user->email}");
-
-        \Illuminate\Support\Facades\Log::info("TEST RESET LINK for {$user->email}: {$resetLink}");
-
         return response()->json([
             'message' => 'Password updated successfully.',
-            'test_reset_link' => $resetLink, // <-- this is what you give to user for testing
-            'stored_in' => 'storage/logs/laravel.log + audit_logs collection'
         ]);
     }
 
@@ -199,17 +191,25 @@ class AuthController extends Controller
         $validated = $request->validate(['email' => ['required', 'email', 'max:255']]);
         $email = strtolower(trim($validated['email']));
         $user = User::where('email', $email)->where('isActive', true)->first();
+        $watch = $passwordResets->createWatch();
 
         if ($user) {
-            $passwordResets->send($user);
+            $passwordResets->send($user, $watch);
         }
 
         return response()->json([
             'message' => 'If an active account exists for that email, a reset link has been sent.',
+            'watch' => $watch,
         ]);
     }
 
-    public function resetPassword(Request $request)
+    public function resetStatus(Request $request, PasswordResetService $passwordResets)
+    {
+        $data = $request->validate(['watch' => ['required', 'string', 'regex:/^[a-f0-9]{64}$/']]);
+        return response()->json(['status' => $passwordResets->status($data['watch'])])->header('Cache-Control', 'no-store');
+    }
+
+    public function resetPassword(Request $request, PasswordResetService $passwordResets)
     {
         $validated = $request->validate([
             'email' => ['required', 'email', 'max:255'],
@@ -236,6 +236,8 @@ class AuthController extends Controller
         $user->password = Hash::make($validated['password'], ['rounds' => 12]);
         $user->save();
         $reset->delete();
+
+        $passwordResets->complete($reset->token);
 
         return response()->json(['message' => 'Password reset successfully.']);
     }

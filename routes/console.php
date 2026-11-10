@@ -6,6 +6,43 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
 use App\Models\PersonalAccessToken;
 use App\Models\User;
+use Illuminate\Support\Facades\Schedule;
+use App\Services\SystemSettingsService;
+use App\Services\SystemBackupService;
+
+Artisan::command('complitrack:backup', function () {
+    try {
+        $file = app(SystemBackupService::class)->create();
+        $this->info('Encrypted backup completed and verified: '.$file);
+
+        return 0;
+    } catch (\Throwable $exception) {
+        report($exception);
+        $this->error('Backup failed. Check the Laravel log.');
+
+        return 1;
+    }
+})->purpose('Create and verify an encrypted database and uploads backup');
+
+Artisan::command('complitrack:backup-verify {file}', function () {
+    $count = app(SystemBackupService::class)->verify($this->argument('file'));
+    $this->info("Verified {$count} encrypted records.");
+})->purpose('Verify backup authentication, record order and completeness');
+
+Artisan::command('complitrack:backup-restore {file} {database} {directory}', function () {
+    app(SystemBackupService::class)->restore($this->argument('file'), $this->argument('database'), $this->argument('directory'));
+    $this->info('Backup restored into the new database and directory. Live configuration was not changed.');
+})->purpose('Restore a backup into a NEW database and a NEW directory only');
+
+Schedule::call(function () {
+    touch(app(SystemSettingsService::class)->path('scheduler-heartbeat'));
+})->everyMinute()->name('system-scheduler-heartbeat');
+
+Schedule::command('complitrack:backup')
+    ->dailyAt(config('system.backup_time'))
+    ->timezone(config('system.timezone'))
+    ->when(fn () => app(SystemSettingsService::class)->read()['backupsEnabled'] ?? false)
+    ->withoutOverlapping(1440);
 
 Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
