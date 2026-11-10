@@ -14,12 +14,17 @@
     'allowDepartmentCreate' => false,
     'allowDepartmentActions' => false,
     'allowBroadcast' => false,
+    'skeletonLoading' => false,
+    'enhancedUsers' => false,
 ])
 @php($roleId = (int) auth()->user()->roleId)
 @php($visualRole = $roleId === 3 ? 2 : $roleId)
 @php($searchLabel = match ($title) { 'User Management' => 'User', 'Archive Repository' => 'Archive', 'Audit Logs' => 'Audit Logs', default => strtolower($title) })
 @php($panelClass = match ($visualRole) { 0, 2 => 'app-view-panel active', 3 => 'view-panel active', default => '' })
-<section class="{{ $panelClass }}" x-data="resourcePage({ endpoint: @js($endpoint), columns: @js($columns), perPage: {{ (int) $perPage }}, detailBase: @js($detailBase), allowStatusUpdates: {{ $allowStatusUpdates ? 'true' : 'false' }}, allowArchiveActions: {{ $allowArchiveActions ? 'true' : 'false' }}, allowNotificationActions: {{ $allowNotificationActions ? 'true' : 'false' }}, allowUserCreate: {{ $allowUserCreate ? 'true' : 'false' }}, allowUserActions: {{ $allowUserActions ? 'true' : 'false' }}, actorRoleId: {{ $actorRoleId === null ? 'null' : (int) $actorRoleId }}, allowDepartmentCreate: {{ $allowDepartmentCreate ? 'true' : 'false' }}, allowDepartmentActions: {{ $allowDepartmentActions ? 'true' : 'false' }}, allowBroadcast: {{ $allowBroadcast ? 'true' : 'false' }} })" x-init="load()">
+<section class="{{ $panelClass }} {{ $endpoint === 'logs' ? 'audit-logs-page' : '' }}" x-data="resourcePage({ endpoint: @js($endpoint), enhancedUsers: @js($enhancedUsers), columns: @js($columns), perPage: {{ (int) $perPage }}, detailBase: @js($detailBase), allowStatusUpdates: {{ $allowStatusUpdates ? 'true' : 'false' }}, allowArchiveActions: {{ $allowArchiveActions ? 'true' : 'false' }}, allowNotificationActions: {{ $allowNotificationActions ? 'true' : 'false' }}, allowUserCreate: {{ $allowUserCreate ? 'true' : 'false' }}, allowUserActions: {{ $allowUserActions ? 'true' : 'false' }}, actorRoleId: {{ $actorRoleId === null ? 'null' : (int) $actorRoleId }}, allowDepartmentCreate: {{ $allowDepartmentCreate ? 'true' : 'false' }}, allowDepartmentActions: {{ $allowDepartmentActions ? 'true' : 'false' }}, allowBroadcast: {{ $allowBroadcast ? 'true' : 'false' }} })" x-init="load()">
+    @if ($enhancedUsers)
+        @include('super-admin.partials.user-management')
+    @else
     <div x-cloak x-show="successPopupVisible" x-transition class="fixed right-6 top-6 z-[100] flex min-h-[52px] w-[calc(100%-3rem)] max-w-sm items-center rounded-lg border-l-4 bg-ustp-navy pr-5 py-4 text-[13px] font-medium leading-5 text-white shadow-[0_10px_25px_rgba(5,27,68,0.18)]" :class="successPopupType === 'error' ? 'border-red-500' : 'border-ustp-gold'" style="padding-left: 24px" :role="successPopupType === 'error' ? 'alert' : 'status'" aria-live="polite">
         <span class="min-w-0 flex-1" x-text="successPopupMessage"></span>
     </div>
@@ -46,14 +51,39 @@
                 </select>
             </label>
         </div>
+        @if ($endpoint === 'logs' && $roleId === 0)
+        <fieldset class="audit-log-date-range">
+            <legend>History range</legend>
+            <label>From<input type="date" x-model="draftStartDate" aria-label="History start date"></label>
+            <label>Through<input type="date" x-model="draftEndDate" :min="draftStartDate || null" aria-label="History end date"></label>
+            <button type="button" @click="applyDateRange()" :disabled="loading">Apply</button>
+            <button type="button" @click="clearDateRange()" :disabled="loading || (!startDate && !endDate && !draftStartDate && !draftEndDate)">Clear</button>
+            <p x-show="dateRangeError" x-cloak role="alert" x-text="dateRangeError"></p>
+        </fieldset>
+        <button type="button" data-log-export @click="exportAuditLogs()" :disabled="exporting || loading" :aria-busy="exporting" class="btn btn-gold disabled:opacity-50 disabled:cursor-wait"><i data-lucide="download" aria-hidden="true"></i><span x-text="exporting ? 'Exporting…' : 'Export CSV'">Export CSV</span></button>
+        @endif
         <button x-show="allowUserCreate" x-cloak type="button" @click="startUserCreate()" class="{{ $roleId === 1 ? 'btn-gold user-create-trigger' : 'btn btn-gold user-create-trigger' }}"><i data-lucide="user-round-plus" aria-hidden="true"></i><span>Create User</span></button>
         <button x-show="allowDepartmentCreate" x-cloak type="button" @click="startDepartmentCreate()" class="{{ $roleId === 1 ? 'btn-gold department-create-trigger' : 'btn btn-gold department-create-trigger' }}"><i data-lucide="building-2" aria-hidden="true"></i><span>Add Department</span></button>
         <button x-show="allowBroadcast" x-cloak type="button" @click="startBroadcast()" class="btn-gold"><i data-lucide="send" aria-hidden="true"></i><span>Broadcast</span></button>
     </div>
+    @if ($endpoint === 'logs' && $roleId === 0)
+    <div x-show="exportError" x-cloak class="mb-4"><x-alert-banner type="error"><span x-text="exportError"></span></x-alert-banner></div>
+    @endif
     <template x-if="loading">
+        @if ($skeletonLoading)
+        <div class="content-card table-card-bordered" aria-busy="true">
+            <span class="sr-only" role="status">Loading {{ strtolower($title) }}...</span>
+            @if ($endpoint === 'logs')
+            <div class="audit-log-skeleton" aria-hidden="true"><div class="audit-log-skeleton-heading"></div><template x-for="row in perPage" :key="row"><div class="audit-log-skeleton-row"><span></span><span></span><span></span><span></span></div></template></div>
+            @else
+            <x-dashboard-skeleton type="table" :columns="count($columns) + ($allowDepartmentActions ? 1 : 0)" />
+            @endif
+        </div>
+        @else
         <div class="space-y-3 rounded-2xl bg-white p-5 shadow-sm">
             <div class="h-10 animate-pulse rounded-lg bg-slate-100"></div><div class="h-12 animate-pulse rounded-lg bg-slate-100"></div><div class="h-12 animate-pulse rounded-lg bg-slate-100"></div>
         </div>
+        @endif
     </template>
     <template x-if="error">
         <div class="rounded-2xl bg-white p-6 shadow-sm">
@@ -270,4 +300,5 @@
             <footer class="user-modal-footer"><span>Resolve the issue above before trying again.</span><div><button type="button" @click="closeReactivateModals()" class="user-modal-submit">Got it</button></div></footer>
         </div>
     </div>
+    @endif
 </section>

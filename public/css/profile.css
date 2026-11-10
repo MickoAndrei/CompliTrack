@@ -213,7 +213,7 @@
 #main-content .super-admin-profile-page .super-admin-profile-card .super-admin-profile-save,
 #main-content .super-admin-profile-page .super-admin-profile-card .super-admin-password-submit {
   display: inline-flex;
-  min-height: 33px;
+  min-height: 34px;
   padding: 6px 10px;
   align-items: center;
   justify-content: center;
@@ -249,9 +249,9 @@
 
 .super-admin-profile-actions {
   grid-column: 1 / -1;
-  display: flex;
-  flex-direction: row;
-  gap: 10px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 44px;
   margin: 0 22px;
   padding: 12px 0 8px;
   border-top: 1px solid #edf1f6;
@@ -383,4 +383,5 @@
   #main-content:has(.super-admin-profile-page) { padding: 8px 14px 16px; }
   .super-admin-profile-page { width: 100%; }
   .super-admin-profile-card { grid-template-columns: minmax(0, 1fr); }
+  .super-admin-profile-actions { grid-template-columns: minmax(0, 1fr); gap: 10px; }
 }

@@ -32,6 +32,7 @@ Route::prefix('v1')->group(function () {
 
         Route::middleware('role:0,1,2')->get('/directory/auditees', [UserController::class, 'auditees']);
         Route::middleware('role:0,1,2,3')->get('/directory/departments', [DepartmentController::class, 'index']);
+        Route::middleware('role:0')->get('/directory/organization', [DepartmentController::class, 'organizationSummary']);
 
         // Super Admin + Admin: user & department management
         Route::middleware('role:0,1')->group(function () {

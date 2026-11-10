@@ -22,6 +22,11 @@
 .sa-skeleton-plot { height: 214px; }
 .sa-skeleton-months { display: flex; justify-content: space-between; gap: 8px; margin-top: 10px; }
 .sa-skeleton-months > span { width: 28px; height: 10px; }
+table.sa-skeleton-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+table.sa-skeleton-table th, table.sa-skeleton-table td { padding: 16px 20px; border-bottom: 1px solid #edf2f7; }
+table.sa-skeleton-table th { background: #f8fafc; }
+table.sa-skeleton-table .sa-skeleton { width: 75%; height: 12px; margin: 0; }
+table.sa-skeleton-table td .sa-skeleton { width: 90%; }
 @keyframes sa-skeleton-shimmer { from { background-position: 200% 0; } to { background-position: -20% 0; } }
 @media (prefers-reduced-motion: reduce) { .sa-skeleton { animation: none; } }
 .sa-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; }
@@ -44,8 +49,11 @@
 .sa-panel .sa-note { margin-top: 18px; font-size: 11px; }
 .sa-record-summary { display: flex; flex-wrap: wrap; gap: 10px 20px; margin-top: 10px; color: #475569; font-size: 11px; }
 .sa-detail-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
-.sa-activity { list-style: none; padding: 0; margin: 0; }
+.sa-activity { list-style: none; padding: 0; margin: 0; overflow-y: auto; scrollbar-width: none; }
+.sa-activity::-webkit-scrollbar { display: none; }
+.sa-activity:focus-visible { outline: 2px solid #00205b; outline-offset: 3px; border-radius: 4px; }
 .sa-activity li { padding: 12px 0; border-top: 1px solid #edf2f7; }
+.sa-activity--audits li { display: flex; flex-direction: column; justify-content: center; padding-block: 21px; }
 .sa-activity li > div { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; }
 .sa-activity strong { font-size: 12px; }
 .sa-activity time, .sa-activity small { display: block; margin-top: 3px; color: #64748b; font-size: 10px; }

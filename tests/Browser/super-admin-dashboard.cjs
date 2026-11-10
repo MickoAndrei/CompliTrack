@@ -41,8 +41,8 @@ const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
             units.push({_id:id(20),collegeId:id(1),name:'Office of the Dean',unitType:'college_office',canCreate:true,count:0});
             const data={stats:{totalUsers:12,cetDepartments:5,activeAudits:3,openCars:2,archivedDocuments:8,archiveStorageBytes:1536},
                 departmentCompliance:units.slice(0,5).map((unit,i)=>({id:unit._id,name:unit.name,code:unit.code,active:true,percentage:i===0?50:i===1?0:null,counts:{C:i===0?1:0,N:i<2?1:0,O:0}})),
-                recentAuditActivity:[{id:id(50),reference:'BROWSER-AUDIT',department:units[0].name,status:'submitted',at:'2026-11-09T01:00:00Z'}],
-                correctiveAttention:[{id:id(60),reference:'BROWSER-CAR',department:units[0].name,assignee:'Assigned account',status:'open',dueDate:'2026-11-01T00:00:00Z',overdue:true,source:'Checklist-linked CAR'}],
+                recentAuditActivity:Array.from({length:6},(_,i)=>({id:id(50+i),reference:'BROWSER-AUDIT-'+i,department:units[i%5].name,status:'submitted',at:'2026-11-09T01:00:00Z'})),
+                correctiveAttention:Array.from({length:6},(_,i)=>({id:id(60+i),reference:'BROWSER-CAR-'+i,department:units[i%5].name,assignee:'Assigned account',status:'open',dueDate:'2026-11-01T00:00:00Z',overdue:true,source:'Checklist-linked CAR'})),
                 generatedAt:'2026-11-09T01:00:00Z',recordSummary:{completedAudits:2,legacyChecks:3,checklistLinkedCars:1},userGrowth:['Jun','Jul','Aug','Sep','Oct','Nov'].map((month,i)=>({month:month+' 2026',count:[0,0,2,5,10,12][i]}))};
             window.calls=[];window.dashboardFixture=data;window.failDashboard=false;window.healthOk=false;
             window.holdDashboard=true;window.holdHealth=true;window.pendingDashboard=[];window.pendingHealth=[];
@@ -55,6 +55,8 @@ const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
                     window.calls.push({url:config.url,method:config.method});let body={};
                     if(config.url==='/api/v1/system/dashboard'&&window.holdDashboard)await new Promise(resolve=>window.pendingDashboard.push(resolve));
                     if(config.url.endsWith('/dashboard/health')&&window.holdHealth)await new Promise(resolve=>window.pendingHealth.push(resolve));
+                    if(config.url.includes('/departments')&&window.holdDepartmentRecords)await new Promise(resolve=>window.pendingDepartmentRecords.push(resolve));
+                    if((config.url.endsWith('/tree')||config.url.endsWith('/organization'))&&window.holdOrganization)await new Promise(resolve=>window.pendingOrganization.push(resolve));
                     if(config.url==='/api/v1/system/dashboard'){if(window.failDashboard)throw Error('Fixture outage');body={data:structuredClone(data)};}
                     else if(config.url.endsWith('/dashboard/health'))body={data:{laravel:'ok',mongodb:'ok',realtime:window.healthOk?'ok':'unavailable',checkedAt:'2026-11-09T01:00:00Z',components:[{name:'Laravel',status:'Operational'},{name:'Node.js Service',status:window.healthOk?'Operational':'Unavailable'},{name:'MongoDB Cluster',status:'Operational'},{name:'FCM Push Service',status:window.healthOk?'Not Configured':'Unknown'}]}};
                     else if(config.url.endsWith('/tree'))body={campus:'USTP Claveria Campus',colleges:[{_id:id(1),name:'College of Engineering and Technology',code:'CET'}],units,categories:[],total:0,canManageOrganization:true};
@@ -108,12 +110,45 @@ const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
             assert.equal(await evaluate('window.healthIntervals.length'), 1, 'Health auto-refreshes every 60 seconds');
             assert.equal(await evaluate('document.documentElement.scrollWidth<=innerWidth'), true, `No horizontal overflow at ${width}`);
             assert.equal(await evaluate('document.querySelector(".sidebar-brand-logo").naturalWidth>0'), true);
-            assert.equal(await evaluate('document.querySelectorAll(".sidebar-section").length'), 2);
+            assert.equal(await evaluate('document.querySelectorAll(".sidebar-section").length'), 0);
             assert.equal(await evaluate('document.querySelectorAll(".app-sidebar nav a").length'), 7);
-            const wasOpen = await evaluate('document.querySelector(".sidebar-section").open');
-            await evaluate('document.querySelector(".sidebar-section summary").click()');
-            await waitFor(`document.querySelector('.sidebar-section').open===${!wasOpen}`);
-            await evaluate('document.querySelector(".sidebar-section summary").click()');
+            try {
+                await waitFor('[...document.querySelectorAll(".sa-activity")].every(list=>list.clientHeight>0 && list.scrollHeight>list.clientHeight)');
+            } catch (error) {
+                throw new Error(`${width}px list sizing: ${JSON.stringify(await evaluate('[...document.querySelectorAll(".sa-activity")].map(list=>({height:list.clientHeight,scrollHeight:list.scrollHeight,maxHeight:list.style.maxHeight,rows:list.querySelectorAll("li").length}))'))}`, {cause:error});
+            }
+            assert.equal(await evaluate(` [...document.querySelectorAll('.sa-activity')].every(list=>{
+                const rows=list.querySelectorAll('li');
+                const fiveHeight=rows[4].getBoundingClientRect().bottom-rows[0].getBoundingClientRect().top;
+                return Math.abs(list.clientHeight-fiveHeight)<=1 && getComputedStyle(list).scrollbarWidth==='none';
+            })`), true, 'Both lists display five full rows with hidden scrollbars');
+            if (width >= 768) {
+                await waitFor(`(()=>{
+                    const lists=[...document.querySelectorAll('.sa-activity')];
+                    return Math.abs(lists[0].clientHeight-lists[1].clientHeight)<=2;
+                })()`);
+                assert.equal(await evaluate(`(()=>{
+                    const panels=[...document.querySelectorAll('.sa-detail-grid > article')];
+                    const list=panels[0].querySelector('.sa-activity');
+                    return Math.abs(panels[0].getBoundingClientRect().height-panels[1].getBoundingClientRect().height)<=1
+                        && panels[0].getBoundingClientRect().bottom-list.getBoundingClientRect().bottom<24;
+                })()`), true, 'Audit row spacing fills the matching panel height');
+            }
+            assert.equal(await evaluate(` [...document.querySelectorAll('.sa-activity')].every(list=>{
+                list.scrollTop=list.scrollHeight;
+                return list.scrollTop>0 && list.tabIndex===0;
+            })`), true, 'Remaining items can be scrolled to and lists accept keyboard focus');
+            await evaluate('document.querySelectorAll(".sa-activity").forEach(list=>list.scrollTop=0)');
+            if (width === 1440) {
+                await evaluate('window.fullActivityLists={recentAuditActivity:window.dashboardFixture.recentAuditActivity,correctiveAttention:window.dashboardFixture.correctiveAttention}');
+                for (const count of [5, 1, 0]) {
+                    await evaluate(`Object.keys(window.fullActivityLists).forEach(key=>window.dashboardFixture[key]=window.fullActivityLists[key].slice(0,${count}));Alpine.$data(document.querySelector('.sa-overview')).load()`);
+                    await waitFor(`!Alpine.$data(document.querySelector('.sa-overview')).loading && [...document.querySelectorAll('.sa-activity')].every(list=>list.querySelectorAll('li').length===${count} && list.style.maxHeight==='')`);
+                    assert.equal(await evaluate('[...document.querySelectorAll(".sa-activity")].every(list=>list.scrollHeight<=list.clientHeight+1)'), true, `${count} items need no scrolling`);
+                }
+                await evaluate('Object.assign(window.dashboardFixture,window.fullActivityLists);Alpine.$data(document.querySelector(".sa-overview")).load()');
+                await waitFor('!Alpine.$data(document.querySelector(".sa-overview")).loading && [...document.querySelectorAll(".sa-activity")].every(list=>list.scrollHeight>list.clientHeight)');
+            }
             await evaluate('window.healthOk=true;window.healthIntervals[0].callback()');
             await waitFor('!document.querySelector(".sa-health dl").textContent.includes("Unavailable")');
             assert.equal(await evaluate('document.querySelector(".sa-health dl").textContent.includes("Not Configured")'), true);
@@ -136,11 +171,30 @@ const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
             assert.equal(await evaluate('window.clearedIntervals.includes(window.healthIntervals[0].id)'), true, 'Health refresh timer is cleaned up');
             console.log(`PASS ${width}px: skeletons, independent health loading, reduced motion, cards, graph, retry, sidebar`);
         }
-        await send('Page.navigate', { url: pathToFileURL(path.join(directory, 'departments.html')).href });
-        await waitFor('document.querySelector(".sa-organization").textContent.includes("Department Head account")');
-        assert.equal(await evaluate('document.querySelectorAll(".sa-organization tbody tr").length'), 5);
-        assert.equal(await evaluate('document.querySelectorAll(".sa-college-office").length'), 1);
-        assert.equal(await evaluate('document.documentElement.scrollWidth<=innerWidth'), true);
+        await send('Page.addScriptToEvaluateOnNewDocument', { source: 'window.holdDepartmentRecords=location.pathname.endsWith("/departments.html");window.holdOrganization=window.holdDepartmentRecords;window.pendingDepartmentRecords=[];window.pendingOrganization=[];' });
+        for (const width of [1440, 390, 320]) {
+            await send('Emulation.setDeviceMetricsOverride', { width, height: 900, deviceScaleFactor: 1, mobile: width < 600 });
+            await send('Page.navigate', { url: pathToFileURL(path.join(directory, 'departments.html')).href });
+            await waitFor('window.pendingDepartmentRecords.length===1 && window.pendingOrganization.length===2');
+            await waitFor('[...document.querySelectorAll("table.sa-skeleton-table")].filter(table=>table.getClientRects().length).length===2');
+            assert.equal(await evaluate('document.querySelectorAll("table.sa-skeleton-table tbody tr").length'), 10, 'Both sections show five skeleton rows');
+            assert.equal(await evaluate('document.querySelector(".sa-organization-records").getClientRects().length'), 0, 'Responsibility records wait for data');
+            assert.equal(await evaluate('document.querySelectorAll(".resource-empty-state").length'), 0, 'Loading does not show an empty state');
+            assert.equal(await evaluate('document.documentElement.scrollWidth<=innerWidth'), true, `Department skeletons fit ${width}px`);
+            await send('Emulation.setEmulatedMedia',{features:[{name:'prefers-reduced-motion',value:'reduce'}]});
+            assert.equal(await evaluate('getComputedStyle(document.querySelector("table.sa-skeleton-table .sa-skeleton")).animationName'), 'none');
+            await send('Emulation.setEmulatedMedia',{features:[]});
+            await evaluate('window.holdDepartmentRecords=false;window.pendingDepartmentRecords.splice(0).forEach(resolve=>resolve())');
+            await waitFor('document.querySelectorAll(".data-table tbody tr").length===5');
+            assert.equal(await evaluate('document.querySelector(".sa-organization table.sa-skeleton-table").getClientRects().length>0'), true, 'Responsibilities continue loading independently');
+            await evaluate('window.holdOrganization=false;window.pendingOrganization.splice(0).forEach(resolve=>resolve())');
+            await waitFor('document.querySelector(".sa-organization-records").getClientRects().length>0 && document.querySelector(".sa-organization-records").textContent.includes("Department Head account")');
+            assert.equal(await evaluate('document.querySelectorAll(".sa-organization-records tbody tr").length'), 5);
+            assert.equal(await evaluate('document.querySelectorAll(".sa-college-office").length'), 1);
+            assert.equal(await evaluate('[...document.querySelectorAll("table.sa-skeleton-table")].some(table=>table.getClientRects().length)'), false, 'Skeletons disappear after loading');
+            assert.equal(await evaluate('document.documentElement.scrollWidth<=innerWidth'), true);
+            console.log(`PASS ${width}px: department and responsibility skeletons, independent loading, reduced motion, loaded records`);
+        }
         await send('Page.navigate', { url: pathToFileURL(path.join(directory, 'archives.html')).href + '?manage=responsibilities' });
         await waitFor('document.querySelector("[x-ref=organization]").open');
         await evaluate(`(()=>{const data=Alpine.$data(document.querySelector('.qms-explorer'));data.selectedUser=String(90).padStart(24,'0');data.selectUser();})()`);

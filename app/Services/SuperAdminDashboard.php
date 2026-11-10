@@ -49,7 +49,7 @@ class SuperAdminDashboard
             return ($b['overdue'] <=> $a['overdue']) ?: strcmp($a['dueDate'] ?? '9999', $b['dueDate'] ?? '9999')
                 ?: strcmp($a['reference'], $b['reference']);
         })->take(6)->values();
-        $archiveQuery = $this->archives->documents($actor);
+        $archiveQuery = $this->archives->summaryDocuments($actor);
         $archiveBytes = (int) (clone $archiveQuery)->where(fn ($query) => $query->where('recordType', 'file')->orWhereNull('recordType'))->sum('fileSize');
         $recent = Audit::orderBy('updatedAt', 'desc')->limit(6)->get(['auditCode', 'departmentId', 'status', 'updatedAt', 'createdAt']);
         return [

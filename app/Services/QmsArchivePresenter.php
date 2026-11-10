@@ -23,9 +23,10 @@ class QmsArchivePresenter
         $data['departmentName'] = $this->unitNames[$key] ??= Department::find($document->departmentId)?->departmentName ?? 'Unverified ownership';
         $owner = (string) $document->uploadedByUserId;
         $data['uploadedBy'] = $this->ownerNames[$owner] ??= User::find($document->uploadedByUserId)?->fullName ?? 'Not recorded';
-        $data['canDownload'] = $data['recordType'] === 'file' && $document->downloadAllowed !== false;
-        $data['canManage'] = (int) $actor->roleId !== 2 && ((int) $actor->roleId === 0 || $owner === (string) $actor->getKey()
-            || in_array($actor->archiveResponsibility, ['department_head', 'department_secretary', 'college_dean', 'college_secretary', 'cluster_administrator'], true) && $document->visibility !== 'restricted');
+        $access = app(QmsArchiveAccess::class);
+        $data['canDownload'] = (int) $actor->roleId !== 0 && $data['recordType'] === 'file'
+            && ($access->isAuditTeamLeader($actor) || $document->downloadAllowed !== false);
+        $data['canManage'] = $access->canManage($actor, $document);
         if ($data['canManage']) {
             $data['accessUserIds'] = array_map('strval', $document->accessUserIds ?? []);
             $data['sharedAuditIds'] = array_map('strval', $document->sharedAuditIds ?? []);

@@ -63,7 +63,7 @@ function Ensure-MongoRunning {
     }
 
     Write-Host "MongoDB target from .env: database '$($script:MongoEnvValues['MONGODB_DATABASE'])'."
-    Write-Host "Laravel will verify connectivity against the configured MongoDB URI while seeding."
+    Write-Host "Laravel will verify connectivity against the configured MongoDB URI before startup."
 }
 
 Write-Host "Checking required tools..."
@@ -199,6 +199,12 @@ Ensure-MongoRunning
 Write-Host "Clearing cached Laravel configuration so the current .env MongoDB settings are used..."
 php artisan config:clear
 if ($LASTEXITCODE -ne 0) { throw "Could not clear Laravel configuration cache." }
+
+Write-Host "Checking MongoDB connectivity before migrations or account logout..."
+php artisan mongodb:check --ping
+if ($LASTEXITCODE -ne 0) {
+    throw "MongoDB connectivity check failed. Resolve the connection issue above and run start-complitrack.ps1 again. Migrations, seeding, and account logout were not attempted."
+}
 
 # Remember completion per MongoDB target without storing the credential-bearing URI.
 $mongoTargetHashInput = "{0}|{1}" -f $script:MongoEnvValues['MONGODB_URI'], $script:MongoEnvValues['MONGODB_DATABASE']

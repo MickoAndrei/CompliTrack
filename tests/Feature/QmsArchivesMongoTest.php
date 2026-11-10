@@ -43,6 +43,13 @@ class QmsArchivesMongoTest extends TestCase
         return User::create($extra + ['fullName' => 'Test '.$responsibility, 'email' => bin2hex(random_bytes(5)).'@example.test',
             'isActive' => true, 'roleId' => $role, 'departmentId' => $unit->getKey(), 'archiveResponsibility' => $responsibility]);
     }
+    private function leader(Department $unit): User
+    {
+        $leader = $this->user($unit, 'faculty_staff', 1);
+        Audit::create(['departmentId' => $unit->getKey(), 'reviewerId' => $leader->getKey(), 'status' => 'draft']);
+        return $leader;
+    }
+
     private function document(Department $unit, User $owner, array $extra = []): ArchiveDocument
     {
         return ArchiveDocument::create($extra + ['fileCode' => 'QMS-'.bin2hex(random_bytes(4)), 'title' => $unit->departmentName.' record',
@@ -50,6 +57,46 @@ class QmsArchivesMongoTest extends TestCase
             'uploadedByUserId' => $owner->getKey(), 'ownershipVerified' => true, 'visibility' => 'department']);
     }
     private function units() { return Department::where('unitType', 'academic_department')->orderBy('departmentCode')->get(); }
+
+    public function test_only_the_audit_team_leader_manages_qms_and_super_admin_sees_folders_only(): void
+    {
+        $this->migrate();
+        $units = $this->units(); $unit = $units->first(); $other = $units->last();
+        $owner = $this->user($unit, 'department_head');
+        $document = $this->document($other, $owner, ['visibility' => 'restricted', 'downloadAllowed' => false, 'fileSize' => 2048]);
+        $this->document($other, $owner, ['recordType' => 'digital-reference', 'fileSize' => 99999]);
+        $super = $this->user($unit, 'faculty_staff', 0);
+        $category = QmsCategory::where('unitType', 'academic_department')->firstOrFail();
+        $record = ['purpose' => 'qms', 'unitId' => (string) $unit->getKey(), 'categoryId' => (string) $category->getKey(),
+            'title' => 'Leader reference', 'recordType' => 'digital-reference', 'documentReference' => 'QMS-LEADER', 'visibility' => 'department'];
+        $this->actingAs($super)->getJson('/api/v1/archives/tree')->assertOk()->assertJsonCount(6, 'units')
+            ->assertJsonPath('canManageOrganization', false)->assertJsonPath('canViewDocuments', false)->assertJsonPath('units.0.canCreate', false)
+            ->assertJsonPath('total', 2)->assertJsonPath('archiveStorageBytes', 2048);
+        $this->getJson('/api/v1/system/dashboard')->assertOk()->assertJsonPath('data.stats.archivedDocuments', 2)->assertJsonPath('data.stats.archiveStorageBytes', 2048);
+        $this->getJson('/api/v1/archives')->assertOk()->assertJsonCount(0, 'data')->assertJsonPath('meta.total', 0);
+        foreach (['', '/download', '/verify-checksum'] as $suffix) {
+            $this->getJson('/api/v1/archives/'.$document->getKey().$suffix)->assertNotFound();
+        }
+        $this->getJson('/api/v1/archives/organization')->assertForbidden();
+        $this->getJson('/api/v1/directory/organization')->assertOk()->assertJsonMissingPath('users.0.email');
+        $this->postJson('/api/v1/archives/upload', $record)->assertForbidden();
+        $this->patchJson('/api/v1/archives/categories/'.$category->getKey(), ['name' => 'Denied rename'])->assertForbidden();
+        foreach ([$owner, $this->user($unit, 'faculty_staff', 1), $this->user($unit, 'faculty_staff', 2)] as $actor) {
+            $this->actingAs($actor)->getJson('/api/v1/archives/tree')->assertOk()->assertJsonPath('canManageOrganization', false);
+            $this->getJson('/api/v1/archives/organization')->assertForbidden();
+            $this->postJson('/api/v1/archives/upload', $record)->assertForbidden();
+        }
+        $leader = $this->leader($unit);
+        $this->actingAs($leader)->getJson('/api/v1/archives/tree')->assertOk()->assertJsonCount(6, 'units')
+            ->assertJsonPath('canManageOrganization', true)->assertJsonPath('canViewDocuments', true)->assertJsonPath('units.0.canCreate', true);
+        $this->getJson('/api/v1/archives/'.$document->getKey())->assertOk()->assertJsonPath('data.canManage', true)->assertJsonPath('data.canDownload', true);
+        $this->getJson('/api/v1/archives/organization')->assertOk();
+        $this->postJson('/api/v1/archives/upload', $record)->assertCreated();
+        $this->patchJson('/api/v1/archives/categories/'.$category->getKey(), ['name' => 'Leader category'])->assertOk();
+        $this->patchJson('/api/v1/archives/'.$document->getKey().'/permissions', ['visibility' => 'restricted', 'downloadAllowed' => false, 'accessUserIds' => []])->assertOk();
+        $leader->update(['isActive' => false]);
+        $this->actingAs($leader)->getJson('/api/v1/archives/organization')->assertUnauthorized();
+    }
 
     public function test_development_scenarios_reuse_existing_atl_and_users_and_preserve_authorization(): void
     {
@@ -95,7 +142,7 @@ class QmsArchivesMongoTest extends TestCase
         $this->actingAs($atl)->get('/audits/'.$submitted->getKey())->assertOk();
         $kitPlan = ArchiveDocument::where('sourceImportKey', 'complitrack-claveria-cet-demo-v1:DOC-PLAN-001')->firstOrFail();
         $this->get('/api/v1/archives/'.$kitPlan->getKey().'/download')->assertOk();
-        $this->getJson('/api/v1/archives/'.$public->getKey())->assertNotFound();
+        $this->getJson('/api/v1/archives/'.$public->getKey())->assertOk()->assertJsonPath('data.canManage', true);
         $this->post('/audits/'.$submitted->getKey(), ['action' => 'accept', 'version' => $submitted->version, 'reviewNotes' => 'Authorized existing ATL reviewed the mock result.'])->assertRedirect()->assertSessionHasNoErrors();
         $this->assertSame('accepted', $submitted->fresh()->status);
         $this->post('/audits', ['title' => '[MOCK] ATL assignment acceptance test', 'scope' => 'Synthetic process', 'criteria' => 'Synthetic requirement', 'schedule' => now()->toDateString(),
@@ -128,16 +175,18 @@ class QmsArchivesMongoTest extends TestCase
         $faculty = $this->user($unit);
         $auditor = $this->user($unit, 'faculty_staff', 2, ['assignedDepartmentIds' => [$unit->getKey()]]);
         $importer = app(\App\Services\MockArchiveImporter::class);
+        $importLeader = $this->leader($unit);
         $directory = base_path('dataset_files/CompliTrack_CET_Demo_Kit-3');
-        $plan = $importer->run($directory, $super);
+        $plan = $importer->run($directory, $importLeader);
         $this->assertSame(27, $plan['toImport']); $this->assertSame(0, ArchiveDocument::count());
-        $report = $importer->run($directory, $super, true);
+        $report = $importer->run($directory, $importLeader, true);
         $this->assertTrue($report['applied']); $this->assertCount(27, $report['records']);
         $this->assertFileExists($report['backup']); $this->assertSame(27, ArchiveDocument::count());
-        $this->assertSame(27, $importer->run($directory, $super, true)['existing']);
+        $this->assertSame(27, $importer->run($directory, $importLeader, true)['existing']);
         $this->assertSame(27, ArchiveDocument::count());
         $first = ArchiveDocument::where('sourceImportKey', $plan['dataset'].':DOC-DPM-001')->firstOrFail();
-        $this->actingAs($super)->get('/api/v1/archives/'.$first->getKey().'/download')->assertOk()
+        $this->actingAs($super)->get('/api/v1/archives/'.$first->getKey().'/download')->assertNotFound();
+        $this->actingAs($this->leader($unit))->get('/api/v1/archives/'.$first->getKey().'/download')->assertOk()
             ->assertContent(file_get_contents($directory.'/documents/Academics/DPM-USTP-CET-001_Management_of_Learning.docx'));
         $this->actingAs($faculty)->getJson('/api/v1/archives')->assertOk()->assertJsonPath('meta.total', 27 - $report['restricted']);
         $restricted = ArchiveDocument::where('sourceImportKey', $plan['dataset'].':DOC-CHK-001')->firstOrFail();
@@ -146,7 +195,7 @@ class QmsArchivesMongoTest extends TestCase
         $first->forceFill(['checksum' => str_repeat('0', 64)])->save();
         $this->expectException(\RuntimeException::class);
         $this->expectExceptionMessage('Existing import differs');
-        $importer->run($directory, $super, true);
+        $importer->run($directory, $importLeader, true);
     }
 
     public function test_backup_first_migration_preserves_ids_and_relationships_and_is_idempotent(): void
@@ -227,7 +276,7 @@ class QmsArchivesMongoTest extends TestCase
 
     public function test_physical_original_reference_upload_versions_and_controlled_downloads(): void
     {
-        $this->migrate(); $unit = $this->units()->first(); $user = $this->user($unit, 'department_secretary');
+        $this->migrate(); $unit = $this->units()->first(); $user = $this->leader($unit);
         $category = QmsCategory::where('unitType', 'academic_department')->whereNotNull('parentId')->firstOrFail();
         $data = ['purpose' => 'qms', 'unitId' => (string) $unit->getKey(), 'categoryId' => (string) $category->getKey(), 'title' => 'Signed faculty register', 'visibility' => 'department'];
         $this->actingAs($user);
@@ -253,8 +302,8 @@ class QmsArchivesMongoTest extends TestCase
         $this->post('/api/v1/archives/'.$first.'/versions', $fileData + ['file' => UploadedFile::fake()->createWithContent('conflicting-version.pdf', $bytes)], ['Accept' => 'application/json'])->assertConflict();
         $this->get('/api/v1/archives/'.$first.'/download')->assertOk()->assertContent($bytes);
         $this->patchJson('/api/v1/archives/'.$version.'/permissions', ['visibility' => 'restricted', 'downloadAllowed' => false, 'accessUserIds' => []])->assertOk();
-        $this->getJson('/api/v1/archives/'.$version.'/download')->assertNotFound();
-        $this->getJson('/api/v1/archives/'.$version)->assertOk()->assertJsonPath('data.canDownload', false);
+        $this->get('/api/v1/archives/'.$version.'/download')->assertOk();
+        $this->getJson('/api/v1/archives/'.$version)->assertOk()->assertJsonPath('data.canDownload', true);
         $this->post('/api/v1/archives/upload', array_replace($fileData, ['copyAuthorized' => false, 'file' => UploadedFile::fake()->createWithContent('bad.pdf', $bytes)]), ['Accept' => 'application/json'])->assertUnprocessable();
         $this->post('/api/v1/archives/upload', $fileData + ['file' => UploadedFile::fake()->createWithContent('bad.pdf', 'not a PDF')], ['Accept' => 'application/json'])->assertUnprocessable();
         $this->assertSame(4, ArchiveDocument::count());
@@ -269,20 +318,21 @@ class QmsArchivesMongoTest extends TestCase
         $this->actingAs($auditor)->getJson('/api/v1/archives')->assertOk()->assertJsonPath('meta.total', 0);
         $this->getJson('/api/v1/archives/tree')->assertOk()->assertJsonCount(0, 'units');
         $this->getJson('/api/v1/archives/'.$draft->getKey())->assertNotFound();
-        $this->actingAs($owner)->postJson('/api/v1/archives/'.$private->getKey().'/share', ['auditId' => (string) $audit->getKey()])->assertOk();
+        $this->actingAs($this->leader($unit))->postJson('/api/v1/archives/'.$private->getKey().'/share', ['auditId' => (string) $audit->getKey()])->assertOk();
         $this->actingAs($auditor)->getJson('/api/v1/archives')->assertOk()->assertJsonPath('meta.total', 1);
         $this->getJson('/api/v1/archives/'.$private->getKey())->assertOk()->assertJsonPath('data.canManage', false);
         $this->getJson('/api/v1/archives/'.$private->getKey())->assertJsonCount(0, 'accessOptions.accounts')->assertJsonCount(0, 'accessOptions.audits');
         $this->getJson('/api/v1/archives?search='.$draft->fileCode)->assertJsonPath('meta.total', 0);
         $this->postJson('/api/v1/archives/'.$private->getKey().'/share', ['auditId' => (string) $audit->getKey()])->assertForbidden();
-        $this->actingAs($owner)->deleteJson('/api/v1/archives/'.$private->getKey().'/share/'.$audit->getKey())->assertOk();
+        $this->actingAs($this->leader($unit))->deleteJson('/api/v1/archives/'.$private->getKey().'/share/'.$audit->getKey())->assertOk();
         $this->actingAs($auditor)->getJson('/api/v1/archives/'.$private->getKey())->assertNotFound();
         $audit->update(['evidenceRequests' => [['responses' => [['archiveId' => (string) $draft->getKey()]]]]]);
         $this->getJson('/api/v1/archives/'.$draft->getKey())->assertOk();
         $auditor->update(['assignedDepartmentIds' => []]);
         $this->actingAs($auditor)->getJson('/api/v1/archives/'.$draft->getKey())->assertNotFound();
         $super = $this->user($unit, 'faculty_staff', 0);
-        $this->actingAs($super)->patchJson('/api/v1/archives/organization/'.$auditor->getKey(), ['responsibility' => 'college_dean', 'collegeIds' => [(string) $unit->collegeId], 'unitIds' => []])->assertUnprocessable();
+        $this->actingAs($super)->getJson('/api/v1/archives/organization')->assertForbidden();
+        $this->actingAs($this->leader($unit))->patchJson('/api/v1/archives/organization/'.$auditor->getKey(), ['responsibility' => 'college_dean', 'collegeIds' => [(string) $unit->collegeId], 'unitIds' => []])->assertUnprocessable();
         $this->patchJson('/api/v1/archives/organization/'.$owner->getKey(), ['responsibility' => 'college_secretary', 'collegeIds' => [(string) $unit->collegeId], 'unitIds' => []])->assertOk();
         $this->assertSame(3, $owner->fresh()->roleId);
         $otherUnit = $this->units()->skip(1)->first();

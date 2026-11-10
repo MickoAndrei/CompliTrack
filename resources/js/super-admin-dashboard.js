@@ -5,6 +5,46 @@ export function formatArchiveBytes(value) {
     return `${new Intl.NumberFormat(undefined, { maximumFractionDigits: index ? 2 : 0 }).format(bytes / (1024 ** index))} ${units[index]}`;
 }
 document.addEventListener('alpine:init', () => {
+    window.Alpine.data('dashboardActivityList', () => ({
+        observer: null,
+        init() { this.observer = new ResizeObserver(() => this.sizeList()); },
+        observeRows() {
+            this.observer.disconnect();
+            this.observer.observe(this.$el);
+            this.$el.querySelectorAll(':scope > li').forEach((row, index) => {
+                if (index < 5) this.observer.observe(row);
+            });
+            if (this.$el.classList.contains('sa-activity--audits')) {
+                const cars = this.$el.closest('.sa-detail-grid').querySelector('.sa-activity--cars');
+                if (cars) {
+                    this.observer.observe(cars);
+                    cars.querySelectorAll(':scope > li').forEach((row, index) => {
+                        if (index < 5) this.observer.observe(row);
+                    });
+                }
+            }
+            this.sizeList();
+        },
+        sizeList() {
+            const rows = this.$el.querySelectorAll(':scope > li');
+            if (this.$el.classList.contains('sa-activity--audits')) {
+                const grid = this.$el.closest('.sa-detail-grid');
+                const sideBySide = getComputedStyle(grid).gridTemplateColumns.split(' ').length === 2;
+                const cars = grid.querySelectorAll('.sa-activity--cars > li');
+                rows.forEach((row, index) => {
+                    row.style.minHeight = sideBySide && cars[index]
+                        ? `${cars[index].getBoundingClientRect().height}px` : '';
+                });
+            }
+            if (rows.length <= 5) {
+                this.$el.style.maxHeight = '';
+                return;
+            }
+            const height = rows[4].getBoundingClientRect().bottom - rows[0].getBoundingClientRect().top;
+            if (height > 0) this.$el.style.maxHeight = `${height}px`;
+        },
+        destroy() { this.observer.disconnect(); },
+    }));
     window.Alpine.data('superAdminDashboard', () => ({
         loading: true, error: '', data: null, health: null, healthError: '', healthLoading: false, healthRefreshTimer: null,
         init() {
@@ -37,7 +77,7 @@ document.addEventListener('alpine:init', () => {
         loading: true, error: '', tree: { units: [], colleges: [] }, users: [],
         async init() {
             try {
-                const [tree, organization] = await Promise.all([window.axios.get('/api/v1/archives/tree'), window.axios.get('/api/v1/archives/organization')]);
+                const [tree, organization] = await Promise.all([window.axios.get('/api/v1/archives/tree'), window.axios.get('/api/v1/directory/organization')]);
                 this.tree = tree.data; this.users = organization.data.users;
             } catch { this.error = 'Organizational responsibilities could not be loaded.'; }
             finally { this.loading = false; }

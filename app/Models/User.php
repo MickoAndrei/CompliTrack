@@ -42,6 +42,8 @@ class User extends Authenticatable implements JWTSubject
         'fullName',
         'roleId',
         'departmentId',
+        'officeName',
+        'roleSlug',
         'assignedDepartmentIds',
         'isActive',
         'archiveResponsibility', 'archiveUnitIds', 'archiveCollegeIds',
@@ -67,6 +69,7 @@ class User extends Authenticatable implements JWTSubject
         return [
             'createdAt' => 'datetime',
             'updatedAt' => 'datetime',
+            'lastLoginAt' => 'datetime',
             // Read timestamps created before this model used camelCase names.
             'created_at' => 'datetime',
             'updated_at' => 'datetime',

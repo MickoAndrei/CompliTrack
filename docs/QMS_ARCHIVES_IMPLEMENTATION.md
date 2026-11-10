@@ -13,7 +13,7 @@ All four Archives pages now use a shared responsive explorer with the existing n
 
 File previews reuse the separate evidence viewer. Opening/closing a preview preserves the underlying document or Audit Result Details popup. File access is authorized again for each preview/download. Document managers can set visibility, choose explicitly permitted accounts, disable file preview/download, and share evidence with a named audit reference. Earlier document versions/files remain intact; new versions inherit permissions and require their own explicit audit share. Version conflicts return HTTP 409 and clean up only the unsuccessful new file.
 
-Super Admins assign archive responsibilities and explicit unit/college scopes under **Archives → Manage responsibilities**, without changing authentication role IDs. They can rename provisional categories in the explorer. Categories, including the proposed Dean office categories, remain provisional pending document-control approval.
+Audit Team Leaders manage QMS records, organizational responsibilities, and category names. An active Admin with an existing audit reviewer assignment is recognized as an Audit Team Leader. Super Admins can browse folders and see aggregate document counts and file-storage usage, while file lists, details, previews, downloads, and management actions are denied by the API. Other accounts retain their existing scoped read access.
 
 ## Applied migration and organization
 
@@ -50,13 +50,15 @@ Indexes cover unique college codes, college/unit ownership, unique category code
 
 ## Authorization
 
+- Super Admin archive reporting uses a separate aggregate scope for verified folders. Folder/category counts, total archived documents, and digital file storage bytes remain available in QMS and on the dashboard. File lists, document details, versions, previews, downloads, and checksums remain inaccessible.
+- Audit Team Leaders are active Admin accounts already assigned as an audit reviewer. They have full access to verified QMS records, including restricted and download-disabled files. Only they can add records, create versions, manage QMS responsibilities, configure categories, and update document access.
 - Archive access requires an active account, verified ownership, and authorized organizational scope. Missing/unverified ownership is denied, including direct URLs.
 - Department Heads/Secretaries use one explicitly assigned archive department, or their home assignment when no override is configured. An override does not also grant their former home department. Faculty/staff use organizational assignments plus document permissions.
 - Deans/College Secretaries need one explicitly authorized college. Cluster Administrators need explicitly authorized colleges. A responsibility name or role ID does not grant unrestricted access.
 - Document visibility never bypasses organizational scope. Owner-only/restricted records require ownership or explicit account permission; a management responsibility alone does not expose them.
 - Auditors need both an active department assignment and evidence explicitly shared through their own audit, linked compliance-check evidence, or submitted audit evidence. Unsubmitted drafts do not grant access. Removing the assignment revokes access.
-- List/search, folder counts, details, versions, checksums, previews, and downloads use the same scope. Download-disabled files cannot be fetched through the preview endpoint either.
-- Only Super Admins assign organizational responsibilities or configure categories. Document managers can share only with an auditor assigned to the document's department. Unrelated account maintenance remains possible while legacy ownership is pending.
+- List/search, folder counts, details, versions, checksums, previews, and downloads use the same scope. Download-disabled files cannot be fetched through the preview endpoint by scoped readers; Audit Team Leaders retain full access.
+- Only Audit Team Leaders assign QMS organizational responsibilities, configure categories, or create/manage QMS records. Document managers can share only with an auditor assigned to the document's department. Unrelated account maintenance remains possible while legacy ownership is pending.
 
 ## Validation and commands
 
@@ -91,7 +93,7 @@ The actual dataset currently has **0 verified archives and 8 archives awaiting o
 
 These units and their archives are marked unverified, relationships remain intact, and archive access is denied pending approval. Affected accounts see an ownership-review notice. Merging/reassigning requires a separately reviewed mapping after confirmation. Existing authentication, audit results, and CAR records were not removed.
 
-Real people must also be designated explicitly as Dean/Secretary/Head/Cluster Administrator by a Super Admin. Final category/document-control and physical-signature approval requirements remain organizational decisions; the app does not invent those approvals.
+Real people must also be designated explicitly as Dean/Secretary/Head/Cluster Administrator by an Audit Team Leader. Final category/document-control and physical-signature approval requirements remain organizational decisions; the app does not invent those approvals.
 
 ## Files created or modified for this task
 

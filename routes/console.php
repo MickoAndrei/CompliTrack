@@ -11,9 +11,16 @@ Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
 })->purpose('Display an inspiring quote');
 
-Artisan::command('mongodb:check', function () {
+Artisan::command('mongodb:check {--ping : Only check database connectivity, without inspecting change streams}', function () {
     try {
         $database = DB::connection('mongodb')->getMongoDB();
+        if ($this->option('ping')) {
+            $database->command(['ping' => 1])->toArray();
+            $this->info('MongoDB is reachable.');
+
+            return 0;
+        }
+
         $hello = $database->command(['hello' => 1])->toArray()[0] ?? null;
         $replicaSetName = $hello->setName ?? null;
 
@@ -37,6 +44,11 @@ Artisan::command('mongodb:check', function () {
         return 0;
     } catch (\Throwable $exception) {
         $this->error('MongoDB connection check failed: '.$exception->getMessage());
+        if ($exception instanceof \MongoDB\Driver\Exception\ConnectionException) {
+            $this->warn('For MongoDB Atlas, check that this machine\'s current public IP (including any VPN egress IP) is in the project Network Access IP access list and that the cluster is available.');
+            $this->warn('Check outbound TCP port 27017 and any VPN, proxy, firewall, or antivirus TLS inspection. For TLS errors, also verify the PHP MongoDB driver, CA certificates, and system clock.');
+            $this->line('Troubleshooting: https://www.mongodb.com/docs/atlas/troubleshoot-connection/');
+        }
 
         return 1;
     }

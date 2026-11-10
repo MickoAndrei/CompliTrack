@@ -6,6 +6,17 @@ use MongoDB\BSON\ObjectId;
 
 class QmsArchiveAccess
 {
+    public function isAuditTeamLeader(User $actor): bool
+    {
+        if (!$actor->isActive || (int) $actor->roleId !== 1) { return false; }
+        $key = 'qms.auditTeamLeader.'.(string) $actor->getKey();
+        $attributes = request()->attributes;
+        if (!$attributes->has($key)) {
+            $attributes->set($key, Audit::whereIn('reviewerId', [new ObjectId((string) $actor->getKey()), (string) $actor->getKey()])->exists());
+        }
+        return $attributes->get($key);
+    }
+
     public function ids(array $ids): array
     {
         return array_values(array_map(fn ($id) => new ObjectId($id), array_unique(array_filter(array_map('strval', $ids), fn ($id) => preg_match('/^[a-f0-9]{24}$/i', $id)))));
@@ -16,7 +27,7 @@ class QmsArchiveAccess
         $query = Department::where('isActive', true)->where('unitType', '!=', 'legacy_unclassified');
         if ($verifiedOnly) { $query->where('ownershipVerified', true); }
         if (!$actor->isActive) { return $query->whereRaw(['_id' => null]); }
-        if ((int) $actor->roleId === 0) { return $query; }
+        if ((int) $actor->roleId === 0 || $this->isAuditTeamLeader($actor)) { return $query; }
         if ((int) $actor->roleId === 2) {
             return $query->whereIn('_id', $this->ids($actor->assignedDepartmentIds ?? []));
         }
@@ -34,9 +45,15 @@ class QmsArchiveAccess
     {
         $query = ArchiveDocument::query();
         if (!$actor->isActive || !in_array((int) $actor->roleId, [0, 1, 2, 3], true)) { return $query->whereRaw(['_id' => null]); }
+        if ((int) $actor->roleId === 0) { return $query->whereRaw(['_id' => null]); }
         $units = $this->organizationalUnits($actor, true)->get(['_id']);
         $unitIds = $this->ids($units->map(fn ($unit) => $unit->getKey())->all());
         $unitValues = array_merge($unitIds, array_map('strval', $unitIds)); // Existing legacy references may be strings.
+        if ($this->isAuditTeamLeader($actor)) {
+            $query->whereRaw(['departmentId' => ['$in' => $unitValues], 'ownershipVerified' => true]);
+            if ($download) { $query->where(fn ($q) => $q->where('recordType', 'file')->orWhereNull('recordType')); }
+            return $query;
+        }
         if ((int) $actor->roleId === 1) {
             // Reviewing an assigned audit grants its explicitly shared attachments, not the department repository.
             $cetUnits = Department::where('collegeName', 'CET')->where('unitType', 'academic_department')->where('ownershipVerified', true)->where('isActive', true)->get(['_id']);
@@ -71,6 +88,15 @@ class QmsArchiveAccess
         return $query->whereRaw(['$and' => $conditions]);
     }
 
+    // Aggregate reporting does not grant document listing, metadata, or file access.
+    public function summaryDocuments(User $actor)
+    {
+        if (!$actor->isActive || (int) $actor->roleId !== 0) { return $this->documents($actor); }
+        $units = $this->organizationalUnits($actor, true)->get(['_id']);
+        $ids = $this->ids($units->map(fn ($unit) => $unit->getKey())->all());
+        return ArchiveDocument::whereRaw(['departmentId' => ['$in' => array_merge($ids, array_map('strval', $ids))], 'ownershipVerified' => true]);
+    }
+
     private function auditEvidence(User $actor): array
     {
         $departments = $this->ids($actor->assignedDepartmentIds ?? []);
@@ -93,16 +119,13 @@ class QmsArchiveAccess
 
     public function canCreate(User $actor, Department $unit): bool
     {
-        if (!$unit->ownershipVerified || !$unit->collegeId || !$actor->isActive || (int) $actor->roleId === 2) { return false; }
+        if (!$unit->ownershipVerified || !$unit->collegeId || !$this->isAuditTeamLeader($actor)) { return false; }
         return $this->organizationalUnits($actor, true)->where('_id', $unit->getKey())->exists();
     }
 
     public function canManage(User $actor, ArchiveDocument $document): bool
     {
-        if (!$actor->isActive || (int) $actor->roleId === 2) { return false; }
-        if (!$this->documents($actor)->where('_id', $document->getKey())->exists()) { return false; }
-        return (int) $actor->roleId === 0 || (string) $document->uploadedByUserId === (string) $actor->getKey()
-            || in_array($actor->archiveResponsibility, ['department_head', 'department_secretary', 'college_dean', 'college_secretary', 'cluster_administrator'], true)
-                && $document->visibility !== 'restricted';
+        return $this->isAuditTeamLeader($actor)
+            && $this->documents($actor)->where('_id', $document->getKey())->exists();
     }
 }

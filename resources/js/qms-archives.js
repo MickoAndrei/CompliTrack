@@ -4,19 +4,31 @@ document.addEventListener('alpine:init', () => {
         collegeId: '', unitId: '', categoryId: '', search: '', recordType: '', page: 1, error: '', notice: '',
         detail: null, versions: [], activity: [], form: {}, previous: null, accessOptions: { accounts: [], audits: [] }, auditId: '', navExpanded: false,
         organization: null, selectedUser: '', responsibility: 'faculty_staff', scopeUnits: [], scopeColleges: [],
-        requestNumber: 0,
+        requestNumber: 0, initialLoading: true,
         async init() {
             await this.refreshTree(); await this.load();
+            this.initialLoading = false;
             if (this.tree.canManageOrganization && new URLSearchParams(window.location.search).get('manage') === 'responsibilities') {
                 await this.manageOrganization();
             }
         },
         message(error) { return Object.values(error.response?.data?.errors || {}).flat().join(' ') || error.response?.data?.message || 'The request could not be completed. Please try again.'; },
+        storageSize(value) {
+            const bytes = Math.max(0, Number(value) || 0);
+            if (!bytes) return '0 B';
+            const units = ['B', 'KB', 'MB', 'GB', 'TB'];
+            const index = Math.min(Math.floor(Math.log(bytes) / Math.log(1024)), units.length - 1);
+            return `${(bytes / (1024 ** index)).toLocaleString(undefined, { maximumFractionDigits: index ? 2 : 0 })} ${units[index]}`;
+        },
         async refreshTree() {
             try { this.tree = (await window.axios.get('/api/v1/archives/tree')).data; }
             catch (error) { this.error = this.message(error); }
         },
         async load(reset = false, requestedPage = this.page) {
+            if (this.tree.canViewDocuments === false) {
+                this.documents = []; this.meta = { total: 0, lastPage: 1 }; this.page = 1; this.loading = false;
+                return;
+            }
             const page = reset ? 1 : Math.max(1, Number(requestedPage) || 1);
             const number = ++this.requestNumber;
             this.loading = true; this.error = '';

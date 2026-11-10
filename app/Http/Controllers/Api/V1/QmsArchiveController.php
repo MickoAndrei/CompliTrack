@@ -14,7 +14,7 @@ class QmsArchiveController extends Controller
 
     public function tree(Request $request)
     {
-        $documents = $this->access->documents($request->user())->get(['departmentId', 'categoryId']);
+        $documents = $this->access->summaryDocuments($request->user())->get(['departmentId', 'categoryId', 'recordType', 'fileSize']);
         $units = $this->access->organizationalUnits($request->user(), true)->orderBy('departmentName')->get();
         if ((int) $request->user()->roleId === 2) {
             $unitIds = $documents->pluck('departmentId')->map('strval')->all();
@@ -39,7 +39,9 @@ class QmsArchiveController extends Controller
                 'counts' => $units->mapWithKeys(fn ($unit) => [(string) $unit->getKey() => $documents->filter(fn ($document) => (string) $document->departmentId === (string) $unit->getKey()
                     && in_array((string) $document->categoryId, [(string) $category->getKey(), ...$categories->where('parentId', $category->getKey())->map(fn ($child) => (string) $child->getKey())->all()], true))->count()])->all()])->values(),
             'total' => $documents->count(),
-            'canManageOrganization' => (int) $request->user()->roleId === 0,
+            'archiveStorageBytes' => (int) $documents->filter(fn ($document) => !$document->recordType || $document->recordType === 'file')->sum('fileSize'),
+            'canManageOrganization' => $this->access->isAuditTeamLeader($request->user()),
+            'canViewDocuments' => (int) $request->user()->roleId !== 0,
             'ownershipReviewRequired' => (int) $request->user()->roleId !== 0
                 && Department::find($request->user()->departmentId)?->unitType === 'legacy_unclassified',
         ]);
@@ -109,7 +111,7 @@ class QmsArchiveController extends Controller
 
     public function organization(Request $request)
     {
-        abort_unless((int) $request->user()->roleId === 0, 403);
+        abort_unless($this->access->isAuditTeamLeader($request->user()), 403);
         return response()->json(['users' => User::where('isActive', true)->get(['fullName', 'email', 'roleId', 'departmentId', 'archiveResponsibility', 'archiveUnitIds', 'archiveCollegeIds'])
             ->map(fn ($user) => ['_id' => (string) $user->getKey(), 'name' => $user->fullName, 'email' => $user->email, 'roleId' => $user->roleId,
                 'departmentId' => $user->departmentId ? (string) $user->departmentId : null,
@@ -119,34 +121,21 @@ class QmsArchiveController extends Controller
 
     public function assign(Request $request, string $id)
     {
-        abort_unless((int) $request->user()->roleId === 0, 403);
+        abort_unless($this->access->isAuditTeamLeader($request->user()), 403);
         $user = User::findOrFail(MongoId::parse($id));
         abort_if((int) $user->roleId === 2, 422, 'Auditor access comes only from explicit audit evidence sharing.');
         $data = $request->validate(['responsibility' => ['required', Rule::in(config('qms.responsibilities'))],
             'unitIds' => 'present|array|max:50', 'unitIds.*' => 'string|regex:/^[a-f0-9]{24}$/i|distinct',
             'collegeIds' => 'present|array|max:20', 'collegeIds.*' => 'string|regex:/^[a-f0-9]{24}$/i|distinct']);
-        $unitIds = $this->access->ids($data['unitIds']); $collegeIds = $this->access->ids($data['collegeIds']);
-        abort_unless(Department::whereIn('_id', $unitIds)->where('ownershipVerified', true)->where('isActive', true)->count() === count($unitIds), 422);
-        abort_unless(College::whereIn('_id', $collegeIds)->where('isActive', true)->count() === count($collegeIds), 422);
-        $collegeRole = in_array($data['responsibility'], ['college_dean', 'college_secretary', 'cluster_administrator'], true);
-        abort_unless($collegeRole ? count($collegeIds) > 0 && $unitIds === [] : $collegeIds === [], 422, 'Select only the organizational scope for this responsibility.');
-        if (in_array($data['responsibility'], ['college_dean', 'college_secretary'], true)) {
-            abort_unless(count($collegeIds) === 1, 422, 'A college responsibility must belong to one college.');
-        }
-        if (in_array($data['responsibility'], ['department_head', 'department_secretary'], true)) {
-            abort_unless(count($unitIds) <= 1, 422, 'A department responsibility must have one assigned department.');
-            if ($unitIds !== []) {
-                abort_unless(Department::whereIn('_id', $unitIds)->where('unitType', 'academic_department')->exists(), 422, 'Use a college responsibility for the Office of the Dean.');
-            }
-        }
-        $user->fill(['archiveResponsibility' => $data['responsibility'], 'archiveUnitIds' => $unitIds, 'archiveCollegeIds' => $collegeIds])->save();
+        $assignment = app(\App\Services\UserOrganization::class)->validate((int) $user->roleId, $data['responsibility'], $data['unitIds'], $data['collegeIds']);
+        $user->fill($assignment)->save();
         $this->logs->record($request, 'Assigned scoped QMS organizational responsibility', 'user', $user->getKey());
         return response()->json(['message' => 'Organizational archive responsibility updated. Authentication role is unchanged.']);
     }
 
     public function updateCategory(Request $request, string $id)
     {
-        abort_unless((int) $request->user()->roleId === 0, 403);
+        abort_unless($this->access->isAuditTeamLeader($request->user()), 403);
         $category = QmsCategory::findOrFail(MongoId::parse($id));
         $data = $request->validate(['name' => 'required|string|max:150', 'provisional' => 'sometimes|boolean']);
         $category->fill($data)->save();

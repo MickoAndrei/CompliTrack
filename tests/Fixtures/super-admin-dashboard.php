@@ -12,7 +12,7 @@ $directory = storage_path('framework/testing/super-admin-browser');
 Illuminate\Support\Facades\File::ensureDirectoryExists($directory);
 $manifest = json_decode(file_get_contents(public_path('build/manifest.json')), true);
 $bundle = 'file:///'.str_replace('\\', '/', public_path('build/'.$manifest['resources/js/app.js']['file']));
-foreach (['dashboard' => 'super-admin.dashboard', 'departments' => 'super-admin.departments', 'archives' => 'super-admin.archives', 'profile' => 'auth.profile'] as $view => $template) {
+foreach (['dashboard' => 'super-admin.dashboard', 'departments' => 'super-admin.departments', 'archives' => 'super-admin.archives', 'logs' => 'super-admin.logs', 'profile' => 'auth.profile', 'users' => 'super-admin.users'] as $view => $template) {
     $html = view($template)->render();
     $html = preg_replace('/<script\b[^>]*>.*?<\/script>/s', '', $html);
     $html = preg_replace('/<link[^>]+(?:fonts\.googleapis|fonts\.gstatic)[^>]*>/', '', $html);

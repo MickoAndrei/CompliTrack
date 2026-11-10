@@ -1,3 +1,4 @@
+import { enhancedUserManagement } from './user-management';
 const apiPath = (endpoint) => `/api/v1/${endpoint.replace(/^\/+/, '')}`;
 
 function responseData(response) {
@@ -8,19 +9,63 @@ function responseMessage(error, fallback) {
     return error.response?.data?.message || fallback;
 }
 
+function notificationBadge() {
+    return {
+        unreadCount: 0,
+        unreadCountLoading: false,
+        unreadTimer: null,
+        previewPage: 1,
+        previewHeight: window.innerHeight || 800,
+        previewLimit() { return Math.max(1, Math.min(5, Math.floor((this.previewHeight - 260) / 68))); },
+        previewItems() {
+            return [...(this.notifications || []).map(record => ({ kind: 'notification', record })),
+                ...(this.activities || []).map(record => ({ kind: 'activity', record }))];
+        },
+        previewPages() { return Math.max(1, Math.ceil(this.previewItems().length / this.previewLimit())); },
+        init() {
+            this.refreshUnreadCount();
+            this.unreadRefresh = () => { if (!document.hidden) this.refreshUnreadCount(); };
+            this.unreadTimer = window.setInterval(this.unreadRefresh, 20000);
+            window.addEventListener('focus', this.unreadRefresh);
+            document.addEventListener('visibilitychange', this.unreadRefresh);
+            this.resizePreview = () => { this.previewHeight = window.innerHeight; this.previewPage = 1; };
+            window.addEventListener('resize', this.resizePreview);
+        },
+        async refreshUnreadCount() {
+            if (this.unreadCountLoading) return;
+            this.unreadCountLoading = true;
+            try {
+                const { data } = await axios.get(apiPath('notifications'), { params: { unread: true, perPage: 1 } });
+                this.unreadCount = Number(data.meta?.total ?? data.data?.length ?? 0);
+            } catch {
+                // Retain the last known count until the next refresh succeeds.
+            } finally {
+                this.unreadCountLoading = false;
+            }
+        },
+        stopUnreadCount() {
+            window.clearInterval(this.unreadTimer);
+            window.removeEventListener('focus', this.unreadRefresh);
+            document.removeEventListener('visibilitychange', this.unreadRefresh);
+            window.removeEventListener('resize', this.resizePreview);
+        },
+        destroy() { this.stopUnreadCount(); },
+    };
+}
+
 document.addEventListener('alpine:init', () => {
+    Alpine.data('notificationBadge', notificationBadge);
     Alpine.data('auditeeNotifications', () => ({
+        ...notificationBadge(),
         open: false,
         loading: false,
         markingRead: false,
         error: null,
         notifications: [],
         refreshTimer: null,
-        get unreadCount() {
-            return this.notifications.filter((notification) => !notification.isRead).length;
-        },
         async toggle() {
             this.open = !this.open;
+            this.previewPage = 1;
             if (this.open) {
                 await this.refresh();
                 this.refreshTimer = window.setInterval(() => this.refresh(), 20000);
@@ -56,6 +101,7 @@ document.addEventListener('alpine:init', () => {
             try {
                 await axios.patch(apiPath('notifications/read-all'));
                 this.notifications = this.notifications.map((notification) => ({ ...notification, isRead: true }));
+                await this.refreshUnreadCount();
             } catch (error) {
                 this.error = responseMessage(error, 'Unable to mark notifications as read.');
             } finally {
@@ -67,6 +113,7 @@ document.addEventListener('alpine:init', () => {
             try {
                 await axios.patch(apiPath(`notifications/${encodeURIComponent(notification._id)}/read`));
                 notification.isRead = true;
+                await this.refreshUnreadCount();
             } catch (error) {
                 this.error = responseMessage(error, 'Unable to mark this notification as read.');
             }
@@ -78,6 +125,8 @@ document.addEventListener('alpine:init', () => {
             try {
                 if (this.unreadCount > 0) await axios.patch(apiPath('notifications/read-all'));
                 this.notifications = [];
+                this.previewPage = 1;
+                await this.refreshUnreadCount();
             } catch (error) {
                 this.error = responseMessage(error, 'Unable to clear notifications.');
             } finally {
@@ -97,10 +146,12 @@ document.addEventListener('alpine:init', () => {
         },
         destroy() {
             this.stopRefreshing();
+            this.stopUnreadCount();
         },
     }));
 
     Alpine.data('activityNotifications', () => ({
+        ...notificationBadge(),
         open: false,
         loading: false,
         markingRead: false,
@@ -122,11 +173,9 @@ document.addEventListener('alpine:init', () => {
             }
         })(),
         refreshTimer: null,
-        get unreadCount() {
-            return this.notifications.filter((notification) => !notification.isRead).length;
-        },
         async toggle() {
             this.open = !this.open;
+            this.previewPage = 1;
             if (this.open) {
                 this.refreshTimer = window.setInterval(() => this.refresh(), 20000);
                 await this.refresh();
@@ -165,6 +214,7 @@ document.addEventListener('alpine:init', () => {
             try {
                 await axios.patch(apiPath('notifications/read-all'));
                 this.notifications = this.notifications.map((notification) => ({ ...notification, isRead: true }));
+                await this.refreshUnreadCount();
             } catch (error) {
                 this.error = responseMessage(error, 'Unable to mark notifications as read.');
             } finally {
@@ -176,6 +226,7 @@ document.addEventListener('alpine:init', () => {
             try {
                 await axios.patch(apiPath(`notifications/${encodeURIComponent(notification._id)}/read`));
                 notification.isRead = true;
+                await this.refreshUnreadCount();
             } catch (error) {
                 this.error = responseMessage(error, 'Unable to mark this notification as read.');
             }
@@ -193,6 +244,8 @@ document.addEventListener('alpine:init', () => {
                 window.localStorage.setItem('complitrack.dismissedActivities', JSON.stringify(this.dismissedActivityIds));
                 this.activities = [];
                 this.notifications = [];
+                this.previewPage = 1;
+                await this.refreshUnreadCount();
             } catch (error) {
                 this.error = responseMessage(error, 'Unable to clear notifications.');
             } finally {
@@ -224,6 +277,7 @@ document.addEventListener('alpine:init', () => {
         },
         destroy() {
             this.stopRefreshing();
+            this.stopUnreadCount();
         },
     }));
 
@@ -335,6 +389,9 @@ document.addEventListener('alpine:init', () => {
         page: 1,
         search: '',
         sortBy: 'createdAt:desc',
+        startDate: '', endDate: '', draftStartDate: '', draftEndDate: '', dateRangeError: null,
+        exporting: false,
+        exportError: null,
         loading: true,
         error: null,
         message: null,
@@ -408,6 +465,74 @@ document.addEventListener('alpine:init', () => {
             }, 3000);
         },
 
+        auditLogParams() {
+            return {
+                ...(this.search ? { search: this.search } : {}),
+                ...(this.startDate ? { startDate: this.startDate } : {}),
+                ...(this.endDate ? { endDate: this.endDate } : {}),
+                sortBy: this.sortBy.split(':')[0],
+                sortDirection: this.sortBy.split(':')[1],
+            };
+        },
+
+        applyDateRange() {
+            if (this.draftStartDate && this.draftEndDate && this.draftStartDate > this.draftEndDate) {
+                this.dateRangeError = 'The start date must be on or before the end date.';
+                return;
+            }
+            this.dateRangeError = null;
+            this.startDate = this.draftStartDate;
+            this.endDate = this.draftEndDate;
+            return this.load(1);
+        },
+
+        clearDateRange() {
+            this.draftStartDate = ''; this.draftEndDate = '';
+            return this.applyDateRange();
+        },
+
+        csvCell(value) {
+            const text = value === null || value === undefined ? '' : String(value);
+            const safeText = /^[=+\-@\t\r\n]/.test(text) ? `'${text}` : text;
+            return `"${safeText.replaceAll('"', '""')}"`;
+        },
+
+        async exportAuditLogs() {
+            if (this.endpoint !== 'logs' || this.exporting) return;
+            this.exporting = true;
+            this.exportError = null;
+            try {
+                const params = this.auditLogParams();
+                const firstResponse = await axios.get(apiPath('logs'), { params: { ...params, page: 1, perPage: 100 } });
+                const rows = [...firstResponse.data.data];
+                const lastPage = Number(firstResponse.data.meta?.lastPage || 1);
+                for (let page = 2; page <= lastPage; page += 1) {
+                    const { data } = await axios.get(apiPath('logs'), { params: { ...params, page, perPage: 100 } });
+                    rows.push(...data.data);
+                }
+                const csvRows = [
+                    ['User', 'Action', 'Date & Time'],
+                    ...rows.map(row => [row.userName, row.actionDescription || row.action, row.createdAt]),
+                ];
+                const csv = `\uFEFF${csvRows.map(row => row.map(value => this.csvCell(value)).join(',')).join('\r\n')}`;
+                const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
+                try {
+                    const anchor = document.createElement('a');
+                    anchor.href = url;
+                    anchor.download = `audit-logs-${new Date().toISOString().slice(0, 10)}.csv`;
+                    document.body.appendChild(anchor);
+                    try { anchor.click(); } finally { anchor.remove(); }
+                } finally {
+                    window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+                }
+                this.showSuccessPopup(`Exported ${rows.length} audit log record(s).`);
+            } catch (error) {
+                this.exportError = responseMessage(error, 'Unable to export audit logs. Please try again.');
+            } finally {
+                this.exporting = false;
+            }
+        },
+
         async load(page = this.page) {
             this.loading = true;
             this.error = null;
@@ -418,10 +543,7 @@ document.addEventListener('alpine:init', () => {
                         perPage: this.perPage,
                         ...(this.endpoint === 'notifications' ? { unread: this.unreadOnly, type: this.typeFilter } : {}),
                         ...(this.search ? { search: this.search } : {}),
-                        ...(this.endpoint === 'logs' ? {
-                            sortBy: this.sortBy.split(':')[0],
-                            sortDirection: this.sortBy.split(':')[1],
-                        } : {}),
+                        ...(this.endpoint === 'logs' ? this.auditLogParams() : {}),
                     },
                 });
                 this.rows = Array.isArray(data.data) ? data.data : [];
@@ -785,6 +907,7 @@ document.addEventListener('alpine:init', () => {
                 this.showSuccessPopup(responseMessage(error, 'Unable to mark this notification as read.'), 'error');
             }
         },
+        ...enhancedUserManagement(config),
     }));
 
     Alpine.data('dashboardPage', ({ roleId, heading, subheading }) => ({

@@ -12,7 +12,7 @@ class MockArchiveImporter
 {
     public function run(string $directory, User $actor, bool $apply = false): array
     {
-        if (!$actor->isActive || (int) $actor->roleId !== 0) { throw new RuntimeException('An active Super Admin must own this import.'); }
+        if (!app(QmsArchiveAccess::class)->isAuditTeamLeader($actor)) { throw new RuntimeException('An active Audit Team Leader must own this import.'); }
         $root = realpath($directory);
         if (!$root) { throw new RuntimeException('Dataset directory not found.'); }
         $dataset = json_decode(file_get_contents($root.'/complitrack_cet_demo.json'), true, flags: JSON_THROW_ON_ERROR);

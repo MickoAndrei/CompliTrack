@@ -34,18 +34,18 @@ const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
         const waitFor = async expression => { for (let i = 0; i < 100; i++) { if (await evaluate(expression)) return; await delay(50); } throw new Error(`Timed out: ${expression}`); };
         await send('Page.enable'); await send('Runtime.enable');
         await send('Page.addScriptToEvaluateOnNewDocument', { source: `
-            window.fixtureCalls=[];
+            window.fixtureCalls=[];window.holdArchivePage=true;
             const id=n=>String(n).padStart(24,'0');
             const units=['Agricultural and Biosystem Engineering','Environmental Engineering','Food Processing and Technology','Hospitality Management','Information Technology','Office of the Dean'].map((name,i)=>({_id:id(i+10),collegeId:id(1),name,unitType:i===5?'college_office':'academic_department',canCreate:true,count:i===0?3:0}));
             const categories=[{_id:id(30),collegeId:id(1),parentId:null,code:'1.0',name:'Academic & Instruction Processes',unitType:'academic_department',provisional:true,counts:{[id(10)]:3}},
                 {_id:id(31),collegeId:id(1),parentId:id(30),code:'1.0.1',name:'Curriculum & Program Specifications',unitType:'academic_department',provisional:true,counts:{[id(10)]:3}}];
-            const tree={campus:'USTP Claveria Campus',colleges:[{_id:id(1),name:'College of Engineering and Technology',code:'CET'}],units,categories,total:3,canManageOrganization:true};
+            const tree={campus:'USTP Claveria Campus',colleges:[{_id:id(1),name:'College of Engineering and Technology',code:'CET'}],units,categories,total:3,archiveStorageBytes:3072,canManageOrganization:true};
             let docs=['file','digital-reference','physical-original'].map((recordType,i)=>({_id:id(i+50),title:['Authorized curriculum file','Controlled curriculum reference','Signed original register'][i],fileCode:'BROWSER-'+i,originalName:'curriculum.pdf',departmentId:id(10),collegeId:id(1),categoryId:id(31),departmentName:units[0].name,uploadedBy:'Authorized owner',recordType,versionNumber:1,createdAt:'2026-11-08T08:00:00Z',canManage:true,canDownload:i===0,downloadAllowed:i===0,visibility:'department',description:'Browser fixture only',documentReference:i===1?'QMS-CUR-001':null,physicalLocation:i===2?'Department cabinet A':null,signatureStatus:'not_verified',accessUserIds:[],sharedAuditIds:[]}));
             Object.defineProperty(window,'axios',{configurable:true,get(){return this.fixtureAxios},set(client){
                 client.defaults.adapter=async config=>{
                     window.fixtureCalls.push({url:config.url,method:config.method,params:config.params});
                     let data;
-                    if(config.url.endsWith('/tree'))data=tree;
+                    if(config.url.endsWith('/tree')){if(!window.treeReleased)await new Promise(resolve=>window.releaseTree=resolve);data=tree;}
                     else if(config.url.endsWith('/organization'))data={users:[{_id:id(90),name:'Authorized secretary',email:'browser@example.test',roleId:3,responsibility:'department_secretary',unitIds:[id(10)],collegeIds:[]}],responsibilities:['department_secretary','college_dean','college_secretary','cluster_administrator','faculty_staff']};
                     else if(config.url==='/api/v1/archives'){
                         const p=config.params||{};
@@ -66,7 +66,18 @@ const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
         for (const width of [1440, 768, 390, 320]) {
             await send('Emulation.setDeviceMetricsOverride', { width, height: 960, deviceScaleFactor: 1, mobile: width < 600 });
             await send('Page.navigate', { url: pathToFileURL(path.join(fixtures, 'explorer.html')).href });
+            await waitFor('!!window.releaseTree');
+            assert.equal(await evaluate('document.querySelector(".qms-loading-skeleton.qms-workspace").checkVisibility()'), true, 'Workspace skeleton appears while folders load');
+            assert.equal(await evaluate('document.querySelector(".qms-workspace:not(.qms-loading-skeleton)").checkVisibility()'), false, 'Archive content stays hidden before data arrives');
+            assert.equal(await evaluate('document.documentElement.scrollWidth<=innerWidth'), true, 'Skeleton fits viewport');
+            await evaluate('window.treeReleased=true;window.releaseTree()');
+            await waitFor('!!window.releaseArchivePage');
+            assert.equal(await evaluate('document.querySelector(".qms-loading-skeleton.qms-workspace").checkVisibility()'), true, 'Skeleton remains until records arrive');
+            await evaluate('window.holdArchivePage=false;window.releaseArchivePage();window.releaseArchivePage=null');
             await waitFor('!!window.Alpine && document.querySelectorAll(".qms-document").length===3');
+            await waitFor('!Alpine.$data(document.querySelector(".qms-explorer")).initialLoading');
+            await waitFor('!document.querySelector(".qms-loading-skeleton.qms-workspace").checkVisibility()');
+            assert.equal(await evaluate('document.querySelector(".qms-loading-skeleton.qms-workspace").checkVisibility()'), false, 'Workspace skeleton clears after load');
             assert.equal(await evaluate('[...document.querySelectorAll(".qms-pagination button")].every(button=>button.disabled)'), true, 'Single-page controls stay visible and disabled');
             assert.equal(await evaluate('document.documentElement.scrollWidth<=innerWidth'), true, 'Explorer must not overflow viewport');
             assert.equal(await evaluate('document.querySelectorAll(".qms-main .qms-folder").length'), 6, 'Five departments plus distinct Dean office');
@@ -106,6 +117,9 @@ const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
             assert.equal(await evaluate('document.querySelector(".qms-pagination button").disabled'), true);
             await evaluate('window.holdArchivePage=true;document.querySelector(".qms-pagination button:last-child").click()');
             await waitFor('!!window.releaseArchivePage');
+            await waitFor('document.querySelector(".qms-main > .qms-loading-skeleton").checkVisibility()');
+            assert.equal(await evaluate('document.querySelector(".qms-main > .qms-loading-skeleton").checkVisibility()'), true, 'Document skeleton appears during pagination');
+            assert.equal(await evaluate('document.querySelector(".qms-main > .qms-documents").checkVisibility()'), false, 'Old document cards hide while loading');
             assert.equal(await evaluate('Alpine.$data(document.querySelector(".qms-explorer")).page'), 1, 'Page changes only after success');
             assert.equal(await evaluate('[...document.querySelectorAll(".qms-pagination button")].every(button=>button.disabled)'), true, 'Both controls disable during requests');
             const requestCount=await evaluate('window.fixtureCalls.length');
@@ -128,6 +142,15 @@ const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
             await evaluate('window.canonicalArchivePage=1;document.querySelector(".qms-pagination button:last-child").click()');
             await waitFor('document.querySelector(".qms-pagination .app-pagination-status").textContent==="Page 1 of 3"');
             assert.equal(await evaluate('document.documentElement.scrollWidth<=innerWidth'),true,'Pagination fits viewport');
+            const requestsBeforeFolders=await evaluate('window.fixtureCalls.length');
+            await evaluate('(()=>{const app=Alpine.$data(document.querySelector(".qms-explorer"));app.tree={...app.tree,canManageOrganization:false,canViewDocuments:false,units:app.tree.units.map(unit=>({...unit,canCreate:false}))};app.navigate()})()');
+            await waitFor('!document.querySelector(".qms-heading .qms-gold").checkVisibility()');
+            assert.equal(await evaluate('document.querySelector(".qms-heading .qms-button").checkVisibility()'),false,'Super Admin cannot manage responsibilities');
+            assert.equal(await evaluate('document.querySelector(".qms-documents").checkVisibility()'),false,'Super Admin sees no files');
+            assert.equal(await evaluate('document.querySelector(".qms-main .qms-folder").checkVisibility()'),true,'Super Admin still sees folders');
+            assert.equal(await evaluate('window.fixtureCalls.length'),requestsBeforeFolders,'Folder-only view requests no file list');
+            assert.equal(await evaluate('document.querySelector(".qms-summary").checkVisibility()'),true,'Super Admin sees archive aggregate statistics');
+            assert.ok((await evaluate('document.querySelector(".qms-summary").textContent')).includes('3 KB'),'Storage usage is formatted in KB');
             console.log(`PASS ${width}px: matching pagination, boundaries, loading guard, filters, failed requests, server page state`);
             console.log(`PASS ${width}px: folders, categories, search, metadata-only save, stacked preview, responsive dialogs`);
         }

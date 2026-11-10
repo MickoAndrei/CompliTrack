@@ -18,6 +18,18 @@ class DepartmentController extends Controller
     ) {
     }
 
+    public function organizationSummary(Request $request)
+    {
+        abort_unless((int) $request->user()->roleId === 0, 403);
+        return response()->json(['users' => User::where('isActive', true)
+            ->get(['fullName', 'departmentId', 'archiveResponsibility', 'archiveUnitIds', 'archiveCollegeIds'])
+            ->map(fn ($user) => ['name' => $user->fullName,
+                'departmentId' => $user->departmentId ? (string) $user->departmentId : null,
+                'responsibility' => $user->archiveResponsibility ?: 'faculty_staff',
+                'unitIds' => array_map('strval', $user->archiveUnitIds ?? []),
+                'collegeIds' => array_map('strval', $user->archiveCollegeIds ?? [])])]);
+    }
+
     public function index(Request $request)
     {
         $query = $this->scopes->departments($request->user());

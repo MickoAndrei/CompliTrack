@@ -43,11 +43,6 @@
     $homePaths = [0 => '/super-admin/dashboard', 1 => '/admin/dashboard', 2 => '/auditor/dashboard', 3 => '/auditee/dashboard'];
     $userAvatarUrl = auth()->user()->avatarPath ? url('/api/v1/auth/avatar') : null;
     $userInitials = collect(explode(' ', auth()->user()->fullName ?? 'U'))->filter()->take(2)->map(fn ($part) => mb_substr($part, 0, 1))->implode('');
-    $navigationGroups = $roleId === 0 ? [
-        ['label' => null, 'items' => array_slice($menus[0], 0, 1)],
-        ['label' => 'Organization', 'items' => array_slice($menus[0], 1, 3)],
-        ['label' => 'Records & System', 'items' => array_slice($menus[0], 4)],
-    ] : [['label' => null, 'items' => $menus[$roleId] ?? []]];
 @endphp
 <aside x-cloak :class="{ 'open': sidebarOpen }"
        class="sidebar app-sidebar fixed inset-y-0 left-0 z-50 flex w-64 -translate-x-full flex-col bg-ustp-navy text-white transition-transform duration-200 lg:static lg:z-auto lg:translate-x-0">
@@ -62,20 +57,13 @@
             </span>
         </a>
         <nav class="{{ 'sidebar-nav' }}" aria-label="Main navigation">
-            @foreach ($navigationGroups as $group)
-            @if ($group['label'])
-                <details class="sidebar-section" @if (collect($group['items'])->contains(fn ($item) => request()->is(ltrim($item[1], '/'), ltrim($item[1], '/').'/*')) || request()->is('super-admin/dashboard')) open @endif>
-                    <summary>{{ $group['label'] }}<i data-lucide="chevron-down" aria-hidden="true"></i></summary>
-            @endif
-            @foreach ($group['items'] as [$label, $href, $icon])
+            @foreach ($menus[$roleId] ?? [] as [$label, $href, $icon])
                 @php($active = request()->is(ltrim($href, '/'), ltrim($href, '/').'/*'))
                 <a href="{{ $href }}" @if ($active) aria-current="page" @endif
                    class="nav-link-item {{ $active ? 'active' : '' }}">
                     <i data-lucide="{{ $icon }}" class="nav-icon size-5 shrink-0"></i>
                     <span>{{ $label }}</span>
                 </a>
-            @endforeach
-            @if ($group['label'])</details>@endif
             @endforeach
         </nav>
     </div>

@@ -78,8 +78,9 @@ class QmsDevelopmentData
             }
             $kitRoot = base_path('dataset_files/CompliTrack_CET_Demo_Kit-3');
             $kit = json_decode(file_get_contents($kitRoot.'/complitrack_cet_demo.json'), true, flags: JSON_THROW_ON_ERROR);
-            $super = User::where('roleId', 0)->where('isActive', true)->firstOrFail();
-            app(MockArchiveImporter::class)->run($kitRoot, $super, true);
+            // Establish the planned leader assignment before importing through the QMS permission checks.
+            $this->scenarioAudit('scheduled', $units['CET-IT'], 'draft', []);
+            app(MockArchiveImporter::class)->run($kitRoot, $atl, true);
             foreach ($kit['documents'] as $source) {
                 $archive = ArchiveDocument::where('sourceImportKey', $kit['datasetId'].':'.$source['documentId'])->firstOrFail();
                 $this->documents[$source['documentId']] = $archive;
@@ -94,7 +95,7 @@ class QmsDevelopmentData
                 'DEMO-CHAIR' => $this->accounts['CET-IT:department_head'], 'DEMO-FAC' => $this->accounts['CET-IT:faculty_staff'], 'DEMO-LAB' => $this->accounts['CET-IT:department_secretary']];
             foreach ($kit['audits'] as $source) { $this->kitAudit($source, $kit, $people, $units['CET-IT']); }
             $matrix = [
-                ['scheduled', 'CET-IT', 'draft', []], ['checklist-draft', 'CET-ABE', 'draft', [null, null]],
+                ['checklist-draft', 'CET-ABE', 'draft', [null, null]],
                 ['evidence-request', 'CET-ENV', 'ready', [null]], ['digital-submission', 'CET-FPT', 'ready', [null]],
                 ['physical-review', 'CET-HM', 'ready', ['C', null]], ['submitted', 'CET-ABE', 'submitted', ['C', 'N', 'O']],
                 ['returned', 'CET-ENV', 'returned', ['C', 'N', 'O']], ['completed', 'CET-FPT', 'accepted', ['C', 'N', 'O']],
@@ -175,7 +176,8 @@ class QmsDevelopmentData
         if (!$archive) {
             $request = $this->uploadRequest($owner, $unit, $category, $title, $type, $visibility, $key);
             $archive = ArchiveDocument::findOrFail(app(\App\Http\Controllers\Api\V1\ArchiveController::class)->upload($request)->getData(true)['data']['_id']);
-            $archive->forceFill(['mockSeedKey' => $seedKey, 'tags' => ['MOCK', self::KEY], 'sourceMetadata' => ['isMock' => true, 'scenario' => $key, 'revision' => '01', 'effectiveDate' => now()->toDateString()]])->save();
+            // Historical fixture ownership is retained; current uploads are authorized through the ATL.
+            $archive->forceFill(['uploadedByUserId' => $owner->getKey(), 'mockSeedKey' => $seedKey, 'tags' => ['MOCK', self::KEY], 'sourceMetadata' => ['isMock' => true, 'scenario' => $key, 'revision' => '01', 'effectiveDate' => now()->toDateString()]])->save();
         }
         $this->manifest[] = $this->manifest($archive, 'scenario_document');
         return $archive;
@@ -199,7 +201,7 @@ class QmsDevelopmentData
                 $data['title'] = '[MOCK] IT syllabus uploaded by Department Secretary';
             }
         }
-        return $this->request($owner, $data, $files);
+        return $this->request($this->accounts['atl'], $data, $files);
     }
 
     private function kitAudit(array $source, array $kit, array $people, Department $unit): void

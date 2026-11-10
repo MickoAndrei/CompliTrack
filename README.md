@@ -113,6 +113,9 @@ representative organizational accounts, and audit/CAR scenarios, see
 The Super Admin dashboard metrics, organizational responsibility controls, and
 verification results are documented in [SUPER_ADMIN_DASHBOARD.md](docs/SUPER_ADMIN_DASHBOARD.md).
 
+Super Admin account management, organizational validation, preservation rules, and
+test results are documented in [USER_MANAGEMENT_IMPLEMENTATION.md](docs/USER_MANAGEMENT_IMPLEMENTATION.md).
+
 CompliTrack uses both databases for different purposes:
 
 - **MongoDB** stores application data, including users, roles, departments,
@@ -185,8 +188,9 @@ From the repository root, start the application services with:
 ```
 
 The script checks the required tools, creates environment files if needed,
-installs missing dependencies, generates the Laravel app key, starts MongoDB
-when `mongod` or Docker is available, runs Laravel migrations, builds the
+installs missing dependencies, generates the Laravel app key, checks the MongoDB
+connection configured in `.env`, runs Laravel migrations and seeds once per
+database target, logs out existing accounts before starting Laravel, builds the
 frontend, and starts Laravel, the realtime service, and Vite. Review the root
 `.env` and `realtime\.env` and set any required secrets or service-specific
 configuration before using the application.
@@ -201,6 +205,25 @@ MongoDB is left running.
 
 The scripts require PHP 8.2+, Composer, Node.js 20+, and npm on `PATH`.
 For manual installation or other platforms, follow the steps below.
+
+If startup stops with a MongoDB TLS handshake or server selection error, run:
+
+```powershell
+php artisan config:clear
+php artisan mongodb:check --ping
+```
+
+For Atlas, confirm the cluster is available and add this machine's current public
+IP to the project's **Network Access > IP Access List**. If using a VPN, use its
+egress IP. Check outbound TCP port 27017 and any firewall, proxy, or antivirus TLS
+inspection. If access is already allowed, check the PHP MongoDB driver, CA
+certificates, and system clock. Keep TLS certificate verification enabled.
+See [Atlas connection troubleshooting](https://www.mongodb.com/docs/atlas/troubleshoot-connection/).
+Once the ping succeeds, rerun `.\start-complitrack.ps1`.
+
+The saved migration/seeding marker records previous initialization; startup
+checks connectivity on every run, even when that marker exists. A failed check
+stops startup before migrations, seeding, or account logout.
 
 ### 2. Install backend dependencies (Laravel)
 

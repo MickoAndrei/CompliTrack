@@ -36,12 +36,12 @@
         <article class="sa-panel"><header><div><h3>Recent Audit Activity</h3><p>Latest updates from recorded audits</p></div><a href="/super-admin/logs">System logs</a></header>
             <x-dashboard-skeleton type="activity" x-show="loading" />
             <p x-show="!loading && data && !data.recentAuditActivity.length" x-cloak>No audit activity recorded.</p>
-            <ol class="sa-activity" x-show="!loading" x-cloak><template x-for="audit in data?.recentAuditActivity || []" :key="audit.id"><li><div><strong x-text="audit.reference"></strong><span class="sa-status" x-text="status(audit.status)"></span></div><p x-text="audit.department"></p><time x-text="date(audit.at)"></time></li></template></ol>
+            <ol class="sa-activity sa-activity--audits" tabindex="0" x-data="dashboardActivityList" x-effect="data; loading; $nextTick(() => observeRows())" x-show="!loading" x-cloak><template x-for="audit in data?.recentAuditActivity || []" :key="audit.id"><li><div><strong x-text="audit.reference"></strong><span class="sa-status" x-text="status(audit.status)"></span></div><p x-text="audit.department"></p><time x-text="date(audit.at)"></time></li></template></ol>
         </article>
         <article class="sa-panel"><header><div><h3>Corrective Actions Requiring Attention</h3><p>Open / in-progress CARs · overdue first, then earliest due</p></div></header>
             <x-dashboard-skeleton type="activity" x-show="loading" />
             <p x-show="!loading && data && !data.correctiveAttention.length" x-cloak>No corrective actions currently require attention.</p>
-            <ol class="sa-activity" x-show="!loading" x-cloak><template x-for="car in data?.correctiveAttention || []" :key="car.id"><li><div><strong x-text="car.reference"></strong><span class="sa-status" :class="{'is-overdue': car.overdue}" x-text="car.overdue ? 'Overdue' : status(car.status)"></span></div><p x-text="`${car.department} · ${car.assignee}`"></p><small x-text="car.source"></small><time x-text="car.dueDate ? `Due ${date(car.dueDate)}` : 'No due date recorded'"></time></li></template></ol>
+            <ol class="sa-activity sa-activity--cars" tabindex="0" x-data="dashboardActivityList" x-effect="data; loading; $nextTick(() => observeRows())" x-show="!loading" x-cloak><template x-for="car in data?.correctiveAttention || []" :key="car.id"><li><div><strong x-text="car.reference"></strong><span class="sa-status" :class="{'is-overdue': car.overdue}" x-text="car.overdue ? 'Overdue' : status(car.status)"></span></div><p x-text="`${car.department} · ${car.assignee}`"></p><small x-text="car.source"></small><time x-text="car.dueDate ? `Due ${date(car.dueDate)}` : 'No due date recorded'"></time></li></template></ol>
         </article>
     </div>
     <article class="sa-panel"><header><div><h3 id="sa-user-growth-title">User Growth Trend</h3><p>Cumulative registered accounts · last six months</p></div><a href="/super-admin/users">Manage users</a></header>
