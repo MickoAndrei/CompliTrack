@@ -30,6 +30,7 @@ database.users.createIndex({ email: 1 }, { unique: true, name: "users_email_uniq
 database.users.createIndex({ userCode: 1 }, { unique: true, name: "users_user_code_unique" });
 database.users.createIndex({ roleId: 1, departmentId: 1 }, { name: "users_role_department" });
 database.users.createIndex({ roleId: 1, assignedDepartmentIds: 1 }, { name: "users_role_assigned_departments" });
+database.users.createIndex({ fullName: 1 }, { name: "users_full_name" });
 database.departments.createIndex({ departmentCode: 1 }, { unique: true, name: "departments_code_unique" });
 database.archive_documents.createIndex({ fileCode: 1 }, { unique: true, name: "archives_file_code_unique" });
 database.archive_documents.createIndex({ departmentId: 1, uploadedByUserId: 1 }, { name: "archives_department_uploader" });

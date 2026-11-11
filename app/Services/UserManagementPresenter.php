@@ -7,6 +7,20 @@ use App\Support\MongoId;
 
 class UserManagementPresenter
 {
+    public function summary(): array
+    {
+        $rows = User::raw(fn ($collection) => $collection->aggregate([
+            ['$group' => ['_id' => null, 'total' => ['$sum' => 1],
+                'active' => ['$sum' => ['$cond' => [['$eq' => ['$isActive', true]], 1, 0]]],
+                'auditors' => ['$sum' => ['$cond' => [['$eq' => ['$roleId', 2]], 1, 0]]],
+                'auditees' => ['$sum' => ['$cond' => [['$eq' => ['$roleId', 3]], 1, 0]]]]],
+        ])->toArray());
+        $row = $rows[0] ?? [];
+
+        return ['total' => (int) ($row['total'] ?? 0), 'active' => (int) ($row['active'] ?? 0),
+            'auditors' => (int) ($row['auditors'] ?? 0), 'auditees' => (int) ($row['auditees'] ?? 0)];
+    }
+
     public function options(): array
     {
         return [

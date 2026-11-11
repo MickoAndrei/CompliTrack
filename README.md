@@ -116,6 +116,10 @@ verification results are documented in [SUPER_ADMIN_DASHBOARD.md](docs/SUPER_ADM
 Super Admin account management, organizational validation, preservation rules, and
 test results are documented in [USER_MANAGEMENT_IMPLEMENTATION.md](docs/USER_MANAGEMENT_IMPLEMENTATION.md).
 
+Measured Users API, frontend, static asset and OPcache improvements, regression results,
+and remaining runtime limits are documented in [PERFORMANCE_OPTIMIZATION.md](docs/PERFORMANCE_OPTIMIZATION.md).
+Current OPcache defaults, browser measurements, and the styling fix are in [Phase 2](docs/PERFORMANCE_PHASE_2.md).
+
 The existing Admin account serves as the Audit Team Leader workspace. Its scoped
 dashboard, submitted-audit review popup, corrective-action monitoring, authorization
 boundaries, and verification results are documented in

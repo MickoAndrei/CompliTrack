@@ -372,7 +372,8 @@ class AuditWorkflowMongoTest extends TestCase
         $this->actingAs($other)->get('/auditee/my-findings')->assertOk()->assertDontSee('Permitted accepted result');
         $this->actingAs($person);
         foreach (['dashboard','my-findings','upload','archives','notifications','help'] as $page) { $this->get('/auditee/'.$page)->assertOk(); }
-        $this->get('/profile')->assertOk();
+        $this->get('/profile')->assertRedirect('/auditee/profile');
+        $this->get('/auditee/profile')->assertOk();
         $this->getJson('/api/v1/notifications?unread=1&type=evidence_requested')->assertOk()->assertJsonPath('meta.total', 1);
     }
 

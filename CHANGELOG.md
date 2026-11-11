@@ -2,6 +2,30 @@
 
 All notable changes to CompliTrack are documented here.
 
+## [Unreleased] - 2026-11-11
+
+### Added
+
+- Added performance measurement tools and reports for the Users API, browser loading, MongoDB indexes, static assets, and PHP OPcache.
+- Added a backup-first maintenance script and fresh-database definition for the user-name sorting index.
+- Added locally hosted fonts, an explicit Lucide icon registry, and regression coverage for frontend loading, tunnel assets, profile routes, and notification badges.
+
+### Changed
+
+- Batched Users API relationship lookups and summary counts, reused pagination totals, and added a separate authorized filter-options endpoint with page-local freshness handling.
+- Split page-specific JavaScript into lazy-loaded modules, deferred notification polling until primary content settles, and coalesced identical in-flight notification reads.
+- Served hashed build assets and local fonts through the development proxy with compression, immutable caching, ETags, and HEAD support.
+- Enabled OPcache by default for development startup with timestamp checks, and kept local Vite HMR available while ngrok uses compiled assets.
+- Moved implementation and investigation reports into `docs/` and linked the performance reports from the README.
+
+### Fixed
+
+- Corrected static asset routing that could return empty CSS or JavaScript responses, and ensured delayed modules initialize after document readiness.
+- Cancelled obsolete user searches and notification requests, cleared sensitive page state on exit, and reauthorized pages restored from the back/forward cache.
+- Redirected authenticated login visits and the shared profile URL to the appropriate role portal, with role-specific profile links and access checks.
+- Included unread recent activity in the Super Admin bell badge, made Read all handle activity-only items, and kept cleared activity dismissed during polling.
+- Refreshed header unread counts immediately after notifications are marked read on the notifications page, with badge checks across all four roles at desktop and mobile widths.
+
 ## [Unreleased] - 2026-11-09
 
 ### Added

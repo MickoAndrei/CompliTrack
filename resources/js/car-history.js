@@ -1,4 +1,6 @@
-document.addEventListener('DOMContentLoaded', () => {
+import { onDocumentReady } from './dom-ready';
+
+onDocumentReady(() => {
     const dialog = document.querySelector('#car-history-dialog');
     if (!dialog) return;
     const body = dialog.querySelector('[data-car-history-body]');

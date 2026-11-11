@@ -38,7 +38,7 @@
             ['Archives', '/auditee/archives', 'archive'],
             ['Notifications', '/auditee/notifications', 'bell'],
             ['Help & Standards', '/auditee/help', 'circle-help'],
-            ['Profile', '/profile', 'circle-user-round'],
+            ['Profile', $profilePath, 'circle-user-round'],
         ],
     ];
     $roleNames = ['Super Admin', 'Admin', 'Auditor', 'Auditee'];

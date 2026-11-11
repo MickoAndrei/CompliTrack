@@ -7,6 +7,8 @@ export function enhancedUserManagement(config) {
     return {
         userForm: { _id: null, fullName: '', email: '', roleId: 3, departmentId: '', officeName: '', isActive: true, assignedDepartmentIds: [], archiveResponsibility: '', archiveUnitIds: [], archiveCollegeIds: [] },
         summary: null, options: { departments: [], colleges: [], responsibilities: [] },
+        optionsLoadedAt: 0,
+        userRequestController: null,
         filters: { roleId: '', departmentId: '', responsibility: '', status: '' },
         requestNumber: 0, detailRequest: 0, details: null, detailLoading: false, detailError: '',
         formError: '', fieldErrors: {}, originalUser: null, menuTarget: null, menuTrigger: null, actionTarget: null, action: '', actionError: '',
@@ -19,27 +21,46 @@ export function enhancedUserManagement(config) {
             return this.options.departments.filter(unit => (head ? unit.authorizedCet : unit.active && unit.verified && unit.unitType !== 'legacy_unclassified')
                 || unit._id === this.originalUser?.departmentId);
         },
-        async load(page = this.page) {
+        async load(page = this.page, { refreshOptions = false } = {}) {
+            this.userRequestController?.abort();
+            const controller = new AbortController();
+            this.userRequestController = controller;
             const number = ++this.requestNumber;
             this.loading = true; this.error = null;
             try {
-                const params = { page, perPage: this.perPage, management: 1, search: this.search };
+                // Page-local options only: refresh on mutations, focus and editor open, or after one minute.
+                const includeOptions = refreshOptions || Date.now() - this.optionsLoadedAt >= 60000;
+                const params = { page, perPage: this.perPage, management: 1, search: this.search, includeOptions: includeOptions ? 1 : 0 };
                 Object.entries(this.filters).forEach(([key, value]) => { if (value !== '') params[key] = value; });
-                const { data } = await axios.get(endpoint, { params });
+                const { data } = await axios.get(endpoint, { params, signal: controller.signal });
                 if (number !== this.requestNumber) return;
                 this.rows = data.data; this.meta = data.meta; this.page = data.meta.currentPage;
-                this.summary = data.summary; this.options = data.options;
+                this.summary = data.summary;
+                if (data.options) { this.options = data.options; this.optionsLoadedAt = Date.now(); }
                 if (this.page > this.meta.lastPage) return this.load(this.meta.lastPage);
             } catch (error) {
-                if (number === this.requestNumber) this.error = message(error, 'Users could not be loaded. Please retry.');
+                if (number === this.requestNumber && !controller.signal.aborted) this.error = message(error, 'Users could not be loaded. Please retry.');
             } finally {
                 if (number === this.requestNumber) { this.loading = false; this.$nextTick(() => window.renderIcons?.()); }
             }
         },
+        abortUserRequests() {
+            this.requestNumber++;
+            this.userRequestController?.abort();
+        },
         clearUserFilters() { this.search = ''; this.filters = { roleId: '', departmentId: '', responsibility: '', status: '' }; this.load(1); },
+        async refreshUserOptions() {
+            try {
+                const { data } = await axios.get(`${endpoint}/options`);
+                this.options = data.options; this.optionsLoadedAt = Date.now();
+            } catch (error) {
+                this.formError = message(error, 'Organization options could not be refreshed. Please retry.');
+            }
+        },
         startUserCreate() { this.openUserEditor(); },
         startUserEdit(row) { this.openUserEditor(row); },
         openUserEditor(row = null) {
+            this.refreshUserOptions();
             this.closeUserMenu(); this.originalUser = row ? structuredClone(Alpine.raw(row)) : null;
             this.formError = ''; this.fieldErrors = {};
             this.userForm = { _id: row?._id || null, fullName: row?.fullName || '', email: row?.email || '', roleId: Number(row?.roleId ?? 3),
@@ -73,7 +94,7 @@ export function enhancedUserManagement(config) {
                 else await axios.post(endpoint, payload);
                 this.$refs.userEditor.close();
                 this.showSuccessPopup(_id ? 'User updated.' : 'User created. An account setup link has been sent.');
-                await this.load(_id ? this.page : 1);
+                await this.load(_id ? this.page : 1, { refreshOptions: true });
             } catch (error) {
                 this.formError = message(error, 'The user could not be saved.'); this.fieldErrors = error.response?.data?.errors || {};
                 this.$nextTick(() => this.$refs.userEditor.querySelector('[role="alert"]')?.focus());
@@ -117,7 +138,7 @@ export function enhancedUserManagement(config) {
                 if (this.action === 'deactivate') await axios.delete(url);
                 else await axios.post(`${url}/${this.action === 'reset' ? 'reset-password' : 'reactivate'}`);
                 this.$refs.userAction.close(); this.showSuccessPopup(this.action === 'reset' ? 'Password reset link sent.' : 'Account status updated.');
-                await this.load();
+                await this.load(this.page, { refreshOptions: true });
             } catch (error) { this.actionError = message(error, 'This action could not be completed.'); }
             finally { this.saving = false; }
         },

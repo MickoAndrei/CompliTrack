@@ -1,5 +1,8 @@
 import { enhancedUserManagement } from './user-management';
+import { deferAfterPrimaryReady } from './page-work';
+import { readNotifications } from './notification-data';
 const apiPath = (endpoint) => `/api/v1/${endpoint.replace(/^\/+/, '')}`;
+const activityStorageKey = name => `complitrack.${document.body?.dataset.userId || 'anonymous'}.${name}`;
 
 function responseData(response) {
     return response.data?.data ?? response.data ?? [];
@@ -13,6 +16,7 @@ function notificationBadge() {
     return {
         unreadCount: 0,
         unreadCountLoading: false,
+        badgeCount() { return this.unreadCount; },
         unreadTimer: null,
         previewPage: 1,
         previewHeight: window.innerHeight || 800,
@@ -23,20 +27,35 @@ function notificationBadge() {
         },
         previewPages() { return Math.max(1, Math.ceil(this.previewItems().length / this.previewLimit())); },
         init() {
-            this.refreshUnreadCount();
-            this.unreadRefresh = () => { if (!document.hidden) this.refreshUnreadCount(); };
+            this.notificationDisposed = false;
+            this.scheduleUnreadRefresh();
+            this.unreadRefresh = () => { if (!document.hidden) this.scheduleUnreadRefresh(); };
             this.unreadTimer = window.setInterval(this.unreadRefresh, 20000);
             window.addEventListener('focus', this.unreadRefresh);
+            this.notificationsChanged = () => this.refreshUnreadCount();
+            window.addEventListener('complitrack:notifications-changed', this.notificationsChanged);
             document.addEventListener('visibilitychange', this.unreadRefresh);
             this.resizePreview = () => { this.previewHeight = window.innerHeight; this.previewPage = 1; };
             window.addEventListener('resize', this.resizePreview);
+            this.clearNotificationState = () => {
+                this.cancelInitialNotification?.();
+                this.notificationDisposed = true;
+                this.unreadCount = 0; this.notifications = []; this.activities = [];
+            };
+            window.addEventListener('complitrack:clear-sensitive', this.clearNotificationState);
+        },
+        scheduleUnreadRefresh() {
+            this.cancelInitialNotification?.();
+            this.cancelInitialNotification = deferAfterPrimaryReady(() => {
+                if (!document.hidden && !this.notificationDisposed) this.refreshUnreadCount();
+            });
         },
         async refreshUnreadCount() {
-            if (this.unreadCountLoading) return;
+            if (this.unreadCountLoading || this.notificationDisposed) return;
             this.unreadCountLoading = true;
             try {
-                const { data } = await axios.get(apiPath('notifications'), { params: { unread: true, perPage: 1 } });
-                this.unreadCount = Number(data.meta?.total ?? data.data?.length ?? 0);
+                const { data } = await readNotifications({ unread: true, perPage: 1 });
+                if (!this.notificationDisposed) this.unreadCount = Number(data.meta?.total ?? data.data?.length ?? 0);
             } catch {
                 // Retain the last known count until the next refresh succeeds.
             } finally {
@@ -44,10 +63,14 @@ function notificationBadge() {
             }
         },
         stopUnreadCount() {
+            this.notificationDisposed = true;
+            this.cancelInitialNotification?.();
             window.clearInterval(this.unreadTimer);
             window.removeEventListener('focus', this.unreadRefresh);
+            window.removeEventListener('complitrack:notifications-changed', this.notificationsChanged);
             document.removeEventListener('visibilitychange', this.unreadRefresh);
             window.removeEventListener('resize', this.resizePreview);
+            window.removeEventListener('complitrack:clear-sensitive', this.clearNotificationState);
         },
         destroy() { this.stopUnreadCount(); },
     };
@@ -85,7 +108,8 @@ document.addEventListener('alpine:init', () => {
             this.loading = true;
             this.error = null;
             try {
-                const { data } = await axios.get(apiPath('notifications'), { params: { perPage: 8 } });
+                const { data } = await readNotifications({ perPage: 8 });
+                if (this.notificationDisposed) return;
                 this.notifications = data.data || [];
                 this.$nextTick(() => window.renderIcons?.());
             } catch (error) {
@@ -158,16 +182,38 @@ document.addEventListener('alpine:init', () => {
         error: null,
         activities: [],
         notifications: [],
+        activitiesLoading: false,
+        badgeCount() {
+            return this.unreadCount + this.activities.filter(activity => !this.isActivityRead(activity)).length;
+        },
+        async refreshActivities() {
+            if (this.activitiesLoading || this.notificationDisposed) return;
+            this.activitiesLoading = true;
+            try {
+                const { data } = await axios.get(apiPath('logs'), { params: { perPage: 8 } });
+                if (!this.notificationDisposed) {
+                    this.activities = (data.data || []).filter(activity => !this.dismissedActivityIds.includes(String(activity._id)));
+                }
+            } finally {
+                this.activitiesLoading = false;
+            }
+        },
+        async refreshUnreadCount() {
+            await Promise.all([
+                notificationBadge().refreshUnreadCount.call(this),
+                this.refreshActivities().catch(() => {}),
+            ]);
+        },
         dismissedActivityIds: (() => {
             try {
-                return JSON.parse(window.localStorage.getItem('complitrack.dismissedActivities') || '[]');
+                return JSON.parse(window.localStorage.getItem(activityStorageKey('dismissedActivities')) || '[]');
             } catch {
                 return [];
             }
         })(),
         readActivityIds: (() => {
             try {
-                return JSON.parse(window.localStorage.getItem('complitrack.readActivities') || '[]');
+                return JSON.parse(window.localStorage.getItem(activityStorageKey('readActivities')) || '[]');
             } catch {
                 return [];
             }
@@ -195,11 +241,11 @@ document.addEventListener('alpine:init', () => {
             this.loading = true;
             this.error = null;
             try {
-                const [logsResponse, notificationsResponse] = await Promise.all([
-                    axios.get(apiPath('logs'), { params: { perPage: 8 } }),
-                    axios.get(apiPath('notifications'), { params: { perPage: 8 } }),
+                const [, notificationsResponse] = await Promise.all([
+                    this.refreshActivities(),
+                    readNotifications({ perPage: 8 }),
                 ]);
-                this.activities = (logsResponse.data.data || []).filter((activity) => !this.dismissedActivityIds.includes(String(activity._id)));
+                if (this.notificationDisposed) return;
                 this.notifications = (notificationsResponse.data.data || []).filter((notification) => !notification.isRead);
                 this.$nextTick(() => window.renderIcons?.());
             } catch (error) {
@@ -209,12 +255,19 @@ document.addEventListener('alpine:init', () => {
             }
         },
         async markAllRead() {
-            if (this.unreadCount === 0 || this.markingRead) return;
+            if (this.badgeCount() === 0 || this.markingRead) return;
             this.markingRead = true;
             try {
-                await axios.patch(apiPath('notifications/read-all'));
+                if (this.unreadCount > 0) await axios.patch(apiPath('notifications/read-all'));
                 this.notifications = this.notifications.map((notification) => ({ ...notification, isRead: true }));
+                const visibleActivities = this.activities;
                 await this.refreshUnreadCount();
+                this.readActivityIds = [...new Set([
+                    ...this.readActivityIds,
+                    ...visibleActivities.map(activity => String(activity._id)),
+                    ...this.activities.map(activity => String(activity._id)),
+                ])];
+                window.localStorage.setItem(activityStorageKey('readActivities'), JSON.stringify(this.readActivityIds));
             } catch (error) {
                 this.error = responseMessage(error, 'Unable to mark notifications as read.');
             } finally {
@@ -237,15 +290,17 @@ document.addEventListener('alpine:init', () => {
             this.error = null;
             try {
                 if (this.unreadCount > 0) await axios.patch(apiPath('notifications/read-all'));
+                const visibleActivities = this.activities;
+                await this.refreshUnreadCount();
                 this.dismissedActivityIds = [...new Set([
                     ...this.dismissedActivityIds,
+                    ...visibleActivities.map((activity) => String(activity._id)),
                     ...this.activities.map((activity) => String(activity._id)),
                 ])];
-                window.localStorage.setItem('complitrack.dismissedActivities', JSON.stringify(this.dismissedActivityIds));
+                window.localStorage.setItem(activityStorageKey('dismissedActivities'), JSON.stringify(this.dismissedActivityIds));
                 this.activities = [];
                 this.notifications = [];
                 this.previewPage = 1;
-                await this.refreshUnreadCount();
             } catch (error) {
                 this.error = responseMessage(error, 'Unable to clear notifications.');
             } finally {
@@ -259,7 +314,7 @@ document.addEventListener('alpine:init', () => {
             const id = String(activity._id);
             if (!this.readActivityIds.includes(id)) {
                 this.readActivityIds = [...this.readActivityIds, id];
-                window.localStorage.setItem('complitrack.readActivities', JSON.stringify(this.readActivityIds));
+                window.localStorage.setItem(activityStorageKey('readActivities'), JSON.stringify(this.readActivityIds));
             }
             await new Promise((resolve) => window.setTimeout(resolve, 220));
             window.location.assign(`/super-admin/logs?highlight=${encodeURIComponent(id)}`);
@@ -425,14 +480,23 @@ document.addEventListener('alpine:init', () => {
 
         init() {
             this.refreshOnFocus = () => {
-                if (!document.hidden && !this.loading) this.load();
+                if (!document.hidden && !this.loading) this.load(this.page, { refreshOptions: true });
             };
             window.addEventListener('focus', this.refreshOnFocus);
             document.addEventListener('visibilitychange', this.refreshOnFocus);
             if (this.endpoint === 'notifications') this.notificationTimer = window.setInterval(this.refreshOnFocus, 10000);
+            this.clearResourceState = () => {
+                this.abortUserRequests?.();
+                this.rows = []; this.summary = null; this.details = null;
+                this.options = { departments: [], colleges: [], responsibilities: [] }; this.optionsLoadedAt = 0;
+                this.loading = true;
+            };
+            window.addEventListener('complitrack:clear-sensitive', this.clearResourceState);
         },
 
         destroy() {
+            this.abortUserRequests?.();
+            window.removeEventListener('complitrack:clear-sensitive', this.clearResourceState);
             window.clearInterval(this.notificationTimer);
             window.removeEventListener('focus', this.refreshOnFocus);
             document.removeEventListener('visibilitychange', this.refreshOnFocus);
@@ -903,6 +967,7 @@ document.addEventListener('alpine:init', () => {
             try {
                 await axios.patch(apiPath(`notifications/${encodeURIComponent(row._id)}/read`));
                 row.isRead = true;
+                window.dispatchEvent(new Event('complitrack:notifications-changed'));
             } catch (error) {
                 this.showSuccessPopup(responseMessage(error, 'Unable to mark this notification as read.'), 'error');
             }

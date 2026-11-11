@@ -112,6 +112,80 @@ class UserManagementMongoTest extends TestCase
         $this->assertTrue($active->fresh()->isActive, 'Listing users must not deactivate them.');
     }
 
+    public function test_related_query_count_stays_constant_and_mixed_bson_assignments_keep_their_meaning(): void
+    {
+        $people = collect();
+        for ($index = 0; $index < 24; $index++) {
+            $people->push($this->account($index < 2 ? 1 : 3, [
+                'fullName' => sprintf('Person %02d', $index),
+                'departmentId' => $index % 2 ? (string) $this->units[0]->getKey() : $this->units[0]->getKey(),
+                'archiveUnitIds' => [$this->units[1]->getKey(), (string) $this->units[1]->getKey(), 'invalid-id'],
+                'archiveCollegeIds' => [(string) $this->college->getKey()],
+            ]));
+        }
+        foreach ([0, 1] as $index) {
+            DB::connection('mongodb')->getMongoDB()->audits->insertOne([
+                'reviewerId' => $index ? new ObjectId((string) $people[$index]->getKey()) : (string) $people[$index]->getKey(),
+            ]);
+        }
+        $monitor = new \Tests\Support\MongoCommandCounter();
+        \MongoDB\Driver\Monitoring\addSubscriber($monitor);
+        try {
+            $counts = [];
+            foreach ([10, 20] as $size) {
+                $monitor->counts = [];
+                $response = $this->getJson('/api/v1/users?management=1&includeOptions=0&perPage='.$size)->assertOk()
+                    ->assertJsonCount($size, 'data')->assertJsonPath('summary.total', 25)->assertJsonMissingPath('options')
+                    ->assertJsonPath('data.0.isAuditTeamLeader', true)->assertJsonPath('data.0.canDeactivate', false)
+                    ->assertJsonPath('data.1.isAuditTeamLeader', true)->assertJsonPath('data.2.canDeactivate', true)
+                    ->assertJsonPath('data.0.departmentName', $this->units[0]->departmentName)
+                    ->assertJsonPath('data.0.organizationalUnits', [$this->units[1]->departmentName])
+                    ->assertJsonPath('data.0.organizationalColleges', [$this->college->collegeName]);
+                $this->assertSame((string) $this->units[0]->getKey(), $response->json('data.0.departmentId'));
+                $counts[] = $monitor->counts;
+            }
+            $this->assertSame($counts[0], $counts[1], 'Page size must not multiply database commands.');
+            $this->assertSame(1, $counts[0]['find:departments'] ?? 0);
+            $this->assertSame(1, $counts[0]['find:colleges'] ?? 0);
+            $this->assertSame(1, $counts[0]['find:audits'] ?? 0);
+            $this->assertSame(1, $counts[0]['aggregate:users'] ?? 0);
+        } finally {
+            \MongoDB\Driver\Monitoring\removeSubscriber($monitor);
+        }
+    }
+
+    public function test_empty_relation_lists_do_not_query_related_collections(): void
+    {
+        $monitor = new \Tests\Support\MongoCommandCounter();
+        \MongoDB\Driver\Monitoring\addSubscriber($monitor);
+        try {
+            $this->getJson('/api/v1/users?management=1&includeOptions=0')->assertOk()
+                ->assertJsonPath('data.0.organizationalUnits', [])->assertJsonPath('data.0.organizationalColleges', [])
+                ->assertJsonPath('data.0.canDeactivate', false);
+            foreach (['departments', 'colleges', 'audits'] as $collection) {
+                $this->assertSame(0, $monitor->counts['find:'.$collection] ?? 0);
+            }
+        } finally {
+            \MongoDB\Driver\Monitoring\removeSubscriber($monitor);
+        }
+    }
+
+    public function test_filter_options_can_be_omitted_and_are_fresh_and_authorized_when_requested(): void
+    {
+        $this->getJson('/api/v1/users?management=1')->assertOk()->assertJsonStructure(['options' => ['departments', 'colleges', 'responsibilities']]);
+        $this->units[0]->update(['departmentName' => 'Updated department', 'isActive' => false]);
+        $this->college->update(['isActive' => false]);
+        $options = $this->getJson('/api/v1/users/options')->assertOk()->json('options');
+        $changed = collect($options['departments'])->firstWhere('_id', (string) $this->units[0]->getKey());
+        $this->assertSame('Updated department', $changed['name']);
+        $this->assertFalse($changed['active']);
+        $this->assertSame([], $options['colleges']);
+        $this->getJson('/api/v1/users?management=1&includeOptions=0&page=2&perPage=1')->assertOk()->assertJsonMissingPath('options');
+        foreach ([1, 2, 3] as $role) {
+            $this->actingAs($this->account($role))->getJson('/api/v1/users/options')->assertForbidden();
+        }
+    }
+
     public function test_edit_preserves_credentials_codes_and_legacy_relationships(): void
     {
         $legacy = Department::create(['departmentName' => 'Unclassified', 'unitType' => 'legacy_unclassified', 'isActive' => true]);

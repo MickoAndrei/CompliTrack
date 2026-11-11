@@ -44,7 +44,7 @@ class AdminPortalViewTest extends TestCase
 
     public function test_admin_profile_keeps_edit_password_and_photo_controls(): void
     {
-        $this->get('/profile')->assertOk()->assertSee('Save Profile')
+        $this->get('/admin/profile')->assertOk()->assertSee('Save Profile')
             ->assertSee('Change Password')->assertSee('Upload or update profile picture')
             ->assertSee('css/profile.css')->assertSee('header-user-badge');
     }

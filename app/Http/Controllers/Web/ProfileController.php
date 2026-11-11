@@ -10,6 +10,17 @@ class ProfileController extends Controller
 {
     public function __construct(private readonly AuditLogService $auditLogs) {}
 
+    public function redirectToRoleProfile(Request $request)
+    {
+        return redirect(match ((int) $request->user()->roleId) {
+            0 => '/super-admin/profile',
+            1 => '/admin/profile',
+            2 => '/auditor/profile',
+            3 => '/auditee/profile',
+            default => abort(403),
+        });
+    }
+
     public function updateProfile(Request $request)
     {
         $validated = $request->validate([

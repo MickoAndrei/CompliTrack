@@ -150,6 +150,7 @@ if (modal) {
         const control = document.getElementById(`request-${match[1]}`)?.querySelector('[data-evidence-open]');
         openRequest(control?.href || `/auditee/evidence-requests?requestId=${encodeURIComponent(match[1])}`, control);
     };
-    document.addEventListener('DOMContentLoaded', openLinkedRequest, { once: true });
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', openLinkedRequest, { once: true });
+    else openLinkedRequest();
     window.addEventListener('hashchange', openLinkedRequest);
 }

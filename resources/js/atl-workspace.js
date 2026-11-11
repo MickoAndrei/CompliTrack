@@ -1,3 +1,5 @@
+import { onDocumentReady } from './dom-ready';
+
 document.addEventListener('alpine:init', () => {
     Alpine.data('atlWorkspace', () => ({
         data: null, loading: true, error: '', page: 1,
@@ -16,7 +18,7 @@ document.addEventListener('alpine:init', () => {
     }));
 });
 
-document.addEventListener('DOMContentLoaded', () => {
+onDocumentReady(() => {
     const dialog = document.querySelector('#atl-review-dialog');
     if (!dialog) return;
     const body = dialog.querySelector('[data-atl-review-body]');

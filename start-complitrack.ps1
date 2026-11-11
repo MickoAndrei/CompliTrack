@@ -1,7 +1,9 @@
+param([switch]$DisableOpcache)
 $ErrorActionPreference = "Stop"
 
 $repoRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
 Set-Location $repoRoot
+. (Join-Path $repoRoot 'scripts/php-development-server.ps1')
 
 $logDir = Join-Path $repoRoot "logs"
 New-Item -ItemType Directory -Force -Path $logDir | Out-Null
@@ -242,8 +244,7 @@ if (Test-PortInUse $appPort) {
     php artisan complitrack:logout-all
     if ($LASTEXITCODE -ne 0) { throw "Could not clear login sessions; Laravel was not started." }
     Write-Host "Starting Laravel on port $appPort..."
-    $artisanPath = Join-Path $repoRoot "artisan"
-    $p = Start-Process -FilePath "php" -ArgumentList "`"$artisanPath`" serve --host=0.0.0.0 --port=$appPort" -WorkingDirectory $repoRoot -RedirectStandardOutput "$logDir\laravel.log" -RedirectStandardError "$logDir\laravel.err.log" -PassThru
+    $p = Start-CompliTrackPhpServer -RepoRoot $repoRoot -Port $appPort -ServerHost '0.0.0.0' -EnableOpcache (-not $DisableOpcache)
     $p.Id | Set-Content $laravelPidFile
 }
 

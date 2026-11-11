@@ -4,8 +4,10 @@ use App\Http\Controllers\Web\AuthController;
 use App\Http\Controllers\Web\ProfileController;
 use Illuminate\Support\Facades\Route;
 
-Route::view('/', 'auth.login');
-Route::view('/login', 'auth.login')->name('login');
+Route::middleware('guest:web')->group(function () {
+    Route::view('/', 'auth.login');
+    Route::view('/login', 'auth.login')->name('login');
+});
 
 Route::middleware('throttle:5,1')->group(function () {
     Route::get('/forgot-password', [AuthController::class, 'showForgotForm'])->name('password.request');
@@ -29,9 +31,10 @@ Route::middleware(['auth', \App\Http\Middleware\SystemAccess::class])->group(fun
         ->name('profile.update');
     Route::patch('/profile/password', [ProfileController::class, 'updatePassword'])
         ->name('profile.password.update');
-    Route::view('/profile', 'auth.profile');
+    Route::get('/profile', [ProfileController::class, 'redirectToRoleProfile']);
 
     Route::middleware('role:0')->prefix('super-admin')->group(function () {
+        Route::view('/profile', 'auth.profile')->name('super-admin.profile');
         Route::view('/dashboard', 'super-admin.dashboard');
         Route::view('/users', 'super-admin.users');
         Route::view('/roles', 'super-admin.roles');
@@ -41,6 +44,7 @@ Route::middleware(['auth', \App\Http\Middleware\SystemAccess::class])->group(fun
         Route::view('/settings', 'super-admin.settings');
     });
     Route::middleware('role:1')->prefix('admin')->group(function () {
+        Route::view('/profile', 'auth.profile')->name('admin.profile');
         Route::view('/dashboard', 'admin.dashboard');
         Route::view('/departments', 'admin.departments');
         Route::view('/users', 'admin.users');
@@ -50,6 +54,7 @@ Route::middleware(['auth', \App\Http\Middleware\SystemAccess::class])->group(fun
         Route::view('/notifications', 'admin.notifications');
     });
     Route::middleware('role:2')->prefix('auditor')->group(function () {
+        Route::view('/profile', 'auth.profile')->name('auditor.profile');
         Route::view('/dashboard', 'auditor.dashboard');
         Route::view('/checks', 'auditor.checks');
         Route::view('/checks/{id}', 'auditor.check-details');
@@ -59,6 +64,7 @@ Route::middleware(['auth', \App\Http\Middleware\SystemAccess::class])->group(fun
         Route::view('/notifications', 'auditor.notifications');
     });
     Route::middleware('role:3')->prefix('auditee')->group(function () {
+        Route::view('/profile', 'auth.profile')->name('auditee.profile');
         Route::get('/dashboard', [\App\Http\Controllers\Web\AuditeeController::class, 'dashboard']);
         Route::get('/evidence-requests', [\App\Http\Controllers\Web\AuditeeController::class, 'requests']);
         Route::post('/evidence-requests/{id}/{requestId}', [\App\Http\Controllers\Web\AuditeeController::class, 'respond']);

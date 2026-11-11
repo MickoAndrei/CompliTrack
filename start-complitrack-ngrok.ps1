@@ -1,7 +1,8 @@
-param([string]$Domain = 'undercook-ecosystem-detract.ngrok-free.dev')
+param([string]$Domain = 'undercook-ecosystem-detract.ngrok-free.dev', [switch]$EnableOpcache = $true)
 $ErrorActionPreference = 'Stop'
 if ($Domain -notmatch '^[a-z0-9-]+\.(ngrok-free\.dev|ngrok\.app)$') { throw 'Use the hostname assigned to your ngrok account.' }
 $repoRoot = $PSScriptRoot
+. (Join-Path $repoRoot 'scripts/php-development-server.ps1')
 $privateDir = Join-Path $repoRoot 'storage/app/private/ngrok'
 New-Item -ItemType Directory -Force -Path $privateDir | Out-Null
 $envPath = Join-Path $repoRoot '.env'
@@ -14,15 +15,15 @@ foreach ($entry in @{ APP_URL="https://$Domain"; APP_DEBUG='false' }.GetEnumerat
 [IO.File]::WriteAllText($envPath, $envText)
 Push-Location $repoRoot
 try {
+    & npm.cmd run build
+    if ($LASTEXITCODE -ne 0) { throw 'Could not build the frontend assets for ngrok.' }
     & php artisan config:clear
     if ($LASTEXITCODE -ne 0) { throw 'Could not clear Laravel configuration.' }
-    $hotFile = Join-Path $repoRoot 'public/hot'
-    if (Test-Path -LiteralPath $hotFile) {
-        Move-Item -LiteralPath $hotFile -Destination (Join-Path $privateDir ('vite-hot-'+[DateTime]::UtcNow.ToString('yyyyMMddHHmmss')+'.backup'))
-    }
     if (-not (Get-NetTCPConnection -LocalPort 8000 -State Listen -ErrorAction SilentlyContinue)) {
-        $appProcess = Start-Process -FilePath (Get-Command php).Source -ArgumentList @('artisan','serve','--host=127.0.0.1','--port=8000') -WorkingDirectory $repoRoot -WindowStyle Hidden -PassThru
+        $appProcess = Start-CompliTrackPhpServer -RepoRoot $repoRoot -EnableOpcache ([bool]$EnableOpcache)
         $appProcess.Id | Set-Content -LiteralPath (Join-Path $privateDir 'laravel.pid')
+    } elseif ($EnableOpcache) {
+        Write-Warning 'Port 8000 is already running; its PHP settings were not changed. OPcache applies when this script starts a new server.'
     }
     if (-not (Get-NetTCPConnection -LocalPort 8080 -State Listen -ErrorAction SilentlyContinue)) {
         $savedAppUpstream = $env:COMPLITRACK_APP_UPSTREAM

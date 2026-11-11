@@ -3,7 +3,7 @@
     <header>
         <svg class="header-notification-heading-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
         <h2>{{ $activity ? 'Recent activity' : 'Notifications' }}</h2>
-        <button type="button" @click="markAllRead()" :disabled="loading || markingRead || unreadCount === 0">Read all</button>
+        <button type="button" @click="markAllRead()" :disabled="loading || markingRead || badgeCount() === 0">Read all</button>
         <button type="button" @click="clearNotifications()" :disabled="loading || markingRead || previewItems().length === 0">Clear all</button>
         <button type="button" @click="close()" aria-label="Close notifications">×</button>
     </header>

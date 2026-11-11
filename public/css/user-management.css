@@ -10,7 +10,11 @@
 .um-summary article { display:flex; justify-content:space-between; align-items:center; padding:16px 20px; background:white; border:1px solid #e2e8f0; border-radius:12px; }
 .um-summary span { display:block; font-size:12px; color:#64748b; }
 .um-summary strong { display:block; font-size:25px; color:#00205b; margin-top:3px; }
-.um-summary svg { box-sizing:content-box; width:21px; height:21px; padding:10px; border-radius:10px; color:#00205b; background:#fff7dc; }
+.um-summary svg { box-sizing:content-box; width:21px; height:21px; padding:10px; border-radius:10px; flex-shrink:0; }
+.um-summary [data-summary="total"] svg { color:#6d28d9; background:#f5f3ff; }
+.um-summary [data-summary="active"] svg { color:#15803d; background:#f0fdf4; }
+.um-summary [data-summary="auditors"] svg { color:#2563eb; background:#eff6ff; }
+.um-summary [data-summary="auditees"] svg { color:#64748b; background:#f8fafc; }
 .um-filters { display:flex; flex-wrap:wrap; gap:12px; align-items:flex-end; padding:16px; background:white; border:1px solid #e2e8f0; border-radius:12px; }
 .um-filters label { flex:1 1 150px; min-width:0; }
 .um-filters .um-search { flex-basis:250px; }

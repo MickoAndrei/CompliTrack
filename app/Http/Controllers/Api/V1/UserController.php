@@ -31,10 +31,13 @@ class UserController extends Controller
     {
         $request->validate(['roleId' => 'sometimes|integer|between:0,3', 'departmentId' => 'sometimes|nullable|string|regex:/^[a-f0-9]{24}$/i',
             'responsibility' => 'sometimes|nullable|string|in:'.implode(',', config('qms.responsibilities')),
-            'status' => 'sometimes|nullable|in:active,inactive', 'search' => 'sometimes|nullable|string|max:255']);
+            'status' => 'sometimes|nullable|in:active,inactive', 'search' => 'sometimes|nullable|string|max:255',
+            'includeOptions' => 'sometimes|boolean']);
         $management = $request->boolean('management');
         abort_if($management && (int) $request->user()->roleId !== 0, 403);
-        $summaryQuery = $this->scopes->users($request->user());
+        // Management is restricted to Super Admin, whose user scope is the whole collection.
+        // Keep these statistics live; never share a cached directory response across scopes.
+        $summary = $management ? app(UserManagementPresenter::class)->summary() : null;
         $query = $this->scopes->users($request->user());
         if ($request->filled('roleId')) {
             $query->where('roleId', (int) $request->query('roleId'));
@@ -59,20 +62,23 @@ class UserController extends Controller
             });
         }
 
+        $filtered = collect(['roleId', 'departmentId', 'responsibility', 'status', 'search'])
+            ->contains(fn ($field) => $request->filled($field));
         $page = $query->orderBy('fullName')
-            ->paginate(min(max((int) $request->query('perPage', 20), 1), 100));
+            ->paginate(min(max((int) $request->query('perPage', 20), 1), 100),
+                total: $management && !$filtered ? $summary['total'] : null);
 
         return response()->json([
-            'data' => collect($page->items())->map(fn (User $user) => $this->serialize($user)),
+            'data' => $this->serializeUsers($page->items()),
             'meta' => [
                 'currentPage' => $page->currentPage(),
                 'perPage' => $page->perPage(),
                 'total' => $page->total(),
                 'lastPage' => $page->lastPage(),
             ],
-            ...($management ? ['summary' => ['total' => (clone $summaryQuery)->count(), 'active' => (clone $summaryQuery)->where('isActive', true)->count(),
-                'auditors' => (clone $summaryQuery)->where('roleId', 2)->count(), 'auditees' => (clone $summaryQuery)->where('roleId', 3)->count()],
-                'options' => app(UserManagementPresenter::class)->options()] : []),
+            ...($management ? ['summary' => $summary] : []),
+            ...($management && $request->boolean('includeOptions', true)
+                ? ['options' => app(UserManagementPresenter::class)->options()] : []),
         ]);
     }
 
@@ -90,6 +96,13 @@ class UserController extends Controller
         $request->query->set('roleId', '3');
 
         return $this->index($request);
+    }
+
+    public function options(Request $request)
+    {
+        abort_unless((int) $request->user()->roleId === 0, 403);
+
+        return response()->json(['options' => app(UserManagementPresenter::class)->options()]);
     }
 
     public function store(Request $request)
@@ -343,22 +356,57 @@ class UserController extends Controller
         }
     }
 
-    private function serialize(User $user): array
+    private function userRelations(array $users): array
     {
+        $access = app(\App\Services\QmsArchiveAccess::class);
+        $departmentIds = [];
+        $collegeIds = [];
+        $reviewerIds = [];
+        foreach ($users as $user) {
+            if ($user->departmentId) { $departmentIds[] = $user->departmentId; }
+            array_push($departmentIds, ...$access->ids($user->archiveUnitIds ?? []));
+            array_push($collegeIds, ...$access->ids($user->archiveCollegeIds ?? []));
+            if ((int) $user->roleId === 1) {
+                $reviewerIds[] = MongoId::parse((string) $user->getKey());
+                $reviewerIds[] = (string) $user->getKey();
+            }
+        }
+        $departments = $departmentIds ? Department::whereIn('_id', $departmentIds)->get(['departmentName']) : collect();
+        $colleges = $collegeIds ? College::whereIn('_id', $collegeIds)->get(['collegeName']) : collect();
+        $leaders = $reviewerIds ? Audit::whereIn('reviewerId', $reviewerIds)->pluck('reviewerId') : collect();
+
+        return ['departments' => $departments->keyBy(fn ($unit) => (string) $unit->getKey()),
+            'colleges' => $colleges->keyBy(fn ($college) => (string) $college->getKey()),
+            'leaders' => array_fill_keys($leaders->map('strval')->all(), true)];
+    }
+
+    private function serializeUsers(array $users): array
+    {
+        $related = $this->userRelations($users);
+
+        return array_map(fn (User $user) => $this->serialize($user, $related), $users);
+    }
+
+    private function serialize(User $user, ?array $related = null): array
+    {
+        $related ??= $this->userRelations([$user]);
         $data = $user->toArray();
         $data['_id'] = (string) $user->getKey();
         $data['roleSlug'] = $user->roleSlug ?? [0 => 'super_admin', 1 => 'admin', 2 => 'auditor', 3 => 'auditee'][(int) $user->roleId] ?? 'unknown';
         $data['isActive'] = (int) $user->roleId === 0 || $this->isStoredAsActive($user->getRawOriginal('isActive'));
         unset($data['id'], $data['password']);
-        $department = $user->departmentId ? Department::find($user->departmentId) : null;
+        $department = $user->departmentId ? $related['departments']->get((string) $user->departmentId) : null;
         $data['departmentName'] = $department?->departmentName;
         $data['departmentId'] = $user->departmentId ? (string) $user->departmentId : null;
         foreach (['assignedDepartmentIds', 'archiveUnitIds', 'archiveCollegeIds'] as $key) { $data[$key] = array_map('strval', $user->$key ?? []); }
-        $data['organizationalUnits'] = Department::whereIn('_id', app(\App\Services\QmsArchiveAccess::class)->ids($user->archiveUnitIds ?? []))
-            ->get(['departmentName'])->map(fn ($unit) => $unit->departmentName)->values()->all();
-        $data['organizationalColleges'] = College::whereIn('_id', app(\App\Services\QmsArchiveAccess::class)->ids($user->archiveCollegeIds ?? []))
-            ->get(['collegeName'])->map(fn ($college) => $college->collegeName)->values()->all();
-        $data['isAuditTeamLeader'] = $this->isAuditTeamLeader($user);
+        $access = app(\App\Services\QmsArchiveAccess::class);
+        $unitIds = array_fill_keys(array_map('strval', $access->ids($user->archiveUnitIds ?? [])), true);
+        $collegeIds = array_fill_keys(array_map('strval', $access->ids($user->archiveCollegeIds ?? [])), true);
+        $data['organizationalUnits'] = $related['departments']->filter(fn ($unit, $id) => isset($unitIds[$id]))
+            ->map(fn ($unit) => $unit->departmentName)->values()->all();
+        $data['organizationalColleges'] = $related['colleges']->filter(fn ($college, $id) => isset($collegeIds[$id]))
+            ->map(fn ($college) => $college->collegeName)->values()->all();
+        $data['isAuditTeamLeader'] = (int) $user->roleId === 1 && isset($related['leaders'][(string) $user->getKey()]);
         $data['canDeactivate'] = (int) $user->roleId !== 0 && !$data['isAuditTeamLeader'];
 
         return $data;

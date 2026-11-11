@@ -2,7 +2,7 @@
     <div class="um-heading"><button class="um-primary" type="button" @click="startUserCreate()" :disabled="loading || !summary"><i data-lucide="user-round-plus" aria-hidden="true"></i>Create User</button></div>
     <div class="um-summary">
         @foreach ([['total', 'Total Users', 'users'], ['active', 'Active Users', 'user-round-check'], ['auditors', 'Auditors', 'clipboard-check'], ['auditees', 'Auditees', 'building-2']] as [$key, $label, $icon])
-        <article><div><span>{{ $label }}</span><strong x-text="summary?.{{ $key }} ?? '—'"></strong></div><i data-lucide="{{ $icon }}" aria-hidden="true"></i></article>
+        <article data-summary="{{ $key }}"><div><span>{{ $label }}</span><strong x-text="summary?.{{ $key }} ?? '—'"></strong></div><i data-lucide="{{ $icon }}" aria-hidden="true"></i></article>
         @endforeach
     </div>
     <p x-page-notice="successPopupType" class="um-notice" role="status" x-show="successPopupVisible" x-cloak x-text="successPopupMessage"></p>

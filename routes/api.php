@@ -37,6 +37,7 @@ Route::prefix('v1')->group(function () {
 
         // Admin/ATL directories are read-only; account and department writes belong to Super Admin.
         Route::middleware('role:1')->get('/admin/workspace', [\App\Http\Controllers\Web\AtlWorkspaceController::class, 'summary']);
+        Route::middleware('role:0')->get('/users/options', [UserController::class, 'options']);
         Route::middleware('role:0,1')->group(function () {
             Route::apiResource('users', UserController::class)->only(['index', 'show'])->parameters(['users' => 'id']);
             Route::apiResource('departments', DepartmentController::class)->only(['index', 'show'])->parameters(['departments' => 'id']);

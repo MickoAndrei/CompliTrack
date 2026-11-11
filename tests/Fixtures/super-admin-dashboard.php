@@ -16,9 +16,17 @@ foreach (['dashboard' => 'super-admin.dashboard', 'departments' => 'super-admin.
     $html = view($template)->render();
     $html = preg_replace('/<script\b[^>]*>.*?<\/script>/s', '', $html);
     $html = preg_replace('/<link[^>]+(?:fonts\.googleapis|fonts\.gstatic)[^>]*>/', '', $html);
-    $html = str_replace('http://localhost', 'file:///'.str_replace('\\', '/', public_path()), $html);
+    $html = str_replace(['http://localhost', rtrim(config('app.url'), '/')], 'file:///'.str_replace('\\', '/', public_path()), $html);
     $html = str_replace('</body>', '<script type="module" src="'.$bundle.'"></script></body>', $html);
     file_put_contents($directory.'/'.$view.'.html', $html);
+}
+foreach ([1, 2, 3] as $role) {
+    $user->roleId = $role;
+    $html = view('auth.profile')->render();
+    $html = preg_replace('/<script\b[^>]*>.*?<\/script>/s', '', $html);
+    $html = str_replace(['http://localhost', rtrim(config('app.url'), '/')], 'file:///'.str_replace('\\', '/', public_path()), $html);
+    $html = str_replace('</body>', '<script type="module" src="'.$bundle.'"></script></body>', $html);
+    file_put_contents($directory.'/profile-role-'.$role.'.html', $html);
 }
 file_put_contents($directory.'/departments.json', json_encode(config('qms.departments')));
 echo "Super Admin browser fixtures rendered without database writes.\n";

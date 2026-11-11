@@ -36,15 +36,16 @@ const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
         await send('Page.enable'); await send('Runtime.enable');
         await send('Emulation.setFocusEmulationEnabled', { enabled: true });
         await send('Page.addScriptToEvaluateOnNewDocument',{source:`
-            window.fixtureUnread=125;
+            localStorage.clear();
+            window.fixtureUnread=125; window.fixtureActivities=[];
             Object.defineProperty(window,'axios',{configurable:true,get(){return this.fixtureAxios},set(client){
-                client.defaults.adapter=async config=>({data:{data:[],meta:{total:config.url==='/api/v1/notifications'?window.fixtureUnread:0,lastPage:1}},status:200,statusText:'OK',headers:{},config});this.fixtureAxios=client;
+                client.defaults.adapter=async config=>({data:{data:config.url==='/api/v1/logs'?window.fixtureActivities:[],meta:{total:config.url==='/api/v1/notifications'?window.fixtureUnread:0,lastPage:1}},status:200,statusText:'OK',headers:{},config});this.fixtureAxios=client;
             }});
         `});
-        for(const width of [1440,390,320]){
+        for(const role of [0,1,2,3]) for(const width of [1440,390,320]){
             await send('Emulation.setDeviceMetricsOverride',{width,height:640,deviceScaleFactor:1,mobile:width<600});
-            await send('Page.navigate',{url:pathToFileURL(path.join(directory,'profile.html')).href});
-            await waitFor('document.querySelector(".header-notification-count")?.textContent==="99+"');
+            await send('Page.navigate',{url:pathToFileURL(path.join(directory,role===0?'profile.html':`profile-role-${role}.html`)).href});
+            await waitFor('document.querySelector(".header-notification-count")?.textContent==="99+" && document.querySelector(".header-notification-count").checkVisibility()');
             assert.equal(await evaluate('document.querySelector(".header-notification-count").checkVisibility()'),true,'Badge appears before opening dropdown');
             const style=await evaluate('(()=>{const s=getComputedStyle(document.querySelector(".header-notification-count"));return {background:s.backgroundColor,color:s.color}})()');
             assert.equal(style.background,'rgb(220, 38, 38)');assert.equal(style.color,'rgb(255, 255, 255)');
@@ -52,6 +53,13 @@ const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
             await waitFor('document.querySelector(".header-notification-count").textContent==="3"');
             await evaluate('window.fixtureUnread=0;Alpine.$data(document.querySelector(".header-notification-count")).refreshUnreadCount()');
             await waitFor('!document.querySelector(".header-notification-count").checkVisibility()');
+            console.log(`PASS role ${role}, ${width}px: initial unread count, 99+ cap, updated count, hidden at zero`);
+            if(role!==0) continue;
+            await evaluate('window.fixtureActivities=[{_id:"activity-one",action:"Created audit"},{_id:"activity-two",action:"Submitted audit"}];Alpine.$data(document.querySelector(".header-notification-count")).refreshUnreadCount()');
+            await waitFor('document.querySelector(".header-notification-count").textContent==="2" && document.querySelector(".header-notification-count").checkVisibility()');
+            await evaluate('Alpine.$data(document.querySelector(".header-notification-count")).markAllRead()');
+            await waitFor('!document.querySelector(".header-notification-count").checkVisibility()');
+            await evaluate('window.fixtureActivities=[]');
             await evaluate('(()=>{const app=Alpine.$data(document.querySelector(".header-notification-count"));app.$nextTick=callback=>callback();app.open=true;app.loading=true})()');
             await waitFor('document.querySelector(".header-notification-skeleton")?.checkVisibility()');
             const skeletonHeight=await evaluate('document.querySelector(".header-notification-panel").getBoundingClientRect().height');
