@@ -5,10 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>@yield('title', 'CompliTrack') | USTP Claveria</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Poppins:wght@600;700&display=swap" rel="stylesheet">
+    <link rel="preload" href="{{ asset('fonts/inter/inter-3100e775e861.woff2') }}" as="font" type="font/woff2" crossorigin>
+    <link rel="preload" href="{{ asset('fonts/plusjakartasans/plusjakartasans-153fc85b7029.woff2') }}" as="font" type="font/woff2" crossorigin>
+    <link rel="stylesheet" href="{{ asset('css/fonts.css') }}?v={{ filemtime(public_path('css/fonts.css')) }}">
     @vite(['resources/css/app.css', 'resources/js/app.js'])
+    <link rel="stylesheet" href="{{ asset('css/page-notices.css') }}?v={{ filemtime(public_path('css/page-notices.css')) }}">
     @guest
         <link rel="stylesheet" href="{{ asset('css/auth-login.css') }}">
     @endguest
@@ -17,25 +18,38 @@
             $portalStyles = [
                 0 => 'css/super-admin-portal.css',
                 1 => 'css/admin-portal.css',
-                2 => 'css/auditor-portal.css',
-                3 => 'css/auditee-portal.css',
+                2 => 'css/super-admin-portal.css',
+                3 => 'css/super-admin-portal.css',
             ];
             $portalRole = (int) auth()->user()->roleId;
+            $profilePath = match ($portalRole) {
+                0 => '/super-admin/profile',
+                1 => '/admin/profile',
+                2 => '/auditor/profile',
+                3 => '/auditee/profile',
+                default => '/profile',
+            };
         @endphp
         @if (isset($portalStyles[$portalRole]))
             <link rel="stylesheet" href="{{ asset($portalStyles[$portalRole]) }}">
         @endif
     @endauth
-</head>
-<body class="min-h-screen" data-user-id="{{ auth()->id() }}">
+    @auth @if (in_array($portalRole, [2, 3], true))<link rel="stylesheet" href="{{ asset('css/auditor-ui.css') }}?v={{ filemtime(public_path('css/auditor-ui.css')) }}">@endif @endauth
+    @auth @if ($portalRole === 1)<link rel="stylesheet" href="{{ asset('css/admin-ui.css') }}?v={{ filemtime(public_path('css/admin-ui.css')) }}">@endif @endauth
     @auth
-        @php($portalLayout = $portalRole === 3 ? 'app-layout' : 'app-container')
-        @php($mainLayout = $portalRole === 2 ? 'main-content' : 'main-wrapper')
+        <link rel="stylesheet" href="{{ asset('css/sidebar.css') }}?v={{ filemtime(public_path('css/sidebar.css')) }}">
+    @endauth
+    @stack('styles')
+</head>
+<body class="min-h-screen" data-user-id="{{ auth()->id() }}" data-portal-role="{{ auth()->user()?->roleId }}">
+    @auth
+        @php($portalLayout = 'app-container')
+        @php($mainLayout = 'main-wrapper')
         @php($contentLayout = match ($portalRole) {
             0 => 'view-content-container',
             1 => 'content-area',
-            2 => 'content-body',
-            3 => 'content-viewport',
+            2 => 'view-content-container',
+            3 => 'view-content-container',
             default => '',
         })
         <div class="{{ $portalLayout }}" x-data="{ sidebarOpen: false }">
@@ -52,5 +66,6 @@
         @yield('content')
     @endauth
     @stack('scripts')
+    @auth @if ($portalRole === 1)<x-atl-review-modal />@endif @endauth
 </body>
 </html>

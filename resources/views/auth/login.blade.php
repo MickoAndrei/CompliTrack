@@ -5,10 +5,11 @@
     @include('auth.brand-panel')
     <main class="main-panel">
         <section class="form-wrapper" x-data="loginPage()">
-            <template x-if="error"><div class="status-toast" role="alert" x-text="error"></div></template>
-            @if (request()->query('reason') === 'server-restarted') <div class="status-toast" role="status">The server restarted. Please sign in again.</div> @endif
+            <template x-if="error"><div x-page-notice class="status-toast" role="alert" x-text="error"></div></template>
+            @if (request()->query('reason') === 'server-restarted') <div x-page-notice class="status-toast" role="status">The server restarted. Please sign in again.</div> @endif
+            @if (request()->query('reset') === 'success') <div x-page-notice="'success'" class="status-toast" role="status">Password reset successfully. Sign in with your new password.</div> @endif
             <div class="form-header"><div class="campus-pill">USTP CLAVERIA PORTAL</div><h2 class="form-title">Welcome back</h2><p class="form-subtitle">Sign in to your CompliTrack account</p></div>
-            @if ($errors->any()) <div class="status-toast" role="alert">{{ $errors->first() }}</div> @endif
+            @if ($errors->any()) <div x-page-notice class="status-toast" role="alert">{{ $errors->first() }}</div> @endif
             <form class="auth-form" @submit.prevent="submit()">
                 <div class="form-group"><label for="loginEmail" class="form-label">Institutional Email</label><input x-model="email" type="email" id="loginEmail" class="form-input" placeholder="Enter your email" autocomplete="username" required autofocus></div>
                 <div class="form-group"><label for="loginPassword" class="form-label">Password</label><div class="password-input-wrapper"><input x-model="password" type="password" id="loginPassword" class="form-input password-input" placeholder="Enter your password" autocomplete="current-password" required><button type="button" class="password-toggle-btn" aria-label="Toggle password visibility" @click="$el.previousElementSibling.type = $el.previousElementSibling.type === 'password' ? 'text' : 'password'"><i data-lucide="eye" class="eye-icon eye-show"></i></button></div></div>

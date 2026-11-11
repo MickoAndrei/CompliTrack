@@ -31,4 +31,8 @@ Homestead.json
 Homestead.yaml
 Thumbs.db
 settings.local.json
+/.scheduler.pid
+/.laravel.pid
+/.realtime.pid
+/.vite.pid
 /complitrack_web_temp/

@@ -10,7 +10,6 @@ class SecureStorageService {
   static const String _keyRoleId = 'user_role_id';
   static const String _keyUserId = 'user_id';
   static const String _keyUser = 'auth_user';
-  static const String _keyFcmToken = 'fcm_token';
 
   Future<void> saveToken(String token) async {
     await _storage.write(key: _keyToken, value: token);
@@ -46,14 +45,6 @@ class SecureStorageService {
 
   Future<String?> getUser() async {
     return await _storage.read(key: _keyUser);
-  }
-
-  Future<void> saveFcmToken(String fcmToken) async {
-    await _storage.write(key: _keyFcmToken, value: fcmToken);
-  }
-
-  Future<String?> getFcmToken() async {
-    return await _storage.read(key: _keyFcmToken);
   }
 
   Future<void> clearAll() async {

@@ -17,6 +17,10 @@ class AuditLogController extends Controller
 
     public function index(Request $request)
     {
+        $request->validate([
+            'startDate' => ['nullable', 'date_format:Y-m-d'],
+            'endDate' => ['nullable', 'date_format:Y-m-d', ...($request->filled('startDate') ? ['after_or_equal:startDate'] : [])],
+        ]);
         $query = $this->scopes->auditLogs($request->user());
 
         foreach (['userId', 'action', 'entityType'] as $field) {
@@ -36,10 +40,10 @@ class AuditLogController extends Controller
             });
         }
         if ($request->filled('startDate')) {
-            $query->where('createdAt', '>=', $request->date('startDate'));
+            $query->where('createdAt', '>=', $request->date('startDate')->startOfDay());
         }
         if ($request->filled('endDate')) {
-            $query->where('createdAt', '<=', $request->date('endDate'));
+            $query->where('createdAt', '<', $request->date('endDate')->startOfDay()->addDay());
         }
 
         $sortableFields = ['createdAt', 'action', 'userName', 'entityType'];

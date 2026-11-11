@@ -2,6 +2,91 @@
 
 All notable changes to CompliTrack are documented here.
 
+## [Unreleased] - 2026-11-11
+
+### Added
+
+- Added performance measurement tools and reports for the Users API, browser loading, MongoDB indexes, static assets, and PHP OPcache.
+- Added a backup-first maintenance script and fresh-database definition for the user-name sorting index.
+- Added locally hosted fonts, an explicit Lucide icon registry, and regression coverage for frontend loading, tunnel assets, profile routes, and notification badges.
+
+### Changed
+
+- Batched Users API relationship lookups and summary counts, reused pagination totals, and added a separate authorized filter-options endpoint with page-local freshness handling.
+- Split page-specific JavaScript into lazy-loaded modules, deferred notification polling until primary content settles, and coalesced identical in-flight notification reads.
+- Served hashed build assets and local fonts through the development proxy with compression, immutable caching, ETags, and HEAD support.
+- Enabled OPcache by default for development startup with timestamp checks, and kept local Vite HMR available while ngrok uses compiled assets.
+- Moved implementation and investigation reports into `docs/` and linked the performance reports from the README.
+
+### Fixed
+
+- Corrected static asset routing that could return empty CSS or JavaScript responses, and ensured delayed modules initialize after document readiness.
+- Cancelled obsolete user searches and notification requests, cleared sensitive page state on exit, and reauthorized pages restored from the back/forward cache.
+- Redirected authenticated login visits and the shared profile URL to the appropriate role portal, with role-specific profile links and access checks.
+- Included unread recent activity in the Super Admin bell badge, made Read all handle activity-only items, and kept cleared activity dismissed during polling.
+- Refreshed header unread counts immediately after notifications are marked read on the notifications page, with badge checks across all four roles at desktop and mobile widths.
+
+## [Unreleased] - 2026-11-09
+
+### Added
+
+- Added CET QMS Archives with authorized department and college folders, document categories, version history, controlled audit sharing, and digital-reference and physical-original records.
+- Added backup-first MongoDB migration, mock DOCX import, verification tools, and idempotent development scenarios that reuse the existing Admin/Audit Team Leader and equivalent accounts without changing their credentials.
+- Added a corrective-action timeline using recorded status and submission history, including revision cycles, current actions, authorized closure, and animated gold checks for completed steps.
+- Added stacked evidence previews for PDF, images, and formatted Word documents, preserving tables, images, headings, and page breaks without replacing the audit-result popup.
+- Added a local development proxy and ngrok setup instructions for the web and realtime services.
+
+### Changed
+
+- Redesigned Auditee evidence requests with responsive cards, actual summary counts, search, status filters, and request-detail popups while retaining corrective-evidence workflows.
+- Kept corrective uploads inside Audit Result Details and made dashboard actions open the appropriate tab directly.
+- Updated profile forms, password-change handling, and responsive profile styling.
+- Added browser, view, workflow, and MongoDB authorization regression coverage for the archive and evidence interfaces.
+
+### Fixed
+
+- Restricted archive browsing, downloads, evidence sharing, and organizational summaries to authorized records; private auditor drafts and restricted documents remain protected.
+- Preserved existing MongoDB identifiers, organizational relationships, stored CAR statuses, and the distinction between the Admin/Audit Team Leader and Cluster Head responsibilities.
+- Corrected Auditee View actions, hover styling, nested-popup focus and cleanup, and mobile evidence-preview sizing.
+
+### Removed
+
+- Removed the separate Auditee finding-details page in favor of the existing Audit Result Details popup.
+
+## [Unreleased] - 2026-11-06
+
+### Added
+
+- Added Admin audit assignments and an Auditor workspace with checklist preparation, evidence reviews, N/C/O evaluations, findings, interviews, submission, and reviewer acceptance or return for revision.
+- Added scoped Auditor dashboard metrics, assignment previews, progress, and audit-history activity alongside existing checks and corrective actions.
+- Added Auditee evidence requests, private response drafts, submitted references and files, physical-original availability, auditor feedback, and explicitly shared accepted result summaries.
+- Added Auditee result details with tabs, in-place filtering and pagination, loading states, and a result dialog with contextual evidence actions.
+- Added MongoDB audit assignment, evidence-request lookup, notification deduplication, and pending-dispatch indexes, with guarded backup-first maintenance and inspection scripts.
+- Added isolated MongoDB workflow and access-control coverage, real Socket.IO notification transport tests, and Auditee dashboard, results, and password-reset regression tests.
+
+### Changed
+
+- Refreshed mobile Super Admin and Admin management screens, system logs, settings, profile editing, profile-photo dialogs, role badges, and shared navigation styling.
+- Updated Auditee dashboards, archives, notifications, evidence forms, and help pages to use scoped records and actionable workflow states.
+- Replaced change-stream-dependent notification delivery with polling of persisted notifications, expiring worker leases, recipient-specific Socket.IO rooms, and stable event identifiers. Standalone MongoDB no longer requires change-stream support.
+- Added deduplicated notifications for audit assignment, submission, review decisions, standalone check creation, and corrective-action status changes; web notification lists refresh while visible and mobile clients suppress replayed event IDs.
+- Updated realtime configuration to prefer the root application's MongoDB and JWT settings, with service-file fallback and explicit process overrides.
+- Required saved evidence reviews before checklist evaluation and verification remarks before corrective-action closure; physical signature outcomes remain separate from N/C/O results, and checklist findings do not automatically create corrective actions.
+
+### Fixed
+
+- Corrected string/ObjectId comparisons in department scoping, audit assignment selectors, notification ownership, archive access, corrective upload links, and atomic corrective-action transitions.
+- Added duplicate-assignment protection, stale-update conflict checks, and submitted or accepted audit editing restrictions.
+- Strengthened evidence-upload authorization and DOCX content validation, and blocked corrective uploads for closed corrective actions.
+- Corrected the demo IT department's college value to CET while preserving existing relationships.
+- Corrected password-reset links copied with HTML-escaped query parameters, redirected incomplete links to request a replacement, and preserved current link values after validation errors.
+- Fixed realtime startup's package path, removed the hard-coded replica-set name, corrected the MongoDB change-stream diagnostic, and enforced JWT expiry on connected sockets.
+- Corrected mobile local-development API connectivity and adjusted Sanctum authentication handling.
+
+### Removed
+
+- Removed Firebase Admin, Flutter Firebase dependencies, unused messaging services, device-token handling, and obsolete configuration and settings. Persisted in-app notifications and foreground Socket.IO delivery remain supported; closed-app OS push is no longer supported.
+
 ## [Unreleased] - 2026-11-04
 
 ### Added
@@ -17,8 +102,6 @@ All notable changes to CompliTrack are documented here.
 ### Fixed
 
 - Updated the logout-all command to clear sessions stored in MongoDB.
-
-All notable changes to CompliTrack are documented here.
 
 ## [Unreleased] - 2026-11-02
 

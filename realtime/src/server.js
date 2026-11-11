@@ -3,17 +3,13 @@ const http = require('node:http');
 const { loadConfig } = require('./config/env');
 const packageInfo = require('../package.json');
 const { connectToDatabase } = require('./config/db');
-const { initializeFirebase } = require('./config/firebase');
 const { createSocketServer } = require('./sockets');
 const {
-  watchComplianceChecks,
   watchBroadcastNotifications,
 } = require('./watchers/complianceChecksWatcher');
 const logger = require('./utils/logger');
 
-async function start() {
-  const config = loadConfig();
-  const firebaseApp = initializeFirebase(config.firebaseCredentials);
+async function start(config = loadConfig()) {
   const { client, database } = await connectToDatabase(config);
   const app = express();
   app.get('/health', async (_request, response) => {
@@ -22,27 +18,21 @@ async function start() {
       response.json({
         status: 'ok',
         database: 'ok',
-        pushConfigured: firebaseApp !== null,
+        notificationTransport: 'polling',
       });
     } catch (exception) {
       logger.error('Realtime health check failed.', exception);
       response.status(503).json({
         status: 'unavailable',
         database: 'unavailable',
-        pushConfigured: firebaseApp !== null,
       });
     }
   });
 
   const server = http.createServer(app);
-  const io = createSocketServer(server, database, config.corsOrigins);
+  const io = createSocketServer(server, database, config.corsOrigins, config.jwtSecret);
   const abortController = new AbortController();
   const watchers = Promise.all([
-    watchComplianceChecks({
-      database,
-      io,
-      signal: abortController.signal,
-    }),
     watchBroadcastNotifications({
       database,
       io,
@@ -50,26 +40,29 @@ async function start() {
     }),
   ]);
 
-  server.listen(config.port, () => {
+  await new Promise(resolve => server.listen(config.port, config.host || '0.0.0.0', () => {
     logger.info('Realtime service is listening.', {
       port: config.port,
       version: packageInfo.version,
     });
-  });
+    resolve();
+  }));
 
   const stop = async () => {
     abortController.abort();
-    io.close();
-    server.close();
+    await new Promise(resolve => io.close(resolve));
     await watchers;
     await client.close();
-    process.exit(0);
+    process.removeListener('SIGINT', stop);
+    process.removeListener('SIGTERM', stop);
   };
   process.once('SIGINT', stop);
   process.once('SIGTERM', stop);
+  return { server, io, stop };
 }
 
-start().catch((exception) => {
+if (require.main === module) start().catch((exception) => {
   logger.error('Realtime service failed to start.', exception);
   process.exitCode = 1;
 });
+module.exports = { start };

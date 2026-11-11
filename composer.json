@@ -11,6 +11,7 @@
         "laravel/sanctum": "^4.0",
         "laravel/tinker": "^2.10.1",
         "mongodb/laravel-mongodb": "^5.0",
+        "phpmailer/phpmailer": "^7.2",
         "tymon/jwt-auth": "^2.3"
     },
     "require-dev": {

@@ -17,6 +17,7 @@
     },
     "dependencies": {
         "alpinejs": "^3.17.5",
+        "docx-preview": "^0.4.1",
         "lucide": "^1.66.0"
     }
 }

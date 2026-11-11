@@ -1,89 +1,32 @@
 const assert = require('node:assert/strict');
 const test = require('node:test');
-const { watchBroadcastNotifications } = require('../src/watchers/complianceChecksWatcher');
-
-test('broadcast notification inserts are emitted to the recipient room', async () => {
-  const controller = new AbortController();
-  const resumeToken = { _data: 'resume-token' };
-  const recipientUserId = { toString: () => 'recipient-id' };
-  const notificationId = { toString: () => 'notification-id' };
-  const senderUserId = { toString: () => 'sender-id' };
-  const notification = {
-    _id: notificationId,
-    recipientUserId,
-    senderUserId,
-    type: 'admin_broadcast',
-    title: 'Broadcast Notification',
-    message: 'Service update',
-  };
-  let watchedPipeline;
-  let emitted;
-  let savedResumeToken;
-
-  const stream = {
-    async close() {},
-    async *[Symbol.asyncIterator]() {
-      yield { _id: resumeToken, fullDocument: notification };
-      controller.abort();
-    },
-  };
-  const stateCollection = {
-    async findOne() {
-      return null;
-    },
-    async updateOne(filter, update) {
-      savedResumeToken = { filter, update };
-    },
-  };
+const { ObjectId } = require('mongodb');
+const { pollNotifications, watchBroadcastNotifications } = require('../src/watchers/complianceChecksWatcher');
+function fixture(type='audit_submitted', active=true) {
+  const user = { _id: new ObjectId(), isActive: active };
+  const row = { _id: new ObjectId(), recipientUserId: user._id, type, title:'Audit', message:'Saved', createdAt:new Date() };
+  let emitted=[];
   const notifications = {
-    watch(pipeline) {
-      watchedPipeline = pipeline;
-      return stream;
+    async findOneAndUpdate(filter, update) {
+      if (row.realtimeDeliveredAt || row.realtimeLeaseUntil > new Date()) return null;
+      Object.assign(row, update.$set); return {...row};
     },
-    async updateOne() {
-      throw new Error('No FCM delivery should be marked without a recipient token.');
-    },
+    async updateOne(filter, update) { if (filter.realtimeLease === row.realtimeLease) {
+      Object.assign(row, update.$set); for (const key of Object.keys(update.$unset)) delete row[key];
+    } },
   };
-  const users = {
-    async findOne() {
-      return null;
-    },
-  };
-  const database = {
-    collection(name) {
-      if (name === 'change_stream_state') return stateCollection;
-      if (name === 'notifications') return notifications;
-      if (name === 'users') return users;
-      throw new Error(`Unexpected collection: ${name}`);
-    },
-  };
-  const io = {
-    to(room) {
-      assert.equal(room, 'user:recipient-id');
-      return {
-        emit(event, payload) {
-          emitted = { event, payload };
-        },
-      };
-    },
-  };
-
-  await watchBroadcastNotifications({
-    database,
-    io,
-    signal: controller.signal,
+  const database={collection(name) {return name==='notifications' ? notifications : {async findOne(filter) { return active && filter._id.equals(user._id) ? user : null; }};}};
+  const io={to(room){assert.equal(room,`user:${user._id}`);return {emit(event,payload){emitted.push({event,payload});}};}};
+  return {database,io,row,user,emitted};
+}
+for (const type of ['admin_broadcast','audit_assigned','audit_submitted','audit_accepted','audit_returned','status_changed']) {
+  test(`${type} is polled without change streams and delivered once`, async()=>{
+    const f=fixture(type);await pollNotifications(f);await pollNotifications(f);
+    assert.equal(f.emitted.length,1);assert.equal(f.emitted[0].payload.type,type);
+    assert.equal(f.emitted[0].payload.realtimeLease,undefined);assert.ok(f.row.realtimeDeliveredAt);
   });
-
-  assert.deepEqual(watchedPipeline, [{
-    $match: {
-      operationType: 'insert',
-      'fullDocument.type': 'admin_broadcast',
-    },
-  }]);
-  assert.equal(emitted.event, 'notification');
-  assert.equal(emitted.payload._id, 'notification-id');
-  assert.equal(emitted.payload.recipientUserId, 'recipient-id');
-  assert.equal(emitted.payload.senderUserId, 'sender-id');
-  assert.equal(savedResumeToken.filter._id, 'admin_broadcast_notifications_watcher');
-  assert.equal(savedResumeToken.update.$set.resumeToken, resumeToken);
-});
+}
+test('inactive recipients are not sent confidential payloads',async()=>{const f=fixture('audit_submitted',false);await pollNotifications(f);assert.equal(f.emitted.length,0);});
+test('worker retries an expired lease after interruption',async()=>{const f=fixture();f.row.realtimeLeaseUntil=new Date(0);await pollNotifications(f);assert.equal(f.emitted.length,1);});
+test('polling stops cleanly without requiring watch()',async()=>{const f=fixture();const controller=new AbortController();f.io.to=()=>({emit(){controller.abort();}});await watchBroadcastNotifications({...f,signal:controller.signal});assert.ok(controller.signal.aborted);});
+module.exports={fixture};

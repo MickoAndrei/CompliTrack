@@ -15,10 +15,12 @@ class Department extends Model
     protected $fillable = [
         'departmentCode', 'departmentName', 'collegeName',
         'campusName', 'headUserId', 'isActive',
+        'collegeId', 'unitType', 'ownershipVerified',
     ];
 
     protected $casts = [
         'headUserId' => NullableObjectId::class,
+        'collegeId' => NullableObjectId::class,
         'isActive' => 'boolean',
     ];
 }

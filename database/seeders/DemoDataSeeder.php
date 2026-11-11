@@ -15,29 +15,15 @@ class DemoDataSeeder extends Seeder
 {
     public function run(): void
     {
+        // Preserve existing demo ownership until an explicit mapping is approved.
+        if (Department::whereIn('departmentCode', ['DEMO-IT', 'DEMO-ENG'])->exists()) {
+            $this->command?->warn('Legacy demo departments preserved. Resolve ownership before reseeding demo data.');
+            return;
+        }
         $departments = [
-            'DEMO-IT' => Department::firstOrCreate(
-                ['departmentCode' => 'DEMO-IT'],
-                [
-                    'departmentName' => '[DEMO] Information Technology',
-                    'collegeName' => 'CET',
-                    'campusName' => 'Claveria',
-                    'headUserId' => null,
-                    'isActive' => true,
-                ],
-            ),
-            'DEMO-ENG' => Department::firstOrCreate(
-                ['departmentCode' => 'DEMO-ENG'],
-                [
-                    'departmentName' => '[DEMO] Engineering',
-                    'collegeName' => 'CET',
-                    'campusName' => 'Claveria',
-                    'headUserId' => null,
-                    'isActive' => true,
-                ],
-            ),
+            'DEMO-IT' => Department::where('departmentCode', 'CET-IT')->firstOrFail(),
+            'DEMO-ENG' => Department::where('departmentCode', 'CET-ABE')->firstOrFail(),
         ];
-
         $accountDefinitions = [
             'demo.admin@example.test' => [
                 'name' => '[DEMO] CET Administrator',
@@ -214,7 +200,6 @@ class DemoDataSeeder extends Seeder
                     'message' => $notification['message'],
                     'relatedCheckId' => $checks[$notification['check']]->getKey(),
                     'isRead' => $notification['isRead'],
-                    'fcmSent' => false,
                 ],
             );
         }

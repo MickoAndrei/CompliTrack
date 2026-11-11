@@ -5,6 +5,8 @@ namespace App\Providers;
 use App\Models\PersonalAccessToken;
 use Laravel\Sanctum\Sanctum;
 use Illuminate\Support\ServiceProvider;
+use Illuminate\Support\Facades\Mail;
+use App\Mail\PhpMailerTransport;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -22,5 +24,6 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         Sanctum::usePersonalAccessTokenModel(PersonalAccessToken::class);
+        Mail::extend('phpmailer', fn (array $config) => new PhpMailerTransport($config));
     }
 }

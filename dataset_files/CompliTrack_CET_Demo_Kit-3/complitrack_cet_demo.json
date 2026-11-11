@@ -1,0 +1,1742 @@
+{
+  "datasetId": "complitrack-claveria-cet-demo-v1",
+  "schemaVersion": 4,
+  "isMock": true,
+  "snapshotDate": "2026-09-11",
+  "timeZone": "Asia/Manila",
+  "organization": {
+    "campus": "USTP Claveria",
+    "college": "College of Engineering and Technology",
+    "university": "University of Science and Technology of Southern Philippines"
+  },
+  "departments": [
+    {
+      "departmentId": "DEMO-CLAV-CET-IT",
+      "departmentName": "Department of Information Technology",
+      "departmentCode": "IT",
+      "program": "BSIT"
+    }
+  ],
+  "people": [
+    {
+      "personId": "DEMO-COORD",
+      "displayName": "Demo CET audit coordinator",
+      "demoRole": "Audit coordinator",
+      "departmentId": null
+    },
+    {
+      "personId": "DEMO-ATL",
+      "displayName": "Demo audit team leader",
+      "demoRole": "Audit team leader",
+      "departmentId": null
+    },
+    {
+      "personId": "DEMO-AUD",
+      "displayName": "Demo assigned auditor",
+      "demoRole": "Auditor",
+      "departmentId": null
+    },
+    {
+      "personId": "DEMO-CHAIR",
+      "displayName": "Demo IT department chair",
+      "demoRole": "Auditee",
+      "departmentId": "DEMO-CLAV-CET-IT"
+    },
+    {
+      "personId": "DEMO-FAC",
+      "displayName": "Demo BSIT faculty custodian",
+      "demoRole": "Auditee",
+      "departmentId": "DEMO-CLAV-CET-IT"
+    },
+    {
+      "personId": "DEMO-LAB",
+      "displayName": "Demo computer laboratory custodian",
+      "demoRole": "Auditee",
+      "departmentId": "DEMO-CLAV-CET-IT"
+    }
+  ],
+  "auditComplianceLegend": {
+    "N": "Non-Conformance",
+    "C": "Compliant",
+    "O": "Observation"
+  },
+  "audits": [
+    {
+      "auditId": "IQA-2026-001-DEMO",
+      "title": "Management of learning and computer laboratory controls",
+      "departmentId": "DEMO-CLAV-CET-IT",
+      "status": "Completed",
+      "plannedDate": "2026-08-26",
+      "auditYear": 2026,
+      "planIssuedOn": "2026-08-19",
+      "completedOn": "2026-08-26",
+      "auditType": "Internal Quality Audit",
+      "venue": "Demo CET meeting room and computer laboratory LAB-IT-01",
+      "standardEdition": "ISO 9001:2015",
+      "objectives": "Verify sampled course-file and computer laboratory controls and identify any follow-up actions.",
+      "scope": "BSIT demo sections BSIT-DEMO-3A and BSIT-DEMO-3B and computer laboratory LAB-IT-01. Sample window 10–25 August 2026.",
+      "methods": [
+        "Document review",
+        "Physical original inspection",
+        "Process-owner interview"
+      ],
+      "procedureIds": [
+        "DOC-DPM-001",
+        "DOC-DPM-002"
+      ],
+      "planDocumentId": "DOC-PLAN-001",
+      "checklistDocumentId": "DOC-CHK-001",
+      "reportDocumentId": "DOC-REPORT-001",
+      "planType": "Regular / Full",
+      "planTeam": {
+        "teamLeaderId": "DEMO-ATL",
+        "teamMemberIds": [
+          "DEMO-AUD"
+        ],
+        "secretaryId": "DEMO-COORD"
+      },
+      "schedule": [
+        {
+          "timeLocal": "08:30–08:45",
+          "activity": "Opening meeting and scope confirmation",
+          "auditorIds": [
+            "DEMO-ATL"
+          ],
+          "auditeeIds": [
+            "DEMO-CHAIR"
+          ],
+          "procedureIds": [],
+          "historicalProcedureCodes": []
+        },
+        {
+          "timeLocal": "08:45–10:00",
+          "activity": "Syllabus approval, release and course-file review",
+          "auditorIds": [
+            "DEMO-AUD"
+          ],
+          "auditeeIds": [
+            "DEMO-CHAIR",
+            "DEMO-FAC"
+          ],
+          "procedureIds": [
+            "DOC-DPM-001"
+          ],
+          "historicalProcedureCodes": [
+            "DPM-USTP-ACAD-001"
+          ]
+        },
+        {
+          "timeLocal": "10:15–11:15",
+          "activity": "Laboratory readiness, maintenance and fault records",
+          "auditorIds": [
+            "DEMO-AUD"
+          ],
+          "auditeeIds": [
+            "DEMO-LAB"
+          ],
+          "procedureIds": [
+            "DOC-DPM-002"
+          ],
+          "historicalProcedureCodes": []
+        },
+        {
+          "timeLocal": "11:15–11:45",
+          "activity": "Consolidation of sampled results",
+          "auditorIds": [
+            "DEMO-AUD"
+          ],
+          "auditeeIds": [],
+          "procedureIds": [],
+          "historicalProcedureCodes": []
+        },
+        {
+          "timeLocal": "11:45–12:00",
+          "activity": "Closing meeting and follow-up items",
+          "auditorIds": [
+            "DEMO-ATL"
+          ],
+          "auditeeIds": [
+            "DEMO-CHAIR",
+            "DEMO-FAC",
+            "DEMO-LAB"
+          ],
+          "procedureIds": [],
+          "historicalProcedureCodes": []
+        }
+      ],
+      "meetingAttendanceDocumentId": "DOC-MEET-001",
+      "carLogDocumentIds": [
+        "DOC-CARLOG-001",
+        "DOC-CARLOG-002"
+      ]
+    },
+    {
+      "auditId": "IQA-2026-002-DEMO",
+      "title": "Course file and laboratory readiness spot check",
+      "departmentId": "DEMO-CLAV-CET-IT",
+      "status": "In Progress",
+      "plannedDate": "2026-09-09",
+      "auditYear": 2026,
+      "planIssuedOn": "2026-09-02",
+      "completedOn": null,
+      "auditType": "Internal Quality Audit",
+      "venue": "Demo CET meeting room and computer laboratory LAB-IT-01",
+      "standardEdition": "ISO 9001:2015",
+      "objectives": "Confirm readiness and delivery records for a new sample and inspect one physical syllabus approval original.",
+      "scope": "BSIT demo section BSIT-DEMO-3C and computer laboratory LAB-IT-01. Sample window 1–8 September 2026.",
+      "methods": [
+        "Digital file review",
+        "Physical original inspection"
+      ],
+      "procedureIds": [
+        "DOC-DPM-001",
+        "DOC-DPM-002"
+      ],
+      "planDocumentId": "DOC-PLAN-002",
+      "checklistDocumentId": "DOC-CHK-002",
+      "reportDocumentId": null,
+      "planType": "Special",
+      "planTeam": {
+        "teamLeaderId": "DEMO-ATL",
+        "teamMemberIds": [
+          "DEMO-AUD"
+        ],
+        "secretaryId": "DEMO-COORD"
+      },
+      "schedule": [
+        {
+          "timeLocal": "09:00–09:15",
+          "activity": "Opening discussion and sample confirmation",
+          "auditorIds": [
+            "DEMO-ATL"
+          ],
+          "auditeeIds": [
+            "DEMO-CHAIR"
+          ],
+          "procedureIds": [],
+          "historicalProcedureCodes": []
+        },
+        {
+          "timeLocal": "09:15–09:45",
+          "activity": "Readiness and delivery record review",
+          "auditorIds": [
+            "DEMO-AUD"
+          ],
+          "auditeeIds": [
+            "DEMO-FAC",
+            "DEMO-LAB"
+          ],
+          "procedureIds": [
+            "DOC-DPM-001",
+            "DOC-DPM-002"
+          ],
+          "historicalProcedureCodes": []
+        },
+        {
+          "timeLocal": "09:45–10:00",
+          "activity": "Physical syllabus approval review",
+          "auditorIds": [
+            "DEMO-AUD"
+          ],
+          "auditeeIds": [
+            "DEMO-CHAIR"
+          ],
+          "procedureIds": [
+            "DOC-DPM-001"
+          ],
+          "historicalProcedureCodes": [
+            "DPM-USTP-ACAD-001"
+          ]
+        },
+        {
+          "timeLocal": "10:00–10:15",
+          "activity": "Outstanding evidence and next steps",
+          "auditorIds": [
+            "DEMO-ATL"
+          ],
+          "auditeeIds": [
+            "DEMO-CHAIR"
+          ],
+          "procedureIds": [],
+          "historicalProcedureCodes": []
+        }
+      ]
+    }
+  ],
+  "assignments": [
+    {
+      "assignmentId": "ASG-01-01",
+      "auditId": "IQA-2026-001-DEMO",
+      "personId": "DEMO-COORD",
+      "assignmentRole": "Audit coordinator"
+    },
+    {
+      "assignmentId": "ASG-01-02",
+      "auditId": "IQA-2026-001-DEMO",
+      "personId": "DEMO-ATL",
+      "assignmentRole": "Audit team leader"
+    },
+    {
+      "assignmentId": "ASG-01-03",
+      "auditId": "IQA-2026-001-DEMO",
+      "personId": "DEMO-AUD",
+      "assignmentRole": "Auditor"
+    },
+    {
+      "assignmentId": "ASG-01-04",
+      "auditId": "IQA-2026-001-DEMO",
+      "personId": "DEMO-CHAIR",
+      "assignmentRole": "Auditee"
+    },
+    {
+      "assignmentId": "ASG-01-05",
+      "auditId": "IQA-2026-001-DEMO",
+      "personId": "DEMO-FAC",
+      "assignmentRole": "Auditee"
+    },
+    {
+      "assignmentId": "ASG-01-06",
+      "auditId": "IQA-2026-001-DEMO",
+      "personId": "DEMO-LAB",
+      "assignmentRole": "Auditee"
+    },
+    {
+      "assignmentId": "ASG-02-01",
+      "auditId": "IQA-2026-002-DEMO",
+      "personId": "DEMO-COORD",
+      "assignmentRole": "Audit coordinator"
+    },
+    {
+      "assignmentId": "ASG-02-02",
+      "auditId": "IQA-2026-002-DEMO",
+      "personId": "DEMO-ATL",
+      "assignmentRole": "Audit team leader"
+    },
+    {
+      "assignmentId": "ASG-02-03",
+      "auditId": "IQA-2026-002-DEMO",
+      "personId": "DEMO-AUD",
+      "assignmentRole": "Auditor"
+    },
+    {
+      "assignmentId": "ASG-02-04",
+      "auditId": "IQA-2026-002-DEMO",
+      "personId": "DEMO-CHAIR",
+      "assignmentRole": "Auditee"
+    },
+    {
+      "assignmentId": "ASG-02-05",
+      "auditId": "IQA-2026-002-DEMO",
+      "personId": "DEMO-FAC",
+      "assignmentRole": "Auditee"
+    },
+    {
+      "assignmentId": "ASG-02-06",
+      "auditId": "IQA-2026-002-DEMO",
+      "personId": "DEMO-LAB",
+      "assignmentRole": "Auditee"
+    }
+  ],
+  "checklistItems": [
+    {
+      "checkItemId": "IQA-2026-001-DEMO-01",
+      "auditId": "IQA-2026-001-DEMO",
+      "itemNumber": 1,
+      "checkItem": "Was the sampled syllabus approved before release?",
+      "procedureId": "DOC-DPM-001",
+      "procedureSection": "5.1",
+      "procedureCode": "DPM-USTP-CET-001",
+      "localCriterion": "Review and approve the syllabus before initial release. The chair records approval on the signed review original, and the faculty custodian logs its reference.",
+      "auditCompliance": "C",
+      "auditRemarks": "Original SYL-3A-R01 was inspected. The chair endorsement dated 12 August preceded release on 13 August.",
+      "assignedAuditeeId": "DEMO-CHAIR",
+      "preparedBy": "DEMO-AUD",
+      "evaluationStatus": "Evaluated",
+      "evaluatedOn": "2026-08-26",
+      "evaluatedBy": "DEMO-AUD"
+    },
+    {
+      "checkItemId": "IQA-2026-001-DEMO-02",
+      "auditId": "IQA-2026-001-DEMO",
+      "itemNumber": 2,
+      "checkItem": "Can the course file show when its approved syllabus was released?",
+      "procedureId": "DOC-DPM-001",
+      "procedureSection": "5.2",
+      "procedureCode": "DPM-USTP-CET-001",
+      "localCriterion": "Record the first release date and retain a retrievable release entry linked to the approved syllabus revision in the course file.",
+      "auditCompliance": "N",
+      "auditRemarks": "For BSIT-DEMO-3B, the release tracker had no date and the sampled course-file folder had no retrievable release entry at audit time.",
+      "assignedAuditeeId": "DEMO-FAC",
+      "preparedBy": "DEMO-AUD",
+      "evaluationStatus": "Evaluated",
+      "evaluatedOn": "2026-08-26",
+      "evaluatedBy": "DEMO-AUD"
+    },
+    {
+      "checkItemId": "IQA-2026-001-DEMO-03",
+      "auditId": "IQA-2026-001-DEMO",
+      "itemNumber": 3,
+      "checkItem": "Do the sampled sessions have delivery and assessment references?",
+      "procedureId": "DOC-DPM-001",
+      "procedureSection": "5.3",
+      "procedureCode": "DPM-USTP-CET-001",
+      "localCriterion": "Keep a delivery entry and assessment reference for each sampled teaching session. Record the session date, topic and assessment identifier.",
+      "auditCompliance": "C",
+      "auditRemarks": "The 14 and 21 August BSIT-DEMO-3A entries each showed a topic and assessment identifier.",
+      "assignedAuditeeId": "DEMO-FAC",
+      "preparedBy": "DEMO-AUD",
+      "evaluationStatus": "Evaluated",
+      "evaluatedOn": "2026-08-26",
+      "evaluatedBy": "DEMO-AUD"
+    },
+    {
+      "checkItemId": "IQA-2026-001-DEMO-04",
+      "auditId": "IQA-2026-001-DEMO",
+      "itemNumber": 4,
+      "checkItem": "Does the course-file index point to each sampled record?",
+      "procedureId": "DOC-DPM-001",
+      "procedureSection": "5.4",
+      "procedureCode": "DPM-USTP-CET-001",
+      "localCriterion": "Keep an index showing each course-file record and its location. The index is the locator when file names vary.",
+      "auditCompliance": "O",
+      "auditRemarks": "The index located both records. Their filenames followed different patterns, which made manual sorting slower.",
+      "assignedAuditeeId": "DEMO-FAC",
+      "preparedBy": "DEMO-AUD",
+      "evaluationStatus": "Evaluated",
+      "evaluatedOn": "2026-08-26",
+      "evaluatedBy": "DEMO-AUD"
+    },
+    {
+      "checkItemId": "IQA-2026-001-DEMO-05",
+      "auditId": "IQA-2026-001-DEMO",
+      "itemNumber": 5,
+      "checkItem": "Was the pre-use readiness entry endorsed before the lab was released?",
+      "procedureId": "DOC-DPM-002",
+      "procedureSection": "5.2",
+      "procedureCode": "DPM-USTP-CET-002",
+      "localCriterion": "The custodian initials and dates each completed readiness entry before the room is released. A missing endorsement keeps the record incomplete.",
+      "auditCompliance": "N",
+      "auditRemarks": "The 18 August readiness entry for LAB-IT-01 showed completed checks and room release, with the custodian initials and endorsement date blank.",
+      "assignedAuditeeId": "DEMO-LAB",
+      "preparedBy": "DEMO-AUD",
+      "evaluationStatus": "Evaluated",
+      "evaluatedOn": "2026-08-26",
+      "evaluatedBy": "DEMO-AUD"
+    },
+    {
+      "checkItemId": "IQA-2026-001-DEMO-06",
+      "auditId": "IQA-2026-001-DEMO",
+      "itemNumber": 6,
+      "checkItem": "Was maintenance completion and acceptance recorded before equipment returned to service?",
+      "procedureId": "DOC-DPM-002",
+      "procedureSection": "5.3",
+      "procedureCode": "DPM-USTP-CET-002",
+      "localCriterion": "Record scheduled preventive maintenance and retain dated completion and reviewer acceptance before returning an affected asset to service.",
+      "auditCompliance": "N",
+      "auditRemarks": "The 19 August return-to-service entry for DEMO-PC-07 lacked a dated maintenance completion and reviewer acceptance.",
+      "assignedAuditeeId": "DEMO-LAB",
+      "preparedBy": "DEMO-AUD",
+      "evaluationStatus": "Evaluated",
+      "evaluatedOn": "2026-08-26",
+      "evaluatedBy": "DEMO-AUD"
+    },
+    {
+      "checkItemId": "IQA-2026-001-DEMO-07",
+      "auditId": "IQA-2026-001-DEMO",
+      "itemNumber": 7,
+      "checkItem": "Was the faulty asset isolated and assigned to a follow-up owner?",
+      "procedureId": "DOC-DPM-002",
+      "procedureSection": "5.4",
+      "procedureCode": "DPM-USTP-CET-002",
+      "localCriterion": "Record faults by asset tag. Isolate affected equipment and assign a follow-up owner before releasing the rest of the room for use.",
+      "auditCompliance": "C",
+      "auditRemarks": "DEMO-PC-12 was marked out of service and assigned to the demo lab custodian in FLT-0825-12.",
+      "assignedAuditeeId": "DEMO-LAB",
+      "preparedBy": "DEMO-AUD",
+      "evaluationStatus": "Evaluated",
+      "evaluatedOn": "2026-08-26",
+      "evaluatedBy": "DEMO-AUD"
+    },
+    {
+      "checkItemId": "IQA-2026-002-DEMO-01",
+      "auditId": "IQA-2026-002-DEMO",
+      "itemNumber": 1,
+      "checkItem": "Was readiness recorded for the sampled September laboratory session?",
+      "procedureId": "DOC-DPM-002",
+      "procedureSection": "5.1",
+      "procedureCode": "DPM-USTP-CET-002",
+      "localCriterion": "Complete the readiness checklist before a scheduled lab session. Record the date, room, equipment checks and disposition of any faults.",
+      "auditCompliance": "C",
+      "auditRemarks": "The LAB-IT-01 checklist was dated 8 September and recorded the workstation, network and safety checks plus the fault disposition.",
+      "assignedAuditeeId": "DEMO-LAB",
+      "preparedBy": "DEMO-AUD",
+      "evaluationStatus": "Evaluated",
+      "evaluatedOn": "2026-09-09",
+      "evaluatedBy": "DEMO-AUD"
+    },
+    {
+      "checkItemId": "IQA-2026-002-DEMO-02",
+      "auditId": "IQA-2026-002-DEMO",
+      "itemNumber": 2,
+      "checkItem": "Does the sampled September course file include a delivery entry and an assessment reference?",
+      "procedureId": "DOC-DPM-001",
+      "procedureSection": "5.3",
+      "procedureCode": "DPM-USTP-CET-001",
+      "localCriterion": "Keep a delivery entry and assessment reference for each sampled teaching session. Record the session date, topic and assessment identifier.",
+      "auditCompliance": "C",
+      "auditRemarks": "The 8 September BSIT-DEMO-3C entry recorded its topic and assessment identifier PRACT-03.",
+      "assignedAuditeeId": "DEMO-FAC",
+      "preparedBy": "DEMO-AUD",
+      "evaluationStatus": "Evaluated",
+      "evaluatedOn": "2026-09-09",
+      "evaluatedBy": "DEMO-AUD"
+    },
+    {
+      "checkItemId": "IQA-2026-002-DEMO-03",
+      "auditId": "IQA-2026-002-DEMO",
+      "itemNumber": 3,
+      "checkItem": "Can the chair present the signed original for the sampled syllabus?",
+      "procedureId": "DOC-DPM-001",
+      "procedureSection": "5.1",
+      "procedureCode": "DPM-USTP-CET-001",
+      "localCriterion": "Review and approve the syllabus before initial release. The chair records approval on the signed review original, and the faculty custodian logs its reference.",
+      "auditCompliance": null,
+      "auditRemarks": null,
+      "assignedAuditeeId": "DEMO-CHAIR",
+      "preparedBy": "DEMO-AUD",
+      "evaluationStatus": "Pending",
+      "evaluatedOn": null,
+      "evaluatedBy": null
+    }
+  ],
+  "evidence": [
+    {
+      "evidenceId": "EV-01",
+      "auditId": "IQA-2026-001-DEMO",
+      "checkItemId": "IQA-2026-001-DEMO-01",
+      "purpose": "During audit",
+      "carId": null,
+      "title": "Signed syllabus review original",
+      "presentationMode": "Physical original",
+      "reviewStatus": "Reviewed",
+      "reference": "SYL-3A-R01",
+      "locator": "Demo IT office • syllabus binder A",
+      "auditReviewNote": "Chair endorsement and date visually verified in the simulation.",
+      "attachmentDocumentId": null,
+      "requestedOn": null,
+      "requestedBy": null,
+      "submittedOn": "2026-08-26",
+      "submittedBy": "DEMO-CHAIR",
+      "reviewedOn": "2026-08-26",
+      "reviewedBy": "DEMO-AUD",
+      "physicalSignatureVerification": "Verified in mock inspection"
+    },
+    {
+      "evidenceId": "EV-02",
+      "auditId": "IQA-2026-001-DEMO",
+      "checkItemId": "IQA-2026-001-DEMO-01",
+      "purpose": "During audit",
+      "carId": null,
+      "title": "Syllabus review and release tracker",
+      "presentationMode": "Digital file",
+      "reviewStatus": "Reviewed",
+      "reference": "SYL-TRK-AUG",
+      "locator": "Course file tracker",
+      "auditReviewNote": "Section 3A tracker entry matched the inspected original.",
+      "attachmentDocumentId": "DOC-FM-01",
+      "requestedOn": null,
+      "requestedBy": null,
+      "submittedOn": "2026-08-26",
+      "submittedBy": "DEMO-CHAIR",
+      "reviewedOn": "2026-08-26",
+      "reviewedBy": "DEMO-AUD",
+      "physicalSignatureVerification": null
+    },
+    {
+      "evidenceId": "EV-03",
+      "auditId": "IQA-2026-001-DEMO",
+      "checkItemId": "IQA-2026-001-DEMO-02",
+      "purpose": "During audit",
+      "carId": null,
+      "title": "BSIT-DEMO-3B course file at audit time",
+      "presentationMode": "Digital reference",
+      "reviewStatus": "Reviewed",
+      "reference": "CF-3B-AUG",
+      "locator": "Demo LMS / BSIT-DEMO-3B / Course Files",
+      "auditReviewNote": "No release entry was retrievable on 26 August.",
+      "attachmentDocumentId": null,
+      "requestedOn": null,
+      "requestedBy": null,
+      "submittedOn": "2026-08-26",
+      "submittedBy": "DEMO-FAC",
+      "reviewedOn": "2026-08-26",
+      "reviewedBy": "DEMO-AUD",
+      "physicalSignatureVerification": null
+    },
+    {
+      "evidenceId": "EV-04",
+      "auditId": "IQA-2026-001-DEMO",
+      "checkItemId": "IQA-2026-001-DEMO-03",
+      "purpose": "During audit",
+      "carId": null,
+      "title": "Class delivery and assessment log",
+      "presentationMode": "Digital file",
+      "reviewStatus": "Reviewed",
+      "reference": "CDL-AUG-SEP",
+      "locator": "Course file log",
+      "auditReviewNote": "Both sampled August rows included the assessment identifier.",
+      "attachmentDocumentId": "DOC-FM-02",
+      "requestedOn": null,
+      "requestedBy": null,
+      "submittedOn": "2026-08-26",
+      "submittedBy": "DEMO-FAC",
+      "reviewedOn": "2026-08-26",
+      "reviewedBy": "DEMO-AUD",
+      "physicalSignatureVerification": null
+    },
+    {
+      "evidenceId": "EV-05",
+      "auditId": "IQA-2026-001-DEMO",
+      "checkItemId": "IQA-2026-001-DEMO-04",
+      "purpose": "During audit",
+      "carId": null,
+      "title": "Course-file index excerpt",
+      "presentationMode": "Digital file",
+      "reviewStatus": "Reviewed",
+      "reference": "CDL-AUG-SEP / Course file index",
+      "locator": "Course file log",
+      "auditReviewNote": "Index links worked for both differently named files.",
+      "attachmentDocumentId": "DOC-FM-02",
+      "requestedOn": null,
+      "requestedBy": null,
+      "submittedOn": "2026-08-26",
+      "submittedBy": "DEMO-FAC",
+      "reviewedOn": "2026-08-26",
+      "reviewedBy": "DEMO-AUD",
+      "physicalSignatureVerification": null
+    },
+    {
+      "evidenceId": "EV-06",
+      "auditId": "IQA-2026-001-DEMO",
+      "checkItemId": "IQA-2026-001-DEMO-05",
+      "purpose": "During audit",
+      "carId": null,
+      "title": "August laboratory readiness entry",
+      "presentationMode": "Digital file",
+      "reviewStatus": "Reviewed",
+      "reference": "LR-0818",
+      "locator": "Lab readiness register",
+      "auditReviewNote": "Custodian initials and endorsement date were blank.",
+      "attachmentDocumentId": "DOC-FM-03",
+      "requestedOn": null,
+      "requestedBy": null,
+      "submittedOn": "2026-08-26",
+      "submittedBy": "DEMO-LAB",
+      "reviewedOn": "2026-08-26",
+      "reviewedBy": "DEMO-AUD",
+      "physicalSignatureVerification": null
+    },
+    {
+      "evidenceId": "EV-07",
+      "auditId": "IQA-2026-001-DEMO",
+      "checkItemId": "IQA-2026-001-DEMO-06",
+      "purpose": "During audit",
+      "carId": null,
+      "title": "Maintenance log for DEMO-PC-07",
+      "presentationMode": "Digital file",
+      "reviewStatus": "Reviewed",
+      "reference": "PM-0819-07",
+      "locator": "Lab maintenance register",
+      "auditReviewNote": "Completion date and reviewer acceptance were unavailable.",
+      "attachmentDocumentId": "DOC-FM-04",
+      "requestedOn": null,
+      "requestedBy": null,
+      "submittedOn": "2026-08-26",
+      "submittedBy": "DEMO-LAB",
+      "reviewedOn": "2026-08-26",
+      "reviewedBy": "DEMO-AUD",
+      "physicalSignatureVerification": null
+    },
+    {
+      "evidenceId": "EV-08",
+      "auditId": "IQA-2026-001-DEMO",
+      "checkItemId": "IQA-2026-001-DEMO-07",
+      "purpose": "During audit",
+      "carId": null,
+      "title": "Fault log for DEMO-PC-12",
+      "presentationMode": "Digital file",
+      "reviewStatus": "Reviewed",
+      "reference": "FLT-0825-12",
+      "locator": "Lab maintenance register",
+      "auditReviewNote": "Out-of-service tag and action owner were recorded.",
+      "attachmentDocumentId": "DOC-FM-04",
+      "requestedOn": null,
+      "requestedBy": null,
+      "submittedOn": "2026-08-26",
+      "submittedBy": "DEMO-LAB",
+      "reviewedOn": "2026-08-26",
+      "reviewedBy": "DEMO-AUD",
+      "physicalSignatureVerification": null
+    },
+    {
+      "evidenceId": "EV-09",
+      "auditId": "IQA-2026-001-DEMO",
+      "checkItemId": "IQA-2026-001-DEMO-02",
+      "purpose": "Corrective action",
+      "carId": "CAR-DEMO-001",
+      "title": "Recovered syllabus release evidence",
+      "presentationMode": "Digital file",
+      "reviewStatus": "Reviewed",
+      "reference": "CE-001",
+      "locator": "Corrective action response",
+      "auditReviewNote": "Recovered release event and a later sample both linked to the approved syllabus revision.",
+      "attachmentDocumentId": "DOC-FM-05-001",
+      "requestedOn": null,
+      "requestedBy": null,
+      "submittedOn": "2026-09-02",
+      "submittedBy": "DEMO-FAC",
+      "reviewedOn": "2026-09-04",
+      "reviewedBy": "DEMO-AUD",
+      "physicalSignatureVerification": null
+    },
+    {
+      "evidenceId": "EV-10",
+      "auditId": "IQA-2026-001-DEMO",
+      "checkItemId": "IQA-2026-001-DEMO-05",
+      "purpose": "Corrective action",
+      "carId": "CAR-DEMO-002",
+      "title": "Revised laboratory sign-off and resample",
+      "presentationMode": "Digital file",
+      "reviewStatus": "Submitted",
+      "reference": "CE-002",
+      "locator": "Corrective action response",
+      "auditReviewNote": null,
+      "attachmentDocumentId": "DOC-FM-05-002",
+      "requestedOn": null,
+      "requestedBy": null,
+      "submittedOn": "2026-09-08",
+      "submittedBy": "DEMO-LAB",
+      "reviewedOn": null,
+      "reviewedBy": null,
+      "physicalSignatureVerification": null
+    },
+    {
+      "evidenceId": "EV-11",
+      "auditId": "IQA-2026-002-DEMO",
+      "checkItemId": "IQA-2026-002-DEMO-01",
+      "purpose": "During audit",
+      "carId": null,
+      "title": "September laboratory readiness entry",
+      "presentationMode": "Digital file",
+      "reviewStatus": "Reviewed",
+      "reference": "LR-0908",
+      "locator": "Lab readiness register",
+      "auditReviewNote": "The September spot check confirmed the readiness fields for the new sample.",
+      "attachmentDocumentId": "DOC-FM-03",
+      "requestedOn": null,
+      "requestedBy": null,
+      "submittedOn": "2026-09-09",
+      "submittedBy": "DEMO-LAB",
+      "reviewedOn": "2026-09-09",
+      "reviewedBy": "DEMO-AUD",
+      "physicalSignatureVerification": null
+    },
+    {
+      "evidenceId": "EV-12",
+      "auditId": "IQA-2026-002-DEMO",
+      "checkItemId": "IQA-2026-002-DEMO-02",
+      "purpose": "During audit",
+      "carId": null,
+      "title": "September class delivery entry",
+      "presentationMode": "Digital file",
+      "reviewStatus": "Reviewed",
+      "reference": "CDL-AUG-SEP / 8 September",
+      "locator": "Course file log",
+      "auditReviewNote": "Session topic and PRACT-03 were recorded.",
+      "attachmentDocumentId": "DOC-FM-02",
+      "requestedOn": null,
+      "requestedBy": null,
+      "submittedOn": "2026-09-09",
+      "submittedBy": "DEMO-FAC",
+      "reviewedOn": "2026-09-09",
+      "reviewedBy": "DEMO-AUD",
+      "physicalSignatureVerification": null
+    },
+    {
+      "evidenceId": "EV-13",
+      "auditId": "IQA-2026-002-DEMO",
+      "checkItemId": "IQA-2026-002-DEMO-03",
+      "purpose": "During audit",
+      "carId": null,
+      "title": "Requested signed syllabus review original",
+      "presentationMode": "Physical original",
+      "reviewStatus": "Requested",
+      "reference": "SYL-3C-R01",
+      "locator": "Demo IT office • syllabus binder B",
+      "auditReviewNote": null,
+      "attachmentDocumentId": null,
+      "requestedOn": "2026-09-09",
+      "requestedBy": "DEMO-AUD",
+      "submittedOn": null,
+      "submittedBy": null,
+      "reviewedOn": null,
+      "reviewedBy": null,
+      "physicalSignatureVerification": "Pending inspection"
+    },
+    {
+      "evidenceId": "EV-14",
+      "auditId": "IQA-2026-001-DEMO",
+      "checkItemId": "IQA-2026-001-DEMO-01",
+      "purpose": "During audit",
+      "carId": null,
+      "title": "Approved syllabus viewing copy for BSIT-DEMO-3A",
+      "presentationMode": "Digital file",
+      "reviewStatus": "Reviewed",
+      "reference": "SYL-3A-R01 / viewing copy",
+      "locator": "Academics / Approved OBE Syllabi",
+      "auditReviewNote": "The course code and revision matched the physical review reference. The viewing copy carries no signature.",
+      "attachmentDocumentId": "DOC-ACAD-001",
+      "requestedOn": null,
+      "requestedBy": null,
+      "submittedOn": "2026-08-26",
+      "submittedBy": "DEMO-CHAIR",
+      "reviewedOn": "2026-08-26",
+      "reviewedBy": "DEMO-AUD",
+      "physicalSignatureVerification": null
+    },
+    {
+      "evidenceId": "EV-15",
+      "auditId": "IQA-2026-001-DEMO",
+      "checkItemId": "IQA-2026-001-DEMO-03",
+      "purpose": "During audit",
+      "carId": null,
+      "title": "Student class attendance sample",
+      "presentationMode": "Digital file",
+      "reviewStatus": "Reviewed",
+      "reference": "ATT-STU-3A",
+      "locator": "Academics / Class Attendance and Monitoring",
+      "auditReviewNote": "Attendance entries for 14 and 21 August support the dates in the delivery log.",
+      "attachmentDocumentId": "DOC-ACAD-002",
+      "requestedOn": null,
+      "requestedBy": null,
+      "submittedOn": "2026-08-26",
+      "submittedBy": "DEMO-FAC",
+      "reviewedOn": "2026-08-26",
+      "reviewedBy": "DEMO-AUD",
+      "physicalSignatureVerification": null
+    },
+    {
+      "evidenceId": "EV-16",
+      "auditId": "IQA-2026-001-DEMO",
+      "checkItemId": "IQA-2026-001-DEMO-03",
+      "purpose": "During audit",
+      "carId": null,
+      "title": "Faculty attendance and class monitoring log",
+      "presentationMode": "Digital file",
+      "reviewStatus": "Reviewed",
+      "reference": "ATT-FAC-AUG",
+      "locator": "Academics / Class Attendance and Monitoring",
+      "auditReviewNote": "The August session dates and delivery modes match the course delivery log.",
+      "attachmentDocumentId": "DOC-ACAD-003",
+      "requestedOn": null,
+      "requestedBy": null,
+      "submittedOn": "2026-08-26",
+      "submittedBy": "DEMO-FAC",
+      "reviewedOn": "2026-08-26",
+      "reviewedBy": "DEMO-AUD",
+      "physicalSignatureVerification": null
+    },
+    {
+      "evidenceId": "EV-17",
+      "auditId": "IQA-2026-001-DEMO",
+      "checkItemId": "IQA-2026-001-DEMO-01",
+      "purpose": "During audit",
+      "carId": null,
+      "title": "Syllabus review and approval record",
+      "presentationMode": "Digital file",
+      "reviewStatus": "Reviewed",
+      "reference": "REV-SYL-3A-0812",
+      "locator": "Academics / Approved OBE Syllabi",
+      "auditReviewNote": "The review record links the chair endorsement and recorded approval to the syllabus revision and the 13 August release.",
+      "attachmentDocumentId": "DOC-ACAD-004",
+      "requestedOn": null,
+      "requestedBy": null,
+      "submittedOn": "2026-08-26",
+      "submittedBy": "DEMO-CHAIR",
+      "reviewedOn": "2026-08-26",
+      "reviewedBy": "DEMO-AUD",
+      "physicalSignatureVerification": null
+    },
+    {
+      "evidenceId": "EV-18",
+      "auditId": "IQA-2026-001-DEMO",
+      "checkItemId": "IQA-2026-001-DEMO-03",
+      "purpose": "During audit",
+      "carId": null,
+      "title": "Instructional materials validation record",
+      "presentationMode": "Digital file",
+      "reviewStatus": "Reviewed",
+      "reference": "IM-VAL-3A-0813",
+      "locator": "Academics / Instructional Materials Validation",
+      "auditReviewNote": "Validation notes identify the handout and worksheet used for the sampled ACT-01 activity.",
+      "attachmentDocumentId": "DOC-ACAD-005",
+      "requestedOn": null,
+      "requestedBy": null,
+      "submittedOn": "2026-08-26",
+      "submittedBy": "DEMO-FAC",
+      "reviewedOn": "2026-08-26",
+      "reviewedBy": "DEMO-AUD",
+      "physicalSignatureVerification": null
+    },
+    {
+      "evidenceId": "EV-19",
+      "auditId": "IQA-2026-001-DEMO",
+      "checkItemId": "IQA-2026-001-DEMO-03",
+      "purpose": "During audit",
+      "carId": null,
+      "title": "Quiz assessment table of specifications",
+      "presentationMode": "Digital file",
+      "reviewStatus": "Reviewed",
+      "reference": "TOS-QUIZ-02",
+      "locator": "Academics / Instructional Materials Validation",
+      "auditReviewNote": "The blueprint identifies the assessment as QUIZ-02 and maps its questions to the sampled outcomes.",
+      "attachmentDocumentId": "DOC-ACAD-006",
+      "requestedOn": null,
+      "requestedBy": null,
+      "submittedOn": "2026-08-26",
+      "submittedBy": "DEMO-FAC",
+      "reviewedOn": "2026-08-26",
+      "reviewedBy": "DEMO-AUD",
+      "physicalSignatureVerification": null
+    },
+    {
+      "evidenceId": "EV-20",
+      "auditId": "IQA-2026-001-DEMO",
+      "checkItemId": "IQA-2026-001-DEMO-04",
+      "purpose": "During audit",
+      "carId": null,
+      "title": "Course file index and completeness checklist",
+      "presentationMode": "Digital file",
+      "reviewStatus": "Reviewed",
+      "reference": "CFI-3A-0825",
+      "locator": "Academics / Course File Index",
+      "auditReviewNote": "The item references locate ACT-01 and QUIZ-02 even though their stored filenames follow different patterns.",
+      "attachmentDocumentId": "DOC-ACAD-007",
+      "requestedOn": null,
+      "requestedBy": null,
+      "submittedOn": "2026-08-26",
+      "submittedBy": "DEMO-FAC",
+      "reviewedOn": "2026-08-26",
+      "reviewedBy": "DEMO-AUD",
+      "physicalSignatureVerification": null
+    },
+    {
+      "evidenceId": "EV-21",
+      "auditId": "IQA-2026-002-DEMO",
+      "checkItemId": "IQA-2026-002-DEMO-02",
+      "purpose": "During audit",
+      "carId": null,
+      "title": "September student attendance sample",
+      "presentationMode": "Digital file",
+      "reviewStatus": "Reviewed",
+      "reference": "ATT-STU-3C",
+      "locator": "Academics / Class Attendance and Monitoring",
+      "auditReviewNote": "The attendance register supports the 8 September delivery entry for section 3C.",
+      "attachmentDocumentId": "DOC-ACAD-002",
+      "requestedOn": null,
+      "requestedBy": null,
+      "submittedOn": "2026-09-09",
+      "submittedBy": "DEMO-FAC",
+      "reviewedOn": "2026-09-09",
+      "reviewedBy": "DEMO-AUD",
+      "physicalSignatureVerification": null
+    }
+  ],
+  "findings": [
+    {
+      "findingId": "FND-DEMO-001",
+      "auditId": "IQA-2026-001-DEMO",
+      "checkItemId": "IQA-2026-001-DEMO-02",
+      "findingType": "Non-Conformance",
+      "statement": "The 3B course file lacked a retrievable syllabus release entry at the time of sampling.",
+      "evidenceIds": [
+        "EV-03"
+      ],
+      "ownerId": "DEMO-FAC",
+      "carId": "CAR-DEMO-001",
+      "raisedOn": "2026-08-26"
+    },
+    {
+      "findingId": "FND-DEMO-002",
+      "auditId": "IQA-2026-001-DEMO",
+      "checkItemId": "IQA-2026-001-DEMO-04",
+      "findingType": "Observation",
+      "statement": "The index was usable. Consistent filenames could make sorting easier.",
+      "evidenceIds": [
+        "EV-05",
+        "EV-20"
+      ],
+      "ownerId": "DEMO-FAC",
+      "carId": null,
+      "raisedOn": "2026-08-26"
+    },
+    {
+      "findingId": "FND-DEMO-003",
+      "auditId": "IQA-2026-001-DEMO",
+      "checkItemId": "IQA-2026-001-DEMO-05",
+      "findingType": "Non-Conformance",
+      "statement": "The lab release entry dated 18 August lacked required custodian initials and an endorsement date.",
+      "evidenceIds": [
+        "EV-06"
+      ],
+      "ownerId": "DEMO-LAB",
+      "carId": "CAR-DEMO-002",
+      "raisedOn": "2026-08-26"
+    },
+    {
+      "findingId": "FND-DEMO-004",
+      "auditId": "IQA-2026-001-DEMO",
+      "checkItemId": "IQA-2026-001-DEMO-06",
+      "findingType": "Non-Conformance",
+      "statement": "DEMO-PC-07 was shown returned to service without a dated maintenance completion or reviewer acceptance.",
+      "evidenceIds": [
+        "EV-07"
+      ],
+      "ownerId": "DEMO-LAB",
+      "carId": "CAR-DEMO-003",
+      "raisedOn": "2026-08-26"
+    }
+  ],
+  "correctiveActions": [
+    {
+      "carId": "CAR-DEMO-001",
+      "documentId": "DOC-CAR-001",
+      "findingId": "FND-DEMO-001",
+      "auditId": "IQA-2026-001-DEMO",
+      "status": "Closed",
+      "ownerId": "DEMO-FAC",
+      "raisedOn": "2026-08-26",
+      "dueOn": "2026-09-04",
+      "immediateCorrection": "Recovered the 13 August LMS release event and indexed it in the 3B course file on 2 September.",
+      "rootCause": "The pre-release checklist assigned no one to archive release evidence.",
+      "correctiveAction": "Assigned the faculty custodian to index each release event and the chair to sample the release log.",
+      "correctiveEvidenceIds": [
+        "EV-09"
+      ],
+      "responseSubmittedOn": "2026-09-02",
+      "verifiedOn": "2026-09-04",
+      "verifiedBy": "DEMO-AUD",
+      "closedBy": "DEMO-ATL",
+      "closedOn": "2026-09-04",
+      "verificationNote": "Auditor checked the recovered 3B record and a later 3C release dated 1 September. Both identified the approved revision. Team leader recorded closure.",
+      "statusHistory": [
+        {
+          "date": "2026-08-26",
+          "status": "Open",
+          "actorId": "DEMO-ATL",
+          "note": "Issued at closing meeting."
+        },
+        {
+          "date": "2026-09-02",
+          "status": "For Verification",
+          "actorId": "DEMO-FAC",
+          "note": "Submitted response CE-001."
+        },
+        {
+          "date": "2026-09-04",
+          "status": "Closed",
+          "actorId": "DEMO-ATL",
+          "note": "Recorded closure after the auditor verified effectiveness."
+        }
+      ]
+    },
+    {
+      "carId": "CAR-DEMO-002",
+      "documentId": "DOC-CAR-002",
+      "findingId": "FND-DEMO-003",
+      "auditId": "IQA-2026-001-DEMO",
+      "status": "For Verification",
+      "ownerId": "DEMO-LAB",
+      "raisedOn": "2026-08-26",
+      "dueOn": "2026-09-14",
+      "immediateCorrection": "Preserved the incomplete August entry. Reviewed it with the custodian and entered the correction in the response log.",
+      "rootCause": "The readiness sheet allowed a room to be released with the endorsement fields blank.",
+      "correctiveAction": "Added a sign-off gate before room release. Submitted the 8 September entry for effectiveness review.",
+      "correctiveEvidenceIds": [
+        "EV-10"
+      ],
+      "responseSubmittedOn": "2026-09-08",
+      "verifiedOn": null,
+      "verifiedBy": null,
+      "closedBy": null,
+      "closedOn": null,
+      "verificationNote": null,
+      "statusHistory": [
+        {
+          "date": "2026-08-26",
+          "status": "Open",
+          "actorId": "DEMO-ATL",
+          "note": "Issued at closing meeting."
+        },
+        {
+          "date": "2026-09-08",
+          "status": "For Verification",
+          "actorId": "DEMO-LAB",
+          "note": "Submitted response CE-002. Reviewer decision is pending."
+        }
+      ]
+    },
+    {
+      "carId": "CAR-DEMO-003",
+      "documentId": "DOC-CAR-003",
+      "findingId": "FND-DEMO-004",
+      "auditId": "IQA-2026-001-DEMO",
+      "status": "Open",
+      "ownerId": "DEMO-LAB",
+      "raisedOn": "2026-08-26",
+      "dueOn": "2026-09-15",
+      "immediateCorrection": "Demo lab custodian marked the asset unavailable at audit close pending a documented check.",
+      "rootCause": null,
+      "correctiveAction": null,
+      "correctiveEvidenceIds": [],
+      "responseSubmittedOn": null,
+      "verifiedOn": null,
+      "verifiedBy": null,
+      "closedBy": null,
+      "closedOn": null,
+      "verificationNote": null,
+      "statusHistory": [
+        {
+          "date": "2026-08-26",
+          "status": "Open",
+          "actorId": "DEMO-ATL",
+          "note": "Requested cause analysis and dated maintenance and acceptance evidence."
+        }
+      ]
+    }
+  ],
+  "correctiveActionLogs": [
+    {
+      "logId": "CARLOG-DEMO-001",
+      "documentId": "DOC-CARLOG-001",
+      "auditId": "IQA-2026-001-DEMO",
+      "asOfDate": "2026-09-02",
+      "entries": [
+        {
+          "carId": "CAR-DEMO-001",
+          "dateSubmitted": "2026-08-26",
+          "type": "Minor",
+          "source": "IQA",
+          "procedureCode": "DPM-USTP-CET-001",
+          "procedureSection": "5.2",
+          "submitterId": "DEMO-ATL",
+          "findingId": "FND-DEMO-001",
+          "issue": "The 3B course file lacked a retrievable syllabus release entry at the time of sampling.",
+          "assigneeId": "DEMO-FAC",
+          "targetClosedOutDate": "2026-09-04",
+          "verificationResult": null,
+          "verificationAction": "CE-001 received. Review pending.",
+          "actualClosedOutDate": null,
+          "remarks": "For Verification"
+        },
+        {
+          "carId": "CAR-DEMO-002",
+          "dateSubmitted": "2026-08-26",
+          "type": "Minor",
+          "source": "IQA",
+          "procedureCode": "DPM-USTP-CET-002",
+          "procedureSection": "5.2",
+          "submitterId": "DEMO-ATL",
+          "findingId": "FND-DEMO-003",
+          "issue": "The lab release entry dated 18 August lacked required custodian initials and an endorsement date.",
+          "assigneeId": "DEMO-LAB",
+          "targetClosedOutDate": "2026-09-14",
+          "verificationResult": null,
+          "verificationAction": "",
+          "actualClosedOutDate": null,
+          "remarks": "Open"
+        },
+        {
+          "carId": "CAR-DEMO-003",
+          "dateSubmitted": "2026-08-26",
+          "type": "Minor",
+          "source": "IQA",
+          "procedureCode": "DPM-USTP-CET-002",
+          "procedureSection": "5.3",
+          "submitterId": "DEMO-ATL",
+          "findingId": "FND-DEMO-004",
+          "issue": "DEMO-PC-07 was shown returned to service without a dated maintenance completion or reviewer acceptance.",
+          "assigneeId": "DEMO-LAB",
+          "targetClosedOutDate": "2026-09-15",
+          "verificationResult": null,
+          "verificationAction": "",
+          "actualClosedOutDate": null,
+          "remarks": "Open"
+        }
+      ]
+    },
+    {
+      "logId": "CARLOG-DEMO-002",
+      "documentId": "DOC-CARLOG-002",
+      "auditId": "IQA-2026-001-DEMO",
+      "asOfDate": "2026-09-11",
+      "entries": [
+        {
+          "carId": "CAR-DEMO-001",
+          "dateSubmitted": "2026-08-26",
+          "type": "Minor",
+          "source": "IQA",
+          "procedureCode": "DPM-USTP-CET-001",
+          "procedureSection": "5.2",
+          "submitterId": "DEMO-ATL",
+          "findingId": "FND-DEMO-001",
+          "issue": "The 3B course file lacked a retrievable syllabus release entry at the time of sampling.",
+          "assigneeId": "DEMO-FAC",
+          "targetClosedOutDate": "2026-09-04",
+          "verificationResult": "Pass",
+          "verificationAction": "Verified CE-001 on 4 Sep.",
+          "actualClosedOutDate": "2026-09-04",
+          "remarks": "Closed out"
+        },
+        {
+          "carId": "CAR-DEMO-002",
+          "dateSubmitted": "2026-08-26",
+          "type": "Minor",
+          "source": "IQA",
+          "procedureCode": "DPM-USTP-CET-002",
+          "procedureSection": "5.2",
+          "submitterId": "DEMO-ATL",
+          "findingId": "FND-DEMO-003",
+          "issue": "The lab release entry dated 18 August lacked required custodian initials and an endorsement date.",
+          "assigneeId": "DEMO-LAB",
+          "targetClosedOutDate": "2026-09-14",
+          "verificationResult": null,
+          "verificationAction": "CE-002 received. Review pending.",
+          "actualClosedOutDate": null,
+          "remarks": "For Verification"
+        },
+        {
+          "carId": "CAR-DEMO-003",
+          "dateSubmitted": "2026-08-26",
+          "type": "Minor",
+          "source": "IQA",
+          "procedureCode": "DPM-USTP-CET-002",
+          "procedureSection": "5.3",
+          "submitterId": "DEMO-ATL",
+          "findingId": "FND-DEMO-004",
+          "issue": "DEMO-PC-07 was shown returned to service without a dated maintenance completion or reviewer acceptance.",
+          "assigneeId": "DEMO-LAB",
+          "targetClosedOutDate": "2026-09-15",
+          "verificationResult": null,
+          "verificationAction": "",
+          "actualClosedOutDate": null,
+          "remarks": "Open"
+        }
+      ]
+    }
+  ],
+  "documents": [
+    {
+      "documentId": "DOC-DPM-001",
+      "category": "Procedure manual",
+      "documentCode": "DPM-USTP-CET-001",
+      "title": "Management of Learning",
+      "revision": "01",
+      "effectiveDate": "2026-08-03",
+      "recordDate": "2026-08-03",
+      "recordReference": null,
+      "auditId": null,
+      "departmentId": "DEMO-CLAV-CET-IT",
+      "ownerId": "DEMO-CHAIR",
+      "relativePath": "documents/Academics/DPM-USTP-CET-001_Management_of_Learning.docx",
+      "isMock": true,
+      "sha256": "1f508ae2f2ba36a65fbeae9f77c9774c17d0fa23b91676d6dcd03a06cf4bf333"
+    },
+    {
+      "documentId": "DOC-DPM-002",
+      "category": "Procedure manual",
+      "documentCode": "DPM-USTP-CET-002",
+      "title": "Computer Laboratory Readiness and Maintenance",
+      "revision": "01",
+      "effectiveDate": "2026-08-03",
+      "recordDate": "2026-08-03",
+      "recordReference": null,
+      "auditId": null,
+      "departmentId": "DEMO-CLAV-CET-IT",
+      "ownerId": "DEMO-LAB",
+      "relativePath": "documents/DPM-USTP-CET-002_Computer_Laboratory_Readiness.docx",
+      "isMock": true,
+      "sha256": "8ef92ea907667214a60385b0cd32dc8d0b4892e94f3cf7a99dfcf95d0b035202"
+    },
+    {
+      "documentId": "DOC-PLAN-001",
+      "category": "Audit plan",
+      "documentCode": "DEMO-FM-USTP-007-2",
+      "title": "Internal Quality Audit Plan",
+      "revision": "00",
+      "effectiveDate": "2026-08-03",
+      "recordDate": "2026-08-19",
+      "recordReference": "Plan 01",
+      "auditId": "IQA-2026-001-DEMO",
+      "departmentId": "DEMO-CLAV-CET-IT",
+      "ownerId": "DEMO-COORD",
+      "relativePath": "documents/IQA-2026-001-DEMO_Audit_Plan.docx",
+      "isMock": true,
+      "historicalSourceFormCode": "FM-USTP-007-2",
+      "sha256": "7730f926dde7ee48753c0e0e90513bbf61ae6e198ef805f82cbfbf9407f7c484"
+    },
+    {
+      "documentId": "DOC-PLAN-002",
+      "category": "Audit plan",
+      "documentCode": "DEMO-FM-USTP-007-2",
+      "title": "Internal Quality Audit Plan",
+      "revision": "00",
+      "effectiveDate": "2026-08-03",
+      "recordDate": "2026-09-02",
+      "recordReference": "Plan 02",
+      "auditId": "IQA-2026-002-DEMO",
+      "departmentId": "DEMO-CLAV-CET-IT",
+      "ownerId": "DEMO-COORD",
+      "relativePath": "documents/IQA-2026-002-DEMO_Audit_Plan.docx",
+      "isMock": true,
+      "historicalSourceFormCode": "FM-USTP-007-2",
+      "sha256": "fbc4624d360187180e64dcf4d04421ccd2571b32af1ec32c7e655d881acc0733"
+    },
+    {
+      "documentId": "DOC-CHK-001",
+      "category": "Audit checklist",
+      "documentCode": "FM-USTP-CET-CK",
+      "title": "Internal Quality Audit Checklist",
+      "revision": "00",
+      "effectiveDate": "2026-08-03",
+      "recordDate": "2026-08-26",
+      "recordReference": null,
+      "auditId": "IQA-2026-001-DEMO",
+      "departmentId": "DEMO-CLAV-CET-IT",
+      "ownerId": "DEMO-AUD",
+      "relativePath": "documents/IQA-2026-001-DEMO_Auditor_Checklist.docx",
+      "isMock": true,
+      "sha256": "402e1d2f5c449b3b27ba3bae28a9bf4bf511d18eb0e421028f428ad20fef10b2"
+    },
+    {
+      "documentId": "DOC-CHK-002",
+      "category": "Audit checklist",
+      "documentCode": "FM-USTP-CET-CK",
+      "title": "Internal Quality Audit Checklist",
+      "revision": "00",
+      "effectiveDate": "2026-08-03",
+      "recordDate": "2026-09-09",
+      "recordReference": null,
+      "auditId": "IQA-2026-002-DEMO",
+      "departmentId": "DEMO-CLAV-CET-IT",
+      "ownerId": "DEMO-AUD",
+      "relativePath": "documents/IQA-2026-002-DEMO_Auditor_Checklist.docx",
+      "isMock": true,
+      "sha256": "f147b369c600a360f1ee40b417edf92eba500d6e610ce80e8869936a8687203e"
+    },
+    {
+      "documentId": "DOC-REPORT-001",
+      "category": "Audit report",
+      "documentCode": "FM-USTP-CET-AR",
+      "title": "Internal Quality Audit Report",
+      "revision": "00",
+      "effectiveDate": "2026-08-03",
+      "recordDate": "2026-08-26",
+      "recordReference": null,
+      "auditId": "IQA-2026-001-DEMO",
+      "departmentId": "DEMO-CLAV-CET-IT",
+      "ownerId": "DEMO-ATL",
+      "relativePath": "documents/IQA-2026-001-DEMO_Audit_Report.docx",
+      "isMock": true,
+      "sha256": "17e52c915d4efed0b300dd684fc64072da85f13065e723a7013bfb9555e91483"
+    },
+    {
+      "documentId": "DOC-FM-01",
+      "category": "CET form",
+      "documentCode": "FM-USTP-CET-01",
+      "title": "Syllabus Review and Release Tracker",
+      "revision": "00",
+      "effectiveDate": "2026-08-03",
+      "recordDate": "2026-08-26",
+      "recordReference": "SYL-TRK-AUG",
+      "auditId": null,
+      "departmentId": "DEMO-CLAV-CET-IT",
+      "ownerId": "DEMO-FAC",
+      "relativePath": "documents/Academics/1.2_Approved_OBE_Syllabi/FM-USTP-CET-01_Syllabus_Review_and_Release.docx",
+      "isMock": true,
+      "sha256": "ceded5f1541f3b9ad71db802c2fff55fb45ee8e945dd4b3d3b5cae14b1d0533c"
+    },
+    {
+      "documentId": "DOC-FM-02",
+      "category": "CET form",
+      "documentCode": "FM-USTP-CET-02",
+      "title": "Class Delivery and Assessment Log",
+      "revision": "00",
+      "effectiveDate": "2026-08-03",
+      "recordDate": "2026-09-08",
+      "recordReference": "CDL-AUG-SEP",
+      "auditId": null,
+      "departmentId": "DEMO-CLAV-CET-IT",
+      "ownerId": "DEMO-FAC",
+      "relativePath": "documents/Academics/1.3_Instructional_Materials_Validation/FM-USTP-CET-02_Class_Delivery_and_Assessment.docx",
+      "isMock": true,
+      "sha256": "048241d1dab69a3706d8e83feae26a1b3827b5f5d19b0badcc78285adea833f0"
+    },
+    {
+      "documentId": "DOC-FM-03",
+      "category": "CET form",
+      "documentCode": "FM-USTP-CET-03",
+      "title": "Computer Laboratory Readiness Checklist",
+      "revision": "00",
+      "effectiveDate": "2026-08-03",
+      "recordDate": "2026-09-08",
+      "recordReference": "LR-0818 / LR-0908",
+      "auditId": null,
+      "departmentId": "DEMO-CLAV-CET-IT",
+      "ownerId": "DEMO-LAB",
+      "relativePath": "documents/FM-USTP-CET-03_Laboratory_Readiness.docx",
+      "isMock": true,
+      "sha256": "fbb9bde5544c97f3871df2cd7d2a7d3f8d796aec63e8e556caf21196690f385f"
+    },
+    {
+      "documentId": "DOC-FM-04",
+      "category": "CET form",
+      "documentCode": "FM-USTP-CET-04",
+      "title": "Equipment Maintenance and Fault Log",
+      "revision": "00",
+      "effectiveDate": "2026-08-03",
+      "recordDate": "2026-08-26",
+      "recordReference": "PM-0819-07 / FLT-0825-12",
+      "auditId": null,
+      "departmentId": "DEMO-CLAV-CET-IT",
+      "ownerId": "DEMO-LAB",
+      "relativePath": "documents/FM-USTP-CET-04_Maintenance_and_Fault_Log.docx",
+      "isMock": true,
+      "sha256": "eee7ecc4153e7c7e378e7d520f15f1d8e7fc514e8a5a30f4fdd01b9805d5a1ca"
+    },
+    {
+      "documentId": "DOC-FM-05-001",
+      "category": "CET form",
+      "documentCode": "FM-USTP-CET-05",
+      "title": "Corrective Evidence Submission",
+      "revision": "00",
+      "effectiveDate": "2026-08-03",
+      "recordDate": "2026-09-02",
+      "recordReference": "CE-001  •  CAR-DEMO-001",
+      "auditId": "IQA-2026-001-DEMO",
+      "departmentId": "DEMO-CLAV-CET-IT",
+      "ownerId": "DEMO-FAC",
+      "relativePath": "documents/FM-USTP-CET-05_CE-001_Corrective_Evidence.docx",
+      "isMock": true,
+      "sha256": "ea715dcf565211995f0fb18170f233bbc14fae2023580ae5bdcb3b824705e644"
+    },
+    {
+      "documentId": "DOC-FM-05-002",
+      "category": "CET form",
+      "documentCode": "FM-USTP-CET-05",
+      "title": "Corrective Evidence Submission",
+      "revision": "00",
+      "effectiveDate": "2026-08-03",
+      "recordDate": "2026-09-08",
+      "recordReference": "CE-002  •  CAR-DEMO-002",
+      "auditId": "IQA-2026-001-DEMO",
+      "departmentId": "DEMO-CLAV-CET-IT",
+      "ownerId": "DEMO-LAB",
+      "relativePath": "documents/FM-USTP-CET-05_CE-002_Corrective_Evidence.docx",
+      "isMock": true,
+      "sha256": "649678dcfab0df3a119df40049796840e87e4c502094b1f2cc81e91d60dfac2e"
+    },
+    {
+      "documentId": "DOC-CAR-001",
+      "category": "Corrective action request",
+      "documentCode": "FM-USTP-CET-CA",
+      "title": "Corrective Action Request",
+      "revision": "00",
+      "effectiveDate": "2026-08-03",
+      "recordDate": "2026-09-11",
+      "recordReference": "CAR-DEMO-001",
+      "auditId": "IQA-2026-001-DEMO",
+      "departmentId": "DEMO-CLAV-CET-IT",
+      "ownerId": "DEMO-FAC",
+      "relativePath": "documents/CAR-DEMO-001_Corrective_Action_Request.docx",
+      "isMock": true,
+      "sha256": "e7acb0a3c88f68b549d299e3926a6be9c411aff1da373d5cd34946ef90da5c87"
+    },
+    {
+      "documentId": "DOC-CAR-002",
+      "category": "Corrective action request",
+      "documentCode": "FM-USTP-CET-CA",
+      "title": "Corrective Action Request",
+      "revision": "00",
+      "effectiveDate": "2026-08-03",
+      "recordDate": "2026-09-11",
+      "recordReference": "CAR-DEMO-002",
+      "auditId": "IQA-2026-001-DEMO",
+      "departmentId": "DEMO-CLAV-CET-IT",
+      "ownerId": "DEMO-LAB",
+      "relativePath": "documents/CAR-DEMO-002_Corrective_Action_Request.docx",
+      "isMock": true,
+      "sha256": "2633ac017c87755155f338b4143e19aca701401c87f08c4b94d76ce86fdb582b"
+    },
+    {
+      "documentId": "DOC-CAR-003",
+      "category": "Corrective action request",
+      "documentCode": "FM-USTP-CET-CA",
+      "title": "Corrective Action Request",
+      "revision": "00",
+      "effectiveDate": "2026-08-03",
+      "recordDate": "2026-09-11",
+      "recordReference": "CAR-DEMO-003",
+      "auditId": "IQA-2026-001-DEMO",
+      "departmentId": "DEMO-CLAV-CET-IT",
+      "ownerId": "DEMO-LAB",
+      "relativePath": "documents/CAR-DEMO-003_Corrective_Action_Request.docx",
+      "isMock": true,
+      "sha256": "be91e7ac5f16c7e4d86d31579694f7b697c797e8fb132314418ce07a4c14ef7d"
+    },
+    {
+      "documentId": "DOC-ACAD-001",
+      "category": "Academic evidence",
+      "documentCode": "DEMO-FM-USTP-ACAD-01",
+      "title": "Outcome Based Course Syllabus",
+      "revision": "01",
+      "effectiveDate": "2026-08-03",
+      "recordDate": "2026-08-12",
+      "recordReference": "SYL-3A-R01",
+      "auditId": null,
+      "departmentId": "DEMO-CLAV-CET-IT",
+      "ownerId": "DEMO-FAC",
+      "relativePath": "documents/Academics/1.2_Approved_OBE_Syllabi/DEMO-FM-USTP-ACAD-01_Systems_Integration_BSIT_DEMO_3A.docx",
+      "isMock": true,
+      "historicalSourceFormCode": "FM-USTP-ACAD-01",
+      "sha256": "41391fc16ba8fad945f51e3238a90cc320e187decf1cc827616a637dd861ccb8"
+    },
+    {
+      "documentId": "DOC-ACAD-002",
+      "category": "Academic evidence",
+      "documentCode": "DEMO-FM-USTP-CET-AUD-11",
+      "title": "Student Class Attendance Register",
+      "revision": "00",
+      "effectiveDate": "2026-08-03",
+      "recordDate": "2026-09-08",
+      "recordReference": "ATT-STU-3A / ATT-STU-3C",
+      "auditId": null,
+      "departmentId": "DEMO-CLAV-CET-IT",
+      "ownerId": "DEMO-FAC",
+      "relativePath": "documents/Academics/1.4_Class_Attendance_and_Monitoring/DEMO-FM-USTP-CET-AUD-11_Student_Class_Attendance_Register.docx",
+      "isMock": true,
+      "sha256": "9f7c93c55879a64efe3ed90e2a9dc02e8d391dcdc1baee789b5d7dcaa156d48e"
+    },
+    {
+      "documentId": "DOC-ACAD-003",
+      "category": "Academic evidence",
+      "documentCode": "DEMO-FM-USTP-CET-AUD-12",
+      "title": "Faculty Attendance and Class Monitoring Log",
+      "revision": "00",
+      "effectiveDate": "2026-08-03",
+      "recordDate": "2026-09-08",
+      "recordReference": "ATT-FAC-AUG / ATT-FAC-SEP",
+      "auditId": null,
+      "departmentId": "DEMO-CLAV-CET-IT",
+      "ownerId": "DEMO-FAC",
+      "relativePath": "documents/Academics/1.4_Class_Attendance_and_Monitoring/DEMO-FM-USTP-CET-AUD-12_Faculty_Attendance_and_Class_Monitoring.docx",
+      "isMock": true,
+      "sha256": "ec9fdb6c25f345566d52b2237fad86b350065c6dd7376e4d0a0482889c01e1a4"
+    },
+    {
+      "documentId": "DOC-ACAD-004",
+      "category": "Academic evidence",
+      "documentCode": "DEMO-FM-USTP-CET-AUD-02",
+      "title": "Syllabus Review and Approval Record",
+      "revision": "00",
+      "effectiveDate": "2026-08-03",
+      "recordDate": "2026-08-12",
+      "recordReference": "REV-SYL-3A-0812",
+      "auditId": null,
+      "departmentId": "DEMO-CLAV-CET-IT",
+      "ownerId": "DEMO-CHAIR",
+      "relativePath": "documents/Academics/1.2_Approved_OBE_Syllabi/DEMO-FM-USTP-CET-AUD-02_Syllabus_Review_and_Approval.docx",
+      "isMock": true,
+      "sha256": "e30f2b1bb0427899c5d1303a6318197e36b4cac4887a112b335be73911839d24"
+    },
+    {
+      "documentId": "DOC-ACAD-005",
+      "category": "Academic evidence",
+      "documentCode": "DEMO-FM-USTP-CET-AUD-13",
+      "title": "Instructional Materials Validation Record",
+      "revision": "00",
+      "effectiveDate": "2026-08-03",
+      "recordDate": "2026-08-13",
+      "recordReference": "IM-VAL-3A-0813",
+      "auditId": null,
+      "departmentId": "DEMO-CLAV-CET-IT",
+      "ownerId": "DEMO-FAC",
+      "relativePath": "documents/Academics/1.3_Instructional_Materials_Validation/DEMO-FM-USTP-CET-AUD-13_Instructional_Materials_Validation.docx",
+      "isMock": true,
+      "sha256": "f374e584936fec4b7ee20a8a80ddb2bd78d74945bd0def9f13a7c33deee49279"
+    },
+    {
+      "documentId": "DOC-ACAD-006",
+      "category": "Academic evidence",
+      "documentCode": "DEMO-FM-USTP-CET-AUD-14",
+      "title": "Assessment Table of Specifications",
+      "revision": "00",
+      "effectiveDate": "2026-08-03",
+      "recordDate": "2026-08-20",
+      "recordReference": "TOS-QUIZ-02",
+      "auditId": null,
+      "departmentId": "DEMO-CLAV-CET-IT",
+      "ownerId": "DEMO-FAC",
+      "relativePath": "documents/Academics/1.3_Instructional_Materials_Validation/DEMO-FM-USTP-CET-AUD-14_Assessment_Table_of_Specifications_Quiz_02.docx",
+      "isMock": true,
+      "sha256": "9312410f7f0cf33e682c4b1d8c17315ebcf5c2d4acc3552be285e14cfe963934"
+    },
+    {
+      "documentId": "DOC-ACAD-007",
+      "category": "Academic evidence",
+      "documentCode": "DEMO-FM-USTP-CET-AUD-15",
+      "title": "Course File Index and Completeness Checklist",
+      "revision": "00",
+      "effectiveDate": "2026-08-03",
+      "recordDate": "2026-08-25",
+      "recordReference": "CFI-3A-0825",
+      "auditId": null,
+      "departmentId": "DEMO-CLAV-CET-IT",
+      "ownerId": "DEMO-FAC",
+      "relativePath": "documents/Academics/DEMO-FM-USTP-CET-AUD-15_Course_File_Index_and_Completeness.docx",
+      "isMock": true,
+      "sha256": "66299b86e37dc6c4bc60eae20db66f7af0892eb16df0727562880c7a3aa6c13c"
+    },
+    {
+      "documentId": "DOC-MEET-001",
+      "category": "Audit meeting record",
+      "documentCode": "DEMO-FM-USTP-CET-AUD-16",
+      "title": "Audit Meeting Attendance Record",
+      "revision": "00",
+      "effectiveDate": "2026-08-03",
+      "recordDate": "2026-08-26",
+      "recordReference": "MEET-ATT-0826",
+      "auditId": "IQA-2026-001-DEMO",
+      "departmentId": "DEMO-CLAV-CET-IT",
+      "ownerId": "DEMO-COORD",
+      "relativePath": "documents/00_Audit_Management/DEMO-FM-USTP-CET-AUD-16_Opening_and_Closing_Attendance.docx",
+      "isMock": true,
+      "sha256": "8788e67cb255e91e2b448fbb701ac3cf71af4356ed1a430b1df12a816d45bb68"
+    },
+    {
+      "documentId": "DOC-CARLOG-001",
+      "category": "Corrective action report log",
+      "documentCode": "DEMO-FM-USTP-009-2",
+      "title": "Corrective Action Report (CAR) Log",
+      "revision": "00",
+      "effectiveDate": "2026-08-03",
+      "recordDate": "2026-09-02",
+      "recordReference": "USTP Claveria CET",
+      "auditId": "IQA-2026-001-DEMO",
+      "departmentId": "DEMO-CLAV-CET-IT",
+      "ownerId": "DEMO-ATL",
+      "relativePath": "documents/99_Audit_Findings_and_Dispositions/DEMO-FM-USTP-009-2_CAR_Log_2026-09-02.docx",
+      "isMock": true,
+      "historicalSourceFormCode": "FM-USTP-009-2",
+      "sha256": "7da3c1da4efaba525fd12b9de65edfc2fd8bb682640899ca03e140a89d577bf6"
+    },
+    {
+      "documentId": "DOC-CARLOG-002",
+      "category": "Corrective action report log",
+      "documentCode": "DEMO-FM-USTP-009-2",
+      "title": "Corrective Action Report (CAR) Log",
+      "revision": "00",
+      "effectiveDate": "2026-08-03",
+      "recordDate": "2026-09-11",
+      "recordReference": "USTP Claveria CET",
+      "auditId": "IQA-2026-001-DEMO",
+      "departmentId": "DEMO-CLAV-CET-IT",
+      "ownerId": "DEMO-ATL",
+      "relativePath": "documents/99_Audit_Findings_and_Dispositions/DEMO-FM-USTP-009-2_CAR_Log_2026-09-11.docx",
+      "isMock": true,
+      "historicalSourceFormCode": "FM-USTP-009-2",
+      "sha256": "eff2285de65fc41cd20297e772f5d83ee85717f23fcdb175d23fffa4f541755c"
+    },
+    {
+      "documentId": "DOC-INDEX-001",
+      "category": "Document register",
+      "documentCode": "FM-USTP-CET-DC",
+      "title": "Document and Record Master List",
+      "revision": "00",
+      "effectiveDate": "2026-08-03",
+      "recordDate": "2026-09-11",
+      "recordReference": null,
+      "auditId": null,
+      "departmentId": "DEMO-CLAV-CET-IT",
+      "ownerId": "DEMO-COORD",
+      "relativePath": "documents/CET_Document_and_Record_Master_List.docx",
+      "isMock": true,
+      "sha256": "50d238883d5e7d142f8c7d3901ce2a56f7581f24848fb62c3e867dd6f966f53b"
+    }
+  ],
+  "historicalPlanReference": {
+    "formCode": "FM-USTP-007-2",
+    "exampleYear": 2024,
+    "syllabusProcedureCode": "DPM-USTP-ACAD-001"
+  },
+  "layoutReferences": [
+    {
+      "document": "USTP Management Review Minutes dated 26 September 2022",
+      "formCode": "FM-USTP-008-1",
+      "usedFor": "Header layout, logo and control box"
+    },
+    {
+      "document": "TCM 317a revised and updated syllabus",
+      "formCode": "FM-USTP-ACAD-01",
+      "usedFor": "Syllabus sections and control box"
+    },
+    {
+      "document": "USTP Management Review Minutes dated 26 September 2022",
+      "formCode": "FM-USTP-009-2",
+      "referencePage": 62,
+      "usedFor": "CAR log table structure and heading order"
+    }
+  ],
+  "publicSources": [
+    {
+      "title": "USTP Claveria CET profile",
+      "url": "https://www.ustp.edu.ph/claveria/cet/",
+      "usedFor": "Confirms the college and Department of Information Technology."
+    },
+    {
+      "title": "USTP Claveria internal quality audit",
+      "url": "https://www.ustp.edu.ph/ustp-claveria-undergoes-system-wide-iso-90012015-internal-quality-audit-for-recertification/",
+      "usedFor": "Confirms the campus used ISO 9001:2015 in its publicly reported 2025 IQA."
+    },
+    {
+      "title": "USTP first internal quality audit for 2025",
+      "url": "https://www.ustp.edu.ph/ustp-conducts-first-internal-quality-audit-for-cy-2025/",
+      "usedFor": "Identifies management of learning, documented processes and preventive maintenance as examples of audit coverage."
+    },
+    {
+      "title": "USTP semiannual report for 2019",
+      "url": "https://www.ustp.edu.ph/wp-content/uploads/2020/05/SEMI-ANNUAL-REPORT-05.pdf",
+      "usedFor": "Names the ISO Documented Procedures Manual on Management of Learning. See printed page 54."
+    },
+    {
+      "title": "USTP Registrar public form",
+      "url": "https://www.ustp.edu.ph/wp-content/uploads/2022/08/FM-USTP-RGTR-05-RE-ADMISSION-FORM.pdf",
+      "usedFor": "Provides a public example of document code, revision, effective date and page number fields."
+    },
+    {
+      "title": "USTP CiTL faculty resources",
+      "url": "https://citl.ustp.edu.ph/our-services/new-faculty-resources",
+      "usedFor": "Lists public references to syllabus, syllabus review and assessment resources."
+    },
+    {
+      "title": "USTP ISO awareness orientation",
+      "url": "https://www.ustp.edu.ph/ustp-conducts-iso-awareness-orientation/",
+      "usedFor": "Confirms USTP uses the term Corrective Action Request (CAR)."
+    },
+    {
+      "title": "ISO 9001:2015 historical edition",
+      "url": "https://www.iso.org/standard/62085.html",
+      "usedFor": "Historical standard used for this August–September 2026 scenario. ISO lists a withdrawal date of 16 September 2026."
+    }
+  ]
+}

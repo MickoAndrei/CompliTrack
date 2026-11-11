@@ -19,6 +19,7 @@ class PasswordResetLink extends Notification
     public function toMail(object $notifiable): MailMessage
     {
         return (new MailMessage())
+            ->mailer('password_reset')
             ->subject('CompliTrack password reset')
             ->line('A password reset was requested for your account.')
             ->line('Click the link below to choose a new password. This link expires in 10 minutes and can be used once.')

@@ -12,6 +12,10 @@ class ArchiveDemoSeeder extends Seeder
 {
     public function run(): void
     {
+        if (Department::whereIn('departmentCode', ['DEMO-IT', 'DEMO-ENG'])->exists()) {
+            $this->command?->warn('Existing demo archives preserved pending approved organizational ownership.');
+            return;
+        }
         $documents = [
             [
                 'fileCode' => 'FM-USTP-IT-01',
@@ -58,8 +62,8 @@ class ArchiveDemoSeeder extends Seeder
         $encryption = app(ArchiveEncryptionService::class);
 
         foreach ($documents as $document) {
-            $department = Department::where('departmentCode', $document['departmentCode'])->firstOrFail();
             $uploader = User::where('email', $document['uploaderEmail'])->firstOrFail();
+            $department = Department::where('_id', $uploader->departmentId)->where('ownershipVerified', true)->firstOrFail();
             $archive = ArchiveDocument::firstOrNew(['fileCode' => $document['fileCode']]);
 
             $storageRoot = config('filesystems.disks.local.root');
@@ -86,6 +90,8 @@ class ArchiveDemoSeeder extends Seeder
                     'fileSize' => strlen($plaintext),
                     'checksum' => hash('sha256', $plaintext),
                     'departmentId' => $department->getKey(),
+                    'collegeId' => $department->collegeId,
+                    'ownershipVerified' => true,
                     'uploadedByUserId' => $uploader->getKey(),
                     'referenceStandard' => $document['standard'],
                     'tags' => $document['tags'],

@@ -21,6 +21,7 @@ class ComplianceCheckController extends Controller
     public function index(Request $request)
     {
         $query = $this->scopes->checks($request->user());
+        if ($request->boolean('actionable')) { $query->whereIn('correctiveStatus', ['open', 'in_progress']); }
 
         foreach (['correctiveStatus', 'result', 'referenceStandard'] as $field) {
             if ($request->filled($field)) {

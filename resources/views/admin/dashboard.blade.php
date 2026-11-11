@@ -1,6 +1,7 @@
 @extends('layouts.app')
-@section('title', 'Admin Dashboard')
-@section('heading', 'Dashboard')
+@section('title', 'Audit Team Leader Dashboard')
+@section('heading', 'Audit Team Leader Dashboard')
+@section('subtitle', 'CET audit coordination, reviews, and corrective-action monitoring')
 @section('content')
-<x-dashboard-page :role-id="1" />
+@include('admin.atl-dashboard')
 @endsection

@@ -77,6 +77,9 @@ class ComplianceCheckService
         ]);
 
         $this->auditLogs->record($request, 'Created compliance check', 'compliance_check', $check->getKey());
+        app(NotificationDispatchService::class)->persist($check->auditeeId, 'check:'.$check->getKey().':created',
+            $nonCompliant ? 'corrective_action_created' : 'compliant_confirmed', 'Compliance check recorded',
+            $check->checkCode.' recorded as '.str_replace('_', ' ', $check->result).'.', $actor->getKey(), $check->getKey());
 
         return $check;
     }
@@ -111,6 +114,11 @@ class ComplianceCheckService
                 'remarks' => 'Remarks are required when reopening a closed check.',
             ]);
         }
+        if ($nextStatus === 'closed' && trim((string) $remarks) === '') {
+            throw ValidationException::withMessages([
+                'remarks' => 'Record the corrective-action verification performed before closing this check.',
+            ]);
+        }
 
         $now = now()->utc();
         $update = [
@@ -138,7 +146,7 @@ class ComplianceCheckService
             ->getMongoDB()
             ->selectCollection($check->getTable())
             ->updateOne(
-                ['_id' => $check->getKey(), 'correctiveStatus' => $previousStatus],
+                ['_id' => MongoId::parse((string) $check->getKey()), 'correctiveStatus' => $previousStatus],
                 $update,
             );
 
@@ -147,6 +155,9 @@ class ComplianceCheckService
         }
 
         $this->auditLogs->record($request, "Changed check status to {$nextStatus}", 'compliance_check', $check->getKey());
+        app(NotificationDispatchService::class)->persist($check->auditeeId,
+            'check:'.$check->getKey().':status:'.(count($check->statusHistory ?? []) + 1),
+            'status_changed', 'Corrective action updated', $check->checkCode.' status changed to '.$nextStatus.'.', $actor->getKey(), $check->getKey());
 
         return $check->fresh();
     }

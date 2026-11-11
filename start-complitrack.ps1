@@ -1,7 +1,9 @@
+param([switch]$DisableOpcache)
 $ErrorActionPreference = "Stop"
 
 $repoRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
 Set-Location $repoRoot
+. (Join-Path $repoRoot 'scripts/php-development-server.ps1')
 
 $logDir = Join-Path $repoRoot "logs"
 New-Item -ItemType Directory -Force -Path $logDir | Out-Null
@@ -12,6 +14,7 @@ $npmCommand = (Get-Command npm.cmd -ErrorAction SilentlyContinue).Source
 $laravelPidFile = Join-Path $repoRoot ".laravel.pid"
 $vitePidFile = Join-Path $repoRoot ".vite.pid"
 $realtimePidFile = Join-Path $repoRoot ".realtime.pid"
+$schedulerPidFile = Join-Path $repoRoot ".scheduler.pid"
 
 function Test-PortInUse([int]$port) {
     try {
@@ -63,7 +66,7 @@ function Ensure-MongoRunning {
     }
 
     Write-Host "MongoDB target from .env: database '$($script:MongoEnvValues['MONGODB_DATABASE'])'."
-    Write-Host "Laravel will verify connectivity against the configured MongoDB URI while seeding."
+    Write-Host "Laravel will verify connectivity against the configured MongoDB URI before startup."
 }
 
 Write-Host "Checking required tools..."
@@ -153,7 +156,6 @@ MONGODB_URI=mongodb://127.0.0.1:27017/?directConnection=true
 MONGODB_DATABASE=complitrack
 PORT=4000
 SOCKET_CORS_ORIGIN=http://localhost:8000
-FIREBASE_CREDENTIALS=
 "@ | Set-Content (Join-Path $repoRoot "realtime\.env")
             Write-Host "  [OK] Created default realtime\.env"
         }
@@ -201,6 +203,12 @@ Write-Host "Clearing cached Laravel configuration so the current .env MongoDB se
 php artisan config:clear
 if ($LASTEXITCODE -ne 0) { throw "Could not clear Laravel configuration cache." }
 
+Write-Host "Checking MongoDB connectivity before migrations or account logout..."
+php artisan mongodb:check --ping
+if ($LASTEXITCODE -ne 0) {
+    throw "MongoDB connectivity check failed. Resolve the connection issue above and run start-complitrack.ps1 again. Migrations, seeding, and account logout were not attempted."
+}
+
 # Remember completion per MongoDB target without storing the credential-bearing URI.
 $mongoTargetHashInput = "{0}|{1}" -f $script:MongoEnvValues['MONGODB_URI'], $script:MongoEnvValues['MONGODB_DATABASE']
 $sha256 = [System.Security.Cryptography.SHA256]::Create()
@@ -236,8 +244,7 @@ if (Test-PortInUse $appPort) {
     php artisan complitrack:logout-all
     if ($LASTEXITCODE -ne 0) { throw "Could not clear login sessions; Laravel was not started." }
     Write-Host "Starting Laravel on port $appPort..."
-    $artisanPath = Join-Path $repoRoot "artisan"
-    $p = Start-Process -FilePath "php" -ArgumentList "`"$artisanPath`" serve --host=0.0.0.0 --port=$appPort" -WorkingDirectory $repoRoot -RedirectStandardOutput "$logDir\laravel.log" -RedirectStandardError "$logDir\laravel.err.log" -PassThru
+    $p = Start-CompliTrackPhpServer -RepoRoot $repoRoot -Port $appPort -ServerHost '0.0.0.0' -EnableOpcache (-not $DisableOpcache)
     $p.Id | Set-Content $laravelPidFile
 }
 
@@ -253,6 +260,21 @@ if (Test-PortInUse $realtimePort) {
 }
 
 Write-Host ""
+Write-Host "Starting nightly-backup scheduler..."
+$schedulerRunning = $false
+if (Test-Path -LiteralPath $schedulerPidFile) {
+    $schedulerProcessId = 0
+    if ([int]::TryParse((Get-Content -LiteralPath $schedulerPidFile -Raw).Trim(), [ref]$schedulerProcessId)) {
+        $schedulerInfo = Get-CimInstance Win32_Process -Filter "ProcessId = $schedulerProcessId" -ErrorAction SilentlyContinue
+        $schedulerRunning = $schedulerInfo -and ([string]$schedulerInfo.CommandLine).Contains($repoRoot) -and ([string]$schedulerInfo.CommandLine).Contains('schedule:work')
+    }
+}
+if (-not $schedulerRunning) {
+    $schedulerArtisan = Join-Path $repoRoot "artisan"
+    $schedulerProcess = Start-Process -FilePath "php" -ArgumentList "`"$schedulerArtisan`" schedule:work" -WorkingDirectory $repoRoot -WindowStyle Hidden -RedirectStandardOutput "$logDir\scheduler.log" -RedirectStandardError "$logDir\scheduler.err.log" -PassThru
+    $schedulerProcess.Id | Set-Content -LiteralPath $schedulerPidFile
+}
+
 Write-Host "Building frontend..."
 $buildArgs = "/d /s /c `"`"$npmCommand`" run build > `"$logDir\frontend-build.log`" 2>&1`""
 & $env:ComSpec $buildArgs | Out-Null

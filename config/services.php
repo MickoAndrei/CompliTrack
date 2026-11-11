@@ -37,6 +37,8 @@ return [
 
     'complitrack' => [
         'encryption_key' => env('ENCRYPTION_KEY'),
+        'realtime_url' => env('NODE_SOCKET_URL', 'http://localhost:4000'),
+        'realtime_health_url' => env('REALTIME_HEALTH_URL'),
     ],
 
 ];

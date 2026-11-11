@@ -12,7 +12,17 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
+        // The local ngrok agent forwards the public HTTPS scheme to Laravel.
+        $middleware->trustProxies(at: ['127.0.0.1', '::1']);
         $middleware->statefulApi();
+        $middleware->append(\App\Http\Middleware\UseTunnelAssets::class);
+        $middleware->redirectUsersTo(fn (\Illuminate\Http\Request $request) => match ((int) $request->user('web')->roleId) {
+            0 => '/super-admin/dashboard',
+            1 => '/admin/dashboard',
+            2 => '/auditor/dashboard',
+            3 => '/auditee/dashboard',
+            default => '/profile',
+        });
         $middleware->alias([
             'role' => \App\Http\Middleware\RoleMiddleware::class,
             'EnsureUserIsActive' => \App\Http\Middleware\EnsureUserIsActive::class,

@@ -8,12 +8,13 @@ class ArchiveEncryptionService
 {
     public function encrypt(string $plaintext): array
     {
+        $keyId = app(SystemSettingsService::class)->read()['archiveKeyId'] ?? null;
         $iv = random_bytes(12);
         $tag = '';
         $ciphertext = openssl_encrypt(
             $plaintext,
             'aes-256-gcm',
-            $this->key(),
+            $this->key($keyId),
             OPENSSL_RAW_DATA,
             $iv,
             $tag,
@@ -29,10 +30,11 @@ class ArchiveEncryptionService
             'ciphertext' => $ciphertext,
             'iv' => base64_encode($iv),
             'tag' => base64_encode($tag),
+            'keyId' => $keyId,
         ];
     }
 
-    public function decrypt(string $ciphertext, string $iv, string $tag): string
+    public function decrypt(string $ciphertext, string $iv, string $tag, ?string $keyId = null): string
     {
         $decodedIv = base64_decode($iv, true);
         $decodedTag = base64_decode($tag, true);
@@ -44,7 +46,7 @@ class ArchiveEncryptionService
         $plaintext = openssl_decrypt(
             $ciphertext,
             'aes-256-gcm',
-            $this->key(),
+            $this->key($keyId),
             OPENSSL_RAW_DATA,
             $decodedIv,
             $decodedTag,
@@ -57,9 +59,11 @@ class ArchiveEncryptionService
         return $plaintext;
     }
 
-    private function key(): string
+    private function key(?string $keyId = null): string
     {
-        $configured = config('services.complitrack.encryption_key');
+        $configured = $keyId === null
+            ? config('services.complitrack.encryption_key')
+            : (app(SystemSettingsService::class)->read()['archiveKeys'][$keyId] ?? null);
         if (!is_string($configured) || $configured === '') {
             throw new RuntimeException('ENCRYPTION_KEY is not configured.');
         }

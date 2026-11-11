@@ -1,75 +1,108 @@
 @extends('layouts.app')
 @section('title', 'My Profile')
 @section('heading', 'My Profile')
+@section('subtitle', 'Account details & security')
+@push('styles')
+    <link rel="stylesheet" href="{{ asset('css/profile.css') }}?v={{ filemtime(public_path('css/profile.css')) }}">
+@endpush
 @section('content')
 @php
     $profileUser = auth()->user();
+    $roleNames = ['Super Admin', 'Admin', 'Auditor', 'Auditee'];
     $profileInitials = collect(explode(' ', $profileUser->fullName ?? 'U'))->filter()->take(2)->map(fn ($part) => mb_substr($part, 0, 1))->implode('');
     $avatarUrl = $profileUser->avatarPath ? url('/api/v1/auth/avatar') : null;
 @endphp
-<section class="account-profile-page mx-auto w-full max-w-4xl px-4 py-8 sm:px-6 lg:px-8" x-data="profilePage({ avatarUrl: @js($avatarUrl) })">
-    <header class="account-profile-heading mb-6">
-        <p class="mb-2 text-xs font-bold uppercase tracking-[0.16em] text-ustp-muted">Your account</p>
-        <h2 class="font-heading text-3xl font-bold tracking-tight text-ustp-navy">Account details</h2>
-        <p class="mt-2 text-sm leading-6 text-ustp-muted">Manage your profile photo and review your CompliTrack access.</p>
-    </header>
+<section class="super-admin-profile-page" x-data="profilePage({ avatarUrl: @js($avatarUrl) })">
+    <div x-page-notice="error ? 'error' : 'success'" x-cloak x-show="error || message" x-transition class="profile-feedback" :class="error ? 'is-error' : 'is-success'" :role="error ? 'alert' : 'status'" aria-live="polite">
+        <span x-text="error || message"></span>
+        <button type="button" @click="error = null; message = null" aria-label="Dismiss message"><i data-lucide="x" aria-hidden="true"></i></button>
+    </div>
 
-    <div class="account-profile-card overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-slate-200">
-        <div class="account-profile-identity flex flex-col gap-5 border-b border-slate-100 bg-gradient-to-br from-white to-slate-50/80 p-6 sm:flex-row sm:items-center sm:p-8">
-            <div class="profile-photo-frame size-20 shrink-0 overflow-hidden rounded-full ring-4 ring-white shadow-sm sm:size-24">
+    @if (session('status'))
+        <div x-page-notice class="profile-feedback is-success" role="status">{{ session('status') }}</div>
+    @endif
+    @if ($profileUser->passwordChangeRequired)
+        <div x-page-notice class="profile-feedback is-error" role="alert">Your administrator issued a temporary password. Change it below before continuing to use CompliTrack.</div>
+    @endif
+
+    <article class="super-admin-profile-card">
+        <header class="super-admin-profile-identity">
+            <div class="super-admin-profile-avatar">
+                <button type="button" class="profile-photo-open" @click="openPhotoPreview()" :disabled="!avatarUrl" aria-label="View full-size profile picture" aria-haspopup="dialog">
                 <img x-show="avatarUrl" :src="avatarUrl" alt="Profile photo" class="profile-photo" data-user-avatar>
-                <span x-show="!avatarUrl" class="profile-photo-fallback" data-user-avatar-fallback>{{ $profileInitials }}</span>
-            </div>
-            <div class="min-w-0 flex-1">
-                <h3 class="font-heading text-xl font-semibold tracking-tight text-ustp-dark sm:text-2xl">{{ $profileUser->fullName }}</h3>
-                <p class="mt-1 break-all text-sm text-ustp-muted">{{ $profileUser->email }}</p>
-            </div>
-            <div class="flex shrink-0 flex-col items-start gap-2 sm:items-end">
-                <input x-ref="avatarInput" type="file" accept="image/jpeg,image/png,image/webp" class="sr-only" @change="uploadAvatar($event)">
-                <button type="button" @click="$refs.avatarInput.click()" :disabled="uploading" class="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-ustp-navy px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-[#12336c] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ustp-gold disabled:cursor-wait disabled:opacity-60">
-                    <i data-lucide="camera" class="size-4" aria-hidden="true"></i>
-                    <span x-text="uploading ? 'Uploading...' : (avatarUrl ? 'Change photo' : 'Upload photo')"></span>
+                <span x-show="!avatarUrl" class="super-admin-profile-crest" data-user-avatar-fallback aria-hidden="true">
+                    <span>USTP</span>
+                </span>
                 </button>
-                <span class="text-xs text-ustp-muted">JPG, PNG, or WebP · up to 2 MB</span>
+                <input x-ref="avatarInput" type="file" accept="image/jpeg,image/png,image/webp" class="sr-only" @change="uploadAvatar($event)">
+                <button type="button" class="super-admin-profile-camera" @click="$refs.avatarInput.click()" :disabled="uploading" aria-label="Upload or update profile picture">
+                    <i data-lucide="camera" aria-hidden="true"></i>
+                </button>
             </div>
-        </div>
+            <h2>{{ $profileUser->fullName }}</h2>
+            <x-role-badge :role-id="$profileUser->roleId" class="super-admin-profile-role" :data-profile-role="(int) $profileUser->roleId" />
+            <p class="super-admin-profile-avatar-hint" x-text="uploading ? 'Uploading photo…' : (avatarUrl ? 'Select your photo to enlarge it, or the camera to update it' : 'Select the camera to add a profile photo')"></p>
+        </header>
 
-        <div x-cloak x-show="error || message" x-transition class="fixed right-6 top-6 z-[200] flex min-h-[52px] w-[calc(100%-3rem)] max-w-sm items-center rounded-lg border-l-4 bg-ustp-navy py-4 pr-5 text-[13px] font-medium leading-5 text-white shadow-[0_10px_25px_rgba(5,27,68,0.18)]" :class="error ? 'border-red-500' : 'border-ustp-gold'" style="padding-left: 24px" :role="error ? 'alert' : 'status'" aria-live="polite">
-            <span class="min-w-0 flex-1" x-text="error || message"></span>
-        </div>
+        <form method="POST" action="{{ route('profile.update') }}" class="super-admin-profile-form">
+            @csrf
+            @method('PATCH')
+            <label class="super-admin-profile-field">
+                <span>Full Name</span>
+                <input type="text" name="fullName" value="{{ old('fullName', $profileUser->fullName) }}" autocomplete="name" maxlength="255" required>
+                @error('fullName')<small class="profile-field-error">{{ $message }}</small>@enderror
+            </label>
+            <label class="super-admin-profile-field">
+                <span>Email Address</span>
+                <input type="email" value="{{ $profileUser->email }}" readonly aria-readonly="true">
+            </label>
+            <label class="super-admin-profile-field">
+                <span>Role</span>
+                <input type="text" value="{{ $roleNames[(int) $profileUser->roleId] ?? 'Unknown' }}" data-profile-role="{{ (int) $profileUser->roleId }}" readonly aria-readonly="true">
+            </label>
+            <button type="submit" class="super-admin-profile-save">Save Profile</button>
+            @if ($errors->has('fullName'))
+                <p class="profile-form-error" role="alert">Your profile details could not be saved.</p>
+            @endif
+        </form>
 
-        <dl class="account-profile-details grid gap-3 p-6 sm:grid-cols-2 sm:gap-4 sm:px-8 sm:pb-8">
-            <div class="rounded-xl border border-slate-200 bg-slate-50/70 p-4">
-                <dt class="text-xs font-semibold uppercase tracking-wider text-ustp-muted">User code</dt>
-                <dd class="mt-2 font-semibold text-ustp-dark">{{ $profileUser->userCode }}</dd>
-            </div>
-            <div class="rounded-xl border border-slate-200 bg-slate-50/70 p-4">
-                <dt class="text-xs font-semibold uppercase tracking-wider text-ustp-muted">Role</dt>
-                <dd class="mt-2"><x-role-badge :role-id="$profileUser->roleId" /></dd>
-            </div>
-            <div class="rounded-xl border border-slate-200 bg-slate-50/70 p-4">
-                <dt class="text-xs font-semibold uppercase tracking-wider text-ustp-muted">Office</dt>
-                <dd class="mt-2 font-medium text-ustp-dark">{{ $profileUser->officeName ?: '—' }}</dd>
-            </div>
-            <div class="rounded-xl border border-slate-200 bg-slate-50/70 p-4">
-                <dt class="text-xs font-semibold uppercase tracking-wider text-ustp-muted">Account status</dt>
-                <dd class="mt-2 inline-flex items-center gap-2 font-medium text-ustp-dark">
-                    <span class="size-2 rounded-full {{ $profileUser->isActive ? 'bg-success' : 'bg-error' }}"></span>
-                    {{ $profileUser->isActive ? 'Active' : 'Inactive' }}
-                </dd>
-            </div>
-        </dl>
+        <form method="POST" action="{{ route('profile.password.update') }}" class="super-admin-password-form">
+            @csrf
+            @method('PATCH')
+            <h3>Change Password</h3>
+            <label class="super-admin-profile-field">
+                <span>Current Password</span>
+                <input type="password" name="current_password" autocomplete="current-password" required>
+                @error('current_password')<small class="profile-field-error">{{ $message }}</small>@enderror
+            </label>
+            <label class="super-admin-profile-field">
+                <span>New Password</span>
+                <input type="password" name="password" autocomplete="new-password" minlength="12" required>
+                @error('password')<small class="profile-field-error">{{ $message }}</small>@enderror
+            </label>
+            <label class="super-admin-profile-field">
+                <span>Confirm New Password</span>
+                <input type="password" name="password_confirmation" autocomplete="new-password" minlength="12" required>
+            </label>
+            <button type="submit" class="super-admin-password-submit">{{ $profileUser->passwordChangeRequired ? 'Set Password & Continue to Dashboard' : 'Update Password' }}</button>
+        </form>
 
-        <div class="account-profile-signout flex items-center justify-between border-t border-slate-100 bg-slate-50/50 px-6 py-4 sm:px-8">
-            <p class="text-sm text-ustp-muted">Finished with your session?</p>
+        <div class="super-admin-profile-actions">
             <form method="POST" action="{{ route('logout') }}">
                 @csrf
-                <button type="submit" class="inline-flex min-h-10 items-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-slate-400 hover:bg-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ustp-navy">
-                    <i data-lucide="log-out" class="size-4" aria-hidden="true"></i>
-                    <span>Sign out</span>
-                </button>
+                <button type="submit" class="super-admin-switch-account">Switch Account</button>
+            </form>
+            <form method="POST" action="{{ route('logout') }}">
+                @csrf
+                <button type="submit" class="super-admin-profile-logout"><i data-lucide="log-out" aria-hidden="true"></i><span>Log Out</span></button>
             </form>
         </div>
-    </div>
+        <p class="super-admin-switch-hint">Switch Account securely ends this session and returns you to sign in.</p>
+    </article>
+    <dialog class="profile-photo-preview" x-ref="photoPreview" aria-labelledby="profile-photo-preview-title" @click="closePhotoOnBackdrop($event)">
+        <header><h3 id="profile-photo-preview-title">Profile picture</h3><button type="button" @click="$refs.photoPreview.close()" aria-label="Close profile picture"><i data-lucide="x" aria-hidden="true"></i></button></header>
+        <img :src="avatarUrl || null" alt="Full-size profile picture" x-show="!photoPreviewError" x-on:error="photoPreviewError = true">
+        <p x-page-notice x-show="photoPreviewError" x-cloak role="alert">This profile picture could not be loaded. Close the preview and try again.</p>
+    </dialog>
 </section>
 @endsection

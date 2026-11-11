@@ -14,7 +14,7 @@ return [
     |
     */
 
-    'default' => env('MAIL_MAILER', 'log'),
+    'default' => env('MAIL_MAILER', 'phpmailer'),
 
     /*
     |--------------------------------------------------------------------------
@@ -36,6 +36,39 @@ return [
     */
 
     'mailers' => [
+
+        // Password resets always select this transport, even if the default mailer is "log".
+        'password_reset' => [
+            'transport' => 'phpmailer',
+            'host' => env('MAIL_HOST', 'smtp.office365.com'),
+            'port' => env('MAIL_PORT', 587),
+            'encryption' => env('MAIL_ENCRYPTION', env('MAIL_SCHEME') === 'smtps' ? 'ssl' : 'tls'),
+            'username' => env('MAIL_USERNAME'),
+            'password' => env('MAIL_PASSWORD'),
+            'auth_type' => env('MAIL_AUTH_TYPE', 'XOAUTH2'),
+            'oauth' => [
+                'tenant_id' => env('MAIL_OAUTH_TENANT_ID'),
+                'client_id' => env('MAIL_OAUTH_CLIENT_ID'),
+                'client_secret' => env('MAIL_OAUTH_CLIENT_SECRET'),
+                'refresh_token' => env('MAIL_OAUTH_REFRESH_TOKEN'),
+            ],
+        ],
+
+        'phpmailer' => [
+            'transport' => 'phpmailer',
+            'host' => env('MAIL_HOST', 'smtp.office365.com'),
+            'port' => env('MAIL_PORT', 587),
+            'encryption' => env('MAIL_ENCRYPTION', 'tls'),
+            'username' => env('MAIL_USERNAME'),
+            'password' => env('MAIL_PASSWORD'),
+            'auth_type' => env('MAIL_AUTH_TYPE', 'XOAUTH2'),
+            'oauth' => [
+                'tenant_id' => env('MAIL_OAUTH_TENANT_ID'),
+                'client_id' => env('MAIL_OAUTH_CLIENT_ID'),
+                'client_secret' => env('MAIL_OAUTH_CLIENT_SECRET'),
+                'refresh_token' => env('MAIL_OAUTH_REFRESH_TOKEN'),
+            ],
+        ],
 
         'smtp' => [
             'transport' => 'smtp',

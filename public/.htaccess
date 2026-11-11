@@ -1,3 +1,18 @@
+<IfModule mod_deflate.c>
+    AddOutputFilterByType DEFLATE text/css text/javascript application/javascript image/svg+xml
+</IfModule>
+
+<IfModule mod_headers.c>
+    # Only content-hashed Vite artifacts receive a long-lived cache policy.
+    <FilesMatch "-[A-Za-z0-9_-]{8}\.(js|css)$">
+        Header set Cache-Control "public, max-age=31536000, immutable"
+        Header merge Vary "Accept-Encoding"
+    </FilesMatch>
+    <FilesMatch "-[a-f0-9]{12}\.woff2$">
+        Header set Cache-Control "public, max-age=31536000, immutable"
+    </FilesMatch>
+</IfModule>
+
 <IfModule mod_rewrite.c>
     <IfModule mod_negotiation.c>
         Options -MultiViews -Indexes

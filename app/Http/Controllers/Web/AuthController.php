@@ -43,24 +43,38 @@ class AuthController extends Controller
 
     public function showResetForm(Request $request)
     {
-        $request->validate([
-            'email' => ['sometimes', 'email', 'max:255'],
-            'token' => ['sometimes', 'string', 'size:64'],
+        // Mail logs include HTML hrefs; copying one literally can produce amp;token.
+        // Normalize only the two expected field names, never decode arbitrary input.
+        $parameters = [
+            'email' => $request->query('email', $request->query('amp;email')),
+            'token' => $request->query('token', $request->query('amp;token')),
+        ];
+        $validator = validator($parameters, [
+            'email' => ['required', 'email', 'max:255'],
+            'token' => ['required', 'string', 'size:64'],
         ]);
+        if ($validator->fails()) {
+            return redirect()->route('password.request')->with('status',
+                'Open the complete password reset link from your email, or request a new link below.');
+        }
 
         return view('auth.reset-password', [
-            'email' => $request->query('email'),
-            'token' => $request->query('token'),
+            'email' => $parameters['email'],
+            'token' => $parameters['token'],
         ]);
     }
 
     public function resetPassword(Request $request)
     {
+        if (! $request->filled('token')) {
+            return redirect()->route('password.request')->with('status',
+                'Your password reset link is missing. Request a new link below, then open it from your email.');
+        }
         $validated = $request->validate([
             'email' => ['required', 'email', 'max:255'],
             'token' => ['required', 'string', 'size:64'],
             'password' => ['required', 'string', 'min:12', 'confirmed'],
-        ]);
+        ], ['token.size' => 'This reset link is invalid. Request a new password reset link.']);
 
         $email = strtolower(trim($validated['email']));
 
@@ -84,6 +98,7 @@ class AuthController extends Controller
         $user->save();
 
         $reset->delete();
+        $this->passwordResets->complete($reset->token);
         $this->auditLogs->record($request, 'Reset password via web', 'user', $user->getKey());
 
         return redirect()->route('login')->with('status', 'Password set! Login now.');

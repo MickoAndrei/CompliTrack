@@ -13,6 +13,7 @@ class SocketService {
   final _notifications = StreamController<Map<String, dynamic>>.broadcast();
   final _serverVersions = StreamController<String>.broadcast();
   IO.Socket? _socket;
+  final Set<String> _receivedNotificationIds = {};
 
   Stream<Map<String, dynamic>> get notifications => _notifications.stream;
   Stream<String> get serverVersions => _serverVersions.stream;
@@ -37,6 +38,11 @@ class SocketService {
     });
     socket.on('notification', (dynamic payload) {
       if (payload is Map) {
+        final id = payload['_id']?.toString();
+        if (id != null && !_receivedNotificationIds.add(id)) return;
+        if (_receivedNotificationIds.length > 500) {
+          _receivedNotificationIds.remove(_receivedNotificationIds.first);
+        }
         _notifications.add(
           payload.map((key, value) => MapEntry(key.toString(), value)),
         );
@@ -53,5 +59,6 @@ class SocketService {
     _socket?.disconnect();
     _socket?.dispose();
     _socket = null;
+    _receivedNotificationIds.clear();
   }
 }
