@@ -373,7 +373,7 @@ document.addEventListener('alpine:init', () => {
             form.append('avatar', file);
             try {
                 const { data } = await axios.post(apiPath('auth/avatar'), form);
-                this.avatarUrl = `${data.avatarUrl}${data.avatarUrl.includes('?') ? '&' : '?'}v=${Date.now()}`;
+                this.avatarUrl = data.avatarUrl;
                 document.querySelectorAll('[data-user-avatar]').forEach((image) => {
                     image.src = this.avatarUrl;
                     image.classList.remove('hidden');

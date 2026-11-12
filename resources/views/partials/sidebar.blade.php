@@ -43,7 +43,7 @@
     ];
     $roleNames = ['Super Admin', 'Admin', 'Auditor', 'Auditee'];
     $homePaths = [0 => '/super-admin/dashboard', 1 => '/admin/dashboard', 2 => '/auditor/dashboard', 3 => '/auditee/dashboard'];
-    $userAvatarUrl = auth()->user()->avatarPath ? url('/api/v1/auth/avatar') : null;
+    $userAvatarUrl = auth()->user()->avatarUrl();
     $userInitials = collect(explode(' ', auth()->user()->fullName ?? 'U'))->filter()->take(2)->map(fn ($part) => mb_substr($part, 0, 1))->implode('');
 @endphp
 <aside x-cloak :class="{ 'open': sidebarOpen }"

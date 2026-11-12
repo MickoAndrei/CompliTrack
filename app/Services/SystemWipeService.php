@@ -28,7 +28,8 @@ class SystemWipeService
                 $actorId = \App\Support\MongoId::parse((string) $actor->getKey());
                 $database->selectCollection('users')->deleteMany(['_id' => ['$ne' => $actorId]], ['session' => $session]);
                 $database->selectCollection('users')->updateOne(['_id' => $actorId], ['$unset' => [
-                    'avatarPath' => '', 'fcmToken' => '', 'remember_token' => '',
+                    'avatarPath' => '', 'avatarData' => '', 'avatarMimeType' => '', 'avatarVersion' => '',
+                    'fcmToken' => '', 'remember_token' => '',
                 ]], ['session' => $session]);
                 // Keep the retained superadmin's code reserved when other counters restart.
                 preg_match('/(\d+)$/', $actor->userCode ?? '', $code);

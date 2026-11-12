@@ -5,6 +5,8 @@ namespace Tests\Feature;
 use App\Models\User;
 use App\Services\AuditLogService;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Http\UploadedFile;
 use Mockery;
 use Tests\TestCase;
 
@@ -81,6 +83,115 @@ class ProfileTest extends TestCase
         $this->assertSame('Updated Name', $user->fullName);
         $this->assertSame('profile@example.test', $user->email);
         $this->assertSame(3, $user->roleId);
+    }
+
+    public function test_avatar_uploads_and_reads_remain_isolated_when_switching_accounts(): void
+    {
+        Storage::fake('public');
+        config(['filesystems.disks.public.root' => Storage::disk('public')->path('')]);
+        $first = $this->actor(0);
+        $first->shouldReceive('save')->twice()->andReturnTrue();
+        $firstImage = base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aX1sAAAAASUVORK5CYII=');
+        $firstUpload = $this->post('/api/v1/auth/avatar', [
+            'avatar' => UploadedFile::fake()->createWithContent('first.png', $firstImage),
+        ])->assertOk();
+        $firstUrl = $firstUpload->json('avatarUrl');
+        $firstData = $first->avatarData->getData();
+        $this->assertNull($first->avatarPath);
+        $this->assertSame($firstImage, $firstData);
+        $this->assertArrayNotHasKey('avatarData', $first->toArray());
+        $this->assertSame([], Storage::disk('public')->allFiles());
+        $this->assertSame($first->avatarUrl(), $firstUrl);
+        $response = $this->get($firstUrl)->assertOk();
+        $this->assertContains('Cookie', $response->baseResponse->getVary());
+        $this->assertContains('Authorization', $response->baseResponse->getVary());
+
+        $second = $this->actor(0);
+        $second->shouldReceive('save')->once()->andReturnTrue();
+        $this->assertNull($second->avatarUrl());
+        // Even an old account's URL must resolve only the authenticated account's photo.
+        $this->get($firstUrl)->assertNotFound();
+        $secondImage = "\xff\xd8\xff".'second-account-photo';
+        $secondUpload = $this->post('/api/v1/auth/avatar', [
+            'avatar' => UploadedFile::fake()->createWithContent('second.jpg', $secondImage),
+            'user' => (string) $first->getKey(),
+        ])->assertOk();
+        $this->assertNotSame($firstUrl, $secondUpload->json('avatarUrl'));
+        $this->assertSame($firstData, $first->avatarData->getData());
+        $response = $this->get($secondUpload->json('avatarUrl'))->assertOk();
+        $this->assertTrue($response->headers->hasCacheControlDirective('private'));
+        $this->assertSame('3600', (string) $response->headers->getCacheControlDirective('max-age'));
+        $this->assertSame($secondImage, $response->getContent());
+
+        $this->actingAs($first);
+        $response = $this->get($firstUrl)->assertOk();
+        $this->assertSame($firstImage, $response->getContent());
+        $this->get('/super-admin/profile')->assertOk()->assertSee($firstUrl);
+        $updated = $this->post('/api/v1/auth/avatar', [
+            'avatar' => UploadedFile::fake()->createWithContent('replacement.jpg', $secondImage),
+        ])->assertOk();
+        $this->assertNotSame($firstUrl, $updated->json('avatarUrl'));
+        $this->assertSame($secondImage, $first->avatarData->getData());
+        $this->assertSame($secondImage, $second->avatarData->getData());
+        $this->assertSame([], Storage::disk('public')->allFiles());
+    }
+
+    public function test_avatar_urls_differ_by_account_even_if_the_stored_path_matches(): void
+    {
+        $first = $this->actor(0);
+        $second = $this->actor(0);
+        $first->avatarPath = $second->avatarPath = 'avatars/shared.png';
+        $this->assertNotSame($first->avatarUrl(), $second->avatarUrl());
+    }
+
+    public function test_avatar_cache_revalidates_and_only_caches_the_current_account_and_version(): void
+    {
+        $user = $this->actor(0);
+        $user->shouldReceive('save')->twice()->andReturnTrue();
+        $first = "\xff\xd8\xff".'first-photo';
+        $second = "\xff\xd8\xff".'replacement-photo';
+        app(\App\Services\ProfileImageService::class)->store($user, $first, 'image/jpeg');
+        $url = $user->avatarUrl();
+        $etag = $this->get($url)->assertOk()->headers->get('ETag');
+        $this->get($url, ['If-None-Match' => $etag])->assertStatus(304)->assertContent('');
+        $this->get('/api/v1/auth/avatar')->assertOk()->assertHeader('Cache-Control', 'no-store, private');
+        $this->get($url.'&user=another-account')->assertOk()->assertHeader('Cache-Control', 'no-store, private');
+
+        app(\App\Services\ProfileImageService::class)->store($user, $second, 'image/jpeg');
+        $this->assertNotSame($url, $user->avatarUrl());
+        $this->get($user->avatarUrl(), ['If-None-Match' => $etag])->assertOk()->assertContent($second);
+        $this->get($url)->assertOk()->assertHeader('Cache-Control', 'no-store, private');
+    }
+
+    public function test_legacy_profile_photo_is_copied_into_the_database_before_serving(): void
+    {
+        Storage::fake('public');
+        config(['filesystems.disks.public.root' => Storage::disk('public')->path('')]);
+        $user = $this->actor(0);
+        $user->shouldReceive('save')->once()->andReturnTrue();
+        $contents = "\xff\xd8\xff".'legacy-photo';
+        Storage::disk('public')->put('avatars/legacy.jpg', $contents);
+        $user->avatarPath = 'avatars/legacy.jpg';
+
+        $this->get('/api/v1/auth/avatar')->assertOk()->assertHeader('Content-Type', 'image/jpeg')
+            ->assertContent($contents);
+        $this->assertNull($user->avatarPath);
+        $this->assertSame($contents, $user->avatarData->getData());
+        // Serving the migrated image no longer depends on the local file.
+        Storage::disk('public')->delete('avatars/legacy.jpg');
+        $this->get($user->avatarUrl())->assertOk()->assertContent($contents);
+    }
+
+    public function test_invalid_and_oversized_avatar_uploads_do_not_save(): void
+    {
+        $user = $this->actor(0);
+        $user->shouldNotReceive('save');
+        $this->postJson('/api/v1/auth/avatar', [
+            'avatar' => UploadedFile::fake()->createWithContent('invalid.png', 'not-an-image'),
+        ])->assertUnprocessable()->assertJsonValidationErrors('avatar');
+        $this->postJson('/api/v1/auth/avatar', [
+            'avatar' => UploadedFile::fake()->create('large.png', 2049, 'image/png'),
+        ])->assertUnprocessable()->assertJsonValidationErrors('avatar');
     }
 
     public function test_invalid_names_are_rejected_without_saving(): void

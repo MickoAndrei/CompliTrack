@@ -188,6 +188,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     onTap: _showProfilePictureDialog,
                     customBorder: const CircleBorder(),
                     child: CurrentUserAvatar(
+                      key: ValueKey(auth.currentUser?.id),
                       radius: 32,
                       avatarVersion: auth.avatarVersion,
                     ),

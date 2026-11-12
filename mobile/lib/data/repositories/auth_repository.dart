@@ -54,6 +54,19 @@ class AuthRepository {
     }
   }
 
+  Future<Uint8List?> fetchAvatar() async {
+    try {
+      final response = await _apiClient.dio.get<List<int>>(
+        '/api/v1/auth/avatar',
+        options: Options(responseType: ResponseType.bytes),
+      );
+      return response.data == null ? null : Uint8List.fromList(response.data!);
+    } on DioException catch (error) {
+      if (error.response?.statusCode == 404) return null;
+      rethrow;
+    }
+  }
+
   Future<void> uploadAvatar({
     required Uint8List bytes,
     required String filename,

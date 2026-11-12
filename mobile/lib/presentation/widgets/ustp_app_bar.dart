@@ -74,6 +74,7 @@ class _UstpAppBarState extends State<UstpAppBar> {
                     context.go(route);
                   },
               child: CurrentUserAvatar(
+                key: ValueKey(auth.currentUser?.id),
                 radius: 16,
                 avatarVersion: auth.avatarVersion,
               ),

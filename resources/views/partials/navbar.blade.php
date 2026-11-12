@@ -1,6 +1,6 @@
 @php($roleId = (int) auth()->user()->roleId)
 @php($roleNames = ['Super Admin', 'Admin', 'Auditor', 'Auditee'])
-@php($userAvatarUrl = auth()->user()->avatarPath ? url('/api/v1/auth/avatar') : null)
+@php($userAvatarUrl = auth()->user()->avatarUrl())
 @php($userInitials = collect(explode(' ', auth()->user()->fullName ?? 'U'))->filter()->take(2)->map(fn ($part) => mb_substr($part, 0, 1))->implode(''))
 <header class="{{ in_array($roleId, [0, 2, 3], true) ? 'top-header-bar' : ($roleId === 1 ? 'topbar' : 'top-header') }}">
     <div class="{{ in_array($roleId, [0, 2, 3], true) ? 'header-left' : ($roleId === 1 ? 'topbar-left' : 'header-titles') }}">
