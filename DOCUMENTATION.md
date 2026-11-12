@@ -643,12 +643,19 @@ interface UserDocument {
   archiveUnitIds?: ObjectId[];    // Scoped archive departments
   archiveCollegeIds?: ObjectId[]; // Scoped archive colleges
   lastLoginAt?: Date;
+  avatarData?: Binary;           // Profile image bytes (BSON binary, max 2 MB; hidden from user JSON)
+  avatarMimeType?: string;       // image/jpeg, image/png, or image/webp
+  avatarVersion?: string;        // SHA-256 used in account-specific image URLs
   createdAt: Date;
   updatedAt: Date;
 }
 ```
 
 ---
+
+Profile photos are stored directly in the configured MongoDB database as BSON binary in `users.avatarData`. Uploads do not write to a public asset folder. The authenticated `/api/v1/auth/avatar` endpoint returns only the current user's image. URLs matching the account and image version use a private one-hour browser cache with ETag revalidation; unversioned or mismatched URLs disable caching. Uploads change the image URL immediately. Mobile shares cached bytes and in-flight requests across avatar widgets for one hour, clearing them after upload, login, or logout. Missing photos are cached too; network failures retry after 30 seconds on the next load. Image bytes are excluded from user JSON responses and included in database backups.
+
+For existing installations, run `php artisan avatars:migrate` on the server that holds the old `storage/app/public/avatars` files. This copies available legacy photos into MongoDB and clears their `avatarPath` references; it leaves old files in place. Reading a legacy profile photo also migrates that user's photo automatically. The command reports unavailable files so they can be restored or uploaded again.
 
 ### 6.2 `departments` Collection
 Academic departments and administrative units within USTP Claveria CET.
