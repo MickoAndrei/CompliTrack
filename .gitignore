@@ -36,3 +36,6 @@ settings.local.json
 /.realtime.pid
 /.vite.pid
 /complitrack_web_temp/
+/dataset_files/mock_academic_directory_400.xlsx
+/old_complitrack/
+
