@@ -34,6 +34,7 @@ Route::middleware(['auth', \App\Http\Middleware\SystemAccess::class])->group(fun
     Route::get('/profile', [ProfileController::class, 'redirectToRoleProfile']);
 
     Route::middleware('role:0')->prefix('super-admin')->group(function () {
+        Route::view('/help', 'help.index');
         Route::view('/profile', 'auth.profile')->name('super-admin.profile');
         Route::view('/dashboard', 'super-admin.dashboard');
         Route::view('/users', 'super-admin.users');
@@ -44,6 +45,7 @@ Route::middleware(['auth', \App\Http\Middleware\SystemAccess::class])->group(fun
         Route::view('/settings', 'super-admin.settings');
     });
     Route::middleware('role:1')->prefix('admin')->group(function () {
+        Route::view('/help', 'help.index');
         Route::view('/profile', 'auth.profile')->name('admin.profile');
         Route::view('/dashboard', 'admin.dashboard');
         Route::view('/departments', 'admin.departments');
@@ -54,6 +56,7 @@ Route::middleware(['auth', \App\Http\Middleware\SystemAccess::class])->group(fun
         Route::view('/notifications', 'admin.notifications');
     });
     Route::middleware('role:2')->prefix('auditor')->group(function () {
+        Route::view('/help', 'help.index');
         Route::view('/profile', 'auth.profile')->name('auditor.profile');
         Route::view('/dashboard', 'auditor.dashboard');
         Route::view('/checks', 'auditor.checks');

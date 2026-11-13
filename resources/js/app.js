@@ -20,6 +20,7 @@ async function start() {
     markPerformance('modules-start');
     const modules = [];
     const uses = name => !!document.querySelector(`[x-data*="${name}"]`);
+    if (uses('auditeeHelp')) modules.push(import('./auditee-help'));
     if (uses('auditorOverview')) modules.push(import('./auditor-overview'));
     if (uses('qmsArchives')) modules.push(import('./qms-archives'));
     if (uses('superAdmin') || uses('dashboardActivityList')) modules.push(import('./super-admin-dashboard'));

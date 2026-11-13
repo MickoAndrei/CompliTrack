@@ -9,6 +9,7 @@
             ['Archive Repository', '/super-admin/archives', 'archive'],
             ['Logs', '/super-admin/logs', 'scroll-text'],
             ['Settings', '/super-admin/settings', 'settings-2'],
+            ['Help & Standards', '/super-admin/help', 'circle-help'],
         ],
         1 => [
             ['Dashboard', '/admin/dashboard', 'layout-dashboard'],
@@ -21,6 +22,7 @@
             ['Archives', '/admin/archives', 'archive'],
             ['Reports', '/admin/reports', 'chart-no-axes-combined'],
             ['Notifications', '/admin/notifications', 'bell'],
+            ['Help & Standards', '/admin/help', 'circle-help'],
         ],
         2 => [
             ['Dashboard', '/auditor/dashboard', 'layout-dashboard'],
@@ -29,6 +31,7 @@
             ['Archive Review', '/auditor/archives', 'archive'],
             ['Corrective Actions', '/auditor/corrective-actions', 'kanban'],
             ['Notifications', '/auditor/notifications', 'bell'],
+            ['Help & Standards', '/auditor/help', 'circle-help'],
         ],
         3 => [
             ['Dashboard', '/auditee/dashboard', 'layout-dashboard'],
