@@ -2,13 +2,13 @@ const errorMessage = error => Object.values(error.response?.data?.errors || {}).
 
 document.addEventListener('alpine:init', () => {
     Alpine.data('auditPlanPermissions', () => ({
-        roles: [], selected: 0, enabled: false, password: '', remarks: '', loading: true, saving: false, error: '', notice: '',
+        roles: [], selected: 0, permission: 'audit_plans.approve', enabled: false, password: '', remarks: '', loading: true, saving: false, error: '', notice: '',
         init() { this.load(); },
         current() { return this.roles.find(role => role.roleId === Number(this.selected)); },
         choose() { this.enabled = this.current()?.enabled || false; this.password = ''; this.remarks = ''; },
         async load() {
             this.loading = true; this.error = '';
-            try { const { data } = await window.axios.get('/api/v1/roles'); this.roles = data.roles; this.choose(); }
+            try { const { data } = await window.axios.get('/api/v1/roles', { params: { permission: this.permission } }); this.roles = data.roles; this.choose(); }
             catch (error) { this.error = errorMessage(error); }
             finally { this.loading = false; }
         },
@@ -17,10 +17,10 @@ document.addEventListener('alpine:init', () => {
             this.saving = true; this.error = ''; this.notice = '';
             try {
                 const { data } = await window.axios.patch(`/api/v1/roles/${this.selected}/permissions`, {
-                    permission: 'audit_plans.approve', enabled: this.enabled, version: this.current().version,
+                    permission: this.permission, enabled: this.enabled, version: this.current().version,
                     password: this.password, remarks: this.remarks,
                 });
-                this.roles = data.roles; this.choose(); this.notice = 'Audit plan approval permission updated.';
+                this.roles = data.roles; this.choose(); this.notice = 'Permission updated.';
             } catch (error) { this.error = errorMessage(error); if (error.response?.status === 409) await this.load(); }
             finally { this.password = ''; this.saving = false; }
         },

@@ -14,10 +14,12 @@ class RolePermissionController extends Controller
     public function index(Request $request)
     {
         $this->authorizeManager($request);
-        return response()->json(['permission' => AuditPlanPermissions::APPROVE,
+        $permission = $request->input('permission', AuditPlanPermissions::APPROVE);
+        abort_unless(in_array($permission, [AuditPlanPermissions::APPROVE, 'cars.verify', 'cars.close'], true), 422);
+        return response()->json(['permission' => $permission,
             'roles' => Role::orderBy('roleId')->get()->map(fn ($role) => [
                 'roleId' => (int) $role->roleId, 'name' => $role->roleName,
-                'enabled' => in_array(AuditPlanPermissions::APPROVE, $role->permissions ?? [], true),
+                'enabled' => in_array($permission, $role->permissions ?? [], true),
                 'version' => (int) ($role->permissionVersion ?? 0), 'history' => $role->permissionHistory ?? [],
             ])])->header('Cache-Control', 'no-store');
     }
@@ -25,7 +27,7 @@ class RolePermissionController extends Controller
     public function update(Request $request, string $id)
     {
         $actor = $this->authorizeManager($request);
-        $data = $request->validate(['permission' => 'required|in:audit_plans.approve', 'enabled' => 'required|boolean',
+        $data = $request->validate(['permission' => 'required|in:audit_plans.approve,cars.verify,cars.close', 'enabled' => 'required|boolean',
             'version' => 'required|integer|min:0', 'password' => 'required|string|max:1024', 'remarks' => 'required|string|max:2000']);
         if (!Hash::check($data['password'], $actor->password)) {
             throw ValidationException::withMessages(['password' => 'Your current password is incorrect.']);
@@ -34,18 +36,19 @@ class RolePermissionController extends Controller
         $role = Role::where('roleId', (int) $id)->firstOrFail();
         $version = (int) ($role->permissionVersion ?? 0);
         abort_unless($version === (int) $data['version'], 409, 'Permissions changed. Reload before saving.');
-        $permissions = array_values(array_filter($role->permissions ?? [], fn ($p) => $p !== AuditPlanPermissions::APPROVE));
-        if ($request->boolean('enabled')) { $permissions[] = AuditPlanPermissions::APPROVE; }
+        $permission = $data['permission'];
+        $permissions = array_values(array_filter($role->permissions ?? [], fn ($p) => $p !== $permission));
+        if ($request->boolean('enabled')) { $permissions[] = $permission; }
         $history = $role->permissionHistory ?? [];
-        $history[] = ['permission' => AuditPlanPermissions::APPROVE, 'enabled' => $request->boolean('enabled'),
-            'previousEnabled' => in_array(AuditPlanPermissions::APPROVE, $role->permissions ?? [], true),
+        $history[] = ['permission' => $permission, 'enabled' => $request->boolean('enabled'),
+            'previousEnabled' => in_array($permission, $role->permissions ?? [], true),
             'actorId' => \App\Support\MongoId::parse((string) $actor->getKey()), 'actorName' => $actor->fullName, 'at' => now()->utc()->toIso8601String(), 'remarks' => $data['remarks']];
         $query = Role::where('_id', $role->getKey());
         if ($version === 0) { $query->where(fn ($q) => $q->where('permissionVersion', 0)->orWhereNull('permissionVersion')); }
         else { $query->where('permissionVersion', $version); }
         abort_unless($query->update(['permissions' => $permissions, 'permissionVersion' => $version + 1, 'permissionHistory' => $history]) === 1,
             409, 'Permissions changed. Reload before saving.');
-        app(AuditLogService::class)->record($request, $request->boolean('enabled') ? 'Granted audit plan approval permission' : 'Revoked audit plan approval permission', 'role', $role->getKey());
+        app(AuditLogService::class)->record($request, ($request->boolean('enabled') ? 'Granted ' : 'Revoked ').$permission, 'role', $role->getKey());
         return $this->index($request);
     }
 

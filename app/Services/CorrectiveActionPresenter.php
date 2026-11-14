@@ -45,7 +45,7 @@ class CorrectiveActionPresenter
             'meta' => ['total' => $rows->count(), 'currentPage' => $page, 'lastPage' => $lastPage, 'perPage' => $perPage]];
     }
 
-    private function context(Collection $checks, User $actor): array
+    protected function context(Collection $checks, User $actor): array
     {
         $people = $checks->flatMap(fn ($check) => [$check->auditorId, $check->auditeeId])
             ->merge($checks->flatMap(fn ($check) => collect($check->statusHistory ?? [])->pluck('changedByUserId')))
@@ -54,11 +54,11 @@ class CorrectiveActionPresenter
         $archiveIds = $this->archives->ids($checks->flatMap(fn ($check) => $check->linkedArchiveIds ?? [])->all());
         return ['people' => User::whereIn('_id', $this->archives->ids($people->filter()->all()))->get(['fullName', 'roleId'])->keyBy(fn ($user) => (string) $user->getKey()),
             'departments' => Department::whereIn('_id', $this->archives->ids($checks->pluck('departmentId')->all()))->get(['departmentName'])->keyBy(fn ($unit) => (string) $unit->getKey()),
-            'audits' => Audit::whereIn('_id', $auditIds)->whereIn('auditorId', [MongoId::parse((string) $actor->getKey()), (string) $actor->getKey()])->get(['departmentId', 'items'])->keyBy(fn ($audit) => (string) $audit->getKey()),
+            'audits' => Audit::whereIn('_id', $auditIds)->whereIn((int) $actor->roleId === 1 ? 'reviewerId' : 'auditorId', [MongoId::parse((string) $actor->getKey()), (string) $actor->getKey()])->get(['departmentId', 'items'])->keyBy(fn ($audit) => (string) $audit->getKey()),
             'archives' => ArchiveDocument::whereIn('_id', $archiveIds)->get(['createdAt', 'uploadedByUserId', 'departmentId'])->keyBy(fn ($archive) => (string) $archive->getKey())];
     }
 
-    private function card(ComplianceCheck $check, array $context): array
+    protected function card(ComplianceCheck $check, array $context): array
     {
         $audit = $context['audits']->get((string) $check->sourceAuditId);
         $item = $audit && filled($check->sourceItemId) && (string) $audit->departmentId === (string) $check->departmentId
@@ -110,7 +110,9 @@ class CorrectiveActionPresenter
         $responses = collect($check->evidenceResponses ?? [])->map(fn ($response) => [
             'method' => $response['method'] ?? null, 'reference' => $response['reference'] ?? null, 'notes' => $response['notes'] ?? null,
             'availability' => $response['availability'] ?? null, 'at' => CarTimeline::date($response['at'] ?? null)?->toIso8601String(),
-            'actor' => $context['people']->get((string) ($response['author'] ?? ''))?->fullName]);
+            'actor' => $context['people']->get((string) ($response['author'] ?? ''))?->fullName,
+            'review' => isset($response['review']) ? ['feedback' => $response['review']['feedback'] ?? null,
+                'at' => CarTimeline::date($response['review']['at'] ?? null)?->toIso8601String()] : null]);
         foreach ($evidence as $file) {
             $archive = $context['archives']->get($file['id']);
             if ($archive && (string) $archive->uploadedByUserId === (string) $check->auditeeId) {
@@ -132,7 +134,9 @@ class CorrectiveActionPresenter
                 });
             }
         }
-        return $card + ['timeline' => $timeline, 'evidence' => $evidence, 'responses' => $responses,
-            'allowedTransitions' => ComplianceCheckService::allowedTransitions($check)];
+        $transitions = (int) $actor->roleId === 2 ? ComplianceCheckService::allowedTransitions($check) : [];
+        if (in_array('closed', $transitions, true) && (!app(CarPermissions::class)->allows($actor, CarPermissions::VERIFY)
+            || !app(CarPermissions::class)->allows($actor, CarPermissions::CLOSE))) { $transitions = []; }
+        return $card + ['timeline' => $timeline, 'evidence' => $evidence, 'responses' => $responses, 'allowedTransitions' => $transitions];
     }
 }

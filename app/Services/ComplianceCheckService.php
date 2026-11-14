@@ -98,6 +98,11 @@ class ComplianceCheckService
         abort_unless($this->scopes->canAccessDepartment($actor, MongoId::parse((string) $check->departmentId)), 403);
         abort_unless($check->result === 'non_compliant', 422, 'Only a nonconforming check can have a corrective action.');
         $previousStatus = $check->correctiveStatus;
+        if ($nextStatus === 'closed') {
+            $permissions = app(CarPermissions::class);
+            abort_unless($permissions->allows($actor, CarPermissions::VERIFY)
+                && $permissions->allows($actor, CarPermissions::CLOSE), 403, 'Explicit CAR verification and closure permissions are required.');
+        }
 
         $allowed = self::allowedTransitions($check);
 

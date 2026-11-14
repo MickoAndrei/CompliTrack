@@ -121,6 +121,21 @@ class AuditPlanApprovalMongoTest extends TestCase
         $this->assertSame(['*'], Role::where('roleId', 0)->firstOrFail()->permissions);
     }
 
+    public function test_car_permission_management_preserves_other_grants_and_records_selected_permission(): void
+    {
+        $this->permission(2, true, 0, ['permission' => 'cars.verify'])->assertOk()->assertJsonPath('permission', 'cars.verify');
+        $this->permission(2, true, 1, ['permission' => 'cars.close'])->assertOk()->assertJsonPath('permission', 'cars.close');
+        $role = Role::where('roleId', 2)->firstOrFail();
+        $this->assertEqualsCanonicalizing(['cars.verify', 'cars.close'], $role->permissions);
+        $this->assertTrue(app(\App\Services\CarPermissions::class)->allows($this->auditor, 'cars.close'));
+        $this->permission(2, false, 2, ['permission' => 'cars.verify'])->assertOk();
+        $this->assertSame(['cars.close'], $role->fresh()->permissions);
+        $this->assertSame('cars.verify', $role->fresh()->permissionHistory[2]['permission']);
+        $this->assertFalse(app(\App\Services\CarPermissions::class)->allows($this->auditor, 'cars.verify'));
+        $this->assertFalse(app(AuditPlanPermissions::class)->allows($this->auditor));
+        $this->actingAs($this->atl)->patchJson('/api/v1/roles/2/permissions', ['permission' => 'cars.verify'])->assertForbidden();
+    }
+
     public function test_authorized_approval_records_decision_and_enables_only_in_scope_assignments(): void
     {
         $this->submit();
@@ -195,7 +210,7 @@ class AuditPlanApprovalMongoTest extends TestCase
         $this->action($this->approver, 'save', $this->header)->assertForbidden();
         $this->action($this->atl, 'approve')->assertForbidden();
         $this->actingAs($this->super)->getJson('/api/v1/audit-plans')->assertForbidden();
-        $this->actingAs($this->super)->get('/super-admin/roles')->assertOk()->assertSee('Audit Plan Approval Permission');
+        $this->actingAs($this->super)->get('/super-admin/roles')->assertOk()->assertSee('Workflow Permissions')->assertSee('CAR Verification');
     }
 
     public function test_scope_and_identity_validation_and_pending_edits_cannot_bypass_approval(): void
@@ -228,7 +243,7 @@ class AuditPlanApprovalMongoTest extends TestCase
     public function test_plan_permission_and_workflow_views_render_without_changing_existing_roles_or_records(): void
     {
         $this->submit(); $this->permission(3, true)->assertOk();
-        $roles = $this->actingAs($this->super)->get('/super-admin/roles')->assertOk()->assertSee('Role overview')->assertSee('Audit Plan Approval Permission');
+        $roles = $this->actingAs($this->super)->get('/super-admin/roles')->assertOk()->assertSee('Role overview')->assertSee('Workflow Permissions');
         $roleData = $this->getJson('/api/v1/roles')->assertOk();
         $plans = $this->actingAs($this->atl)->get('/audit-plans')->assertOk()->assertSee('Prepare Audit Plan');
         $preparerData = $this->getJson('/api/v1/audit-plans')->assertOk()->assertJsonPath('canPrepare', true)->assertJsonPath('canApprove', false);

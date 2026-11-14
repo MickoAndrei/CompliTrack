@@ -19,6 +19,9 @@
 .um-filters label { flex:1 1 150px; min-width:0; }
 .um-filters .um-search { flex-basis:250px; }
 .um-filters label,.um-dialog label,.um-pagination label { display:flex; flex-direction:column; gap:7px; font-size:12px; font-weight:600; color:#334155; }
+.um-filters label.department-sort { flex:0 1 auto; flex-direction:row; align-items:center; gap:8px; max-width:100%; }
+.um-filters .department-sort > span { white-space:nowrap; flex-shrink:0; }
+.um-filters .department-sort > select { flex:0 1 190px; width:190px; min-width:0; }
 .um-filters input,.um-filters select,.um-dialog input:not([type=checkbox]),.um-dialog select,.um-pagination select { width:100%; min-width:0; border:1px solid #cbd5e1; border-radius:7px; padding:10px 11px; background:white; color:#0f2345; font:inherit; font-size:13px; }
 .um-filters input:focus,.um-filters select:focus,.um-dialog input:focus,.um-dialog select:focus { outline:2px solid #ffc72c; outline-offset:1px; }
 .um-table-wrap,.um-loading { min-width:0; max-width:100%; contain:paint; background:white; border:1px solid #e2e8f0; border-radius:12px; overflow-x:auto; }

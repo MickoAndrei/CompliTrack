@@ -35,12 +35,13 @@ class AuditController extends Controller
         $query = $this->query($request);
         $admin = (int) $request->user()->roleId === 1;
         if ($admin && $request->query('view') === 'reviews') {
-            $status = $request->query('status', 'submitted');
-            abort_unless(in_array($status, ['submitted', 'returned', 'accepted'], true), 422);
-            $counts = [];
-            foreach (['submitted', 'returned', 'accepted'] as $state) { $counts[$state] = (clone $query)->where('status', $state)->count(); }
-            $audits = $query->where('status', $status)->orderBy('updatedAt', 'desc')->paginate(20)->withQueryString();
-            return view('admin.audit-reviews', compact('audits', 'counts', 'status'));
+            try {
+                return response()->view('admin.audit-reviews', app(\App\Services\AuditReviewQueue::class)->page($request))
+                    ->header('Cache-Control', 'private, no-store');
+            } catch (\MongoDB\Driver\Exception\Exception $exception) {
+                report($exception);
+                return response()->view('admin.audit-reviews', ['loadError' => true], 503);
+            }
         }
         if ($request->filled('status')) { $query->where('status', $request->query('status')); }
         $audits = $query->orderBy('createdAt', 'desc')->paginate(20)->withQueryString();
@@ -175,7 +176,11 @@ class AuditController extends Controller
             foreach ($audit->items ?? [] as $item) { foreach ($item['evidence'] ?? [] as $e) { if (!empty($e['archiveId'])) { $ids[] = $e['archiveId']; } } }
             foreach ($audit->evidenceRequests ?? [] as $entry) { foreach ($entry['responses'] ?? [] as $response) { if (!empty($response['archiveId'])) { $ids[] = $response['archiveId']; } } }
             $attachments = app(\App\Services\AtlWorkspace::class)->evidence($request->user(), $ids);
-            return response()->view('admin.audit-review', compact('audit', 'progress', 'attachments'))->header('Cache-Control', 'no-store');
+            $actorIds = collect($audit->history ?? [])->pluck('actor')->push((string) $audit->auditorId)->filter()->unique()->values()->all();
+            $people = User::whereIn('_id', $actorIds)->get(['fullName'])->keyBy(fn ($u) => (string) $u->getKey());
+            $previous = collect($audit->history ?? [])->where('action', 'return')->last();
+            $revisionBaseline = isset($previous['previousItems']) ? collect($previous['previousItems'])->keyBy('id') : null;
+            return response()->view('admin.audit-review', compact('audit', 'progress', 'attachments', 'people', 'revisionBaseline'))->header('Cache-Control', 'no-store');
         }
         $readiness = AuditChecklist::readiness($audit->items ?? []);
         $peopleIds = [(string) $audit->auditorId, (string) $audit->reviewerId];
@@ -253,7 +258,8 @@ class AuditController extends Controller
             AuditChecklist::validateSubmission($items);
             $changes['status'] = 'submitted';
         } elseif ($review) {
-            $request->validate(['reviewNotes' => 'required|string|max:5000']);
+            $request->validate(['reviewNotes' => $action === 'return'
+                ? ['required', 'string', 'min:10', 'max:5000', 'regex:/\p{L}.*\p{L}/u'] : 'nullable|string|max:5000']);
             $changes['status'] = $action === 'accept' ? 'accepted' : 'returned';
         }
         $history = $audit->history ?? [];

@@ -17,7 +17,6 @@
             ['Audit Assignments', '/audits', 'clipboard-list'],
             ['Audit Reviews', '/audits?view=reviews', 'clipboard-check'],
             ['Corrective Monitoring', '/admin/compliance-records?monitor=1', 'triangle-alert'],
-            ['Compliance Records', '/admin/compliance-records', 'list-checks'],
             ['Departments', '/admin/departments', 'building-2'],
             ['Users', '/admin/users', 'users'],
             ['Documents', '/admin/documents', 'archive'],

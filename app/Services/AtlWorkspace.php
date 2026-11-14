@@ -27,7 +27,7 @@ class AtlWorkspace
             ->whereIn('correctiveStatus', ['open', 'in_progress', 'closed']);
     }
 
-    public function dashboard(User $actor, int $page = 1): array
+    public function dashboard(User $actor, int $page = 1, int $perPage = 5): array
     {
         $this->authorize($actor);
         $query = $this->audits($actor);
@@ -64,12 +64,16 @@ class AtlWorkspace
             return ['id' => (string) $department->getKey(), 'name' => $department->departmentName, 'counts' => $counts,
                 'completedAudits' => $completed->count(), 'percentage' => $applicable ? round(100 * $counts['C'] / $applicable, 1) : null];
         })->values();
+        $perPage = in_array($perPage, [5, 10], true) ? $perPage : 5;
+        $pages = max(1, (int) ceil($assignments->count() / $perPage));
+        $page = max(1, min($page, $pages));
         return ['stats' => ['activeAudits' => $audits->whereIn('status', ['draft', 'ready', 'submitted', 'returned'])->count(),
             'pendingReviews' => $audits->where('status', 'submitted')->count(), 'openCars' => $openCars->count(), 'overdueCars' => $overdue->count()],
             'people' => ['auditors' => $this->scopes->users($actor)->where('roleId', 2)->where('isActive', true)->count(),
                 'auditees' => $this->scopes->users($actor)->where('roleId', 3)->where('isActive', true)->count()],
-            'attention' => $attention, 'assignments' => $assignments->slice(($page - 1) * 20, 20)->values(),
-            'assignmentPages' => max(1, (int) ceil($assignments->count() / 20)), 'departmentCompliance' => $comparison,
+            'attention' => $attention, 'assignments' => $assignments->slice(($page - 1) * $perPage, $perPage)->values(),
+            'assignmentPages' => $pages, 'assignmentPage' => $page, 'assignmentTotal' => $assignments->count(),
+            'assignmentPerPage' => $perPage, 'departmentCompliance' => $comparison,
             'generatedAt' => now()->toIso8601String()];
     }
 

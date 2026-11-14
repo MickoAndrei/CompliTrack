@@ -22,6 +22,7 @@ class CorrectiveActionsMongoTest extends TestCase
         DB::purge('mongodb');
         $this->assertSame($this->databaseName, DB::connection('mongodb')->getMongoDB()->getDatabaseName());
         $this->withoutVite();
+        \App\Models\Role::create(['roleId' => 2, 'permissions' => ['cars.verify', 'cars.close']]);
         $this->department = Department::create(['departmentName' => 'Engineering', 'collegeName' => 'CET', 'ownershipVerified' => true, 'unitType' => 'academic_department', 'isActive' => true]);
         $this->auditor = $this->account(2, 'Assigned Auditor');
         $this->auditee = $this->account(3, 'Responsible Auditee');
@@ -154,6 +155,114 @@ class CorrectiveActionsMongoTest extends TestCase
         $this->getJson('/api/v1/compliance-checks?correctiveActions=1&search=inspection')->assertOk()->assertJsonPath('meta.total', 1);
         $allowed->update(['downloadAllowed' => false]);
         $this->getJson('/api/v1/compliance-checks/'.$car->getKey().'?correctiveActions=1')->assertOk()->assertJsonPath('data.evidence.0.canDownload', false);
+    }
+
+    public function test_admin_register_preserves_legacy_records_and_exports_official_columns_in_order(): void
+    {
+        $admin = $this->account(1, 'Monitoring Admin');
+        $legacy = $this->car(['checkCode' => 'LEGACY-CHECK']);
+        $formal = $this->car(['checkCode' => 'CHECK-FORMAL', 'dueDate' => now()->subDay(), 'carLog' => [
+            'carNo' => 'CAR-2026-001', 'dateSubmitted' => '2026-11-01', 'issue' => 'Inspection evidence missing',
+            'submittedByName' => 'Maria Santos', 'resultsFail' => 'Register incomplete', 'remarks' => '<script>alert(1)</script>',
+        ]]);
+        $before = [$legacy->fresh()->toArray(), $formal->fresh()->toArray()];
+        $page = $this->actingAs($admin)->get('/admin/compliance-records?monitor=1')->assertOk()
+            ->assertSee('Corrective Action Register')->assertSee('Legacy check')->assertSee('Responsible Auditee')
+            ->assertSee('Inspection evidence missing')->assertSee('Target Closed-Out Date');
+        $register = app(\App\Services\CarRegister::class);
+        $request = \Illuminate\Http\Request::create('/admin/compliance-records', 'GET', ['monitor' => 1]);
+        $request->setUserResolver(fn () => $admin);
+        $data = $register->index($request);
+        $this->assertSame(1, $data['summary']['Open']);
+        $this->assertSame(1, $data['summary']['Overdue']);
+        $this->assertSame(1, $data['legacyCount']);
+        $export = $this->get('/admin/compliance-records?monitor=1&export=log')->assertOk()
+            ->assertSee('A3 landscape')->assertSee('CAR-2026-001')->assertDontSee('LEGACY-CHECK')->assertDontSee('<script>alert(1)</script>', false);
+        preg_match_all('/<th>(.*?)<\/th>/u', $export->getContent(), $headings);
+        $this->assertSame(\App\Services\CarRegister::HEADINGS, $headings[1]);
+        $detail = $this->get('/admin/compliance-records?monitor=1&history=1&car='.$formal->getKey())->assertOk()
+            ->assertSee('Results — Fail')->assertSee('Register incomplete')->assertSee('Not recorded')->assertSee('Assigned Auditor')
+            ->assertDontSee('changedByUserId');
+        if (getenv('WRITE_CAR_UI_FIXTURES') === '1') {
+            $directory = storage_path('framework/testing/car-register');
+            \Illuminate\Support\Facades\File::ensureDirectoryExists($directory);
+            file_put_contents($directory.'/register.html', $page->getContent());
+            file_put_contents($directory.'/detail.html', $detail->getContent());
+            file_put_contents($directory.'/export.html', $export->getContent());
+        }
+        $this->assertSame($before, [$legacy->fresh()->toArray(), $formal->fresh()->toArray()]);
+    }
+
+    public function test_admin_register_filters_pagination_and_organizational_boundaries(): void
+    {
+        $admin = $this->account(1);
+        for ($i = 1; $i <= 12; $i++) {
+            $this->car(['carLog' => ['carNo' => sprintf('CAR-%02d', $i)], 'dueDate' => now()->addDays($i)]);
+        }
+        $private = $this->car(['departmentId' => Department::create(['collegeName' => 'OTHER', 'departmentName' => 'Private'])->getKey(),
+            'carLog' => ['carNo' => 'PRIVATE-CAR']]);
+        $this->actingAs($admin)->get('/admin/compliance-records?monitor=1&sort=reference&page=2&perPage=10')->assertOk()
+            ->assertSee('CAR-11')->assertSee('CAR-12')->assertDontSee('CAR-01')->assertDontSee('PRIVATE-CAR');
+        $this->get('/admin/compliance-records?monitor=1&search=CAR-03')->assertOk()->assertSee('CAR-03')->assertDontSee('CAR-04');
+        $this->get('/admin/compliance-records?monitor=1&overdue=1')->assertOk()->assertDontSee('CAR-01');
+        foreach (['history=1&car=', 'export=log&car='] as $query) {
+            $this->get('/admin/compliance-records?monitor=1&'.$query.$private->getKey())->assertNotFound();
+        }
+        $admin->update(['archiveResponsibility' => 'department_secretary', 'archiveUnitIds' => [(string) new \MongoDB\BSON\ObjectId()]]);
+        $this->actingAs($admin)->get('/admin/compliance-records?monitor=1')->assertOk()->assertDontSee('CAR-01');
+        $this->get('/admin/compliance-records?monitor=1&sort=bad')->assertSessionHasErrors('sort');
+    }
+
+    public function test_cluster_monitoring_cannot_widen_college_scope_or_reach_foreign_detail_and_export(): void
+    {
+        $college = \App\Models\College::create(['collegeName' => 'CET', 'isActive' => true, 'clusterId' => 'north']);
+        $this->department->forceFill(['collegeId' => $college->getKey()])->save();
+        $admin = $this->account(1);
+        $admin->update(['archiveResponsibility' => 'cluster_administrator', 'archiveCluster' => 'north']);
+        $allowed = $this->car(['carLog' => ['carNo' => 'NORTH-CAR']]);
+        $otherCollege = \App\Models\College::create(['collegeName' => 'CET', 'isActive' => true, 'clusterId' => 'south']);
+        $outside = Department::create(['departmentName' => 'South CET', 'collegeName' => 'CET', 'collegeId' => $otherCollege->getKey(),
+            'unitType' => 'academic_department', 'ownershipVerified' => true, 'isActive' => true]);
+        $private = $this->car(['departmentId' => $outside->getKey(), 'carLog' => ['carNo' => 'PRIVATE-SOUTH-CAR']]);
+        $this->actingAs($admin)->get('/admin/compliance-records?monitor=1')->assertOk()->assertSee('NORTH-CAR')->assertDontSee('PRIVATE-SOUTH-CAR');
+        $this->get('/admin/compliance-records?monitor=1&export=log')->assertOk()->assertSee('NORTH-CAR')->assertDontSee('PRIVATE-SOUTH-CAR');
+        $this->get('/admin/compliance-records?monitor=1&history=1&car='.$private->getKey())->assertNotFound();
+        $admin->update(['archiveCluster' => 'south']);
+        $this->actingAs($admin)->get('/admin/compliance-records?monitor=1&car='.$allowed->getKey())->assertNotFound();
+    }
+
+    public function test_closure_requires_both_explicit_permissions_and_ignores_wildcards(): void
+    {
+        $car = $this->car(['correctiveStatus' => 'in_progress']);
+        $role = \App\Models\Role::where('roleId', 2)->firstOrFail();
+        $url = '/api/v1/compliance-checks/'.$car->getKey().'/status';
+        foreach ([[], ['*'], ['cars.verify'], ['cars.close']] as $permissions) {
+            $role->update(['permissions' => $permissions]);
+            $this->actingAs($this->auditor)->patchJson($url, ['correctiveStatus' => 'closed', 'remarks' => 'Verified on site'])->assertForbidden();
+            $this->getJson('/api/v1/compliance-checks/'.$car->getKey().'?correctiveActions=1')->assertOk()->assertJsonCount(0, 'data.allowedTransitions');
+        }
+        $this->assertSame('in_progress', $car->fresh()->correctiveStatus);
+        $this->assertCount(1, $car->fresh()->statusHistory);
+        $this->assertSame(0, Notification::count());
+        $role->update(['permissions' => ['cars.verify', 'cars.close']]);
+        $this->patchJson($url, ['correctiveStatus' => 'closed', 'remarks' => 'Verified on site'])->assertOk();
+    }
+
+    public function test_formal_metrics_separate_evidence_pending_status_results_and_deadline(): void
+    {
+        $admin = $this->account(1);
+        $this->car(['carLog' => ['carNo' => 'FORMAL-OPEN']]);
+        $this->car(['carLog' => ['carNo' => 'FORMAL-PROGRESS'], 'correctiveStatus' => 'in_progress', 'dueDate' => now()->subDays(2)]);
+        $waiting = $this->car(['carLog' => ['carNo' => 'FORMAL-WAITING'], 'correctiveStatus' => 'in_progress']);
+        $waiting->forceFill(['evidenceResponses' => [['method' => 'physical-original', 'at' => now()->toIso8601String(), 'author' => (string) $this->auditee->getKey()]]])->save();
+        $this->car(['carLog' => ['carNo' => 'FORMAL-CLOSED'], 'correctiveStatus' => 'closed', 'closedAt' => now(), 'dueDate' => now()->subDays(3)]);
+        $this->car(['dueDate' => now()->subDays(4)]);
+        $request = \Illuminate\Http\Request::create('/', 'GET'); $request->setUserResolver(fn () => $admin);
+        $data = app(\App\Services\CarRegister::class)->index($request);
+        $this->assertSame(['Open' => 1, 'In Progress' => 1, 'Awaiting Verification' => 1, 'Overdue' => 1, 'Closed' => 1], $data['summary']);
+        $this->assertTrue($data['exportRows']->every(fn ($row) => $row['verification'] === 'Not recorded'));
+        $this->actingAs($admin)->get('/admin/compliance-records?monitor=1&status=awaiting_verification')->assertOk()
+            ->assertSee('FORMAL-WAITING')->assertDontSee('FORMAL-PROGRESS');
     }
 
     public function test_only_assigned_active_auditor_can_verify_close_and_reopen_with_notes(): void

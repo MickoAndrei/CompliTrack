@@ -17,32 +17,23 @@ class AtlWorkspaceController extends Controller
 
     public function summary(Request $request, AtlWorkspace $workspace)
     {
-        $request->validate(['page' => 'sometimes|integer|min:1']);
-        return response()->json(['data' => $workspace->dashboard($request->user(), $request->integer('page', 1))])
+        $request->validate(['page' => 'sometimes|integer|min:1', 'perPage' => 'sometimes|integer|in:5,10']);
+        return response()->json(['data' => $workspace->dashboard($request->user(), $request->integer('page', 1), $request->integer('perPage', 5))])
             ->header('Cache-Control', 'no-store');
     }
 
     public function corrections(Request $request, AtlWorkspace $workspace)
     {
-        $request->validate(['status' => 'nullable|in:open,in_progress,closed', 'overdue' => 'nullable|boolean', 'page' => 'nullable|integer|min:1']);
-        $detail = $request->filled('car') ? $workspace->cars($request->user())->where('_id', MongoId::parse($request->query('car')))->firstOrFail() : null;
-        $evidence = $detail ? $workspace->evidence($request->user(), array_merge($detail->linkedArchiveIds ?? [], collect($detail->evidenceResponses ?? [])->pluck('archiveId')->filter()->all())) : [];
+        $register = app(\App\Services\CarRegister::class);
+        $data = $register->index($request);
+        $detail = $request->filled('car') ? $register->detail($request->user(), $request->query('car')) : null;
         if ($request->boolean('history')) {
             abort_unless($detail, 422, 'Choose a corrective action to view its history.');
-            return response()->view('admin.partials.car-history', compact('detail', 'workspace', 'evidence'))->header('Cache-Control', 'no-store');
+            return response()->view('admin.partials.car-history', compact('detail'))->header('Cache-Control', 'no-store, private');
         }
-        $query = $workspace->cars($request->user());
-        if ($request->filled('status')) { $query->where('correctiveStatus', $request->query('status')); }
-        // Calculate deadlines consistently for mixed stored date values; a missing due date is never guessed.
-        if ($request->boolean('overdue')) {
-            $ids = (clone $query)->get(['dueDate', 'correctiveStatus'])->filter(fn ($c) => $workspace->isOverdue($c))->pluck('_id')->all();
-            $query->whereIn('_id', $ids);
+        if ($request->query('export') === 'log') {
+            return response()->view('admin.car-log-export', $data)->header('Cache-Control', 'no-store, private');
         }
-        $cars = $query->orderBy('dueDate')->paginate(20)->withQueryString();
-        $departments = Department::whereIn('_id', app(\App\Services\QmsArchiveAccess::class)->ids($cars->pluck('departmentId')->all()))
-            ->get(['departmentName'])->keyBy(fn ($d) => (string) $d->getKey());
-        $people = User::whereIn('_id', app(\App\Services\QmsArchiveAccess::class)->ids($cars->pluck('auditeeId')->merge($cars->pluck('auditorId'))->all()))
-            ->get(['fullName'])->keyBy(fn ($u) => (string) $u->getKey());
-        return view('admin.corrective-monitor', compact('cars', 'detail', 'workspace', 'departments', 'people', 'evidence'));
+        return response()->view('admin.corrective-monitor', $data + compact('detail'))->header('Cache-Control', 'no-store, private');
     }
 }

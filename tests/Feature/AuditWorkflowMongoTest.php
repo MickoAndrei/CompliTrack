@@ -24,6 +24,7 @@ class AuditWorkflowMongoTest extends TestCase
         config(['database.connections.mongodb.database' => $this->testDatabase]);
         DB::purge('mongodb');
         $this->assertSame($this->testDatabase, DB::connection('mongodb')->getMongoDB()->getDatabaseName());
+        \App\Models\Role::create(['roleId' => 2, 'permissions' => ['cars.verify', 'cars.close']]);
         DB::connection('mongodb')->getMongoDB()->selectCollection('audits')->createIndex(['assignmentKey' => 1], ['unique' => true, 'sparse' => true]);
         DB::connection('mongodb')->getMongoDB()->selectCollection('notifications')->createIndex(['dedupeKey' => 1], ['unique' => true, 'sparse' => true]);
         $this->testStorage = storage_path('framework/testing/auditee-'.bin2hex(random_bytes(6)));
@@ -234,7 +235,7 @@ class AuditWorkflowMongoTest extends TestCase
         $this->saveAction($audit, 'evaluate', ['item' => 0, 'result' => 'C', 'remarks' => 'Meets criterion'])->assertRedirect();
         $this->saveAction($audit, 'submit')->assertRedirect();
         $this->actingAs($admin)->postJson($url, array_replace($data, ['version' => $audit->fresh()->version]))->assertForbidden();
-        $this->saveAction($audit, 'return', ['reviewNotes' => 'Clarify'])->assertRedirect();
+        $this->saveAction($audit, 'return', ['reviewNotes' => 'Clarify the finding'])->assertRedirect()->assertSessionHasNoErrors();
         $this->postJson($url, array_replace($data, ['version' => $audit->fresh()->version]))->assertForbidden();
     }
 
@@ -251,7 +252,7 @@ class AuditWorkflowMongoTest extends TestCase
         $audit->update(['status' => 'submitted']);
         $review = $this->get('/audits?view=reviews')->assertOk()->assertSee('Workflow test');
         $this->get('/audits?view=reviews&status=returned')->assertOk()->assertDontSee('Workflow test');
-        $detail = $this->get('/audits/'.$audit->getKey().'?review=1')->assertOk()->assertSee('Accept Audit Results')->assertDontSee('name="result"', false);
+        $detail = $this->get('/audits/'.$audit->getKey().'?review=1')->assertOk()->assertSee('Accept Results')->assertDontSee('name="result"', false);
         if (getenv('AUDIT_ASSIGNMENT_BROWSER_FIXTURES') === '1') {
             $dir = storage_path('framework/testing/assignment-ui');
             \Illuminate\Support\Facades\File::ensureDirectoryExists($dir);
