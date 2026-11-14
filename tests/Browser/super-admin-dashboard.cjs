@@ -61,8 +61,15 @@ const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
                     else if(config.url.endsWith('/dashboard/health'))body={data:{laravel:'ok',mongodb:'ok',realtime:window.healthOk?'ok':'unavailable',checkedAt:'2026-11-09T01:00:00Z',components:[{name:'Laravel',status:'Operational'},{name:'Node.js Service',status:window.healthOk?'Operational':'Unavailable'},{name:'MongoDB Cluster',status:'Operational'},{name:'FCM Push Service',status:window.healthOk?'Not Configured':'Unknown'}]}};
                     else if(config.url.endsWith('/tree'))body={campus:'USTP Claveria Campus',colleges:[{_id:id(1),name:'College of Engineering and Technology',code:'CET'}],units,categories:[],total:0,canManageOrganization:true};
                     else if(config.url.endsWith('/organization'))body={users:[{_id:id(90),name:'Department Head account',email:'browser@example.test',roleId:3,departmentId:id(10),responsibility:'department_head',unitIds:[id(10)],collegeIds:[]}],responsibilities:['department_head','department_secretary','college_dean','college_secretary','faculty_staff']};
-                    else if(config.url.includes('/departments'))body={data:units.slice(0,5).map(unit=>({_id:unit._id,departmentCode:unit.code,departmentName:unit.name,collegeName:'CET',campusName:'Claveria',isActive:true})),meta:{total:5,currentPage:1,lastPage:1}};
-                    else if(config.url==='/api/v1/archives')body={data:[],meta:{total:0,currentPage:1,lastPage:1}};
+                    else if(config.url.includes('/departments')){
+                        const params=config.params||{},perPage=Number(params.perPage||5),page=Number(params.page||1);
+                        let rows=units.slice(0,5).map(unit=>({_id:unit._id,departmentCode:unit.code,departmentName:unit.name,collegeName:'CET',campusName:'Claveria',isActive:true}));
+                        rows.push({_id:id(80),departmentCode:'CET-NEW',departmentName:'ZZZ Additional Department',collegeName:'CET',campusName:'Claveria',isActive:true});
+                        if(params.search)rows=rows.filter(row=>row.departmentName.toLowerCase().includes(params.search.toLowerCase()));
+                        const sort=params.sortBy||'departmentName';rows.sort((a,b)=>a[sort].localeCompare(b[sort])*(params.sortDirection==='desc'?-1:1));
+                        body={data:rows.slice((page-1)*perPage,page*perPage),meta:{total:rows.length,currentPage:page,lastPage:Math.max(1,Math.ceil(rows.length/perPage)),perPage}};
+                    }
+                    else if(config.url==='/api/v1/documents')body={data:[],meta:{total:0,currentPage:1,lastPage:1}};
                     else if(config.method==='patch')body={message:'Saved test responsibility'};
                     else body={data:[],meta:{total:0,currentPage:1,lastPage:1}};
                     return {data:body,status:200,statusText:'OK',headers:{},config};
@@ -111,7 +118,7 @@ const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
             assert.equal(await evaluate('document.documentElement.scrollWidth<=innerWidth'), true, `No horizontal overflow at ${width}`);
             assert.equal(await evaluate('document.querySelector(".sidebar-brand-logo").naturalWidth>0'), true);
             assert.equal(await evaluate('document.querySelectorAll(".sidebar-section").length'), 0);
-            assert.equal(await evaluate('document.querySelectorAll(".app-sidebar nav a").length'), 7);
+            assert.equal(await evaluate('document.querySelectorAll(".app-sidebar nav a").length'), 9);
             try {
                 await waitFor('[...document.querySelectorAll(".sa-activity")].every(list=>list.clientHeight>0 && list.scrollHeight>list.clientHeight)');
             } catch (error) {
@@ -193,6 +200,28 @@ const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
             assert.equal(await evaluate('document.querySelectorAll(".sa-college-office").length'), 1);
             assert.equal(await evaluate('[...document.querySelectorAll("table.sa-skeleton-table")].some(table=>table.getClientRects().length)'), false, 'Skeletons disappear after loading');
             assert.equal(await evaluate('document.documentElement.scrollWidth<=innerWidth'), true);
+            await waitFor("Alpine.$data(document.querySelector('.directory-page')).rows.length===5");
+            assert.equal(await evaluate("Alpine.$data(document.querySelector('.directory-page')).perPage"),5);
+            await evaluate("document.querySelector('[aria-label=\"Departments pages\"] button:last-child').click()");
+            await waitFor("Alpine.$data(document.querySelector('.directory-page')).page===2 && Alpine.$data(document.querySelector('.directory-page')).rows.length===1");
+            await evaluate(`(()=>{const select=document.querySelector('[aria-label="Sort departments by"]');select.value='departmentName:desc';select.dispatchEvent(new Event('change',{bubbles:true}));})()`);
+            await waitFor("Alpine.$data(document.querySelector('.directory-page')).page===1 && Alpine.$data(document.querySelector('.directory-page')).rows[0]?.departmentName==='ZZZ Additional Department'");
+            await evaluate("(()=>{const state=Alpine.$data(document.querySelector('.directory-page'));state.search='Additional';state.load(1);})()");
+            await waitFor("Alpine.$data(document.querySelector('.directory-page')).meta.total===1");
+            await evaluate("(()=>{const state=Alpine.$data(document.querySelector('.directory-page'));state.search='';state.sortBy='departmentName:asc';state.load(1);})()");
+            await waitFor("Alpine.$data(document.querySelector('.directory-page')).rows.length===5");
+            await evaluate("Alpine.$data(document.querySelector('.directory-page')).startDepartmentCreate()");
+            await waitFor("document.querySelector('[x-model=\"departmentForm.collegeName\"]').options.length===4");
+            await evaluate(`(()=>{const select=document.querySelector('[x-model="departmentForm.campusName"]');select.value='Cagayan de Oro';select.dispatchEvent(new Event('change',{bubbles:true}));})()`);
+            await waitFor(`(()=>{const select=document.querySelector('[x-model="departmentForm.collegeName"]');return select.options.length===8 && select.value==='';})()`);
+            assert.equal(await evaluate(`Array.from(document.querySelector('[x-model="departmentForm.collegeName"]').options).some(option=>option.textContent==='CON - College of Nursing')`),true);
+            await evaluate(`(()=>{const select=document.querySelector('[x-model="departmentForm.collegeName"]');select.value='College of Nursing';select.dispatchEvent(new Event('change',{bubbles:true}));const campus=document.querySelector('[x-model="departmentForm.campusName"]');campus.value='Claveria';campus.dispatchEvent(new Event('change',{bubbles:true}));})()`);
+            await waitFor(`(()=>{const select=document.querySelector('[x-model="departmentForm.collegeName"]');return select.options.length===4 && select.value==='';})()`);
+            for(const campus of ['Alubijid','Balubal','Jasaan','Oroquieta','Panaon','Villanueva']){
+                await evaluate(`(()=>{const select=document.querySelector('[x-model="departmentForm.campusName"]');select.value=${JSON.stringify(campus)};select.dispatchEvent(new Event('change',{bubbles:true}));})()`);
+                await waitFor(`(()=>{const select=document.querySelector('[x-model="departmentForm.collegeName"]');return select.disabled && !select.required && select.options.length===1;})()`);
+            }
+            await evaluate("Alpine.$data(document.querySelector('.directory-page')).departmentModalOpen=false");
             console.log(`PASS ${width}px: department and responsibility skeletons, independent loading, reduced motion, loaded records`);
         }
         await send('Page.navigate', { url: pathToFileURL(path.join(directory, 'archives.html')).href + '?manage=responsibilities' });

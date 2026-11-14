@@ -48,7 +48,7 @@ const server = http.createServer((request, response) => {
         }
         return json(response, { data: row });
     }
-    if (url.pathname === `/api/v1/archives/${id(99)}/download`) { response.writeHead(200, { 'Content-Type': 'application/pdf' }); return response.end('%PDF-1.4\nBrowser preview fixture'); }
+    if (url.pathname === `/api/v1/documents/${id(99)}/download`) { response.writeHead(200, { 'Content-Type': 'application/pdf' }); return response.end('%PDF-1.4\nBrowser preview fixture'); }
     if (url.pathname === '/api/v1/notifications') return json(response, { data: [], meta: { total: 0, unreadCount: 0 } });
     if (url.pathname === '/') { response.writeHead(200, { 'Content-Type': 'text/html' }); return response.end(fs.readFileSync(path.join(directory, 'index.html'), 'utf8').replaceAll('http://fixture.local', origin).replaceAll('https://fixture.local', origin)); }
     const file = path.resolve(root, 'public', `.${decodeURIComponent(url.pathname)}`);

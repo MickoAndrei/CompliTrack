@@ -348,21 +348,21 @@ class AuditWorkflowMongoTest extends TestCase
         $archive = \App\Models\ArchiveDocument::create(['ownershipVerified' => true, 'fileCode' => 'TEST-PRIVATE', 'departmentId' => $audit->departmentId,
             'uploadedByUserId' => $auditee->getKey(), 'originalName' => 'Private.pdf']);
         $this->actingAs($auditor)->getJson('/api/v1/compliance-checks')->assertOk()->assertJsonPath('meta.total', 1);
-        $this->getJson('/api/v1/archives')->assertOk()->assertJsonPath('meta.total', 0);
+        $this->getJson('/api/v1/documents')->assertOk()->assertJsonPath('meta.total', 0);
         $check->update(['linkedArchiveIds' => [$archive->getKey()]]);
-        $this->getJson('/api/v1/archives')->assertOk()->assertJsonPath('meta.total', 1);
+        $this->getJson('/api/v1/documents')->assertOk()->assertJsonPath('meta.total', 1);
         $this->patchJson('/api/v1/compliance-checks/'.$check->getKey().'/status', ['correctiveStatus' => 'closed'])->assertUnprocessable();
         $this->patchJson('/api/v1/compliance-checks/'.$check->getKey().'/status', ['correctiveStatus' => 'closed', 'remarks' => 'Corrective action verified'])->assertOk();
         $this->assertSame('closed', $check->fresh()->correctiveStatus);
         $this->saveAction($audit, 'interview', ['auditeeId' => (string) $auditee->getKey(), 'process' => 'Test process', 'topics' => 'Question', 'responses' => 'Factual response'])->assertRedirect()->assertSessionHasNoErrors();
         $this->assertSame('Factual response', $audit->fresh()->interviews[0]['responses']);
         $this->actingAs($other)->getJson('/api/v1/compliance-checks/'.$check->getKey())->assertNotFound();
-        $this->getJson('/api/v1/archives/'.$archive->getKey().'/download')->assertNotFound();
+        $this->getJson('/api/v1/documents/'.$archive->getKey().'/download')->assertNotFound();
         $this->saveAction($audit, 'interview', ['auditeeId' => (string) $auditee->getKey(), 'process' => 'Test', 'topics' => 'Q', 'responses' => 'R'])->assertNotFound();
         $this->actingAs($admin)->get('/audits')->assertOk();
         $this->actingAs($auditor)->get('/auditor/checks')->assertRedirect('/auditor/historical-records');
         $this->get('/auditor/historical-records')->assertOk()->assertDontSee('New Compliance Check');
-        $this->get('/auditor/archives')->assertOk();
+        $this->get('/auditor/documents')->assertOk();
         $this->get('/auditor/corrective-actions')->assertOk();
         $this->get('/auditor/notifications')->assertOk();
     }
@@ -540,7 +540,7 @@ class AuditWorkflowMongoTest extends TestCase
         $this->actingAs($person)->get('/auditee/my-findings')->assertOk()->assertSee('Permitted accepted result')->assertDontSee('CONFIDENTIAL');
         $this->actingAs($other)->get('/auditee/my-findings')->assertOk()->assertDontSee('Permitted accepted result');
         $this->actingAs($person);
-        foreach (['dashboard','my-findings','upload','archives','notifications','help'] as $page) { $this->get('/auditee/'.$page)->assertOk(); }
+        foreach (['dashboard','my-findings','upload','documents','notifications','help'] as $page) { $this->get('/auditee/'.$page)->assertOk(); }
         $this->get('/profile')->assertRedirect('/auditee/profile');
         $this->get('/auditee/profile')->assertOk();
         $this->getJson('/api/v1/notifications?unread=1&type=evidence_requested')->assertOk()->assertJsonPath('meta.total', 1);
@@ -562,21 +562,21 @@ class AuditWorkflowMongoTest extends TestCase
         $this->assertArrayNotHasKey('signature', $check->fresh()->evidenceResponses[0]);
         $plaintext = "%PDF-1.4\nAuthorized test evidence";
         $file = \Illuminate\Http\UploadedFile::fake()->createWithContent('evidence.pdf', $plaintext);
-        $upload = $this->post('/api/v1/archives/upload', ['file' => $file, 'checkId' => (string) $check->getKey(), 'referenceStandard' => 'ISO9001-9.2'], ['Accept' => 'application/json'])
+        $upload = $this->post('/api/v1/documents/upload', ['file' => $file, 'checkId' => (string) $check->getKey(), 'referenceStandard' => 'ISO9001-9.2'], ['Accept' => 'application/json'])
             ->assertCreated()->assertJsonMissingPath('data.encryptedPath');
         $id = $upload->json('data._id');
         $archive = \App\Models\ArchiveDocument::findOrFail($id);
         $ciphertext = file_get_contents($this->testStorage.DIRECTORY_SEPARATOR.str_replace('/', DIRECTORY_SEPARATOR, $archive->encryptedPath));
         $this->assertNotSame($plaintext, $ciphertext);
         $this->assertSame(hash('sha256', $plaintext), $archive->checksum);
-        $this->get('/api/v1/archives/'.$id.'/download')->assertOk()->assertContent($plaintext);
-        $this->getJson('/api/v1/archives')->assertOk()->assertJsonPath('meta.total', 1);
+        $this->get('/api/v1/documents/'.$id.'/download')->assertOk()->assertContent($plaintext);
+        $this->getJson('/api/v1/documents')->assertOk()->assertJsonPath('meta.total', 1);
         $this->assertCount(1, $check->fresh()->linkedArchiveIds);
         $this->assertSame('open', $check->fresh()->correctiveStatus);
-        $this->post('/api/v1/archives/upload', ['file' => \Illuminate\Http\UploadedFile::fake()->createWithContent('bad.docx', 'PK-not-a-document'), 'checkId' => (string) $check->getKey(), 'referenceStandard' => 'ISO9001-9.2'], ['Accept' => 'application/json'])->assertUnprocessable();
-        $this->post('/api/v1/archives/upload', ['file' => \Illuminate\Http\UploadedFile::fake()->create('large.pdf', 20481), 'checkId' => (string) $check->getKey(), 'referenceStandard' => 'ISO9001-9.2'], ['Accept' => 'application/json'])->assertUnprocessable();
+        $this->post('/api/v1/documents/upload', ['file' => \Illuminate\Http\UploadedFile::fake()->createWithContent('bad.docx', 'PK-not-a-document'), 'checkId' => (string) $check->getKey(), 'referenceStandard' => 'ISO9001-9.2'], ['Accept' => 'application/json'])->assertUnprocessable();
+        $this->post('/api/v1/documents/upload', ['file' => \Illuminate\Http\UploadedFile::fake()->create('large.pdf', 20481), 'checkId' => (string) $check->getKey(), 'referenceStandard' => 'ISO9001-9.2'], ['Accept' => 'application/json'])->assertUnprocessable();
         $this->actingAs($other)->get('/auditee/finding-details/'.$check->getKey())->assertNotFound();
-        $this->getJson('/api/v1/archives/'.$id.'/download')->assertNotFound();
+        $this->getJson('/api/v1/documents/'.$id.'/download')->assertNotFound();
     }
 
     public function test_results_summary_filters_and_details_use_only_authorized_legacy_records(): void
@@ -639,13 +639,13 @@ class AuditWorkflowMongoTest extends TestCase
         $detailUrl = '/auditee/evidence-requests?requestId='.$entry['id'];
         $archiveId = $audit->fresh()->evidenceRequests[0]['responses'][0]['archiveId'];
         $this->get($detailUrl, ['X-Requested-With' => 'XMLHttpRequest'])->assertOk()
-            ->assertSee('/api/v1/archives/'.$archiveId.'/download')->assertDontSee('encryptedPath');
+            ->assertSee('/api/v1/documents/'.$archiveId.'/download')->assertDontSee('encryptedPath');
         // Even a stored link cannot expose an archive after its ownership changes.
         $archive = \App\Models\ArchiveDocument::findOrFail($archiveId);
         $archive->update(['uploadedByUserId' => $auditor->getKey()]);
         $this->get($detailUrl, ['X-Requested-With' => 'XMLHttpRequest'])->assertOk()
-            ->assertDontSee('/api/v1/archives/'.$archiveId.'/download');
-        $this->getJson('/api/v1/archives/'.$archiveId.'/download')->assertNotFound();
+            ->assertDontSee('/api/v1/documents/'.$archiveId.'/download');
+        $this->getJson('/api/v1/documents/'.$archiveId.'/download')->assertNotFound();
         $this->assertNull($audit->fresh()->items[0]['result']);
         $this->assertSame(0, \App\Models\ComplianceCheck::count());
     }

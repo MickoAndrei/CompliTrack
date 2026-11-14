@@ -24,7 +24,7 @@ export async function renderComparisonPane(container, version) {
     notice.textContent = 'Loading version…';
     container.append(notice);
     try {
-        const response = await fetch(`/api/v1/archives/${encodeURIComponent(version._id)}/download`, {
+        const response = await fetch(`/api/v1/documents/${encodeURIComponent(version._id)}/download`, {
             credentials: 'same-origin', signal, headers: { 'X-Requested-With': 'XMLHttpRequest' },
         });
         if (!response.ok || response.redirected) throw new Error('Version unavailable');

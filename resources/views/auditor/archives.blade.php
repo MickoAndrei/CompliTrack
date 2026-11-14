@@ -1,6 +1,6 @@
 @extends('layouts.app')
-@section('title', 'QMS Archives')
-@section('heading', 'QMS Archives')
+@section('title', 'QMS Documents')
+@section('heading', 'QMS Documents')
 @section('subtitle', 'Browse authorized records by office, department, and document category.')
 @section('content')
 <x-qms-archives />

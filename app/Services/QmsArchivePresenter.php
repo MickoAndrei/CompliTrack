@@ -8,12 +8,13 @@ class QmsArchivePresenter
     private array $ownerNames = [];
     public function document(ArchiveDocument $document, User $actor): array
     {
-        $data = Arr::only($document->toArray(), ['fileCode', 'originalName', 'title', 'description', 'referenceStandard', 'createdAt', 'fileSize', 'mimeType',
+        $data = Arr::only($document->toArray(), ['fileCode', 'originalName', 'title', 'description', 'referenceStandard', 'createdAt', 'updatedAt', 'fileSize', 'mimeType',
             'departmentId', 'collegeId', 'recordType', 'categoryId', 'documentReference', 'physicalLocation', 'signatureRequired', 'signatureStatus',
             'visibility', 'versionNumber', 'versionGroupId', 'previousVersionId', 'auditId', 'requestId', 'isEncrypted']);
         $data['_id'] = (string) $document->getKey();
         $data['title'] = $document->title ?: $document->originalName;
         $data['recordType'] = $document->recordType ?: 'file';
+        $data['isStarred'] = in_array((string) $document->getKey(), array_map('strval', $actor->qmsStarredIds ?? []), true);
         $data['versionNumber'] = $document->versionNumber ?: 1;
         $source = $document->sourceMetadata ?? [];
         $data['documentCode'] = $source['documentCode'] ?? $document->documentReference;
@@ -27,6 +28,10 @@ class QmsArchivePresenter
         $data['canDownload'] = (int) $actor->roleId !== 0 && $data['recordType'] === 'file'
             && ($access->isAuditTeamLeader($actor) || $document->downloadAllowed !== false);
         $data['canManage'] = $access->canManage($actor, $document);
+        $supportedEditor = $data['recordType'] === 'file' && isset(DocumentEditorAccess::TYPES[strtolower(pathinfo($document->originalName ?? '', PATHINFO_EXTENSION))]);
+        $data['canOpenEditor'] = $supportedEditor && $data['canDownload'] && app(DocumentEditorAccess::class)->classificationAllowed($actor, $document)
+            && app(DocumentEditorAccess::class)->scopeAllowed($actor, $document);
+        $data['canEdit'] = $data['canOpenEditor'] && app(DocumentEditorAccess::class)->canEdit($actor, $document, true);
         if ($data['canManage']) {
             $data['accessUserIds'] = array_map('strval', $document->accessUserIds ?? []);
             $data['sharedAuditIds'] = array_map('strval', $document->sharedAuditIds ?? []);

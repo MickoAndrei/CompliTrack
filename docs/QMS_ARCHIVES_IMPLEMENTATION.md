@@ -68,7 +68,7 @@ node tests/Browser/qms-archives.cjs
 node tests/Browser/evidence-preview.cjs
 npm.cmd run build
 php artisan view:cache
-php artisan route:list --path=archives
+php artisan route:list --path=documents
 php scripts/migrate-qms-archives.php
 php scripts/migrate-qms-archives.php --apply
 php scripts/verify-qms-schema.php

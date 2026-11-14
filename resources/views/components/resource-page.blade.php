@@ -24,7 +24,7 @@
 @php($visualRole = $roleId === 3 ? 2 : $roleId)
 @php($searchLabel = match ($title) { 'User Management' => 'User', 'Archive Repository' => 'Archive', 'Audit Logs' => 'Audit Logs', default => strtolower($title) })
 @php($panelClass = match ($visualRole) { 0, 2 => 'app-view-panel active', 3 => 'view-panel active', default => '' })
-<section class="{{ $panelClass }} {{ $directoryPage ? 'attention-page directory-page' : '' }} {{ $endpoint === 'logs' ? 'audit-logs-page' : '' }} {{ $roleId === 1 ? 'admin-resource-page' : '' }}" x-data="resourcePage({ endpoint: @js($endpoint), directoryPage: @js($directoryPage), enhancedUsers: @js($enhancedUsers), columns: @js($columns), perPage: {{ (int) $perPage }}, detailBase: @js($detailBase), allowStatusUpdates: {{ $allowStatusUpdates ? 'true' : 'false' }}, allowArchiveActions: {{ $allowArchiveActions ? 'true' : 'false' }}, allowNotificationActions: {{ $allowNotificationActions ? 'true' : 'false' }}, allowUserCreate: {{ $allowUserCreate ? 'true' : 'false' }}, allowUserActions: {{ $allowUserActions ? 'true' : 'false' }}, actorRoleId: {{ $actorRoleId === null ? 'null' : (int) $actorRoleId }}, allowDepartmentCreate: {{ $allowDepartmentCreate ? 'true' : 'false' }}, allowDepartmentActions: {{ $allowDepartmentActions ? 'true' : 'false' }}, allowBroadcast: {{ $allowBroadcast ? 'true' : 'false' }} })" x-init="load()">
+<section class="{{ $panelClass }} {{ $directoryPage ? 'attention-page directory-page' : '' }} {{ $endpoint === 'logs' ? 'audit-logs-page' : '' }} {{ $roleId === 1 ? 'admin-resource-page' : '' }}" x-data="resourcePage({ endpoint: @js($endpoint), directoryPage: @js($directoryPage), enhancedUsers: @js($enhancedUsers), columns: @js($columns), perPage: {{ (int) $perPage }}, detailBase: @js($detailBase), allowStatusUpdates: {{ $allowStatusUpdates ? 'true' : 'false' }}, allowArchiveActions: {{ $allowArchiveActions ? 'true' : 'false' }}, allowNotificationActions: {{ $allowNotificationActions ? 'true' : 'false' }}, allowUserCreate: {{ $allowUserCreate ? 'true' : 'false' }}, allowUserActions: {{ $allowUserActions ? 'true' : 'false' }}, actorRoleId: {{ $actorRoleId === null ? 'null' : (int) $actorRoleId }}, departmentColleges: @js($endpoint === 'departments' ? config('qms.campusColleges') : []), allowDepartmentCreate: {{ $allowDepartmentCreate ? 'true' : 'false' }}, allowDepartmentActions: {{ $allowDepartmentActions ? 'true' : 'false' }}, allowBroadcast: {{ $allowBroadcast ? 'true' : 'false' }} })" x-init="load()">
     @if($roleId === 1 && $showHeading && !$directoryPage)<header class="admin-resource-heading"><h2>{{ $title }}</h2><p>{{ $description }}</p></header>@endif
     @if ($enhancedUsers)
         @include('super-admin.partials.user-management')
@@ -50,6 +50,9 @@
             </label>
             @if($roleId === 1 && $endpoint === 'users')
             <label class="directory-sort"><span>Sort by</span><select x-model="sortBy" @change="load(1)" aria-label="Sort users by"><option value="fullName:asc">Name: A to Z</option><option value="fullName:desc">Name: Z to A</option><option value="createdAt:desc">Newest first</option><option value="createdAt:asc">Oldest first</option></select></label>
+            @endif
+            @if($endpoint === 'departments')
+            <label class="flex items-center gap-2 text-xs"><span class="whitespace-nowrap">Sort by</span><select x-model="sortBy" @change="load(1)" aria-label="Sort departments by" class="std-select min-w-0 rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs"><option value="departmentName:asc">Department: A to Z</option><option value="departmentName:desc">Department: Z to A</option><option value="departmentCode:asc">Code: A to Z</option><option value="departmentCode:desc">Code: Z to A</option><option value="campusName:asc">Campus: A to Z</option><option value="campusName:desc">Campus: Z to A</option><option value="collegeName:asc">College: A to Z</option><option value="collegeName:desc">College: Z to A</option></select></label>
             @endif
             @if($roleId === 1 && $endpoint === 'notifications')
             <label class="admin-unread-filter"><input type="checkbox" x-model="unreadOnly" @change="load(1)">Unread only</label>
@@ -114,7 +117,7 @@
         </div>
     </template>
     <template x-if="!loading && !error && rows.length === 0">
-        <div class="{{ in_array($endpoint, ['archives', 'logs'], true) ? 'resource-empty-state resource-empty-state-centered' : 'resource-empty-state' }} rounded-2xl bg-white px-6 py-12 text-center shadow-sm">
+        <div class="{{ in_array($endpoint, ['documents', 'logs'], true) ? 'resource-empty-state resource-empty-state-centered' : 'resource-empty-state' }} rounded-2xl bg-white px-6 py-12 text-center shadow-sm">
             <span class="archive-empty-icon"><i data-lucide="inbox" aria-hidden="true"></i></span>
             <p class="archive-empty-title">No records yet</p>
             <p class="archive-empty-description">Records will appear here when available.</p>
@@ -236,8 +239,8 @@
                 <div class="user-modal-fields">
                     <label>Department code<input x-model="departmentForm.departmentCode" :readonly="departmentForm._id !== null" required maxlength="30" placeholder="e.g. CED"></label>
                     <label>Department name<input x-model="departmentForm.departmentName" required maxlength="255" placeholder="Enter department name"></label>
-                    <label>College<input x-model="departmentForm.collegeName" :readonly="actorRoleId === 1" required maxlength="100" placeholder="Enter college name"></label>
-                    <label>Campus<input x-model="departmentForm.campusName" required maxlength="100" placeholder="Enter campus name"></label>
+                    <label>Campus<select x-model="departmentForm.campusName" @change="changeDepartmentCampus()" :disabled="actorRoleId === 1" required><option value="">Select a campus</option>@foreach(config('qms.campuses') as $campus)<option value="{{ $campus }}">USTP {{ $campus }}</option>@endforeach</select></label>
+                    <label>College<select x-model="departmentForm.collegeName" :disabled="actorRoleId === 1 || !departmentCollegeOptions().length" :required="departmentCollegeOptions().length > 0" aria-describedby="department-college-note"><option value="" x-text="departmentCollegeOptions().length ? 'Select a college' : 'No published college list'"></option><template x-for="college in departmentCollegeOptions()" :key="college.value"><option :value="college.value" x-text="college.label"></option></template></select><small id="department-college-note" x-show="departmentForm.campusName && !departmentCollegeOptions().length">No named-college list is published on this campus's official page. College will remain unassigned.</small></label>
                 </div>
             </div>
             <footer class="user-modal-footer"><span>Changes apply to this department record.</span><div><button type="button" @click="departmentModalOpen = false" class="user-modal-cancel">Cancel</button><button type="submit" :disabled="saving" class="user-modal-submit"><i data-lucide="building-2" aria-hidden="true"></i><span x-text="saving ? 'Saving...' : (departmentForm._id ? 'Save changes' : 'Add Department')"></span></button></div></footer>
@@ -245,7 +248,7 @@
     </div>
     <div x-cloak x-show="broadcastModalOpen" class="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-ustp-dark/50 p-4" @keydown.escape.window="broadcastModalOpen = false">
         <form @submit.prevent="sendBroadcast()" class="my-auto w-full max-w-lg space-y-4 rounded-2xl bg-white p-6 shadow-xl">
-            <div class="flex items-start justify-between"><div><h3 class="font-heading text-xl font-bold text-ustp-navy">Broadcast notification</h3><p class="mt-1 text-sm text-ustp-muted">This message will be sent to auditees in the chosen department.</p></div><button type="button" @click="broadcastModalOpen = false" aria-label="Close" class="rounded-lg p-2 hover:bg-ustp-light"><i data-lucide="x" class="size-5"></i></button></div>
+            <div class="flex items-start justify-between"><div><h3 class="font-heading text-xl font-bold text-ustp-navy">Broadcast notification</h3><p class="mt-1 text-sm text-ustp-muted">This message will be sent to active auditors and auditees in the chosen department.</p></div><button type="button" @click="broadcastModalOpen = false" aria-label="Close" class="rounded-lg p-2 hover:bg-ustp-light"><i data-lucide="x" class="size-5"></i></button></div>
             <template x-if="error"><x-alert-banner type="error"><span x-text="error"></span></x-alert-banner></template>
             <label class="block text-sm font-medium">Department<select x-model="broadcastForm.departmentId" required class="mt-1.5 w-full rounded-xl border border-slate-200 px-3 py-2.5"><option value="">Choose a department</option><template x-for="department in departments" :key="department._id"><option :value="department._id" x-text="department.departmentName"></option></template></select></label>
             <label class="block text-sm font-medium">Message<textarea x-model="broadcastForm.message" required maxlength="2000" rows="5" class="mt-1.5 w-full rounded-xl border border-slate-200 px-3 py-2.5"></textarea></label>

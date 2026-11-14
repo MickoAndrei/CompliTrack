@@ -8,7 +8,7 @@ class AuditLogFields
 
     // Keep legacy classification and the database filter in the same order.
     private const RULES = [
-        ['action', 'permission|QMS.*shar|(?:shar|revok).*QMS|QMS.*responsibility', 'permissions'],
+        ['action', 'permission|QMS.*shar|(?:shar|revok).*QMS|QMS.*(?:responsibility|position)', 'permissions'],
         ['action', 'sign(ed)?[ -]?(in|out)|logged|login|logout|password|authentication', 'authentication'],
         ['entityType', '^authentication$', 'authentication'],
         ['entityType', '^security$', 'security'],

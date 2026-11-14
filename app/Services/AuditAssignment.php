@@ -19,7 +19,7 @@ class AuditAssignment
             ->get()->filter(fn ($plan) => $this->complete($plan));
     }
 
-    private function complete(ArchiveDocument $plan): bool
+    public function complete(ArchiveDocument $plan): bool
     {
         $a = $plan->assignmentAuthorization ?? [];
         if (!is_array($a)) { return false; }
@@ -54,9 +54,7 @@ class AuditAssignment
     public function units()
     {
         return Department::where('collegeName', 'CET')->where('isActive', true)->where('ownershipVerified', true)
-            ->get()->filter(fn ($unit) => $unit->unitType === 'academic_department'
-                ? (config('qms.departments')[$unit->departmentCode] ?? null) === $unit->departmentName
-                : in_array($unit->unitType, ['college_office', 'office'], true));
+            ->whereIn('unitType', ['academic_department', 'college_office', 'office'])->get();
     }
 
     public function eligible(User $auditor, Department $unit): bool

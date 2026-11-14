@@ -27,6 +27,7 @@ class QmsArchiveAccess
         $query = Department::where('isActive', true)->where('unitType', '!=', 'legacy_unclassified');
         if ($verifiedOnly) { $query->where('ownershipVerified', true); }
         if (!$actor->isActive) { return $query->whereRaw(['_id' => null]); }
+        if ($actor->archiveResponsibility === 'cluster_administrator') { return app(QmsFolderAccess::class)->units($actor); }
         if ((int) $actor->roleId === 0 || $this->isAuditTeamLeader($actor)) { return $query; }
         if ((int) $actor->roleId === 2) {
             return $query->whereIn('_id', $this->ids($actor->assignedDepartmentIds ?? []));
@@ -44,6 +45,8 @@ class QmsArchiveAccess
     public function documents(User $actor, bool $download = false)
     {
         $query = ArchiveDocument::query();
+        $hidden = app(QmsFolderAccess::class)->hiddenIds($actor);
+        if ($hidden !== []) { $query->whereNotIn('categoryId', array_merge($this->ids($hidden), array_map('strval', $hidden))); }
         if (!$actor->isActive || !in_array((int) $actor->roleId, [0, 1, 2, 3], true)) { return $query->whereRaw(['_id' => null]); }
         if ((int) $actor->roleId === 0) { return $query->whereRaw(['_id' => null]); }
         $units = $this->organizationalUnits($actor, true)->get(['_id']);
@@ -115,6 +118,26 @@ class QmsArchiveAccess
             }
         }
         return [$this->ids($archives), $this->ids($audits->map(fn ($audit) => $audit->getKey())->all())];
+    }
+
+    public function referencedEvidenceIds(User $actor, ?string $auditId = null): array
+    {
+        $units = $this->organizationalUnits($actor, true)->get(['_id'])->map(fn ($unit) => $unit->getKey())->all();
+        $audits = Audit::whereIn('departmentId', array_merge($this->ids($units), array_map('strval', $units)));
+        if ($auditId) { $audits->where('_id', new ObjectId($auditId)); }
+        if ((int) $actor->roleId === 2) {
+            $audits->whereIn('auditorId', [new ObjectId((string) $actor->getKey()), (string) $actor->getKey()]);
+        }
+        $ids = [];
+        foreach ($audits->get(['items', 'evidenceRequests']) as $audit) {
+            foreach ($audit->items ?? [] as $item) {
+                foreach ($item['evidence'] ?? [] as $evidence) { if (!empty($evidence['archiveId'])) { $ids[] = $evidence['archiveId']; } }
+            }
+            foreach ($audit->evidenceRequests ?? [] as $request) {
+                foreach ($request['responses'] ?? [] as $response) { if (!empty($response['archiveId'])) { $ids[] = $response['archiveId']; } }
+            }
+        }
+        return $this->ids($ids);
     }
 
     public function canCreate(User $actor, Department $unit): bool

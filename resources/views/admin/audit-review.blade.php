@@ -25,7 +25,7 @@
     </section>
     <section><h3>Authorized Evidence References</h3>
         @forelse($attachments as $attachment)
-        <p>@if($attachment['canDownload'])<a href="/api/v1/archives/{{ $attachment['id'] }}/download">{{ $attachment['name'] }}</a>@else{{ $attachment['name'] }} <span class="atl-muted">Download not authorized</span>@endif</p>
+        <p>@if($attachment['canDownload'])<a href="/api/v1/documents/{{ $attachment['id'] }}/download">{{ $attachment['name'] }}</a>@else{{ $attachment['name'] }} <span class="atl-muted">Download not authorized</span>@endif</p>
         @empty<p class="atl-muted">No linked files are available within your archive permissions. Recorded evidence reviews remain above.</p>@endforelse
     </section>
     <section><h3>Submitted Evidence Responses</h3>

@@ -46,7 +46,7 @@ Route::middleware(['auth', \App\Http\Middleware\SystemAccess::class])->group(fun
         Route::view('/users', 'super-admin.users');
         Route::view('/roles', 'super-admin.roles');
         Route::view('/departments', 'super-admin.departments');
-        Route::view('/archives', 'super-admin.archives');
+        Route::view('/documents', 'super-admin.archives');
         Route::view('/logs', 'super-admin.logs');
         Route::view('/notifications', 'super-admin.notifications');
         Route::view('/settings', 'super-admin.settings');
@@ -58,7 +58,7 @@ Route::middleware(['auth', \App\Http\Middleware\SystemAccess::class])->group(fun
         Route::view('/departments', 'admin.departments');
         Route::view('/users', 'admin.users');
         Route::get('/compliance-records', [\App\Http\Controllers\Web\AtlWorkspaceController::class, 'records']);
-        Route::view('/archives', 'admin.archives');
+        Route::view('/documents', 'admin.archives');
         Route::view('/reports', 'admin.reports');
         Route::view('/notifications', 'admin.notifications');
     });
@@ -70,7 +70,7 @@ Route::middleware(['auth', \App\Http\Middleware\SystemAccess::class])->group(fun
         Route::get('/checks', fn (\Illuminate\Http\Request $request) => redirect()->route('auditor.historical-records', $request->query()));
         Route::get('/checks/{id}', [\App\Http\Controllers\Web\HistoricalComplianceController::class, 'show']);
         Route::get('/check-create', fn (\Illuminate\Http\Request $request) => redirect('/audits'.($request->has('_tab') ? '?'.http_build_query($request->only('_tab')) : '')));
-        Route::view('/archives', 'auditor.archives');
+        Route::view('/documents', 'auditor.archives');
         Route::view('/corrective-actions', 'auditor.corrective-actions');
         Route::view('/notifications', 'auditor.notifications');
     });
@@ -83,7 +83,7 @@ Route::middleware(['auth', \App\Http\Middleware\SystemAccess::class])->group(fun
         Route::get('/my-findings', [\App\Http\Controllers\Web\AuditeeController::class, 'results']);
         Route::get('/finding-details/{id}', [\App\Http\Controllers\Web\AuditeeController::class, 'finding']);
         Route::view('/upload', 'auditee.upload');
-        Route::get('/archives', [\App\Http\Controllers\Web\AuditeeController::class, 'archives']);
+        Route::get('/documents', [\App\Http\Controllers\Web\AuditeeController::class, 'archives']);
         Route::view('/notifications', 'auditee.notifications');
         Route::view('/help', 'auditee.help');
     });

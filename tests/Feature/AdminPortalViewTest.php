@@ -68,7 +68,7 @@ class AdminPortalViewTest extends TestCase
         foreach (['users', 'departments'] as $page) {
             $this->get('/admin/'.$page)->assertOk()->assertSee('admin-directory-table')
                 ->assertSee('css/user-management.css')->assertSee('Active')
-                ->assertSee('admin-directory-loading')->assertSee('perPage: 10', false)
+                ->assertSee('admin-directory-loading')->assertSee('perPage: '.($page === 'departments' ? 5 : 10), false)
                 ->assertDontSee('userModalTitle')->assertDontSee('departmentModalTitle')
                 ->assertDontSee('@click="startUserEdit(row)"', false)->assertDontSee('@click="startDepartmentEdit(row)"', false)
                 ->assertDontSee('user-create-trigger')->assertDontSee('department-create-trigger');
@@ -76,7 +76,7 @@ class AdminPortalViewTest extends TestCase
         $this->get('/admin/notifications')->assertOk()->assertSee('notification-list')
             ->assertSee('Unread')->assertSee('Read')->assertSee('View details');
         $this->get('/admin/reports')->assertOk()->assertSee('admin-reports')->assertSee('Recorded Check Compliance');
-        $this->get('/admin/archives')->assertOk()->assertSee('qms-explorer')->assertSee('QMS Archives');
+        $this->get('/admin/documents')->assertOk()->assertSee('qms-explorer')->assertSee('QMS Documents');
     }
 
     public function test_admin_cannot_write_users_or_departments_through_the_api(): void

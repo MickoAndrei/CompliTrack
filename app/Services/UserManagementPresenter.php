@@ -25,15 +25,16 @@ class UserManagementPresenter
     {
         $auditableIds = app(AuditAssignment::class)->units()->map(fn ($unit) => (string) $unit->getKey())->all();
         return [
-            'departments' => Department::orderBy('departmentName')->get(['departmentName', 'departmentCode', 'unitType', 'collegeId', 'ownershipVerified', 'isActive'])
+            'departments' => Department::orderBy('departmentName')->get(['departmentName', 'departmentCode', 'collegeName', 'unitType', 'collegeId', 'ownershipVerified', 'isActive'])
                 ->map(fn ($unit) => ['_id' => (string) $unit->getKey(), 'name' => $unit->departmentName, 'code' => $unit->departmentCode,
                     'unitType' => $unit->unitType, 'collegeId' => (string) $unit->collegeId, 'verified' => (bool) $unit->ownershipVerified, 'active' => (bool) $unit->isActive,
                     'auditEligible' => in_array((string) $unit->getKey(), $auditableIds, true),
                     'authorizedCet' => $unit->unitType === 'academic_department' && $unit->ownershipVerified && $unit->isActive
-                        && (config('qms.departments')[$unit->departmentCode] ?? null) === $unit->departmentName])->values()->all(),
+                        && $unit->collegeName === 'CET'])->values()->all(),
             'colleges' => College::where('isActive', true)->where('collegeCode', 'CET')->get()->map(fn ($college) => [
                 '_id' => (string) $college->getKey(), 'name' => $college->collegeName, 'code' => $college->collegeCode])->all(),
             'responsibilities' => config('qms.responsibilities'),
+            'clusters' => collect(config('qms.clusters'))->map(fn ($name, $id) => ['id' => $id, 'name' => $name])->values()->all(),
         ];
     }
 

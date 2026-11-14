@@ -13,7 +13,7 @@ class SuperAdminDashboard
     {
         abort_unless((int) $actor->roleId === 0 && $actor->isActive, 403);
         $departments = Department::where('collegeName', 'CET')->where('unitType', 'academic_department')
-            ->where('ownershipVerified', true)->whereIn('departmentName', array_values(config('qms.departments')))
+            ->where('ownershipVerified', true)
             ->orderBy('departmentName')->get();
         $completed = Audit::where('status', 'accepted')->get(['departmentId', 'items']);
         $comparison = $departments->map(function ($department) use ($completed) {

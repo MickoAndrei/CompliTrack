@@ -26,7 +26,7 @@ $writeView = function (string $name, $view) use ($directory) {
     $html = preg_replace('/<link[^>]+(?:fonts\.googleapis|fonts\.gstatic)[^>]*>/', '', $html);
     file_put_contents($directory.'/'.$name.'.html', str_replace('http://localhost', '', $html));
 };
-foreach (['dashboard', 'users', 'departments', 'archives', 'reports', 'notifications', 'compliance-records'] as $page) {
+foreach (['dashboard', 'users', 'departments', 'documents', 'reports', 'notifications', 'compliance-records'] as $page) {
     $requestFor('/admin/'.$page);
     $writeView($page, view('admin.'.$page));
 }
@@ -39,8 +39,8 @@ foreach ([
     'departments' => [App\Http\Controllers\Api\V1\DepartmentController::class, 'index', '/api/v1/departments'],
     'checks' => [App\Http\Controllers\Api\V1\ComplianceCheckController::class, 'index', '/api/v1/compliance-checks'],
     'notifications' => [App\Http\Controllers\Api\V1\NotificationController::class, 'index', '/api/v1/notifications'],
-    'tree' => [App\Http\Controllers\Api\V1\QmsArchiveController::class, 'tree', '/api/v1/archives/tree'],
-    'archives' => [App\Http\Controllers\Api\V1\ArchiveController::class, 'index', '/api/v1/archives'],
+    'tree' => [App\Http\Controllers\Api\V1\QmsArchiveController::class, 'tree', '/api/v1/documents/tree'],
+    'archives' => [App\Http\Controllers\Api\V1\ArchiveController::class, 'index', '/api/v1/documents'],
     'reports' => [App\Http\Controllers\Api\V1\ReportController::class, 'generate', '/api/v1/reports'],
 ] as $name => [$controller, $method, $uri]) {
     $request = $requestFor($uri.'?perPage=10');

@@ -97,7 +97,7 @@ class CorrectiveActionsMongoTest extends TestCase
         $this->getJson('/api/v1/compliance-checks/'.$foreign->getKey())->assertNotFound();
         $this->get('/api/v1/notifications/'.$notification->getKey().'/open')->assertRedirect('/auditor/checks/'.$car->getKey());
         $this->get('/auditor/checks/'.$car->getKey())->assertOk()->assertSee('Historical evidence.pdf')
-            ->assertSee('Finding issued')->assertSee('/api/v1/archives/'.$archive->getKey().'/download');
+            ->assertSee('Finding issued')->assertSee('/api/v1/documents/'.$archive->getKey().'/download');
         $this->getJson('/api/v1/compliance-checks/'.$car->getKey().'?correctiveActions=1')->assertOk()
             ->assertJsonPath('data.evidence.0.name', 'Historical evidence.pdf');
         $this->assertSame($before, [$car->fresh()->toArray(), $compliant->fresh()->toArray(), $notification->fresh()->toArray()]);

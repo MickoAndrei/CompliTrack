@@ -29,7 +29,7 @@ const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
             const names=['Agricultural and Biosystem Engineering','Environmental Engineering','Food Processing and Technology','Hospitality Management','Information Technology'];
             const units=names.map((name,i)=>({_id:id(100+i),name,code:['CET-ABE','CET-ENV','CET-FPT','CET-HM','CET-IT'][i],collegeId:id(200),unitType:'academic_department',active:true,verified:true,authorizedCet:true}));
             units.push({_id:id(110),name:'Office of the Dean',code:'CET-DEAN',collegeId:id(200),unitType:'college_office',active:true,verified:true,authorizedCet:false});
-            const options={departments:units,colleges:[{_id:id(200),name:'College of Engineering and Technology',code:'CET'}],responsibilities:['department_head','department_secretary','college_dean','college_secretary','cluster_administrator','faculty_staff']};
+            const options={clusters:[{id:'cluster_a',name:'Cluster A (Claveria Group)'},{id:'cluster_b',name:'Cluster B (Cagayan de Oro/Main Group)'}],departments:units,colleges:[{_id:id(200),name:'College of Engineering and Technology',code:'CET'}],responsibilities:['department_head','department_secretary','college_dean','college_secretary','cluster_administrator','faculty_staff']};
             const users=Array.from({length:12},(_,i)=>({_id:id(i+1),fullName:'Test Person '+i,email:'person'+i+'@example.test',userCode:'ATE-'+i,roleId:i%4,isActive:i!==11,departmentId:units[i%5]._id,departmentName:units[i%5].name,assignedDepartmentIds:[],archiveResponsibility:i%4===3?'department_head':null,archiveUnitIds:i%4===3?[units[i%5]._id]:[],archiveCollegeIds:[],organizationalUnits:i%4===3?[units[i%5].name]:[],organizationalColleges:[],isAuditTeamLeader:i===1,canDeactivate:i%4!==0&&i!==1}));
             users[3].fullName='<script>Unsafe name</script>';
             window.fixtureUsers=users;window.calls=[];window.failSave=false;window.failList=false;window.holdList=true;window.pendingList=[];
@@ -104,18 +104,35 @@ const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
             await waitFor(`${state}.collegeResponsibility()`);
             assert.equal(await evaluate(`[...document.querySelectorAll('select')].find(select=>select.getAttribute('x-model')==='userForm.archiveCollegeIds[0]').required`),true);
             await waitFor(`!${state}.userOptionsLoading`);
-            for(const responsibility of ['department_head','college_secretary','faculty_staff','']){
+            for(const responsibility of ['department_head','college_secretary','cluster_administrator','faculty_staff','']){
                 await evaluate(`(()=>{const select=document.querySelector('[x-model="userForm.archiveResponsibility"]');select.value=${JSON.stringify(responsibility)};select.dispatchEvent(new Event('change',{bubbles:true}));})()`);
-                const model=responsibility==='department_head'?'userForm.archiveUnitIds[0]':responsibility==='college_secretary'?'userForm.archiveCollegeIds[0]':'userForm.departmentId';
+                const model=responsibility==='cluster_administrator'?'userForm.archiveCluster':responsibility==='department_head'?'userForm.archiveUnitIds[0]':responsibility==='college_secretary'?'userForm.archiveCollegeIds[0]':'userForm.departmentId';
                 await waitFor(`(()=>{const select=[...document.querySelectorAll('[x-ref=userEditor] select')].find(el=>el.getAttribute('x-model')===${JSON.stringify(model)});return select.getClientRects().length>0;})()`);
                 const dropdown=await evaluate(`(()=>{const select=[...document.querySelectorAll('[x-ref=userEditor] select')].find(el=>el.getAttribute('x-model')===${JSON.stringify(model)});return {visible:select.getClientRects().length>0,disabled:select.disabled,options:select.options.length};})()`);
                 assert.ok(dropdown.visible&&!dropdown.disabled&&dropdown.options>1,'Dependent dropdown available for '+responsibility+' '+JSON.stringify(dropdown));
+                if(responsibility==='cluster_administrator'){
+                    assert.deepEqual(await evaluate(`Array.from(document.querySelector('[x-model="userForm.archiveCluster"]').options).map(option=>option.textContent)`),['Choose a cluster','Cluster A (Claveria Group)','Cluster B (Cagayan de Oro/Main Group)']);
+                    assert.equal(await evaluate(`document.querySelector('[x-model="userForm.archiveCollegeIds[0]"]').closest('label').getClientRects().length`),0);
+                }
             }
             await evaluate(`(()=>{const select=[...document.querySelectorAll('[x-ref=userEditor] select')].find(el=>el.getAttribute('x-model.number')==='userForm.roleId');select.value='2';select.dispatchEvent(new Event('change',{bubbles:true}));})()`);
-            assert.equal(await evaluate(`document.querySelector('[x-model="userForm.archiveResponsibility"]').disabled && document.querySelector('#um-responsibility-hint').textContent.includes('Locked for Auditors')`),true,'Auditor restriction is explained');
+            assert.equal(await evaluate(`document.querySelector('[x-model="userForm.archiveResponsibility"]').disabled`),false,'Auditors can select a position');
+            await waitFor("document.querySelector('[data-auditor-unit-picker]').getClientRects().length>0");
+            assert.equal(await evaluate(`document.querySelectorAll('[x-model="userForm.assignedDepartmentIds"]').length`),0,'Auditor assignments use a dropdown');
+            await evaluate(`(()=>{const select=document.querySelector('[data-auditor-unit-picker]');select.value='000000000000000000000100';select.dispatchEvent(new Event('change',{bubbles:true}));select.value='000000000000000000000101';select.dispatchEvent(new Event('change',{bubbles:true}));})()`);
+            await waitFor(`${state}.userForm.assignedDepartmentIds.length===2 && document.querySelectorAll('.um-selected-unit').length===2`);
+            await evaluate("document.querySelector('.um-selected-unit button').click()");
+            await waitFor(`${state}.userForm.assignedDepartmentIds.length===1 && ${state}.userForm.assignedDepartmentIds[0]==='000000000000000000000101'`);
+            if(width>600) assert.equal(await evaluate(`(()=>{const role=[...document.querySelectorAll('select')].find(select=>select.getAttribute('x-model.number')==='userForm.roleId').getBoundingClientRect();const active=document.querySelector('.um-account-control').getBoundingClientRect();return Math.abs(role.top+role.height/2-active.top-active.height/2)<3;})()`),true,'Account active is centered beside the role dropdown');
+
+            await evaluate(`${state}.userForm.departmentId='000000000000000000000100';${state}.userForm.assignedDepartmentIds=['000000000000000000000100'];${state}.userForm.archiveResponsibility='college_dean';${state}.changeResponsibility()`);
+            assert.equal(await evaluate(`${state}.userForm.departmentId`),'000000000000000000000100','Position changes preserve the auditor home department');
+            await waitFor(`document.querySelector('[x-model="userForm.archiveCollegeIds[0]"]').closest('label').getClientRects().length>0`);
+            await evaluate(`${state}.changePrimaryRole()`);
+            assert.equal(await evaluate(`${state}.userForm.archiveResponsibility`),'college_dean','Selecting Auditor preserves the position');
             await evaluate(`${state}.startUserEdit(window.fixtureUsers[1]);${state}.userForm.archiveResponsibility='faculty_staff';${state}.changeResponsibility()`);
             assert.equal(await evaluate(`${state}.userForm.departmentId===window.fixtureUsers[1].departmentId`),true,'Changing ATL responsibility preserves locked department');
-            assert.equal(await evaluate(`document.querySelector('#um-department-hint').getClientRects().length>0 && document.querySelector('[x-model="userForm.departmentId"]').disabled`),true,'Locked department has an indicator');
+            await waitFor(`document.querySelector('[x-model="userForm.departmentId"]').closest('label').getClientRects().length===0 && !document.querySelector('[x-model="userForm.departmentId"]').required`);
             await send('Input.dispatchKeyEvent',{type:'keyDown',key:'Escape',code:'Escape',windowsVirtualKeyCode:27});await waitFor('!document.querySelector("[x-ref=userEditor]").open');
             if([1440,390].includes(width)){
                 await evaluate(`${state}.clearUserFilters()`);await waitFor(`!${state}.loading`);

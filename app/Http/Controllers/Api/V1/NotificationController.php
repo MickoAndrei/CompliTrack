@@ -122,8 +122,8 @@ class NotificationController extends Controller
             ->where('isActive', true)
             ->firstOrFail();
         $recipients = $this->scopes->users($request->user())
-            ->where('roleId', 3)
-            ->where('departmentId', $department->getKey())
+            ->whereIn('roleId', [2, 3])
+            ->whereIn('departmentId', [$departmentId, (string) $departmentId])
             ->where('isActive', true)
             ->get(['_id']);
 
@@ -140,7 +140,7 @@ class NotificationController extends Controller
 
         $this->auditLogs->record(
             $request,
-            'Broadcast notification to department auditees',
+            'Broadcast notification to department auditors and auditees',
             'department',
             $department->getKey(),
         );
@@ -195,6 +195,8 @@ class NotificationController extends Controller
         if (! is_string($destination) || preg_match('/[\\\\\x00-\x20]/', $destination)) {
             return null;
         }
+        // Stored notifications may predate the QMS route rename.
+        $destination = preg_replace('~^/(super-admin|admin|auditor|auditee)/archives(?=[?#]|$)~', '/$1/documents', $destination);
         $path = parse_url($destination, PHP_URL_PATH);
         $prefix = ['super-admin', 'admin', 'auditor', 'auditee'][$role] ?? null;
         if (! $prefix || ! str_starts_with($destination, '/') || str_starts_with($destination, '//')) {
@@ -202,7 +204,7 @@ class NotificationController extends Controller
         }
         // Only existing application portals are valid targets; never redirect to
         // arbitrary URLs, downloads, settings mutations, or another role's portal.
-        $allowed = preg_match('~^/'.preg_quote($prefix, '~').'/(?:dashboard|notifications|compliance-records|my-findings|evidence-requests|archives|checks(?:/[a-f0-9]{24})?|finding-details/[a-f0-9]{24})$~i', $path)
+        $allowed = preg_match('~^/'.preg_quote($prefix, '~').'/(?:dashboard|notifications|compliance-records|my-findings|evidence-requests|documents|checks(?:/[a-f0-9]{24})?|finding-details/[a-f0-9]{24})$~i', $path)
             || (in_array($role, [1, 2], true) && preg_match('~^/audits(?:/[a-f0-9]{24})?$~i', $path));
 
         return $allowed ? $destination : null;

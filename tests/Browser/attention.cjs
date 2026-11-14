@@ -48,7 +48,7 @@ const server = http.createServer(async (request, response) => {
         }
         return json(response, { data: userRows, meta: { total: 2, currentPage: 1, lastPage: 1 }, summary: { total: 2, active: 1, inactive: 1, auditors: 1, auditees: 1 }, options: { departments: [], colleges: [], responsibilities: [] } });
     }
-    if (url.pathname === '/api/v1/archives/tree') return json(response, { units: [], colleges: [] });
+    if (url.pathname === '/api/v1/documents/tree') return json(response, { units: [], colleges: [] });
     if (url.pathname === '/api/v1/directory/organization') return json(response, { users: [] });
     const fixture = /^\/notifications-([0-3])$/.exec(url.pathname);
     const directoryFixture = /^\/directory-(users|departments)-([01])$/.exec(url.pathname);

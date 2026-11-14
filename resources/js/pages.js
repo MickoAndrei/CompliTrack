@@ -286,7 +286,7 @@ document.addEventListener('alpine:init', () => {
         meta: { total: 0, lastPage: 1 },
         page: 1,
         search: '',
-        sortBy: config.endpoint === 'users' ? 'fullName:asc' : 'createdAt:desc',
+        sortBy: config.endpoint === 'users' ? 'fullName:asc' : config.endpoint === 'departments' ? 'departmentName:asc' : 'createdAt:desc',
         startDate: '', endDate: '', draftStartDate: '', draftEndDate: '', dateRangeError: null,
         exporting: false,
         exportError: null,
@@ -466,7 +466,7 @@ document.addEventListener('alpine:init', () => {
                         ...(this.directoryPage ? { includeSummary: 1 } : {}),
                         ...(this.endpoint === 'notifications' ? { status: this.notificationStatus, type: this.typeFilter, includeSummary: true } : {}),
                         ...(this.search ? { search: this.search } : {}),
-                        ...(this.endpoint === 'users' ? { sortBy: this.sortBy.split(':')[0], sortDirection: this.sortBy.split(':')[1] } : {}),
+                        ...(['users', 'departments'].includes(this.endpoint) ? { sortBy: this.sortBy.split(':')[0], sortDirection: this.sortBy.split(':')[1] } : {}),
                         ...(this.endpoint === 'logs' ? { ...this.auditLogParams(), includeSummary: true } : {}),
                 };
                 const { data } = this.endpoint === 'notifications'
@@ -707,13 +707,22 @@ document.addEventListener('alpine:init', () => {
             this.departmentModalOpen = true;
         },
 
+        departmentCollegeOptions() {
+            return Object.entries(config.departmentColleges?.[this.departmentForm.campusName] || {})
+                .map(([value, label]) => ({ value, label }));
+        },
+
+        changeDepartmentCampus() {
+            this.departmentForm.collegeName = '';
+        },
+
         startDepartmentEdit(row) {
             this.error = null;
             this.departmentForm = {
                 _id: row._id,
                 departmentCode: row.departmentCode,
                 departmentName: row.departmentName,
-                collegeName: row.collegeName,
+                collegeName: row.collegeName || '',
                 campusName: row.campusName,
             };
             this.departmentModalOpen = true;
@@ -750,6 +759,7 @@ document.addEventListener('alpine:init', () => {
 
         async startBroadcast() {
             this.error = null;
+            this.message = null;
             this.broadcastForm = { departmentId: '', message: '' };
             this.broadcastModalOpen = true;
             try {
@@ -766,7 +776,7 @@ document.addEventListener('alpine:init', () => {
             try {
                 const { data } = await axios.post(apiPath('notifications/broadcast'), this.broadcastForm);
                 this.broadcastModalOpen = false;
-                this.message = `Broadcast sent to ${data.recipientCount} auditee(s) in ${data.departmentName}.`;
+                this.message = `Broadcast sent to ${data.recipientCount} recipient(s) in ${data.departmentName}.`;
                 await this.load(1);
             } catch (error) {
                 this.error = responseMessage(error, 'Unable to send the broadcast.');
@@ -808,7 +818,7 @@ document.addEventListener('alpine:init', () => {
         async verifyArchive(row) {
             this.error = null;
             try {
-                await axios.get(apiPath(`archives/${encodeURIComponent(row._id)}/verify-checksum`));
+                await axios.get(apiPath(`documents/${encodeURIComponent(row._id)}/verify-checksum`));
                 this.showSuccessPopup(`Archive verification succeeded: ${row.originalName} passed its integrity check.`);
             } catch (error) {
                 this.showSuccessPopup(`Archive verification failed: ${responseMessage(error, 'The archive could not be verified.')}`, 'error');
@@ -818,7 +828,7 @@ document.addEventListener('alpine:init', () => {
         async downloadArchive(row) {
             this.error = null;
             try {
-                const { data } = await axios.get(apiPath(`archives/${encodeURIComponent(row._id)}/download`), { responseType: 'blob' });
+                const { data } = await axios.get(apiPath(`documents/${encodeURIComponent(row._id)}/download`), { responseType: 'blob' });
                 const url = URL.createObjectURL(data);
                 const anchor = document.createElement('a');
                 anchor.href = url;
@@ -981,7 +991,7 @@ document.addEventListener('alpine:init', () => {
                     actions: [
                         ['Manage Users', '/admin/users', 'users'],
                         ['Departments', '/admin/departments', 'building-2'],
-                        ['Archives', '/admin/archives', 'archive'],
+                        ['Archives', '/admin/documents', 'archive'],
                         ['Reports', '/admin/reports', 'chart-no-axes-combined'],
                     ],
                 },
@@ -1001,7 +1011,7 @@ document.addEventListener('alpine:init', () => {
                         ['Historical Compliance Records', '/auditor/historical-records', 'history'],
                         ['My Assigned Audits', '/audits', 'clipboard-list'],
                         ['Corrective Actions', '/auditor/corrective-actions', 'kanban'],
-                        ['Archive Review', '/auditor/archives', 'archive'],
+                        ['Archive Review', '/auditor/documents', 'archive'],
                     ],
                 },
                 3: {
@@ -1017,7 +1027,7 @@ document.addEventListener('alpine:init', () => {
                     actions: [
                         ['My Findings', '/auditee/my-findings', 'clipboard-list'],
                         ['Upload Evidence', '/auditee/upload', 'upload-cloud'],
-                        ['My Archives', '/auditee/archives', 'archive'],
+                        ['My Archives', '/auditee/documents', 'archive'],
                         ['Notifications', '/auditee/notifications', 'bell'],
                     ],
                 },
@@ -1264,7 +1274,7 @@ document.addEventListener('alpine:init', () => {
             form.append('checkId', check._id);
             form.append('referenceStandard', check.referenceStandard);
             try {
-                await axios.post(apiPath('archives/upload'), form);
+                await axios.post(apiPath('documents/upload'), form);
                 this.showPopup('success', 'Evidence uploaded and encrypted successfully.');
                 this.file = null;
                 this.$refs.fileInput.value = '';

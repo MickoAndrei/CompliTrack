@@ -27,7 +27,7 @@ class DocumentEditorTokenTest extends TestCase
     public function test_download_url_maps_only_the_configured_server(): void
     {
         $tokens = app(DocumentEditorToken::class);
-        $this->assertSame('http://127.0.0.1:8082/cache/file.docx?token=abc', $tokens->internalDownloadUrl('https://docs.example.test/cache/file.docx?token=abc'));
+        $this->assertSame('http://127.0.0.1:8082/cache/files/file.docx?token=abc', $tokens->internalDownloadUrl('https://docs.example.test/cache/files/file.docx?token=abc'));
         $this->expectException(HttpException::class);
         $tokens->internalDownloadUrl('https://docs.example.test.attacker.test/file.docx');
     }

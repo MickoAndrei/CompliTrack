@@ -64,7 +64,7 @@ class MockArchiveImporter
                 ['source' => $source, 'path' => $path, 'existing' => $archive] = $item;
                 if (!$archive) {
                     $description = 'Fictional training document from '.$dataset['datasetId'].'. Source role: '.$source['ownerId'].'. Record date: '.$source['recordDate'].'. Revision: '.$source['revision'].'. Not an official approved QMS record.';
-                    $request = Request::create('/api/v1/archives/upload', 'POST', [
+                    $request = Request::create('/api/v1/documents/upload', 'POST', [
                         'purpose' => 'qms', 'unitId' => (string) $unit->getKey(), 'categoryId' => (string) $item['category']->getKey(),
                         'title' => '[MOCK] '.$source['title'].(!empty($source['recordReference']) ? ' — '.$source['recordReference'] : ''),
                         'description' => $description, 'recordType' => 'file', 'documentReference' => $source['documentCode'],

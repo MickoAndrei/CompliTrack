@@ -10,7 +10,7 @@ class ArchiveDocument extends Model
     protected $connection = 'mongodb';
     protected $collection = 'archive_documents';
     public const CREATED_AT = 'createdAt';
-    public const UPDATED_AT = null;
+    public const UPDATED_AT = 'updatedAt';
 
     protected $fillable = [
         'fileCode', 'originalName', 'encryptedPath', 'mimeType', 'fileSize',
@@ -22,7 +22,7 @@ class ArchiveDocument extends Model
         'versionGroupId', 'versionNumber', 'previousVersionId', 'qmsSchemaVersion',
     ];
 
-    protected $hidden = ['encryptedPath', 'encryptionIv', 'encryptionTag', 'encryptionKeyId'];
+    protected $hidden = ['encryptedPath', 'encryptionIv', 'encryptionTag', 'encryptionKeyId', 'onlyofficeWorkspace', 'onlyofficeRevision', 'onlyofficeSave'];
 
     protected $casts = [
         'departmentId' => NullableObjectId::class,

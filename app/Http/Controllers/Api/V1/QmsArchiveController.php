@@ -12,6 +12,12 @@ class QmsArchiveController extends Controller
 {
     public function __construct(private QmsArchiveAccess $access, private QmsArchivePresenter $presenter, private AuditLogService $logs) {}
 
+    public function auditFolders(Request $request)
+    {
+        $path = $request->validate(array_fill_keys(\App\Services\QmsAuditArchive::PATH, 'nullable|string|regex:/^[a-f0-9]{24}$/i'));
+        return response()->json(app(\App\Services\QmsAuditArchive::class)->tree($request->user(), $path))->header('Cache-Control', 'private, no-store');
+    }
+
     public function tree(Request $request)
     {
         $documents = $this->access->summaryDocuments($request->user())->get(['departmentId', 'categoryId', 'recordType', 'fileSize']);
@@ -27,13 +33,33 @@ class QmsArchiveController extends Controller
         }
         $collegeIds = $this->access->ids($units->pluck('collegeId')->filter()->unique()->all());
         $categories = QmsCategory::whereIn('collegeId', $collegeIds)->where('isActive', true)->orderBy('code')->get();
+        $folders = app(\App\Services\QmsFolderAccess::class);
+        $evidenceCategories = $documents->pluck('categoryId')->map('strval')->all();
+        foreach ($categories as $category) {
+            $parent = $category; $seen = [];
+            while ($parent && in_array((string) $parent->getKey(), $evidenceCategories, true) && !in_array((string) $parent->getKey(), $seen, true)) {
+                $seen[] = (string) $parent->getKey();
+                if ($parent->parentId) { $evidenceCategories[] = (string) $parent->parentId; }
+                $parent = $categories->first(fn ($item) => (string) $item->getKey() === (string) $parent->parentId);
+            }
+        }
+        $categories = $categories->filter(function ($category) use ($units, $folders, $request, $evidenceCategories) {
+            if (!$category->userManaged) { return true; }
+            $unit = $units->first(fn ($unit) => (string) $unit->getKey() === (string) $category->departmentId);
+            return $unit && $folders->permissions($request->user(), $unit, $category)['view']
+                && ((int) $request->user()->roleId !== 2 || in_array((string) $category->getKey(), $evidenceCategories, true));
+        });
         return response()->json([
             'campus' => config('qms.campus'),
             'colleges' => College::whereIn('_id', $collegeIds)->get()->map(fn ($college) => ['_id' => (string) $college->getKey(), 'name' => $college->collegeName, 'code' => $college->collegeCode])->values(),
             'units' => $units->map(fn ($unit) => ['_id' => (string) $unit->getKey(), 'collegeId' => (string) $unit->collegeId,
                 'name' => $unit->departmentName, 'unitType' => $unit->unitType, 'canCreate' => $this->access->canCreate($request->user(), $unit),
+                'systemManaged' => true, 'folderPermissions' => $folders->permissions($request->user(), $unit),
                 'count' => $documents->filter(fn ($document) => (string) $document->departmentId === (string) $unit->getKey())->count()])->values(),
             'categories' => $categories->map(fn ($category) => ['_id' => (string) $category->getKey(), 'collegeId' => (string) $category->collegeId,
+                'departmentId' => $category->departmentId ? (string) $category->departmentId : null,
+                'userManaged' => (bool) $category->userManaged, 'classification' => $category->classification ?: 'department',
+                'folderPermissions' => $units->mapWithKeys(fn ($unit) => [(string) $unit->getKey() => $folders->permissions($request->user(), $unit, $category)])->all(),
                 'parentId' => $category->parentId ? (string) $category->parentId : null, 'code' => $category->code, 'name' => $category->name,
                 'unitType' => $category->unitType, 'provisional' => (bool) $category->provisional,
                 'counts' => $units->mapWithKeys(fn ($unit) => [(string) $unit->getKey() => $documents->filter(fn ($document) => (string) $document->departmentId === (string) $unit->getKey()
@@ -41,18 +67,22 @@ class QmsArchiveController extends Controller
             'total' => $documents->count(),
             'archiveStorageBytes' => (int) $documents->filter(fn ($document) => !$document->recordType || $document->recordType === 'file')->sum('fileSize'),
             'canManageOrganization' => $this->access->isAuditTeamLeader($request->user()),
+            'canConfigureCategories' => false,
             'canViewDocuments' => (int) $request->user()->roleId !== 0,
+            'preferredView' => (int) $request->user()->roleId === 2 ? 'audit' : 'my',
             'ownershipReviewRequired' => (int) $request->user()->roleId !== 0
+                && $request->user()->archiveResponsibility !== 'cluster_administrator'
                 && Department::find($request->user()->departmentId)?->unitType === 'legacy_unclassified',
-        ]);
+        ])->header('Cache-Control', 'private, no-store');
     }
 
     public function show(Request $request, string $id)
     {
-        $document = $this->access->documents($request->user())->where('_id', MongoId::parse($id))->firstOrFail();
+        $context = app(\App\Services\QmsAuditArchive::class);
+        $document = $context->applyContext($this->access->documents($request->user()), $request->user(), $request)->where('_id', MongoId::parse($id))->firstOrFail();
         $this->logs->record($request, 'Viewed QMS document metadata', 'archive_document', $document->getKey());
         $group = MongoId::parse((string) ($document->versionGroupId ?? $document->getKey()));
-        $versions = $this->access->documents($request->user())->where(fn ($query) => $query->where('versionGroupId', $group)->orWhere('_id', $group))
+        $versions = $context->applyContext($this->access->documents($request->user()), $request->user(), $request)->where(fn ($query) => $query->where('versionGroupId', $group)->orWhere('_id', $group))
             ->orderBy('versionNumber', 'desc')->get()->map(fn ($version) => $this->presenter->document($version, $request->user()));
         $activity = AuditLog::where('entityType', 'archive_document')->where('entityId', MongoId::parse((string) $document->getKey()))->orderBy('createdAt', 'desc')->limit(30)
             ->get(['action', 'userName', 'createdAt'])->map(fn ($entry) => ['action' => $entry->action, 'actor' => $entry->userName, 'at' => $entry->createdAt?->toIso8601String()]);
@@ -71,7 +101,19 @@ class QmsArchiveController extends Controller
                         && in_array((string) $document->departmentId, array_map('strval', $auditor->assignedDepartmentIds ?? []), true);
                 })->map(fn ($audit) => ['_id' => (string) $audit->getKey(), 'reference' => $audit->auditCode ?: 'Assigned audit'])->values();
         }
-        return response()->json(['data' => $this->presenter->document($document, $request->user()), 'versions' => $versions, 'activity' => $activity, 'accessOptions' => $options]);
+        return response()->json(['data' => $this->presenter->document($document, $request->user()), 'versions' => $versions, 'activity' => $activity, 'accessOptions' => $options])->header('Cache-Control', 'private, no-store');
+    }
+
+    public function star(Request $request, string $id)
+    {
+        $document = $this->access->documents($request->user())->where('_id', MongoId::parse($id))->firstOrFail();
+        $data = $request->validate(['starred' => 'required|boolean']);
+        $user = $request->user();
+        $user->getConnection()->getMongoDB()->selectCollection($user->getTable())->updateOne(
+            ['_id' => MongoId::parse((string) $user->getKey())],
+            [$data['starred'] ? '$addToSet' : '$pull' => ['qmsStarredIds' => (string) $document->getKey()]]
+        );
+        return response()->json(['isStarred' => $data['starred']])->header('Cache-Control', 'private, no-store');
     }
 
     public function permissions(Request $request, string $id)
@@ -81,6 +123,10 @@ class QmsArchiveController extends Controller
         $data = $request->validate(['visibility' => 'required|in:owner,department,college,restricted', 'downloadAllowed' => 'required|boolean',
             'accessUserIds' => 'present|array|max:100', 'accessUserIds.*' => 'string|regex:/^[a-f0-9]{24}$/i|distinct']);
         $data['accessUserIds'] = $this->access->ids($data['accessUserIds']);
+        $folder = $document->categoryId ? QmsCategory::find($document->categoryId) : null;
+        if ($folder && ($folder->userManaged || ($folder->classification && $folder->classification !== 'department'))) {
+            abort_unless(in_array($data['visibility'], app(\App\Services\QmsFolderAccess::class)->allowedVisibility($folder), true), 422, 'Document visibility cannot exceed its folder classification.');
+        }
         $document->fill($data)->save();
         $this->logs->record($request, 'Updated QMS document permissions', 'archive_document', $document->getKey());
         return response()->json(['data' => $this->presenter->document($document, $request->user())]);
@@ -112,11 +158,11 @@ class QmsArchiveController extends Controller
     public function organization(Request $request)
     {
         abort_unless($this->access->isAuditTeamLeader($request->user()), 403);
-        return response()->json(['users' => User::where('isActive', true)->get(['fullName', 'email', 'roleId', 'departmentId', 'archiveResponsibility', 'archiveUnitIds', 'archiveCollegeIds'])
+        return response()->json(['users' => User::where('isActive', true)->get(['fullName', 'email', 'roleId', 'departmentId', 'archiveResponsibility', 'archiveUnitIds', 'archiveCollegeIds', 'archiveCluster'])
             ->map(fn ($user) => ['_id' => (string) $user->getKey(), 'name' => $user->fullName, 'email' => $user->email, 'roleId' => $user->roleId,
-                'departmentId' => $user->departmentId ? (string) $user->departmentId : null,
+                'departmentId' => $user->departmentId ? (string) $user->departmentId : null, 'cluster' => $user->archiveCluster,
                 'responsibility' => $user->archiveResponsibility ?: 'faculty_staff', 'unitIds' => array_map('strval', $user->archiveUnitIds ?? []), 'collegeIds' => array_map('strval', $user->archiveCollegeIds ?? [])]),
-            'responsibilities' => config('qms.responsibilities')]);
+            'responsibilities' => config('qms.responsibilities'), 'clusters' => config('qms.clusters')]);
     }
 
     public function assign(Request $request, string $id)
@@ -125,21 +171,17 @@ class QmsArchiveController extends Controller
         $user = User::findOrFail(MongoId::parse($id));
         abort_if((int) $user->roleId === 2, 422, 'Auditor access comes only from explicit audit evidence sharing.');
         $data = $request->validate(['responsibility' => ['required', Rule::in(config('qms.responsibilities'))],
+            'cluster' => ['nullable', 'string', Rule::in(array_keys(config('qms.clusters')))],
             'unitIds' => 'present|array|max:50', 'unitIds.*' => 'string|regex:/^[a-f0-9]{24}$/i|distinct',
             'collegeIds' => 'present|array|max:20', 'collegeIds.*' => 'string|regex:/^[a-f0-9]{24}$/i|distinct']);
-        $assignment = app(\App\Services\UserOrganization::class)->validate((int) $user->roleId, $data['responsibility'], $data['unitIds'], $data['collegeIds']);
+        $assignment = app(\App\Services\UserOrganization::class)->validate((int) $user->roleId, $data['responsibility'], $data['unitIds'], $data['collegeIds'], $data['cluster'] ?? null);
         $user->fill($assignment)->save();
-        $this->logs->record($request, 'Assigned scoped QMS organizational responsibility', 'user', $user->getKey());
-        return response()->json(['message' => 'Organizational archive responsibility updated. Authentication role is unchanged.']);
+        $this->logs->record($request, 'Assigned scoped QMS position', 'user', $user->getKey());
+        return response()->json(['message' => 'Position updated. Authentication role is unchanged.']);
     }
 
     public function updateCategory(Request $request, string $id)
     {
-        abort_unless($this->access->isAuditTeamLeader($request->user()), 403);
-        $category = QmsCategory::findOrFail(MongoId::parse($id));
-        $data = $request->validate(['name' => 'required|string|max:150', 'provisional' => 'sometimes|boolean']);
-        $category->fill($data)->save();
-        $this->logs->record($request, 'Configured QMS category', 'qms_category', $category->getKey());
-        return response()->json(['message' => 'QMS category updated.']);
+        abort(403, 'System QMS categories are protected. Manage user subfolders through the scoped folder operations.');
     }
 }

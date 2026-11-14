@@ -191,7 +191,7 @@ class AuditPlanApprovalMongoTest extends TestCase
         $this->submit(); $this->permission(3, true)->assertOk();
         $this->actingAs($this->approver)->get('/audit-plans')->assertOk()->assertSee('Audit Plans');
         $this->getJson('/api/v1/audit-plans')->assertOk()->assertJsonPath('plans.0.canDecide', true);
-        $this->getJson('/api/v1/archives/'.$this->archive->getKey())->assertNotFound();
+        $this->getJson('/api/v1/documents/'.$this->archive->getKey())->assertNotFound();
         $this->action($this->approver, 'save', $this->header)->assertForbidden();
         $this->action($this->atl, 'approve')->assertForbidden();
         $this->actingAs($this->super)->getJson('/api/v1/audit-plans')->assertForbidden();

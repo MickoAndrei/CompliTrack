@@ -46,7 +46,7 @@
             <label>Assignment title<input name="title" required maxlength="200"></label>
             <fieldset><legend>Auditable Unit Type</legend><label><input type="radio" name="unitType" value="department" checked> Department</label><label><input type="radio" name="unitType" value="office"> Office</label></fieldset>
             <label>Department / Office to Audit<select name="departmentId" required><option value="">Select a unit covered by the plan</option>@foreach($units as $unit)<option value="{{ $unit->getKey() }}" data-unit-type="{{ $unit->unitType === 'academic_department' ? 'department' : 'office' }}">{{ $unit->departmentName }}</option>@endforeach</select></label>
-            <p class="atl-muted">CET has five academic departments. The Office of the Dean is a college office. Only verified units within the selected plan are available.</p>
+            <p class="atl-muted">The Office of the Dean is a college office. Only verified CET units within the selected plan are available.</p>
             <label>Assigned Auditor<select name="auditorId" required aria-describedby="assignment-auditor-help"><option value="">Select an eligible auditor</option>@foreach($auditors as $auditor)<option value="{{ $auditor->getKey() }}" data-units="{{ json_encode($units->filter(fn ($unit) => $assignment->eligible($auditor, $unit))->map(fn ($unit) => (string) $unit->getKey())->values()) }}">{{ $auditor->fullName }}</option>@endforeach</select></label>
             <p id="assignment-auditor-help" class="atl-muted" data-assignment-auditor-help role="status" aria-live="polite">Select an authorized plan and a department or office to see eligible auditors.</p>
             <label>Scheduled Audit Date<input type="date" name="schedule" required></label>

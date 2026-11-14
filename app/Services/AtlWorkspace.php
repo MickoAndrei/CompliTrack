@@ -33,7 +33,7 @@ class AtlWorkspace
         $query = $this->audits($actor);
         $audits = (clone $query)->get(['auditCode', 'title', 'departmentId', 'departmentName', 'auditorId', 'schedule', 'status', 'items', 'updatedAt']);
         $departments = $this->scopes->departments($actor)->where('unitType', 'academic_department')->where('ownershipVerified', true)
-            ->whereIn('departmentCode', array_keys(config('qms.departments')))->orderBy('departmentName')->get();
+            ->orderBy('departmentName')->get();
         $names = $this->scopes->departments($actor)->get(['departmentName'])->mapWithKeys(fn ($d) => [(string) $d->getKey() => $d->departmentName]);
         $people = User::whereIn('_id', $this->archives->ids($audits->pluck('auditorId')->all()))->get(['fullName'])
             ->mapWithKeys(fn ($u) => [(string) $u->getKey() => $u->fullName]);

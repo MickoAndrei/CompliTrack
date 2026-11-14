@@ -77,9 +77,9 @@ document.addEventListener('alpine:init', () => {
         loading: true, error: '', tree: { units: [], colleges: [] }, users: [],
         async init() {
             try {
-                const [tree, organization] = await Promise.all([window.axios.get('/api/v1/archives/tree'), window.axios.get('/api/v1/directory/organization')]);
+                const [tree, organization] = await Promise.all([window.axios.get('/api/v1/documents/tree'), window.axios.get('/api/v1/directory/organization')]);
                 this.tree = tree.data; this.users = organization.data.users;
-            } catch { this.error = 'Organizational responsibilities could not be loaded.'; }
+            } catch { this.error = 'Positions could not be loaded.'; }
             finally { this.loading = false; }
         },
         names(responsibility, id, college = false) {

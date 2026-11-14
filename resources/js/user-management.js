@@ -5,7 +5,7 @@ const message = (error, fallback) => error.response?.data?.message || fallback;
 export function enhancedUserManagement(config) {
     if (!config.enhancedUsers) return {};
     return {
-        userForm: { _id: null, fullName: '', email: '', roleId: 3, departmentId: '', officeName: '', isActive: true, assignedDepartmentIds: [], archiveResponsibility: '', archiveUnitIds: [], archiveCollegeIds: [] },
+        userForm: { _id: null, fullName: '', email: '', roleId: 3, departmentId: '', isActive: true, assignedDepartmentIds: [], archiveResponsibility: '', archiveUnitIds: [], archiveCollegeIds: [], archiveCluster: '' },
         summary: null, options: { departments: [], colleges: [], responsibilities: [] },
         optionsLoadedAt: 0,
         userOptionsLoading: false,
@@ -14,11 +14,16 @@ export function enhancedUserManagement(config) {
         requestNumber: 0, detailRequest: 0, details: null, detailLoading: false, detailError: '',
         formError: '', fieldErrors: {}, originalUser: null, menuTarget: null, menuTrigger: null, actionTarget: null, action: '', actionError: '',
         collegeResponsibility() { return ['college_dean', 'college_secretary', 'cluster_administrator'].includes(this.userForm.archiveResponsibility); },
+        clusterPosition() { return this.userForm.archiveResponsibility === 'cluster_administrator'; },
+        changeCluster() {
+            this.userForm.archiveUnitIds = []; this.userForm.archiveCollegeIds = [];
+            if (!this.originalUser?.isAuditTeamLeader && Number(this.userForm.roleId) !== 2) this.userForm.departmentId = '';
+        },
         responsibilityName(value) { return ({ department_head: 'Department Head', department_secretary: 'Department Secretary', college_dean: 'College Dean', college_secretary: 'College Secretary', cluster_administrator: 'Cluster Administrator', faculty_staff: 'Faculty / Staff' })[value] || 'Not assigned'; },
         headUnits() { return this.options.departments.filter(unit => unit.authorizedCet || this.originalUser?.archiveUnitIds?.includes(unit._id)); },
-        assignmentNames(row) { return [...(row.organizationalColleges || []), ...(row.organizationalUnits || [])].join(', ') || row.departmentName || 'Not assigned'; },
+        assignmentNames(row) { return row.clusterName || [...(row.organizationalColleges || []), ...(row.organizationalUnits || [])].join(', ') || row.departmentName || 'Not assigned'; },
         availableUnits() {
-            const head = ['department_head', 'department_secretary'].includes(this.userForm.archiveResponsibility);
+            const head = Number(this.userForm.roleId) !== 2 && ['department_head', 'department_secretary'].includes(this.userForm.archiveResponsibility);
             return this.options.departments.filter(unit => (head ? unit.authorizedCet : unit.active && unit.verified && unit.unitType !== 'legacy_unclassified')
                 || unit._id === this.originalUser?.departmentId);
         },
@@ -68,17 +73,16 @@ export function enhancedUserManagement(config) {
             this.closeUserMenu(); this.originalUser = row ? structuredClone(Alpine.raw(row)) : null;
             this.formError = ''; this.fieldErrors = {};
             this.userForm = { _id: row?._id || null, fullName: row?.fullName || '', email: row?.email || '', roleId: Number(row?.roleId ?? 3),
-                departmentId: row?.departmentId || '', officeName: row?.officeName || '', isActive: row?.isActive ?? true,
+                departmentId: row?.departmentId || '', isActive: row?.isActive ?? true,
                 assignedDepartmentIds: [...(row?.assignedDepartmentIds || [])], archiveResponsibility: row?.archiveResponsibility || '',
-                archiveUnitIds: [...(row?.archiveUnitIds || [])], archiveCollegeIds: [...(row?.archiveCollegeIds || [])] };
+                archiveUnitIds: [...(row?.archiveUnitIds || [])], archiveCollegeIds: [...(row?.archiveCollegeIds || [])], archiveCluster: row?.archiveCluster || '' };
             this.$refs.userEditor.showModal();
         },
         changeResponsibility() {
-            this.userForm.archiveUnitIds = []; this.userForm.archiveCollegeIds = [];
-            if (!this.originalUser?.isAuditTeamLeader) this.userForm.departmentId = '';
+            this.userForm.archiveUnitIds = []; this.userForm.archiveCollegeIds = []; this.userForm.archiveCluster = '';
+            if (!this.originalUser?.isAuditTeamLeader && Number(this.userForm.roleId) !== 2 && (!this.originalUser || this.collegeResponsibility())) this.userForm.departmentId = '';
         },
         changePrimaryRole() {
-            if (this.userForm.roleId === 2) { this.userForm.archiveResponsibility = ''; this.userForm.archiveUnitIds = []; this.userForm.archiveCollegeIds = []; }
             if (this.userForm.roleId !== 2) this.userForm.assignedDepartmentIds = [];
         },
         async saveUser() {
@@ -86,12 +90,12 @@ export function enhancedUserManagement(config) {
             this.saving = true; this.formError = ''; this.fieldErrors = {};
             try {
                 const { _id, ...payload } = structuredClone(Alpine.raw(this.userForm));
-                payload.departmentId ||= null; payload.archiveResponsibility ||= null;
+                payload.departmentId ||= null; payload.archiveResponsibility ||= null; payload.archiveCluster ||= null;
                 if (['department_head', 'department_secretary'].includes(payload.archiveResponsibility) && !payload.departmentId) payload.departmentId = payload.archiveUnitIds[0] || null;
                 if (this.originalUser) {
                     // Send only changed values so existing credentials and legacy relationships keep their BSON representation.
                     for (const key of Object.keys(payload)) {
-                        const original = this.originalUser[key] ?? (Array.isArray(payload[key]) ? [] : key === 'archiveResponsibility' || key === 'departmentId' ? null : '');
+                        const original = this.originalUser[key] ?? (Array.isArray(payload[key]) ? [] : ['archiveResponsibility', 'departmentId', 'archiveCluster'].includes(key) ? null : '');
                         if (JSON.stringify(payload[key]) === JSON.stringify(original)) delete payload[key];
                     }
                 }

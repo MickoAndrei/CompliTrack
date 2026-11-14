@@ -61,7 +61,7 @@ class User extends Authenticatable implements JWTSubject
         'roleSlug',
         'assignedDepartmentIds',
         'isActive',
-        'archiveResponsibility', 'archiveUnitIds', 'archiveCollegeIds',
+        'archiveResponsibility', 'archiveUnitIds', 'archiveCollegeIds', 'archiveCluster',
     ];
 
     /**

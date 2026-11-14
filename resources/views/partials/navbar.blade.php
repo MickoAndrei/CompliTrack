@@ -39,7 +39,7 @@
                 @endif
                 <span class="header-user-info">
                     <span class="header-user-name">{{ auth()->user()->fullName }}</span>
-                    <span class="header-user-role">{{ $roleNames[$roleId] ?? 'User' }}</span>
+                    <span class="header-user-role">{{ $roleNames[$roleId] ?? 'User' }} <x-organizational-responsibility :user="auth()->user()" /></span>
                 </span>
             </a>
         @elseif ($roleId === 3)

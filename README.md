@@ -102,6 +102,9 @@ CompliTrack employs a dual-database architecture:
 - [Auditor Evaluation Consolidation](docs/AUDITOR_EVALUATION_CONSOLIDATION.md) — Assigned audit evaluations, authorized historical records, preserved CAR/evidence/notification relationships, and legacy workflow limits.
 - [Notifications and System Activity Logs](docs/NOTIFICATIONS_AND_ACTIVITY_LOGS.md) — Shared responsive inbox, separate read-only audit history, authorization boundaries, indexes, and verification.
 - [QMS Archives Implementation](docs/QMS_ARCHIVES_IMPLEMENTATION.md) — CET QMS Archives implementation, migrations, authorization rules, and legacy ownership decisions.
+- [QMS Folder Management](docs/QMS_FOLDER_MANAGEMENT.md) — Scoped subfolders, explicit grants, inherited classification, protected roots, and additive index migration.
+- [Audit Plan Archive Hierarchy](docs/QMS_AUDIT_PLAN_ARCHIVE.md) — Official plan naming, assignment-derived folders, stable campus references, historical access, and evidence security.
+- [ONLYOFFICE Integration](docs/ONLYOFFICE_INTEGRATION.md) — Existing Docker service, local/ngrok URLs, scoped editing, collaborative keys, authenticated callbacks, preserved encrypted versions, and diagnostics.
 - [QMS Development Data](docs/QMS_DEVELOPMENT_DATA.md) — Development mock document importer, Admin/ATL reuse, organizational accounts, and audit/CAR scenarios.
 - [Super Admin Dashboard](docs/SUPER_ADMIN_DASHBOARD.md) — Super Admin dashboard metrics, organizational responsibility controls, and verification results.
 - [User Management Implementation](docs/USER_MANAGEMENT_IMPLEMENTATION.md) — Account management, organizational validation, preservation rules, and test results.
@@ -366,9 +369,9 @@ All application API endpoints are versioned under `/api/v1` (registered in `rout
 | `GET/PUT/DELETE` | `/api/v1/users/{id}` | `0`, `1` | Retrieve, update, or delete a specific user account. |
 | `GET/POST` | `/api/v1/departments` | `0`, `1` | List all CET departments or register a new department. |
 | `GET/PUT/DELETE` | `/api/v1/departments/{id}` | `0`, `1` | Retrieve, update, or delete a department record. |
-| `POST` | `/api/v1/archives/upload` | All (Scoped) | Encrypts (AES-256-GCM) and stores compliance evidence with SHA-256 checksums. |
-| `GET` | `/api/v1/archives` | All (Scoped) | Retrieves a paginated list of archived compliance documents within user scope. |
-| `GET` | `/api/v1/archives/{id}/download` | All (Scoped) | Decrypts and streams an archived document after checksum verification. |
+| `POST` | `/api/v1/documents/upload` | All (Scoped) | Encrypts (AES-256-GCM) and stores compliance evidence with SHA-256 checksums. |
+| `GET` | `/api/v1/documents` | All (Scoped) | Retrieves a paginated list of archived compliance documents within user scope. |
+| `GET` | `/api/v1/documents/{id}/download` | All (Scoped) | Decrypts and streams an archived document after checksum verification. |
 | `GET/POST` | `/api/v1/compliance-checks` | All (Scoped) | List compliance evaluations or create a new compliance check. |
 | `GET/PUT/DELETE` | `/api/v1/compliance-checks/{id}` | All (Scoped) | Retrieve, update, or remove a compliance check record. |
 | `PATCH` | `/api/v1/compliance-checks/{id}/status` | All (Scoped) | Updates corrective action status (`open`, `in_progress`, `closed`) and emits realtime event. |

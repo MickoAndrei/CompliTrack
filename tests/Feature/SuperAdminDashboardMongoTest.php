@@ -86,18 +86,79 @@ class SuperAdminDashboardMongoTest extends TestCase
         $this->getJson('/api/v1/system/dashboard')->assertUnauthorized();
         foreach ([1, 2, 3] as $role) {
             $this->actingAs($this->actor($role));
-            foreach (['/api/v1/system/dashboard', '/api/v1/system/dashboard/health', '/api/v1/dashboard/health', '/api/v1/archives/organization', '/super-admin/dashboard', '/super-admin/departments'] as $url) {
+            foreach (['/api/v1/system/dashboard', '/api/v1/system/dashboard/health', '/api/v1/dashboard/health', '/api/v1/documents/organization', '/super-admin/dashboard', '/super-admin/departments'] as $url) {
                 $this->getJson($url)->assertForbidden();
             }
-            $this->patchJson('/api/v1/archives/organization/'.new ObjectId(), ['responsibility' => 'college_dean', 'unitIds' => [], 'collegeIds' => []])->assertForbidden();
+            $this->patchJson('/api/v1/documents/organization/'.new ObjectId(), ['responsibility' => 'college_dean', 'unitIds' => [], 'collegeIds' => []])->assertForbidden();
         }
         $this->actingAs($this->actor());
-        foreach (['dashboard', 'users', 'roles', 'departments', 'archives', 'logs', 'settings'] as $page) { $this->get('/super-admin/'.$page)->assertOk(); }
+        foreach (['dashboard', 'users', 'roles', 'departments', 'documents', 'logs', 'settings'] as $page) { $this->get('/super-admin/'.$page)->assertOk(); }
         $this->get('/audits')->assertForbidden();
         $this->postJson('/api/v1/compliance-checks', ['departmentId' => (string) new ObjectId(), 'auditeeId' => (string) new ObjectId(),
             'referenceStandard' => 'ISO9001-9.2', 'result' => 'compliant'])->assertForbidden();
         $this->get('/super-admin/dashboard')->assertSee('Not Yet Assessed')->assertSee('Archive Storage Usage')->assertSee('System Health');
-        $this->get('/super-admin/departments')->assertSee('Organizational Responsibilities')->assertSee('College Secretary');
+        $this->get('/super-admin/departments')->assertSee('Positions')->assertSee('College Secretary');
+    }
+
+    public function test_department_college_dropdown_choices_can_be_saved(): void
+    {
+        $this->actingAs($this->actor());
+        College::create(['collegeCode' => 'CET', 'collegeName' => 'College of Engineering and Technology', 'isActive' => true]);
+        foreach (['CET', 'College of Agriculture', 'College of Arts and Sciences'] as $index => $college) {
+            $this->postJson('/api/v1/departments', ['departmentCode' => 'CHOICE-'.$index,
+                'departmentName' => $index === 0 ? array_values(config('qms.departments'))[0] : 'Test department '.$index,
+                'collegeName' => $college, 'campusName' => 'Claveria'])->assertCreated()->assertJsonPath('data.collegeName', $college);
+        }
+        $department = Department::where('collegeName', 'College of Agriculture')->firstOrFail();
+        $this->patchJson('/api/v1/departments/'.$department->getKey(), ['collegeName' => 'College of Arts and Sciences'])
+            ->assertOk()->assertJsonPath('data.collegeName', 'College of Arts and Sciences');
+        foreach (config('qms.campuses') as $campus) {
+            $college = array_key_first(config('qms.campusColleges')[$campus]);
+            if ($college === 'CET') { $college = 'College of Agriculture'; }
+            $this->patchJson('/api/v1/departments/'.$department->getKey(), ['campusName' => $campus, 'collegeName' => $college])
+                ->assertOk()->assertJsonPath('data.campusName', $campus);
+        }
+    }
+
+    public function test_departments_reject_colleges_from_a_different_campus_and_accept_campus_level_records(): void
+    {
+        $this->actingAs($this->actor());
+        $payload = ['departmentCode' => 'OFFICIAL-TEST', 'departmentName' => 'Test department', 'campusName' => 'Cagayan de Oro'];
+        $this->postJson('/api/v1/departments', $payload + ['collegeName' => 'College of Agriculture'])
+            ->assertUnprocessable()->assertJsonValidationErrors('collegeName');
+        $this->postJson('/api/v1/departments', $payload)->assertUnprocessable()->assertJsonValidationErrors('collegeName');
+        $id = $this->postJson('/api/v1/departments', $payload + ['collegeName' => 'College of Nursing'])
+            ->assertCreated()->assertJsonPath('data.collegeName', 'College of Nursing')->json('data._id');
+        $this->patchJson('/api/v1/departments/'.$id, ['campusName' => 'Claveria'])
+            ->assertUnprocessable()->assertJsonValidationErrors('collegeName');
+        $this->assertSame('Cagayan de Oro', Department::findOrFail($id)->campusName);
+        $this->patchJson('/api/v1/departments/'.$id, ['campusName' => 'Claveria', 'collegeName' => 'College of Arts and Sciences'])->assertOk();
+        $this->patchJson('/api/v1/departments/'.$id, ['campusName' => 'Jasaan', 'collegeName' => null])
+            ->assertOk()->assertJsonPath('data.collegeName', null);
+        $this->postJson('/api/v1/departments', array_merge($payload, ['campusName' => 'Jasaan', 'collegeName' => 'College of Agriculture']))
+            ->assertUnprocessable()->assertJsonValidationErrors('collegeName');
+        $this->postJson('/api/v1/departments', array_merge($payload, ['departmentCode' => 'CAMPUS-LEVEL', 'campusName' => 'Jasaan']))
+            ->assertCreated()->assertJsonPath('data.collegeName', null);
+    }
+
+    public function test_department_sorting_and_search_apply_before_five_row_pagination(): void
+    {
+        $this->actingAs($this->actor());
+        foreach (['Zulu', 'Alpha', 'Mike', 'Bravo', 'Yankee', 'Charlie'] as $index => $name) {
+            Department::create(['departmentCode' => 'SORT-'.$index, 'departmentName' => 'Sort '.$name,
+                'collegeName' => 'College of Agriculture', 'campusName' => 'Claveria', 'isActive' => true]);
+        }
+        $query = '/api/v1/departments?perPage=5&search=Sort&includeSummary=1';
+        $this->getJson($query.'&sortBy=departmentName&sortDirection=asc')->assertOk()->assertJsonCount(5, 'data')
+            ->assertJsonPath('data.0.departmentName', 'Sort Alpha')->assertJsonPath('meta.lastPage', 2)->assertJsonPath('summary.total', 6);
+        $this->getJson($query.'&page=2&sortBy=departmentName&sortDirection=asc')->assertOk()->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.departmentName', 'Sort Zulu');
+        $this->getJson($query.'&sortBy=departmentName&sortDirection=desc')->assertOk()->assertJsonPath('data.0.departmentName', 'Sort Zulu');
+        $this->getJson($query.'&sortBy=departmentCode&sortDirection=desc')->assertOk()->assertJsonPath('data.0.departmentCode', 'SORT-5');
+        $this->getJson($query.'&sortBy=campusName&sortDirection=asc')->assertOk()->assertJsonCount(5, 'data');
+        $this->getJson($query.'&sortBy=collegeName&sortDirection=desc')->assertOk()->assertJsonCount(5, 'data');
+        $this->getJson($query.'&sortBy=password')->assertUnprocessable();
+        $this->getJson($query.'&sortDirection=invalid')->assertUnprocessable();
     }
 
     public function test_health_checks_use_realtime_response_and_do_not_fabricate_availability(): void

@@ -32,6 +32,10 @@ class DepartmentController extends Controller
 
     public function index(Request $request)
     {
+        $sort = $request->validate([
+            'sortBy' => 'sometimes|in:departmentName,departmentCode,campusName,collegeName',
+            'sortDirection' => 'sometimes|in:asc,desc',
+        ]);
         $query = $this->scopes->departments($request->user());
         if ($request->filled('campusName')) {
             $query->where('campusName', $request->query('campusName'));
@@ -49,7 +53,7 @@ class DepartmentController extends Controller
             'active' => (clone $query)->where('isActive', true)->count(),
             'inactive' => (clone $query)->where('isActive', false)->count(),
         ] : null;
-        $page = $query->orderBy('departmentName')
+        $page = $query->orderBy($sort['sortBy'] ?? 'departmentName', $sort['sortDirection'] ?? 'asc')->orderBy('_id')
             ->paginate(min(max((int) $request->query('perPage', 20), 1), 100), total: $summary['total'] ?? null);
 
         return response()->json([
@@ -69,9 +73,11 @@ class DepartmentController extends Controller
         $data = $request->validate([
             'departmentCode' => ['required', 'string', 'max:30'],
             'departmentName' => ['required', 'string', 'max:255'],
-            'collegeName' => ['required', 'string', 'max:100'],
+            'collegeName' => ['nullable', 'string', 'max:100'],
             'campusName' => ['required', 'string', 'max:100'],
         ]);
+        $data['collegeName'] ??= null;
+        $this->validateCampusCollege($data['campusName'], $data['collegeName']);
         if ((int) $request->user()->roleId === 1 && $data['collegeName'] !== 'CET') {
             abort(403, 'Admins may only manage CET departments.');
         }
@@ -111,24 +117,30 @@ class DepartmentController extends Controller
             ->firstOrFail();
         $data = $request->validate([
             'departmentName' => ['sometimes', 'required', 'string', 'max:255'],
-            'collegeName' => ['sometimes', 'required', 'string', 'max:100'],
+            'collegeName' => ['sometimes', 'nullable', 'string', 'max:100'],
             'campusName' => ['sometimes', 'required', 'string', 'max:100'],
             'headUserId' => ['sometimes', 'nullable', 'string', 'regex:/^[a-f0-9]{24}$/'],
             'isActive' => ['sometimes', 'boolean'],
         ]);
 
+        $collegeName = array_key_exists('collegeName', $data) ? $data['collegeName'] : $department->collegeName;
+        if (array_key_exists('campusName', $data) || array_key_exists('collegeName', $data)) {
+            $this->validateCampusCollege($data['campusName'] ?? $department->campusName,
+                $collegeName);
+        }
         if ((int) $request->user()->roleId === 1
-            && ($data['collegeName'] ?? $department->collegeName) !== 'CET') {
+            && $collegeName !== 'CET') {
             abort(403, 'Admins may only manage CET departments.');
         }
-        $this->validateCetDepartment($data['collegeName'] ?? $department->collegeName, $data['departmentName'] ?? $department->departmentName);
-        if (($data['collegeName'] ?? $department->collegeName) === 'CET') {
+        $this->validateCetDepartment($collegeName, $data['departmentName'] ?? $department->departmentName);
+        if ($collegeName === 'CET') {
             abort_if(Department::where('collegeName', 'CET')->where('departmentName', $data['departmentName'] ?? $department->departmentName)
                 ->where('_id', '!=', $department->getKey())->exists(), 422, 'This CET department already exists. Organizational merges require a reviewed migration.');
         }
         if ($department->ownershipVerified) {
             abort_if(isset($data['departmentName']) && $data['departmentName'] !== $department->departmentName
-                || isset($data['collegeName']) && $data['collegeName'] !== $department->collegeName, 422, 'Verified organizational ownership cannot be changed through a department rename.');
+                || array_key_exists('collegeName', $data) && $data['collegeName'] !== $department->collegeName
+                || isset($data['campusName']) && $data['campusName'] !== $department->campusName, 422, 'Verified organizational ownership cannot be changed through a department rename.');
         }
         if (!empty($data['headUserId'])) {
             $head = User::where('_id', MongoId::parse($data['headUserId'], 'headUserId'))
@@ -200,10 +212,20 @@ class DepartmentController extends Controller
         return $data;
     }
 
-    private function validateCetDepartment(string $college, string $name): void
+    private function validateCampusCollege(string $campus, ?string $college): void
     {
-        if (in_array(strtolower(trim($college)), ['cet', 'college of engineering and technology', 'collage of engineering and technology'], true)) {
-            abort_unless($college === 'CET' && in_array($name, array_values(config('qms.departments')), true), 422, 'CET contains only the five approved academic departments. The Office of the Dean is a college office.');
+        $catalog = config('qms.campusColleges');
+        if (!array_key_exists($campus, $catalog)) {
+            throw \Illuminate\Validation\ValidationException::withMessages(['campusName' => 'Select a USTP campus.']);
         }
+        if ($catalog[$campus] === [] ? ($college !== null && $college !== '') : !array_key_exists($college ?? '', $catalog[$campus])) {
+            throw \Illuminate\Validation\ValidationException::withMessages(['collegeName' => 'Select a college listed for the selected campus, or leave it unassigned when no college list is available.']);
+        }
+    }
+
+    private function validateCetDepartment(?string $college, string $name): void
+    {
+        abort_if($college === 'CET' && strtolower(trim($name)) === 'office of the dean', 422,
+            'The Office of the Dean is a college office, not an academic department.');
     }
 }

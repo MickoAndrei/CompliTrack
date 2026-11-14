@@ -35,7 +35,7 @@ const server = http.createServer(async (req, res) => {
         const id=url.searchParams.get('car'); assert.match(id,/^[a-f0-9]{24}$/i);
         res.setHeader('Content-Type','text/html');res.end(fs.readFileSync(path.join(fixtures,`car-${id}.html`)));return;
     }
-    const apiFixtures = {'/api/v1/notifications':'notifications','/api/v1/users':'users','/api/v1/departments':'departments','/api/v1/compliance-checks':'checks','/api/v1/reports':'reports','/api/v1/archives/tree':'tree','/api/v1/archives':'archives'};
+    const apiFixtures = {'/api/v1/notifications':'notifications','/api/v1/users':'users','/api/v1/departments':'departments','/api/v1/compliance-checks':'checks','/api/v1/reports':'reports','/api/v1/documents/tree':'tree','/api/v1/documents':'archives'};
     if(apiFixtures[url.pathname]) {res.setHeader('Content-Type','application/json');res.end(fs.readFileSync(path.join(fixtures,apiFixtures[url.pathname]+'.json')));return;}
     const pages=['dashboard','assignments','users','departments','compliance-records','notifications','reports','archives','monitor'];
     const fixturePage=pages.find(page=>url.pathname===`/${page}.html`);

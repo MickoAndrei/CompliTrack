@@ -11,7 +11,7 @@
     <section class="mt-5 rounded-2xl bg-white p-6 ring-1 ring-slate-200/70" aria-label="Historical evidence and status history">
         <h3 class="font-semibold">Linked evidence</h3>
         @forelse($attachments as $attachment)
-        <p class="mt-2">@if($attachment['canDownload'])<a class="underline" href="/api/v1/archives/{{ $attachment['id'] }}/download">{{ $attachment['name'] }}</a>@else{{ $attachment['name'] }} <small>Download restricted</small>@endif</p>
+        <p class="mt-2">@if($attachment['canDownload'])<a class="underline" href="/api/v1/documents/{{ $attachment['id'] }}/download">{{ $attachment['name'] }}</a>@else{{ $attachment['name'] }} <small>Download restricted</small>@endif</p>
         @empty<p class="mt-2 text-sm text-ustp-muted">No linked evidence available to your account.</p>@endforelse
         <h3 class="mt-5 font-semibold">Status history</h3>
         @forelse($check->statusHistory ?? [] as $event)

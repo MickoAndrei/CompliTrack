@@ -52,6 +52,47 @@ class NotificationActivityMongoTest extends TestCase
             'roleId' => $role, 'isActive' => true, 'password' => Hash::make('Attention-test-password-123!')]);
     }
 
+    public function test_broadcast_delivers_to_active_department_auditors_and_auditees_only(): void
+    {
+        $department = Department::create(['departmentName' => 'Information Technology', 'collegeName' => 'CET', 'isActive' => true, 'unitType' => 'academic_department']);
+        $other = Department::create(['departmentName' => 'Other department', 'collegeName' => 'CET', 'isActive' => true, 'unitType' => 'academic_department']);
+        $recipients = [];
+        foreach ([2, 3] as $role) {
+            foreach ([new ObjectId((string) $department->getKey()), (string) $department->getKey()] as $reference) {
+                $user = $this->account($role);
+                $user->forceFill(['departmentId' => $reference])->save();
+                $recipients[] = (string) $user->getKey();
+            }
+            $inactive = $this->account($role);
+            $inactive->forceFill(['departmentId' => $department->getKey(), 'isActive' => false])->save();
+            $foreign = $this->account($role);
+            $foreign->forceFill(['departmentId' => $other->getKey(), 'assignedDepartmentIds' => [$department->getKey()]])->save();
+        }
+        foreach ([0, 1] as $role) {
+            $sender = $this->account($role);
+            $sender->forceFill(['departmentId' => $department->getKey()])->save();
+            $this->actingAs($sender)->postJson('/api/v1/notifications/broadcast', [
+                'departmentId' => (string) $department->getKey(), 'message' => '  Department announcement  ',
+            ])->assertCreated()->assertJsonPath('recipientCount', 4)->assertJsonPath('departmentName', 'Information Technology');
+            $notices = Notification::where('senderUserId', new ObjectId((string) $sender->getKey()))->get();
+            $this->assertEqualsCanonicalizing($recipients, $notices->map(fn ($notice) => (string) $notice->recipientUserId)->all());
+            $this->assertSame(['Department announcement'], $notices->pluck('message')->unique()->values()->all());
+        }
+        $auditor = User::findOrFail($recipients[0]);
+        $this->actingAs($auditor)->getJson('/api/v1/notifications?type=admin_broadcast')->assertOk()->assertJsonPath('meta.total', 2);
+        $this->postJson('/api/v1/notifications/broadcast', ['departmentId' => (string) $department->getKey(), 'message' => 'Not allowed'])->assertForbidden();
+    }
+
+    public function test_existing_qms_notification_links_open_documents_without_restoring_archive_routes(): void
+    {
+        $user = $this->account();
+        $notice = $this->notification($user, ['destination' => '/auditee/archives?unit=example']);
+        $this->actingAs($user)->getJson('/api/v1/notifications/'.$notice->getKey())->assertOk()
+            ->assertJsonPath('data.destination', '/api/v1/notifications/'.$notice->getKey().'/open');
+        $this->get('/api/v1/notifications/'.$notice->getKey().'/open')->assertRedirect('/auditee/documents?unit=example');
+        $this->get('/auditee/archives')->assertNotFound();
+    }
+
     private function notification(User $user, array $attributes = []): Notification
     {
         return Notification::create(array_merge(['recipientUserId' => $user->getKey(), 'type' => 'evidence_submitted',

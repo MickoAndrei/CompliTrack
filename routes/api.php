@@ -57,22 +57,29 @@ Route::prefix('v1')->group(function () {
             Route::apiResource('departments', DepartmentController::class)->only(['store', 'update', 'destroy'])->parameters(['departments' => 'id']);
         });
 
-        // Archive module
-        Route::post('/archives/upload', [ArchiveController::class, 'upload']);
-        Route::get('/archives', [ArchiveController::class, 'index']);
-        Route::get('/archives/tree', [\App\Http\Controllers\Api\V1\QmsArchiveController::class, 'tree']);
-        Route::get('/archives/organization', [\App\Http\Controllers\Api\V1\QmsArchiveController::class, 'organization']);
-        Route::patch('/archives/organization/{id}', [\App\Http\Controllers\Api\V1\QmsArchiveController::class, 'assign']);
-        Route::patch('/archives/categories/{id}', [\App\Http\Controllers\Api\V1\QmsArchiveController::class, 'updateCategory']);
-        Route::get('/archives/{id}', [\App\Http\Controllers\Api\V1\QmsArchiveController::class, 'show']);
-        Route::post('/archives/{id}/versions', [ArchiveController::class, 'version']);
-        Route::post('/archives/{id}/editor', [\App\Http\Controllers\Api\V1\DocumentEditorController::class, 'start']);
+        // QMS Documents. The /archives namespace is reserved for future development.
+        Route::post('/documents/upload', [ArchiveController::class, 'upload']);
+        Route::get('/documents', [ArchiveController::class, 'index']);
+        Route::get('/documents/tree', [\App\Http\Controllers\Api\V1\QmsArchiveController::class, 'tree']);
+        Route::get('/documents/audit-folders', [\App\Http\Controllers\Api\V1\QmsArchiveController::class, 'auditFolders']);
+        Route::post('/documents/folders', [\App\Http\Controllers\Api\V1\QmsFolderController::class, 'store']);
+        Route::patch('/documents/folders/{id}', [\App\Http\Controllers\Api\V1\QmsFolderController::class, 'update']);
+        Route::delete('/documents/folders/{id}', [\App\Http\Controllers\Api\V1\QmsFolderController::class, 'destroy']);
+        Route::patch('/documents/folder-grants/{id}', [\App\Http\Controllers\Api\V1\QmsFolderController::class, 'grants']);
+        Route::get('/documents/organization', [\App\Http\Controllers\Api\V1\QmsArchiveController::class, 'organization']);
+        Route::patch('/documents/organization/{id}', [\App\Http\Controllers\Api\V1\QmsArchiveController::class, 'assign']);
+        Route::patch('/documents/categories/{id}', [\App\Http\Controllers\Api\V1\QmsArchiveController::class, 'updateCategory']);
+        Route::get('/documents/{id}', [\App\Http\Controllers\Api\V1\QmsArchiveController::class, 'show']);
+        Route::patch('/documents/{id}/star', [\App\Http\Controllers\Api\V1\QmsArchiveController::class, 'star']);
+        Route::post('/documents/{id}/versions', [ArchiveController::class, 'version']);
+        Route::post('/documents/{id}/editor', [\App\Http\Controllers\Api\V1\DocumentEditorController::class, 'start']);
         Route::get('/document-editor/{session}/status', [\App\Http\Controllers\Api\V1\DocumentEditorController::class, 'status']);
-        Route::patch('/archives/{id}/permissions', [\App\Http\Controllers\Api\V1\QmsArchiveController::class, 'permissions']);
-        Route::post('/archives/{id}/share', [\App\Http\Controllers\Api\V1\QmsArchiveController::class, 'share']);
-        Route::delete('/archives/{id}/share/{auditId}', [\App\Http\Controllers\Api\V1\QmsArchiveController::class, 'revokeShare']);
-        Route::get('/archives/{id}/download', [ArchiveController::class, 'download']);
-        Route::get('/archives/{id}/verify-checksum', [ArchiveController::class, 'verifyChecksum']);
+        Route::post('/document-editor/{session}/save', [\App\Http\Controllers\Api\V1\DocumentEditorController::class, 'save'])->middleware('throttle:30,1');
+        Route::patch('/documents/{id}/permissions', [\App\Http\Controllers\Api\V1\QmsArchiveController::class, 'permissions']);
+        Route::post('/documents/{id}/share', [\App\Http\Controllers\Api\V1\QmsArchiveController::class, 'share']);
+        Route::delete('/documents/{id}/share/{auditId}', [\App\Http\Controllers\Api\V1\QmsArchiveController::class, 'revokeShare']);
+        Route::get('/documents/{id}/download', [ArchiveController::class, 'download']);
+        Route::get('/documents/{id}/verify-checksum', [ArchiveController::class, 'verifyChecksum']);
 
         // Compliance checks (Auditor creates, all roles can view per scope)
         Route::middleware('role:2')->get('/auditor/metrics', [\App\Http\Controllers\Web\AuditController::class, 'metrics']);

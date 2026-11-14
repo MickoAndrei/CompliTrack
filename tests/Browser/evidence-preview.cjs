@@ -39,7 +39,7 @@ const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
             await send('Page.navigate', { url: pathToFileURL(path.join(fixtures, 'dashboard.html')).href });
             await waitFor('!!window.Alpine && !!document.querySelector("[data-result-modal-tab=corrective]") && performance.getEntriesByName("complitrack:alpine-initialized").length > 0');
             await evaluate(`window.detailHtml=${JSON.stringify(cycle)};window.wordBytes=${JSON.stringify(wordBytes)};window.revokedURLs=[];const revoke=URL.revokeObjectURL.bind(URL);URL.revokeObjectURL=url=>{window.revokedURLs.push(url);revoke(url);};window.fetch=async url=>{
-                if(!String(url).includes('/api/v1/archives/'))return {ok:true,redirected:false,text:async()=>window.detailHtml};
+                if(!String(url).includes('/api/v1/documents/'))return {ok:true,redirected:false,text:async()=>window.detailHtml};
                 if(window.failPreview){window.failPreview=false;return new Response('',{status:403});}
                 if(String(url).includes('000000000000000000000003'))return new Response(Uint8Array.from(atob(window.wordBytes),c=>c.charCodeAt(0)),{headers:{'Content-Type':'application/vnd.openxmlformats-officedocument.wordprocessingml.document'}});
                 if(String(url).includes('000000000000000000000002'))return new Response(Uint8Array.from(atob('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+a8e0AAAAASUVORK5CYII='),c=>c.charCodeAt(0)),{headers:{'Content-Type':'image/png'}});
@@ -62,6 +62,11 @@ const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
             await evaluate(`document.querySelector('[data-file-name="preview.docx"]').click()`);
             await waitFor(`!!document.querySelector('#evidence-preview-modal iframe[data-word-ready]')`);
             assert.equal(await evaluate(`!document.querySelector('[data-evidence-word-zoom]').hidden`), true, 'Word zoom controls are available');
+            for (const role of ['2', '3']) {
+                await evaluate(`document.querySelector('[data-portal-role]').setAttribute('data-portal-role','${role}')`);
+                await delay(100);
+                assert.equal(await evaluate(`(()=>{const modal=document.querySelector('#evidence-preview-modal'),r=modal.getBoundingClientRect(),body=modal.querySelector('.evidence-preview-body').getBoundingClientRect();return getComputedStyle(modal).display==='flex' && Math.abs(r.x-(innerWidth-r.width)/2)<2 && r.height>=innerHeight*.9 && body.height>innerHeight*.55 && body.width>r.width*.9})()`), true, `Role ${role}: centered large preview and document area at ${width}px`);
+            }
             await evaluate(`(()=>{const zoom=document.querySelector('[data-evidence-zoom]');zoom.value='2';zoom.dispatchEvent(new Event('change'));})()`);
             assert.equal(await evaluate(`document.querySelector('#evidence-preview-modal iframe').contentDocument.querySelector('.docx-wrapper').style.zoom`), '2', 'Word pages can be enlarged without rasterizing');
             await evaluate(`(()=>{const zoom=document.querySelector('[data-evidence-zoom]');zoom.value='fit';zoom.dispatchEvent(new Event('change'));})()`);

@@ -44,7 +44,7 @@
             <section x-show="tab === 'overview'" x-cloak id="aw-panel-overview" role="tabpanel" aria-labelledby="aw-tab-overview" tabindex="0">
                 <div class="aw-section-heading"><div><h3>Audit overview</h3><p>Your assignment, scope, and next steps.</p></div></div>
                 <div class="aw-grid">
-                    <article class="aw-card aw-stack"><div><h4>Scope</h4><p class="aw-preserve">{{ $audit->scope }}</p></div><div><h4>Audit criteria</h4><p class="aw-preserve">{{ $audit->criteria }}</p></div><div><h4>Authorized audit attachments</h4>@forelse($audit->planArchiveIds ?? [] as $id) @if($attachment = $attachments->get((string) $id))<p>@if($attachment['canDownload'])<a href="/api/v1/archives/{{ $attachment['id'] }}/download">{{ $attachment['name'] }}</a>@else{{ $attachment['name'] }} <small>Download restricted</small>@endif</p>@endif @empty<p class="aw-muted">No plan attachments.</p>@endforelse</div></article>
+                    <article class="aw-card aw-stack"><div><h4>Scope</h4><p class="aw-preserve">{{ $audit->scope }}</p></div><div><h4>Audit criteria</h4><p class="aw-preserve">{{ $audit->criteria }}</p></div><div><h4>Authorized audit attachments</h4>@forelse($audit->planArchiveIds ?? [] as $id) @if($attachment = $attachments->get((string) $id))<p>@if($attachment['canDownload'])<a href="/api/v1/documents/{{ $attachment['id'] }}/download">{{ $attachment['name'] }}</a>@else{{ $attachment['name'] }} <small>Download restricted</small>@endif</p>@endif @empty<p class="aw-muted">No plan attachments.</p>@endforelse</div></article>
                     <article class="aw-card aw-stack"><h4>{{ $preparing ? 'Prepare checklist' : ($conducting ? 'Conduct audit' : 'Audit review') }}</h4><p class="aw-muted">{{ $preparing ? 'Add, edit, remove, and reorder questions. Mark the checklist ready when preparation is complete.' : ($conducting ? 'Review evidence, evaluate N/C/O, and record objective audit remarks.' : 'Results are locked. Submitted audits await the authorized reviewer’s decision.') }}</p><button type="button" class="aw-button aw-button-primary" @click="go('{{ $editable ? 'checklist' : 'review' }}')">{{ $editable ? 'Open checklist' : 'View review & submission' }} →</button><p class="aw-muted">Checklist completion measures evaluated items. It is not a compliance percentage.</p></article>
                 </div>
             </section>
@@ -103,7 +103,7 @@
                                 <div class="aw-row"><h4>Evidence Reviewed</h4>@if($editable)<button type="button" class="aw-button" @click="openModal('evidence')">＋ Add Evidence Review</button>@endif</div>
                                 @forelse($item['evidence'] ?? [] as $evidence)
                                 <article class="aw-card"><span class="aw-badge">{{ ucwords(str_replace('-', ' ', $evidence['method'])) }}</span><p>{{ $evidence['reference'] ?? '' }}</p><p class="aw-preserve">{{ $evidence['notes'] }}</p>@if(isset($evidence['signature']))<p>Physical signature: {{ ucwords(str_replace('-', ' ', $evidence['signature'])) }}</p>@endif
-                                    @if(!empty($evidence['archiveId']) && ($attachment = $attachments->get((string) $evidence['archiveId'])))<p>@if($attachment['canDownload'])<a href="/api/v1/archives/{{ $attachment['id'] }}/download">{{ $attachment['name'] }}</a>@else{{ $attachment['name'] }} <small>Download restricted</small>@endif</p>@endif
+                                    @if(!empty($evidence['archiveId']) && ($attachment = $attachments->get((string) $evidence['archiveId'])))<p>@if($attachment['canDownload'])<a href="/api/v1/documents/{{ $attachment['id'] }}/download">{{ $attachment['name'] }}</a>@else{{ $attachment['name'] }} <small>Download restricted</small>@endif</p>@endif
                                     <small>{{ $date($evidence['reviewedAt'] ?? null) }} · {{ $name($evidence['reviewedBy'] ?? '') }}</small>
                                 </article>
                                 @empty<div class="aw-empty">No evidence reviews recorded. Review a permitted digital reference, physical original, or observed process.</div>@endforelse
@@ -152,4 +152,5 @@
     </div>
     @include('auditor.workspace-modals')
 </div>
+@include('auditee.evidence-preview-modal', ['closeLabel' => 'Back to evidence requests'])
 @endsection

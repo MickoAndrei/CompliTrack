@@ -43,9 +43,13 @@ class DocumentEditorToken
     {
         $parts = parse_url($url);
         abort_unless(is_array($parts) && !isset($parts['user']) && !isset($parts['pass']) && !isset($parts['fragment']), 422);
-        foreach (array_unique([config('documents.url'), config('documents.internal_url')]) as $base) {
+        $path = rawurldecode($parts['path'] ?? '');
+        abort_if(preg_match('~[\\\\\x00-\x20]|(?:^|/)\.{1,2}(?:/|$)~', $path), 422);
+        foreach (array_unique([config('documents.url'), config('documents.local_url'), config('documents.internal_url')]) as $base) {
             if ($base && str_starts_with($url, $base.'/')) {
-                return config('documents.internal_url').substr($url, strlen($base));
+                $relative = substr($url, strlen($base));
+                abort_unless(str_starts_with($relative, '/cache/files/'), 422, 'Use an ONLYOFFICE cached document URL.');
+                return config('documents.internal_url').$relative;
             }
         }
         abort(422, 'The edited file must come from the configured document server.');

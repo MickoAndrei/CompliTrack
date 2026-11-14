@@ -22,6 +22,8 @@ class ArchiveController extends Controller
     private const MIME_TYPES = [
         'pdf' => 'application/pdf',
         'docx' => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        'xlsx' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        'pptx' => 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
         'png' => 'image/png',
         'jpg' => 'image/jpeg',
         'jpeg' => 'image/jpeg',
@@ -37,8 +39,27 @@ class ArchiveController extends Controller
     public function index(Request $request)
     {
         $request->validate(['search' => 'nullable|string|max:120', 'collegeId' => 'nullable|string|regex:/^[a-f0-9]{24}$/i', 'unitId' => 'nullable|string|regex:/^[a-f0-9]{24}$/i',
-            'categoryId' => 'nullable|string|regex:/^[a-f0-9]{24}$/i', 'recordType' => 'nullable|in:file,digital-reference,physical-original']);
-        $query = $this->scopes->archives($request->user());
+            'categoryId' => 'nullable|string|regex:/^[a-f0-9]{24}$/i', 'recordType' => 'nullable|in:file,digital-reference,physical-original',
+            'view' => 'nullable|in:my,shared,audit,recent,starred', 'sort' => 'nullable|in:newest,oldest,name',
+            'auditId' => 'nullable|string|regex:/^[a-f0-9]{24}$/i']);
+        $query = app(\App\Services\QmsAuditArchive::class)->applyContext($this->scopes->archives($request->user()), $request->user(), $request);
+        $actorIds = [MongoId::parse((string) $request->user()->getKey()), (string) $request->user()->getKey()];
+        // Views only narrow the authorized query; saved references never grant access.
+        if ($request->query('view') === 'shared') {
+            $query->whereIn('accessUserIds', $actorIds);
+        } elseif ($request->query('view') === 'starred') {
+            $query->whereIn('_id', app(\App\Services\QmsArchiveAccess::class)->ids($request->user()->qmsStarredIds ?? []));
+        } elseif ($request->query('view') === 'recent') {
+            $query->where('createdAt', '>=', now()->utc()->subDays(30));
+        } elseif ($request->query('view') === 'audit' && !$request->filled('planId') && !$request->filled('auditId')) {
+            if ((int) $request->user()->roleId !== 2) {
+                $query->whereRaw(['$or' => [
+                    ['sharedAuditIds.0' => ['$exists' => true]],
+                    ['auditId' => ['$exists' => true, '$ne' => null]],
+                    ['_id' => ['$in' => app(\App\Services\QmsArchiveAccess::class)->referencedEvidenceIds($request->user())]],
+                ]]);
+            }
+        }
         if ($request->filled('collegeId')) { $query->where('collegeId', MongoId::parse($request->query('collegeId'))); }
         if ($request->filled('unitId')) { $query->whereIn('departmentId', [MongoId::parse($request->query('unitId')), $request->query('unitId')]); }
         if ($request->filled('categoryId')) {
@@ -76,7 +97,8 @@ class ArchiveController extends Controller
             }
         }
 
-        $page = $query->orderBy('createdAt', 'desc')
+        $sort = $request->query('sort', 'newest');
+        $page = $query->orderBy($sort === 'name' ? 'title' : 'createdAt', $sort === 'newest' ? 'desc' : 'asc')->orderBy('_id')
             ->paginate(min(max((int) $request->query('perPage', 20), 1), 100));
 
         return response()->json([
@@ -87,7 +109,7 @@ class ArchiveController extends Controller
                 'total' => $page->total(),
                 'lastPage' => $page->lastPage(),
             ],
-        ]);
+        ])->header('Cache-Control', 'private, no-store');
     }
 
     public function upload(Request $request)
@@ -208,7 +230,7 @@ class ArchiveController extends Controller
 
     public function download(Request $request, string $id)
     {
-        $archive = app(\App\Services\QmsArchiveAccess::class)->documents($request->user(), true)->where('_id', MongoId::parse($id))->firstOrFail();
+        $archive = app(\App\Services\QmsAuditArchive::class)->applyContext(app(\App\Services\QmsArchiveAccess::class)->documents($request->user(), true), $request->user(), $request)->where('_id', MongoId::parse($id))->firstOrFail();
         $plaintext = $this->decryptAndVerify($archive);
         $this->auditLogs->record($request, 'Accessed authorized archive file', 'archive_document', $archive->getKey());
 
@@ -222,7 +244,7 @@ class ArchiveController extends Controller
 
     public function verifyChecksum(Request $request, string $id)
     {
-        $archive = app(\App\Services\QmsArchiveAccess::class)->documents($request->user(), true)->where('_id', MongoId::parse($id))->firstOrFail();
+        $archive = app(\App\Services\QmsAuditArchive::class)->applyContext(app(\App\Services\QmsArchiveAccess::class)->documents($request->user(), true), $request->user(), $request)->where('_id', MongoId::parse($id))->firstOrFail();
         $this->decryptAndVerify($archive);
 
         return response()->json(['isVerified' => true]);
@@ -231,11 +253,26 @@ class ArchiveController extends Controller
     public function version(Request $request, string $id)
     {
         $previous = $this->findInScope($request, $id);
-        abort_unless(app(\App\Services\QmsArchiveAccess::class)->canManage($request->user(), $previous), 403);
+        abort_unless(app(\App\Services\QmsArchiveAccess::class)->canManage($request->user(), $previous)
+            || app(\App\Services\DocumentEditorAccess::class)->canEdit($request->user(), $previous), 403);
         return $this->storeQms($request, $previous);
     }
 
     private function storeQms(Request $request, ?ArchiveDocument $previous = null)
+    {
+        $request->validate(['unitId' => 'required|string|regex:/^[a-f0-9]{24}$/i']);
+        // The authenticated ONLYOFFICE callback already owns the MongoDB transaction.
+        if ($request->attributes->get('onlyofficeSave') === true) {
+            Department::where('_id', MongoId::parse($request->input('unitId')))->increment('qmsFolderRevision');
+            return $this->storeQmsRecord($request, $previous);
+        }
+        return \Illuminate\Support\Facades\DB::connection('mongodb')->transaction(function () use ($request, $previous) {
+            Department::where('_id', MongoId::parse($request->input('unitId')))->increment('qmsFolderRevision');
+            return $this->storeQmsRecord($request, $previous);
+        }, 3);
+    }
+
+    private function storeQmsRecord(Request $request, ?ArchiveDocument $previous = null)
     {
         $data = $request->validate([
             'unitId' => 'required|string|regex:/^[a-f0-9]{24}$/i', 'categoryId' => 'required|string|regex:/^[a-f0-9]{24}$/i',
@@ -248,9 +285,14 @@ class ArchiveController extends Controller
         ]);
         $access = app(\App\Services\QmsArchiveAccess::class);
         $unit = Department::findOrFail(MongoId::parse($data['unitId']));
-        abort_unless($access->canCreate($request->user(), $unit), 403);
         $category = \App\Models\QmsCategory::where('_id', MongoId::parse($data['categoryId']))->where('isActive', true)
             ->where('collegeId', MongoId::parse((string) $unit->collegeId))->where('unitType', $unit->unitType)->firstOrFail();
+        $folderPermissions = app(\App\Services\QmsFolderAccess::class)->permissions($request->user(), $unit, $category);
+        abort_unless($category->userManaged || ($category->classification && $category->classification !== 'department') ? $folderPermissions['upload'] : ($access->canCreate($request->user(), $unit) || $folderPermissions['upload']), 403);
+        if ($category->userManaged || ($category->classification && $category->classification !== 'department')) {
+            $allowed = app(\App\Services\QmsFolderAccess::class)->allowedVisibility($category);
+            abort_unless(in_array($previous?->visibility ?: $data['visibility'], $allowed, true), 422, 'Document visibility cannot exceed its folder classification.');
+        }
         if ($previous) {
             abort_unless((string) $previous->departmentId === (string) $unit->getKey() && ($previous->recordType ?: 'file') === $data['recordType'], 422);
         }
@@ -261,7 +303,7 @@ class ArchiveController extends Controller
             $request->validate(['file' => 'required|file|max:20480', 'copyAuthorized' => 'required|accepted']);
             $file = $request->file('file');
             $extension = strtolower($file->getClientOriginalExtension());
-            abort_unless(isset(self::MIME_TYPES[$extension]) && $this->matchesFileSignature($extension, $file->getContent()), 422, 'The file does not match an allowed PDF, DOCX, PNG or JPG format.');
+            abort_unless(isset(self::MIME_TYPES[$extension]) && $this->matchesFileSignature($extension, $file->getContent()), 422, 'The file does not match an allowed PDF, DOCX, XLSX, PPTX, PNG or JPG format.');
             $encrypted = $this->encryption->encrypt($file->getContent());
             $path = 'archives/'.$code.'.enc';
             if (!$this->writeEncryptedFile($path, $encrypted['ciphertext'])) { throw new \RuntimeException('Unable to save encrypted archive.'); }
@@ -273,12 +315,12 @@ class ArchiveController extends Controller
             'fileCode' => $code, 'title' => $data['title'], 'originalName' => $data['title'], 'description' => $data['description'] ?? null,
             'departmentId' => $unit->getKey(), 'collegeId' => $unit->collegeId, 'categoryId' => $category->getKey(), 'ownershipVerified' => true,
             'uploadedByUserId' => $previous?->uploadedByUserId ?? $request->user()->getKey(), 'recordType' => $data['recordType'],
-            'documentReference' => $data['documentReference'] ?? null, 'physicalLocation' => $data['physicalLocation'] ?? null,
+            'documentReference' => $previous?->documentReference ?? ($data['documentReference'] ?? null), 'physicalLocation' => $data['physicalLocation'] ?? null,
             'signatureRequired' => $data['recordType'] === 'physical-original', 'signatureStatus' => $data['recordType'] === 'physical-original' ? 'not_verified' : 'not_required',
             'visibility' => $previous ? ($previous->visibility ?: 'owner') : $data['visibility'],
             'accessUserIds' => $previous ? ($previous->accessUserIds ?? []) : $access->ids($data['accessUserIds'] ?? []),
             'downloadAllowed' => $previous ? $previous->downloadAllowed !== false : $request->boolean('downloadAllowed', true),
-            'sharedAuditIds' => [], 'versionGroupId' => $previous ? ($previous->versionGroupId ?? $previous->getKey()) : new \MongoDB\BSON\ObjectId(),
+            'sharedAuditIds' => $request->attributes->get('onlyofficeSave') ? ($previous?->sharedAuditIds ?? []) : [], 'versionGroupId' => $previous ? ($previous->versionGroupId ?? $previous->getKey()) : new \MongoDB\BSON\ObjectId(),
             'versionNumber' => $previous ? ($previous->versionNumber ?: 1) + 1 : 1, 'previousVersionId' => $previous?->getKey(), 'qmsSchemaVersion' => 1,
         ];
         try { $document = ArchiveDocument::create(array_merge($metadata, $fileData)); }
@@ -404,12 +446,12 @@ class ArchiveController extends Controller
             'png' => str_starts_with($contents, "\x89PNG\r\n\x1a\n"),
             'jpg', 'jpeg' => str_starts_with($contents, "\xff\xd8\xff"),
             // DOCX is a ZIP package; verify its ZIP signature without requiring fileinfo.
-            'docx' => $this->isDocx($contents),
+            'docx', 'xlsx', 'pptx' => $this->isOfficePackage($contents, $extension),
             default => false,
         };
     }
 
-    private function isDocx(string $contents): bool
+    private function isOfficePackage(string $contents, string $extension): bool
     {
         if (!class_exists(\ZipArchive::class)) { return false; }
         $path = tempnam(sys_get_temp_dir(), 'ct-docx-');
@@ -417,7 +459,8 @@ class ArchiveController extends Controller
             file_put_contents($path, $contents);
             $zip = new \ZipArchive();
             if ($zip->open($path) !== true) { return false; }
-            $valid = $zip->locateName('[Content_Types].xml') !== false && $zip->locateName('word/document.xml') !== false;
+            $entry = ['docx' => 'word/document.xml', 'xlsx' => 'xl/workbook.xml', 'pptx' => 'ppt/presentation.xml'][$extension];
+            $valid = $zip->locateName('[Content_Types].xml') !== false && $zip->locateName($entry) !== false;
             $zip->close(); return $valid;
         } finally { if (is_file($path)) { unlink($path); } }
     }

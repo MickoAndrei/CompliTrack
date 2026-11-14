@@ -373,7 +373,7 @@ class QmsDevelopmentData
     }
     private function request(User $actor, array $data, array $files = []): Request
     {
-        $request = Request::create('/api/v1/archives/upload', 'POST', $data, [], $files); $request->setUserResolver(fn () => $actor); return $request;
+        $request = Request::create('/api/v1/documents/upload', 'POST', $data, [], $files); $request->setUserResolver(fn () => $actor); return $request;
     }
     private function uuid(string $value): string { $hash = hash('sha256', self::KEY.':'.$value); return substr($hash, 0, 8).'-'.substr($hash, 8, 4).'-4'.substr($hash, 13, 3).'-a'.substr($hash, 17, 3).'-'.substr($hash, 20, 12); }
     private function date(?string $value): string { return \Carbon\CarbonImmutable::parse(($value ?: now()->toDateString()).' 09:00:00', 'Asia/Manila')->utc()->toIso8601String(); }

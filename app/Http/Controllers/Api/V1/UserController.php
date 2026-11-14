@@ -150,9 +150,6 @@ class UserController extends Controller
         if ($roleId !== 0 && ! $departmentId && !$collegeRole) {
             return response()->json(['message' => 'A department is required for this role.'], 422);
         }
-        if ($roleId === 3 && empty($data['officeName']) && !$collegeRole && empty($data['archiveResponsibility'])) {
-            return response()->json(['message' => 'An office name is required for auditees.'], 422);
-        }
 
         $prefix = [0 => 'SA', 1 => 'ADM', 2 => 'AUD', 3 => 'ATE'][$roleId];
         $user = User::create([
@@ -231,7 +228,7 @@ class UserController extends Controller
 
         $roleId = (int) ($data['roleId'] ?? $user->roleId);
         $organization = $this->organizationInput($request, $roleId, $data, $user);
-        foreach (['archiveResponsibility', 'archiveUnitIds', 'archiveCollegeIds'] as $key) { unset($data[$key]); }
+        foreach (['archiveResponsibility', 'archiveUnitIds', 'archiveCollegeIds', 'archiveCluster'] as $key) { unset($data[$key]); }
         $data = array_merge($data, $organization);
         $collegeRole = $this->isCollegeResponsibility(array_key_exists('archiveResponsibility', $data) ? $data['archiveResponsibility'] : $user->archiveResponsibility);
         if ((int) $request->user()->roleId === 1 && ! in_array($roleId, [2, 3], true)) {
@@ -251,10 +248,10 @@ class UserController extends Controller
             $this->validateDepartmentAssignment($request->user(), $roleId, $departmentId, $assignedIds, $collegeRole, $data['archiveCollegeIds'] ?? $user->archiveCollegeIds ?? [],
                 (int) $request->user()->roleId === 0 && $roleId === 2 && (int) $user->roleId === 2 ? $oldAssignments : []);
         }
-        if ($collegeRole && $departmentId) {
+        if ($collegeRole && $departmentId && $roleId !== 2 && ($data['archiveResponsibility'] ?? $user->archiveResponsibility) !== 'cluster_administrator') {
             $unit = Department::find($departmentId);
             abort_unless($unit && $unit->unitType === 'college_office' && in_array((string) $unit->collegeId, array_map('strval', $data['archiveCollegeIds'] ?? $user->archiveCollegeIds ?? []), true), 422,
-                'College responsibilities belong to a college, not an individual department.');
+                'College positions belong to a college, not an individual department.');
         }
         if (isset($data['isActive']) && $data['isActive'] && !$user->isActive) {
             $this->ensureDepartmentsActive($departmentId, $assignedIds);
@@ -340,10 +337,10 @@ class UserController extends Controller
         array $collegeIds = [],
         array $preservedLegacyAssignmentIds = [],
     ): void {
-        if ($collegeRole && $departmentId) {
+        if ($collegeRole && $departmentId && $roleId !== 2) {
             $unit = Department::find($departmentId);
             abort_unless($unit && $unit->unitType === 'college_office' && in_array((string) $unit->collegeId, array_map('strval', $collegeIds), true), 422,
-                'College responsibilities belong to a college, not an individual department.');
+                'College positions belong to a college, not an individual department.');
         }
         if ($roleId === 0) {
             return;
@@ -421,6 +418,7 @@ class UserController extends Controller
         $department = $user->departmentId ? $related['departments']->get((string) $user->departmentId) : null;
         $data['departmentName'] = $department?->departmentName;
         $data['departmentId'] = $user->departmentId ? (string) $user->departmentId : null;
+        $data['clusterName'] = config('qms.clusters')[$user->archiveCluster ?? ''] ?? null;
         foreach (['assignedDepartmentIds', 'archiveUnitIds', 'archiveCollegeIds'] as $key) { $data[$key] = array_map('strval', $user->$key ?? []); }
         $access = app(\App\Services\QmsArchiveAccess::class);
         $unitIds = array_fill_keys(array_map('strval', $access->ids($user->archiveUnitIds ?? [])), true);
@@ -437,26 +435,28 @@ class UserController extends Controller
 
     private function organizationRules(): array
     {
-        return ['archiveResponsibility' => 'sometimes|nullable|string|in:'.implode(',', config('qms.responsibilities')),
+        return ['archiveCluster' => 'sometimes|nullable|string|in:'.implode(',', array_keys(config('qms.clusters'))),
+            'archiveResponsibility' => 'sometimes|nullable|string|in:'.implode(',', config('qms.responsibilities')),
             'archiveUnitIds' => 'sometimes|array|max:50', 'archiveUnitIds.*' => 'string|regex:/^[a-f0-9]{24}$/i|distinct',
             'archiveCollegeIds' => 'sometimes|array|max:20', 'archiveCollegeIds.*' => 'string|regex:/^[a-f0-9]{24}$/i|distinct'];
     }
 
     private function organizationInput(Request $request, int $role, array $data, ?User $user = null): array
     {
-        $keys = ['archiveResponsibility', 'archiveUnitIds', 'archiveCollegeIds'];
+        $keys = ['archiveResponsibility', 'archiveUnitIds', 'archiveCollegeIds', 'archiveCluster'];
         $explicit = array_intersect($keys, array_keys($data)) !== [];
-        abort_if($explicit && (int) $request->user()->roleId !== 0, 403, 'Only Super Admin may assign organizational responsibilities.');
+        abort_if($explicit && (int) $request->user()->roleId !== 0, 403, 'Only Super Admin may assign positions.');
         $changed = $user && $role !== (int) $user->roleId;
         foreach ($keys as $key) {
-            if (array_key_exists($key, $data) && ($key === 'archiveResponsibility'
+            if (array_key_exists($key, $data) && (in_array($key, ['archiveResponsibility', 'archiveCluster'], true)
                 ? ($data[$key] ?: null) !== ($user?->$key ?: null)
                 : array_map('strval', $data[$key]) !== array_map('strval', $user?->$key ?? []))) { $changed = true; }
         }
         if ($user && !$changed) { return []; } // Preserve unchanged legacy relationships during unrelated maintenance.
         if (!$explicit && !$changed) { return []; }
         return app(UserOrganization::class)->validate($role, array_key_exists('archiveResponsibility', $data) ? $data['archiveResponsibility'] : $user?->archiveResponsibility,
-            $data['archiveUnitIds'] ?? $user?->archiveUnitIds ?? [], $data['archiveCollegeIds'] ?? $user?->archiveCollegeIds ?? []);
+            $data['archiveUnitIds'] ?? $user?->archiveUnitIds ?? [], $data['archiveCollegeIds'] ?? $user?->archiveCollegeIds ?? [],
+            array_key_exists('archiveCluster', $data) ? $data['archiveCluster'] : ($user?->archiveCluster ?: null));
     }
 
     private function isCollegeResponsibility(?string $responsibility): bool
