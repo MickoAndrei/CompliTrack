@@ -44,11 +44,17 @@ class DepartmentController extends Controller
             });
         }
 
+        $summary = $request->boolean('includeSummary') ? [
+            'total' => (clone $query)->count(),
+            'active' => (clone $query)->where('isActive', true)->count(),
+            'inactive' => (clone $query)->where('isActive', false)->count(),
+        ] : null;
         $page = $query->orderBy('departmentName')
-            ->paginate(min(max((int) $request->query('perPage', 20), 1), 100));
+            ->paginate(min(max((int) $request->query('perPage', 20), 1), 100), total: $summary['total'] ?? null);
 
         return response()->json([
             'data' => collect($page->items())->map(fn (Department $department) => $this->serialize($department)),
+            ...($summary !== null ? ['summary' => $summary] : []),
             'meta' => [
                 'currentPage' => $page->currentPage(),
                 'perPage' => $page->perPage(),

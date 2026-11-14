@@ -16,6 +16,7 @@ class ProfileTest extends TestCase
     {
         parent::setUp();
         $this->withoutVite();
+        $this->mock(AuditLogService::class)->shouldReceive('record')->andReturnNull();
     }
 
     private function actor(int $role = 3): User

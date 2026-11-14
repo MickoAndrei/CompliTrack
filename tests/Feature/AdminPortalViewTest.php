@@ -12,6 +12,7 @@ class AdminPortalViewTest extends TestCase
     {
         parent::setUp();
         $this->withoutVite();
+        $this->mock(\App\Services\AuditLogService::class)->shouldReceive('record')->andReturnNull();
         $user = new User(['fullName' => 'Admin Test', 'roleId' => 1, 'isActive' => true]);
         $user->setAttribute('_id', new ObjectId());
         $this->actingAs($user);
@@ -52,10 +53,14 @@ class AdminPortalViewTest extends TestCase
     public function test_other_admin_sections_have_scoped_styling_and_readable_notifications(): void
     {
         foreach (['users', 'departments', 'compliance-records', 'notifications'] as $page) {
+            if ($page === 'notifications') {
+                $this->get('/admin/notifications')->assertOk()->assertSee('notification-inbox')->assertSee('Mark all read');
+                continue;
+            }
             $response = $this->get('/admin/'.$page)->assertOk()->assertSee('admin-resource-page');
-            if ($page === 'users') {
+            if (in_array($page, ['users', 'departments'], true)) {
                 $response->assertDontSee('admin-resource-heading')
-                    ->assertSeeInOrder(['<h2>User Management</h2>', 'View auditors and auditees assigned to CET departments.', '<main'], false);
+                    ->assertSee('attention-page directory-page');
             } else {
                 $response->assertSee('admin-resource-heading');
             }
@@ -68,8 +73,8 @@ class AdminPortalViewTest extends TestCase
                 ->assertDontSee('@click="startUserEdit(row)"', false)->assertDontSee('@click="startDepartmentEdit(row)"', false)
                 ->assertDontSee('user-create-trigger')->assertDontSee('department-create-trigger');
         }
-        $this->get('/admin/notifications')->assertOk()->assertSee('admin-notification-card')
-            ->assertSee('Unread only')->assertSee("row.isRead ? 'Read' : 'Unread'", false);
+        $this->get('/admin/notifications')->assertOk()->assertSee('notification-list')
+            ->assertSee('Unread')->assertSee('Read')->assertSee('View details');
         $this->get('/admin/reports')->assertOk()->assertSee('admin-reports')->assertSee('Recorded Check Compliance');
         $this->get('/admin/archives')->assertOk()->assertSee('qms-explorer')->assertSee('QMS Archives');
     }

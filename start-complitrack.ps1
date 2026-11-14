@@ -255,7 +255,7 @@ if (Test-PortInUse $realtimePort) {
     Write-Host "Starting realtime service..."
     $realtimePath = Join-Path $repoRoot "realtime"
     $npmArgs = "/d /s /c `"`"$npmCommand`" --prefix `"$realtimePath`" start`""
-    $p = Start-Process -FilePath $env:ComSpec -ArgumentList $npmArgs -WorkingDirectory $realtimePath -RedirectStandardOutput "$logDir\realtime.log" -RedirectStandardError "$logDir\realtime.err.log" -PassThru
+    $p = Start-Process -FilePath $env:ComSpec -ArgumentList $npmArgs -WorkingDirectory $realtimePath -WindowStyle Hidden -RedirectStandardOutput "$logDir\realtime.log" -RedirectStandardError "$logDir\realtime.err.log" -PassThru
     $p.Id | Set-Content $realtimePidFile
 }
 
@@ -292,7 +292,7 @@ if (Test-PortInUse 5173) {
     Stop-PidFile $vitePidFile
     Write-Host "Starting Vite dev server..."
     $npmArgs = "/d /s /c `"`"$npmCommand`" --prefix `"$repoRoot`" run dev`""
-    $p = Start-Process -FilePath $env:ComSpec -ArgumentList $npmArgs -WorkingDirectory $repoRoot -RedirectStandardOutput "$logDir\vite.log" -RedirectStandardError "$logDir\vite.err.log" -PassThru
+    $p = Start-Process -FilePath $env:ComSpec -ArgumentList $npmArgs -WorkingDirectory $repoRoot -WindowStyle Hidden -RedirectStandardOutput "$logDir\vite.log" -RedirectStandardError "$logDir\vite.err.log" -PassThru
     $p.Id | Set-Content $vitePidFile
 }
 

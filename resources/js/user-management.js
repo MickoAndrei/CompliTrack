@@ -8,6 +8,7 @@ export function enhancedUserManagement(config) {
         userForm: { _id: null, fullName: '', email: '', roleId: 3, departmentId: '', officeName: '', isActive: true, assignedDepartmentIds: [], archiveResponsibility: '', archiveUnitIds: [], archiveCollegeIds: [] },
         summary: null, options: { departments: [], colleges: [], responsibilities: [] },
         optionsLoadedAt: 0,
+        userOptionsLoading: false,
         userRequestController: null,
         filters: { roleId: '', departmentId: '', responsibility: '', status: '' },
         requestNumber: 0, detailRequest: 0, details: null, detailLoading: false, detailError: '',
@@ -50,11 +51,14 @@ export function enhancedUserManagement(config) {
         },
         clearUserFilters() { this.search = ''; this.filters = { roleId: '', departmentId: '', responsibility: '', status: '' }; this.load(1); },
         async refreshUserOptions() {
+            this.userOptionsLoading = true;
             try {
                 const { data } = await axios.get(`${endpoint}/options`);
                 this.options = data.options; this.optionsLoadedAt = Date.now();
             } catch (error) {
                 this.formError = message(error, 'Organization options could not be refreshed. Please retry.');
+            } finally {
+                this.userOptionsLoading = false;
             }
         },
         startUserCreate() { this.openUserEditor(); },
@@ -70,7 +74,8 @@ export function enhancedUserManagement(config) {
             this.$refs.userEditor.showModal();
         },
         changeResponsibility() {
-            this.userForm.archiveUnitIds = []; this.userForm.archiveCollegeIds = []; this.userForm.departmentId = '';
+            this.userForm.archiveUnitIds = []; this.userForm.archiveCollegeIds = [];
+            if (!this.originalUser?.isAuditTeamLeader) this.userForm.departmentId = '';
         },
         changePrimaryRole() {
             if (this.userForm.roleId === 2) { this.userForm.archiveResponsibility = ''; this.userForm.archiveUnitIds = []; this.userForm.archiveCollegeIds = []; }

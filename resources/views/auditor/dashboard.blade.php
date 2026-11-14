@@ -12,7 +12,7 @@
     <section class="auditor-assigned-section">
         <div class="auditor-assigned-heading"><h2>My Assigned Audits</h2><i data-lucide="clipboard-list" aria-hidden="true"></i></div>
         <p x-show="loading">Loading assigned audits…</p><p x-cloak x-show="!loading && !error && !assignments.length">No assigned audits yet. Your audits will appear after an authorized assignment.</p><template x-for="assignment in assignments" :key="assignment.id"><a :href="`/audits/${assignment.id}`" class="auditor-assignment-preview"><strong x-text="`${assignment.code} · ${assignment.title}`"></strong><span x-text="`${assignment.department} · ${assignment.status} · ${assignment.progress.percent}% evaluated`"></span></a></template>
-        <div class="auditor-assigned-actions" aria-label="Assigned audit stages"><a href="/audits">View Assigned Audits</a><a href="/auditor/checks">Compliance Checks</a><a href="/auditor/corrective-actions">Corrective Actions</a></div>
+        <div class="auditor-assigned-actions" aria-label="Assigned audit stages"><a href="/audits">View Assigned Audits</a><a href="/auditor/historical-records">Historical Compliance Records</a><a href="/auditor/corrective-actions">Corrective Actions</a></div>
     </section>
     <div class="auditor-insights-grid">
         <article class="auditor-insight-card"><h3>N / C / O Overview</h3>

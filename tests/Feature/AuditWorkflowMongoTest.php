@@ -9,6 +9,8 @@ use Tests\TestCase;
 
 class AuditWorkflowMongoTest extends TestCase
 {
+    use \Tests\Support\AuthorizesAuditPlan;
+
     private ?string $testDatabase = null;
     private ?string $testStorage = null;
 
@@ -56,7 +58,8 @@ class AuditWorkflowMongoTest extends TestCase
         $auditor = User::create(['fullName' => 'Test Auditor', 'roleId' => 2, 'isActive' => true, 'departmentId' => (string) $departmentId, 'assignedDepartmentIds' => [$departmentId]]);
         $other = User::create(['fullName' => 'Other Auditor', 'roleId' => 2, 'isActive' => true, 'departmentId' => $departmentId, 'assignedDepartmentIds' => [$departmentId]]);
 
-        $this->actingAs($admin)->post('/audits', ['title' => 'Assignment regression test', 'scope' => 'Test process', 'criteria' => 'Test criterion',
+        $planId = $this->authorizedPlan($admin, $auditor, $department, 'Test process', 'Test criterion');
+        $this->actingAs($admin)->post('/audits', ['planId' => $planId, 'independenceConfirmed' => '1', 'independenceNotes' => 'No own work or declared conflict', 'title' => 'Assignment regression test', 'scope' => 'Test process', 'criteria' => 'Test criterion',
             'schedule' => '2020-01-01', 'departmentId' => (string) $departmentId, 'auditorId' => (string) $auditor->getKey()])->assertRedirect();
         $audit = Audit::firstOrFail();
         $this->assertInstanceOf(ObjectId::class, $audit->getRawOriginal('auditorId'));
@@ -81,7 +84,8 @@ class AuditWorkflowMongoTest extends TestCase
         $admin = User::create(['fullName' => 'Reviewer', 'roleId' => 1, 'isActive' => true, 'departmentId' => $id]);
         $auditor = User::create(['fullName' => 'Auditor', 'roleId' => 2, 'isActive' => true, 'departmentId' => $id, 'assignedDepartmentIds' => [$id]]);
         $this->actingAs($auditor)->get('/audits')->assertOk()->assertSee('No Assigned Audits Yet');
-        $data = ['title' => 'Workflow test', 'scope' => 'Process', 'criteria' => 'Requirement', 'schedule' => '2026-11-06',
+        $planId = $this->authorizedPlan($admin, $auditor, $department, 'Process', 'Requirement');
+        $data = ['planId' => $planId, 'independenceConfirmed' => '1', 'independenceNotes' => 'No own work or declared conflict', 'title' => 'Workflow test', 'scope' => 'Process', 'criteria' => 'Requirement', 'schedule' => '2026-11-06',
             'departmentId' => (string) $id, 'auditorId' => (string) $auditor->getKey()];
         $this->actingAs($admin)->post('/audits', $data)->assertRedirect()->assertSessionHasNoErrors();
         $this->post('/audits', $data)->assertRedirect()->assertSessionHasErrors('title');
@@ -92,6 +96,170 @@ class AuditWorkflowMongoTest extends TestCase
     private function saveAction(Audit $audit, string $action, array $data = [])
     {
         return $this->post('/audits/'.$audit->getKey(), ['action' => $action, 'version' => $audit->fresh()->version] + $data);
+    }
+
+    public function test_my_assigned_audits_metrics_filters_actions_and_feedback_are_assignment_scoped(): void
+    {
+        [$admin, $auditor, $audit] = $this->fixture();
+        session()->forget(['errors', '_old_input', 'status']);
+        $audit->update(['title' => 'Prepare recorded checklist']);
+        foreach (['ready', 'active', 'submitted', 'returned', 'accepted'] as $index => $status) {
+            Audit::create(['auditCode' => 'RECORDED-'.($index + 2), 'title' => $status === 'active' ? 'Control.* [sample]' : 'Recorded '.$status,
+                'departmentId' => $audit->departmentId, 'departmentName' => $audit->departmentName, 'auditorId' => $auditor->getKey(), 'reviewerId' => $admin->getKey(),
+                'status' => $status === 'active' ? 'ready' : $status, 'schedule' => '2026-11-13', 'version' => 1,
+                'items' => $status === 'ready' ? [] : [['result' => 'N', 'evidence' => [['method' => 'physical-original', 'notes' => 'PRIVATE EVIDENCE']]]],
+                'history' => [['action' => 'return', 'actor' => (string) $admin->getKey(), 'notes' => 'Clarify the verification sample', 'at' => '2026-11-13T01:00:00Z', 'previousItems' => [['remarks' => 'PRIVATE SNAPSHOT']]],
+                    ['action' => 'interview', 'actor' => (string) $auditor->getKey(), 'notes' => 'PRIVATE INTERVIEW'],
+                    ['action' => 'return', 'actor' => (string) new ObjectId(), 'notes' => 'UNAUTHORIZED FEEDBACK']]]);
+        }
+        $outsider = User::create(['fullName' => 'Other Assigned Auditor', 'roleId' => 2, 'isActive' => true, 'departmentId' => $audit->departmentId]);
+        $private = Audit::create(['auditCode' => 'PRIVATE-REFERENCE', 'title' => 'PRIVATE AUDIT', 'departmentId' => $audit->departmentId,
+            'departmentName' => 'PRIVATE UNIT LABEL', 'auditorId' => $outsider->getKey(), 'reviewerId' => $admin->getKey(), 'status' => 'submitted']);
+        $this->actingAs($auditor);
+        $full = $this->get('/audits')->assertOk()->assertViewHas('summary', ['total' => 6, 'inProgress' => 3, 'awaitingReview' => 1, 'completed' => 1])
+            ->assertSee('Prepare Checklist')->assertSee('Open Audit')->assertSee('Continue Audit')->assertSee('View Submission')
+            ->assertSee('Review Feedback &amp; Revise', false)->assertSee('View Final Results')->assertSee('Awaiting Audit Team Leader Review')
+            ->assertSee('Clarify the verification sample')->assertDontSee('PRIVATE')->assertDontSee('UNAUTHORIZED')
+            ->assertSee('Progress shows checklist items evaluated, not compliance percentage.');
+        $this->get('/audits/'.$private->getKey())->assertNotFound();
+        $ajax = ['X-Requested-With' => 'XMLHttpRequest'];
+        $submitted = $this->get('/audits?status=submitted', $ajax)->assertOk()->assertDontSee('<!DOCTYPE html>', false)
+            ->assertViewHas('audits', fn ($rows) => $rows->total() === 1)->assertViewHas('summary', fn ($counts) => $counts['total'] === 6);
+        $this->get('/audits?status=ready', $ajax)->assertOk()->assertSee('Recorded ready')->assertDontSee('Control.* [sample]');
+        $this->get('/audits?status=in_progress', $ajax)->assertOk()->assertSee('Control.* [sample]')->assertDontSee('Recorded ready');
+        $this->get('/audits?search='.urlencode('.* [sample]'), $ajax)->assertOk()->assertViewHas('audits', fn ($rows) => $rows->total() === 1);
+        $this->get('/audits?search=recorded&status=submitted&departmentId='.$audit->departmentId, $ajax)->assertOk()
+            ->assertViewHas('audits', fn ($rows) => $rows->total() === 1);
+        $none = $this->get('/audits?search=does-not-exist', $ajax)->assertOk()->assertSee('No matching audits')->assertDontSee('No Assigned Audits Yet');
+        $this->get('/audits?departmentId='.(string) new ObjectId(), $ajax)->assertOk()->assertViewHas('audits', fn ($rows) => $rows->total() === 0);
+        foreach (['status=invalid', 'search[]=invalid', 'departmentId=invalid', 'page=-1'] as $query) { $this->getJson('/audits?'.$query)->assertUnprocessable(); }
+        $auditor->update(['assignedDepartmentIds' => []]);
+        $empty = $this->get('/audits')->assertOk()->assertSee('No Assigned Audits Yet')
+            ->assertViewHas('summary', ['total' => 0, 'inProgress' => 0, 'awaitingReview' => 0, 'completed' => 0]);
+        if (getenv('WRITE_MY_AUDITS_UI_FIXTURES') === '1') {
+            $dir = storage_path('framework/testing/my-audits-ui');
+            \Illuminate\Support\Facades\File::ensureDirectoryExists($dir);
+            foreach (['full' => $full, 'submitted' => $submitted, 'none' => $none, 'empty' => $empty] as $key => $response) { file_put_contents($dir.'/'.$key.'.html', $response->getContent()); }
+        }
+    }
+
+    public function test_workspace_sections_readiness_and_phase_actions_preserve_real_records(): void
+    {
+        [$admin, $auditor, $audit] = $this->fixture();
+        $this->actingAs($auditor);
+        $this->saveAction($audit, 'add', ['question' => "Does the team's process follow standards?", 'reference' => 'ISO 9001:2015 9.2'])->assertSessionHasNoErrors();
+        $this->saveAction($audit, 'add', ['question' => 'Are controlled records verified?', 'reference' => 'ISO 9001:2015 7.5'])->assertSessionHasNoErrors();
+        $person = User::create(['fullName' => 'Workspace Auditee', 'roleId' => 3, 'isActive' => true, 'departmentId' => new ObjectId((string) $audit->departmentId)]);
+        $this->saveAction($audit, 'interview', ['auditeeId' => (string) $person->getKey(), 'process' => 'Records control', 'topics' => 'Verification process', 'responses' => 'Originals are verified', 'notes' => 'Internal factual interview note'])->assertRedirect()->assertSessionHasNoErrors();
+        $this->post('/audits/'.$audit->getKey().'/requests', ['version' => $audit->fresh()->version, 'itemId' => $audit->fresh()->items[1]['id'], 'auditeeId' => (string) $person->getKey(), 'description' => 'Please make the original available', 'referenceStandard' => 'ISO9001-9.2'])->assertRedirect()->assertSessionHasNoErrors();
+        $draft = $this->get('/audits/'.$audit->getKey())->assertOk()->assertHeader('Cache-Control', 'no-store, private')
+            ->assertSee('Audit Checklist')->assertSee('Auditee Interviews')->assertSee('Review &amp; Submit', false)
+            ->assertSee('workspace-question-dialog')->assertSee('Mark checklist ready')->assertDontSee('name="result"', false)
+            ->assertSee('Workspace Auditee')->assertSee('Internal factual interview note')->assertSee('Please make the original available')
+            ->assertViewHas('readiness', fn ($value) => !$value['eligible'] && $value['decisions'] === 2);
+        $this->saveAction($audit, 'ready')->assertSessionHasNoErrors();
+        $this->saveAction($audit, 'evidence', ['item' => 0, 'method' => 'physical-original', 'notes' => 'Original reviewed', 'signature' => 'verified'])->assertSessionHasNoErrors();
+        $this->saveAction($audit, 'evaluate', ['item' => 0, 'result' => 'N', 'remarks' => 'Required record missing', 'finding' => 'Missing required record'])->assertSessionHasNoErrors();
+        $ready = $this->get('/audits/'.$audit->getKey())->assertOk()->assertSee('Save Evaluation')->assertSee('Original reviewed')->assertSee('Auditor')
+            ->assertDontSee('workspace-question-dialog')->assertDontSee('Edit question')
+            ->assertViewHas('readiness', fn ($value) => !$value['eligible'] && array_keys($value['incomplete']) === [1]);
+        $this->saveAction($audit, 'submit')->assertSessionHasErrors('checklist');
+        $audit->refresh()->update(['status' => 'submitted']);
+        $locked = $this->get('/audits/'.$audit->getKey())->assertOk()->assertSee('Results locked')->assertDontSee('Save Evaluation')
+            ->assertDontSee('workspace-evidence-dialog')->assertDontSee('workspace-interview-dialog');
+        if (getenv('WRITE_WORKSPACE_UI_FIXTURES') === '1') {
+            $dir = storage_path('framework/testing/workspace-ui');
+            \Illuminate\Support\Facades\File::ensureDirectoryExists($dir);
+            foreach (['draft' => $draft, 'ready' => $ready, 'submitted' => $locked] as $phase => $response) { file_put_contents($dir.'/'.$phase.'.html', $response->getContent()); }
+        }
+    }
+
+    public function test_assignment_scope_conflicts_and_plan_authority_are_enforced_on_the_server(): void
+    {
+        [$admin, $auditor, $audit] = $this->fixture();
+        $data = ['planId' => (string) $audit->planId, 'title' => 'Additional assignment', 'departmentId' => (string) $audit->departmentId,
+            'auditorId' => (string) $auditor->getKey(), 'schedule' => '2026-11-07', 'scope' => 'Forged scope', 'criteria' => 'Forged criteria',
+            'independenceConfirmed' => '1', 'independenceNotes' => 'Procedure checked'];
+        $this->actingAs($admin);
+        $this->postJson('/audits', array_replace($data, ['planId' => (string) new ObjectId()]))->assertUnprocessable()->assertJsonValidationErrors('planId');
+        $this->postJson('/audits', array_replace($data, ['schedule' => '2031-01-01']))->assertUnprocessable()->assertJsonValidationErrors('schedule');
+        $this->postJson('/audits', array_replace($data, ['independenceConfirmed' => '0']))->assertUnprocessable();
+        $homeId = $auditor->departmentId;
+        $auditor->update(['departmentId' => $audit->departmentId]);
+        $this->postJson('/audits', $data)->assertUnprocessable()->assertJsonValidationErrors('auditorId');
+        $auditor->forceFill(['departmentId' => $homeId, 'conflictDepartmentIds' => [$audit->departmentId]])->save();
+        $this->postJson('/audits', $data)->assertUnprocessable()->assertJsonValidationErrors('auditorId');
+        $auditor->forceFill(['conflictDepartmentIds' => []])->save();
+        $office = Department::create(['collegeName' => 'CET', 'departmentName' => 'Office of the Dean', 'unitType' => 'college_office', 'ownershipVerified' => true, 'isActive' => true]);
+        $this->postJson('/audits', array_replace($data, ['departmentId' => (string) $office->getKey()]))->assertUnprocessable()->assertJsonValidationErrors('departmentId');
+        $plan = \App\Models\ArchiveDocument::findOrFail($audit->planId);
+        $authorization = $plan->assignmentAuthorization;
+        $authorization['unitIds'][] = $office->getKey();
+        $approval = $plan->auditPlan;
+        $approval['header']['unitIds'][] = (string) $office->getKey();
+        $plan->forceFill(['assignmentAuthorization' => $authorization, 'auditPlan' => $approval])->save();
+        $auditor->update(['assignedDepartmentIds' => [$audit->departmentId, $office->getKey()]]);
+        $this->post('/audits', array_replace($data, ['departmentId' => (string) $office->getKey()]))->assertRedirect()->assertSessionHasNoErrors();
+        $created = Audit::where('departmentId', new ObjectId((string) $office->getKey()))->firstOrFail();
+        $this->assertSame('Process', $created->scope);
+        $this->assertSame('Requirement', $created->criteria);
+        $this->assertInstanceOf(ObjectId::class, $created->getRawOriginal('planId'));
+        $this->actingAs($auditor)->get('/audits')->assertSee('Additional assignment');
+        $authorization['status'] = 'revoked';
+        $plan->forceFill(['assignmentAuthorization' => $authorization])->save();
+        $this->actingAs($admin)->postJson('/audits', $data)->assertUnprocessable()->assertJsonValidationErrors('planId');
+        $this->get('/audits')->assertOk()->assertSee('No audit plans have confirmed assignment authorization');
+    }
+
+    public function test_assignment_changes_are_versioned_notify_both_auditors_and_lock_after_submission(): void
+    {
+        [$admin, $auditor, $audit] = $this->fixture();
+        $replacement = User::create(['fullName' => 'Replacement Auditor', 'roleId' => 2, 'isActive' => true,
+            'departmentId' => $auditor->departmentId, 'assignedDepartmentIds' => [$audit->departmentId]]);
+        $data = ['version' => $audit->version, 'planId' => (string) $audit->planId, 'departmentId' => (string) $audit->departmentId,
+            'auditorId' => (string) $replacement->getKey(), 'title' => $audit->title, 'schedule' => '2026-11-08',
+            'independenceConfirmed' => '1', 'independenceNotes' => 'Independence checked', 'changeReason' => 'Availability changed'];
+        $url = '/audits/'.$audit->getKey().'/assignment';
+        $this->actingAs($auditor)->postJson($url, $data)->assertForbidden();
+        $this->actingAs($admin)->post($url, $data)->assertRedirect()->assertSessionHasNoErrors();
+        $this->postJson($url, $data)->assertConflict();
+        $this->assertSame(2, \App\Models\Notification::where('type', 'audit_assignment_changed')->count());
+        $this->assertSame((string) $auditor->getKey(), (string) $audit->fresh()->history[1]['previousAssignment']['auditorId']);
+        $this->actingAs($auditor)->get('/audits/'.$audit->getKey())->assertNotFound();
+        $this->actingAs($replacement)->get('/audits/'.$audit->getKey())->assertOk();
+        $audit->refresh();
+        $this->saveAction($audit, 'add', ['question' => 'Question'])->assertRedirect();
+        $this->saveAction($audit, 'ready')->assertRedirect();
+        $this->saveAction($audit, 'evidence', ['item' => 0, 'method' => 'digital', 'notes' => 'Reviewed'])->assertRedirect();
+        $this->saveAction($audit, 'evaluate', ['item' => 0, 'result' => 'C', 'remarks' => 'Meets criterion'])->assertRedirect();
+        $this->saveAction($audit, 'submit')->assertRedirect();
+        $this->actingAs($admin)->postJson($url, array_replace($data, ['version' => $audit->fresh()->version]))->assertForbidden();
+        $this->saveAction($audit, 'return', ['reviewNotes' => 'Clarify'])->assertRedirect();
+        $this->postJson($url, array_replace($data, ['version' => $audit->fresh()->version]))->assertForbidden();
+    }
+
+    public function test_admin_assignment_and_review_views_are_separate_and_review_tabs_filter_records(): void
+    {
+        [$admin, $auditor, $audit] = $this->fixture();
+        session()->forget(['errors', '_old_input']);
+        $this->actingAs($admin);
+        $response = $this->get('/audits')->assertOk()->assertViewIs('admin.audit-assignments')->assertSee('New Audit Assignment')
+            ->assertSee('Assignment Register')->assertDontSee('data-atl-review aria-haspopup', false);
+        $this->assertSame(1, substr_count($response->getContent(), 'Assign auditors to departments and offices based on authorized audit plans.'));
+        $this->get('/audits?view=reviews')->assertOk()->assertViewIs('admin.audit-reviews')->assertSee('Awaiting Review')->assertDontSee('Workflow test')->assertDontSee('New Audit Assignment');
+        $this->get('/audits?view=reviews&status=draft')->assertUnprocessable();
+        $audit->update(['status' => 'submitted']);
+        $review = $this->get('/audits?view=reviews')->assertOk()->assertSee('Workflow test');
+        $this->get('/audits?view=reviews&status=returned')->assertOk()->assertDontSee('Workflow test');
+        $detail = $this->get('/audits/'.$audit->getKey().'?review=1')->assertOk()->assertSee('Accept Audit Results')->assertDontSee('name="result"', false);
+        if (getenv('AUDIT_ASSIGNMENT_BROWSER_FIXTURES') === '1') {
+            $dir = storage_path('framework/testing/assignment-ui');
+            \Illuminate\Support\Facades\File::ensureDirectoryExists($dir);
+            file_put_contents($dir.'/assignments.html', $response->getContent());
+            file_put_contents($dir.'/reviews.html', $review->getContent());
+            file_put_contents($dir.'/review.html', $detail->getContent());
+        }
+        $this->saveAction($audit, 'evaluate', ['item' => 0, 'result' => 'N', 'remarks' => 'Overwrite'])->assertForbidden();
     }
 
     public function test_checklist_evidence_findings_metrics_submission_and_revision_persist(): void
@@ -152,8 +320,8 @@ class AuditWorkflowMongoTest extends TestCase
     {
         [$admin, $auditor, $audit] = $this->fixture();
         $outside = Department::create(['departmentName' => 'Outside', 'collegeName' => 'OTHER', 'isActive' => true]);
-        $this->actingAs($admin)->post('/audits', ['title' => 'Outside', 'scope' => 'Test', 'criteria' => 'Test', 'schedule' => '2026-11-06',
-            'departmentId' => (string) $outside->getKey(), 'auditorId' => (string) $auditor->getKey()])->assertNotFound();
+        $this->actingAs($admin)->post('/audits', ['planId' => (string) $audit->planId, 'independenceConfirmed' => '1', 'independenceNotes' => 'Checked', 'title' => 'Outside', 'scope' => 'Test', 'criteria' => 'Test', 'schedule' => '2026-11-06',
+            'departmentId' => (string) $outside->getKey(), 'auditorId' => (string) $auditor->getKey()])->assertRedirect()->assertSessionHasErrors('departmentId');
         $this->actingAs($auditor)->post('/audits', [])->assertForbidden();
         $this->saveAction($audit, 'add', ['question' => 'Question'])->assertRedirect()->assertSessionHasNoErrors();
         $this->post('/audits/'.$audit->getKey(), ['version' => 1, 'action' => 'add', 'question' => 'Stale'])->assertStatus(409);
@@ -192,7 +360,8 @@ class AuditWorkflowMongoTest extends TestCase
         $this->getJson('/api/v1/archives/'.$archive->getKey().'/download')->assertNotFound();
         $this->saveAction($audit, 'interview', ['auditeeId' => (string) $auditee->getKey(), 'process' => 'Test', 'topics' => 'Q', 'responses' => 'R'])->assertNotFound();
         $this->actingAs($admin)->get('/audits')->assertOk();
-        $this->actingAs($auditor)->get('/auditor/checks')->assertOk();
+        $this->actingAs($auditor)->get('/auditor/checks')->assertRedirect('/auditor/historical-records');
+        $this->get('/auditor/historical-records')->assertOk()->assertDontSee('New Compliance Check');
         $this->get('/auditor/archives')->assertOk();
         $this->get('/auditor/corrective-actions')->assertOk();
         $this->get('/auditor/notifications')->assertOk();
@@ -267,7 +436,7 @@ class AuditWorkflowMongoTest extends TestCase
             ->assertDontSee('PRIVATE')->assertSee('data-evidence-open', false)->assertSee('id="evidence-request-modal"', false);
         $this->get('/auditee/evidence-requests?requestStatus=requested')->assertOk()->assertViewHas('requests', fn ($requests) => $requests->total() === 2);
         $this->get('/auditee/evidence-requests?requestStatus=reviewed')->assertOk()->assertViewHas('requests', fn ($requests) => $requests->total() === 1);
-        foreach ([$audit->auditCode, 'Evidence description 0', 'Auditor', 'Test IT'] as $term) {
+        foreach ([$audit->auditCode, 'Evidence description 0', 'Auditor', 'Information Technology'] as $term) {
             $this->get('/auditee/evidence-requests?search='.urlencode($term))->assertOk()->assertSee('Permitted request 0')->assertDontSee('PRIVATE');
         }
         $this->get('/auditee/evidence-requests?search=no-match')->assertOk()->assertSee('No matching requests')
@@ -453,6 +622,11 @@ class AuditWorkflowMongoTest extends TestCase
         $this->post('/audits/'.$audit->getKey().'/requests', ['version' => $audit->fresh()->version, 'itemId' => $audit->fresh()->items[0]['id'], 'auditeeId' => (string) $person->getKey(),
             'description' => 'Authorized sample file', 'allowUpload' => '1', 'referenceStandard' => 'ISO9001-9.2'])->assertRedirect()->assertSessionHasNoErrors();
         $entry = $audit->fresh()->evidenceRequests[0];
+        $archiveCountBeforeConflict = \App\Models\ArchiveDocument::count();
+        $this->actingAs($person)->postJson('/auditee/evidence-requests/'.$audit->getKey().'/'.$entry['id'], ['version' => $audit->fresh()->version - 1,
+            'submissionKey' => (string) \Illuminate\Support\Str::uuid(), 'action' => 'submit', 'method' => 'file', 'notes' => 'Keep this file response', 'copyAuthorized' => '1',
+            'file' => \Illuminate\Http\UploadedFile::fake()->createWithContent('stale.pdf', "%PDF-1.4\nStale")])->assertConflict();
+        $this->assertSame($archiveCountBeforeConflict, \App\Models\ArchiveDocument::count(), 'Stale submissions are rejected before storing a file.');
         $this->actingAs($person)->post('/auditee/evidence-requests/'.$audit->getKey().'/'.$entry['id'], ['version' => $audit->fresh()->version,
             'submissionKey' => (string) \Illuminate\Support\Str::uuid(), 'action' => 'draft', 'method' => 'file', 'notes' => 'Permitted sample', 'copyAuthorized' => '1',
             'file' => \Illuminate\Http\UploadedFile::fake()->createWithContent('test.pdf', "%PDF-1.4\nSample")])->assertRedirect()->assertSessionHasNoErrors();
@@ -460,7 +634,7 @@ class AuditWorkflowMongoTest extends TestCase
         $this->post('/auditee/evidence-requests/'.$audit->getKey().'/'.$entry['id'], ['version' => $audit->fresh()->version,
             'submissionKey' => (string) \Illuminate\Support\Str::uuid(), 'action' => 'submit', 'method' => 'file', 'notes' => 'Submit saved file', 'copyAuthorized' => '1'])
             ->assertRedirect()->assertSessionHasNoErrors();
-        $this->assertSame(1, \App\Models\ArchiveDocument::count());
+        $this->assertSame(1, \App\Models\ArchiveDocument::where('recordType', '!=', 'physical_reference')->count());
         $this->assertNotEmpty($audit->fresh()->evidenceRequests[0]['responses'][0]['archiveId']);
         $detailUrl = '/auditee/evidence-requests?requestId='.$entry['id'];
         $archiveId = $audit->fresh()->evidenceRequests[0]['responses'][0]['archiveId'];
@@ -474,5 +648,26 @@ class AuditWorkflowMongoTest extends TestCase
         $this->getJson('/api/v1/archives/'.$archiveId.'/download')->assertNotFound();
         $this->assertNull($audit->fresh()->items[0]['result']);
         $this->assertSame(0, \App\Models\ComplianceCheck::count());
+    }
+
+    public function test_stale_evidence_request_returns_to_the_form_with_entries_instead_of_an_error_page(): void
+    {
+        [$admin, $auditor, $audit] = $this->fixture();
+        $person = User::create(['fullName' => 'Conflict Recipient', 'roleId' => 3, 'isActive' => true, 'departmentId' => $audit->departmentId]);
+        $this->actingAs($auditor);
+        $this->saveAction($audit, 'add', ['question' => 'Inspect the original record'])->assertRedirect()->assertSessionHasNoErrors();
+        $workspace = '/audits/'.$audit->getKey();
+        $data = ['version' => 1, 'workspaceAction' => 'request', 'itemId' => $audit->fresh()->items[0]['id'], 'auditeeId' => (string) $person->getKey(),
+            'description' => 'Keep this authorized upload request', 'allowUpload' => '1', 'referenceStandard' => 'ISO9001-9.2'];
+        $this->from($workspace)->post($workspace.'/requests', $data)->assertRedirect($workspace)->assertSessionHasErrors('version')
+            ->assertSessionHasInput('description', $data['description'])->assertSessionHasInput('allowUpload', '1');
+        $this->assertEmpty($audit->fresh()->evidenceRequests ?? []);
+        $this->get($workspace)->assertOk()->assertSee('data-recovery="request"', false)->assertSee($data['description'])
+            ->assertSee('value="1" checked', false);
+        $this->postJson($workspace.'/requests', $data)->assertConflict();
+        $data['version'] = $audit->fresh()->version;
+        $this->post($workspace.'/requests', $data)->assertRedirect()->assertSessionHasNoErrors();
+        $this->assertCount(1, $audit->fresh()->evidenceRequests);
+        $this->assertTrue((bool) $audit->fresh()->evidenceRequests[0]['allowUpload']);
     }
 }

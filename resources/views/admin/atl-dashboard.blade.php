@@ -1,5 +1,5 @@
 <section class="atl-workspace admin-dashboard" x-data="atlWorkspace" @atl-review-saved.window="load()" :aria-busy="loading">
-    <div class="atl-section-heading"><p class="atl-muted">Your assigned audits and authorized CET corrective actions.</p><button type="button" class="atl-secondary" @click="load()" :disabled="loading">Refresh</button></div>
+    <div class="atl-section-heading" style="justify-content: flex-end"><button type="button" class="atl-secondary" @click="load()" :disabled="loading">Refresh</button></div>
     <p x-page-notice x-cloak x-show="error" class="atl-error" role="alert" x-text="error"></p>
     <p x-show="loading" class="sr-only" role="status">Loading Audit Team Leader workspace…</p>
     <div class="stats-grid">

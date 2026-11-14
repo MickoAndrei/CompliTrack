@@ -6,6 +6,25 @@ use Illuminate\Validation\ValidationException;
 
 class AuditChecklist
 {
+    public static function readiness(array $items): array
+    {
+        $missing = ['decisions' => 0, 'remarks' => 0, 'evidence' => 0, 'findings' => 0];
+        $incomplete = [];
+        foreach ($items as $index => $item) {
+            $reasons = [];
+            foreach ([
+                'decisions' => !in_array($item['result'] ?? null, ['N', 'C', 'O'], true),
+                'remarks' => trim($item['remarks'] ?? '') === '',
+                'evidence' => empty($item['evidence']),
+                'findings' => ($item['result'] ?? '') === 'N' && trim($item['finding'] ?? '') === '',
+            ] as $field => $needed) {
+                if ($needed) { $missing[$field]++; $reasons[] = $field; }
+            }
+            if ($reasons) { $incomplete[$index] = $reasons; }
+        }
+        return $missing + ['incomplete' => $incomplete, 'eligible' => count($items) > 0 && !$incomplete];
+    }
+
     public static function progress(array $items): array
     {
         $counts = ['N' => 0, 'C' => 0, 'O' => 0];

@@ -7,6 +7,7 @@ const { serveBuildAsset } = require('./staticAssets');
 function createDevProxy({
   appTarget = 'http://127.0.0.1:8001',
   realtimeTarget = 'http://127.0.0.1:4001',
+  documentTarget = 'http://127.0.0.1:8082',
   staticAssetRoot = path.resolve(__dirname, '../../public/build/assets'),
   fontAssetRoot = path.resolve(__dirname, '../../public/fonts'),
 } = {}) {
@@ -26,6 +27,12 @@ function createDevProxy({
     // Preserve the public HTTPS scheme supplied by ngrok.
     request.headers['x-forwarded-proto'] ||= request.socket.encrypted ? 'https' : 'http';
     const pathname = new URL(request.url, 'http://localhost').pathname;
+    if (pathname === '/document-server' || pathname.startsWith('/document-server/')) {
+      request.headers['x-forwarded-host'] = request.headers.host + '/document-server';
+      delete request.headers.cookie;
+      request.url = request.url.replace(/^\/document-server(?=\/|\?|$)/, '') || '/';
+      return documentTarget;
+    }
     if (pathname === '/realtime/health') {
       request.url = '/health';
       return realtimeTarget;
@@ -46,7 +53,7 @@ function createDevProxy({
   });
   server.on('upgrade', (request, socket, head) => {
     const pathname = new URL(request.url, 'http://localhost').pathname;
-    if (pathname !== '/socket.io' && !pathname.startsWith('/socket.io/')) {
+    if (pathname !== '/socket.io' && !pathname.startsWith('/socket.io/') && !pathname.startsWith('/document-server/')) {
       socket.destroy();
       return;
     }
@@ -61,6 +68,7 @@ if (require.main === module) {
   const server = createDevProxy({
     appTarget: process.env.COMPLITRACK_APP_UPSTREAM,
     realtimeTarget: process.env.COMPLITRACK_REALTIME_UPSTREAM,
+    documentTarget: process.env.COMPLITRACK_DOCUMENT_UPSTREAM,
   });
   server.listen(port, '127.0.0.1', () => {
     console.log(`CompliTrack proxy: http://127.0.0.1:${port}`);

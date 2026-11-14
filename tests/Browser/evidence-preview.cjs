@@ -37,7 +37,7 @@ const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
         for (const width of [1440, 390, 320]) {
             await send('Emulation.setDeviceMetricsOverride', { width, height: 900, deviceScaleFactor: 1, mobile: width < 600 });
             await send('Page.navigate', { url: pathToFileURL(path.join(fixtures, 'dashboard.html')).href });
-            await waitFor('!!window.Alpine && !!document.querySelector("[data-result-modal-tab=corrective]")');
+            await waitFor('!!window.Alpine && !!document.querySelector("[data-result-modal-tab=corrective]") && performance.getEntriesByName("complitrack:alpine-initialized").length > 0');
             await evaluate(`window.detailHtml=${JSON.stringify(cycle)};window.wordBytes=${JSON.stringify(wordBytes)};window.revokedURLs=[];const revoke=URL.revokeObjectURL.bind(URL);URL.revokeObjectURL=url=>{window.revokedURLs.push(url);revoke(url);};window.fetch=async url=>{
                 if(!String(url).includes('/api/v1/archives/'))return {ok:true,redirected:false,text:async()=>window.detailHtml};
                 if(window.failPreview){window.failPreview=false;return new Response('',{status:403});}
@@ -61,6 +61,10 @@ const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
             await waitFor(`!document.querySelector('#evidence-preview-modal').open&&document.querySelector('[data-evidence-preview-download]').hidden`);
             await evaluate(`document.querySelector('[data-file-name="preview.docx"]').click()`);
             await waitFor(`!!document.querySelector('#evidence-preview-modal iframe[data-word-ready]')`);
+            assert.equal(await evaluate(`!document.querySelector('[data-evidence-word-zoom]').hidden`), true, 'Word zoom controls are available');
+            await evaluate(`(()=>{const zoom=document.querySelector('[data-evidence-zoom]');zoom.value='2';zoom.dispatchEvent(new Event('change'));})()`);
+            assert.equal(await evaluate(`document.querySelector('#evidence-preview-modal iframe').contentDocument.querySelector('.docx-wrapper').style.zoom`), '2', 'Word pages can be enlarged without rasterizing');
+            await evaluate(`(()=>{const zoom=document.querySelector('[data-evidence-zoom]');zoom.value='fit';zoom.dispatchEvent(new Event('change'));})()`);
             assert.equal(await evaluate(`(()=>{const f=document.querySelector('#evidence-preview-modal iframe');const d=f.contentDocument;return d.body.textContent.includes('Authorized Word evidence preview')&&d.body.textContent.includes('<script>must remain plain text</script>')&&!d.querySelector('script')&&d.querySelectorAll('table td').length===2&&d.querySelectorAll('section.docx').length===2&&[...d.querySelectorAll('span')].some(s=>s.textContent.includes('Authorized Word')&&d.defaultView.getComputedStyle(s).fontWeight==='700')&&f.sandbox.contains('allow-same-origin')&&!f.sandbox.contains('allow-scripts')&&d.documentElement.scrollWidth<=f.clientWidth+1;})()`), true, 'Word renders formatted tables, bold headings and pages safely, fitted to viewport');
             if ([1440, 390].includes(width)) {
                 const shot = await send('Page.captureScreenshot', { format: 'png', captureBeyondViewport: false });

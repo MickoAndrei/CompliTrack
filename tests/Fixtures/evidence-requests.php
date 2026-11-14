@@ -31,7 +31,7 @@ foreach (['populated', 'empty'] as $state) {
         'summary' => $state === 'populated' ? $summary : array_fill_keys(array_keys($summary), 0)])->render();
     $html = preg_replace('/<script\b[^>]*>.*?<\/script>/s', '', $html);
     $html = preg_replace('/<link[^>]+(?:fonts\.googleapis|fonts\.gstatic)[^>]*>/', '', $html);
-    $html = str_replace('http://localhost', 'file:///'.str_replace('\\', '/', public_path()), $html);
+    $html = str_replace([rtrim(asset('/'), '/'), 'http://localhost'], 'file:///'.str_replace('\\', '/', public_path()), $html);
     $html = str_replace('</body>', '<script type="module" src="'.$bundle.'"></script></body>', $html);
     file_put_contents($directory.'/'.$state.'.html', $html);
 }

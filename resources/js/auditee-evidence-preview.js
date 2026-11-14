@@ -5,10 +5,16 @@ let originatingLink;
 let archiveUrl;
 let fileName;
 let wordResizeObserver;
+let updateWordZoom;
 
 function revokePreview() {
     wordResizeObserver?.disconnect();
     wordResizeObserver = undefined;
+    updateWordZoom = undefined;
+    if (preview) {
+        preview.querySelector('[data-evidence-word-zoom]').hidden = true;
+        preview.querySelector('[data-evidence-zoom]').value = 'fit';
+    }
     if (objectUrl) URL.revokeObjectURL(objectUrl);
     objectUrl = undefined;
 }
@@ -76,8 +82,11 @@ async function loadPreview() {
                 if (!wrapper) return;
                 const pages = [...wrapper.querySelectorAll('section.docx')];
                 const pageWidth = Math.max(1, ...pages.map(page => page.offsetWidth));
-                wrapper.style.zoom = Math.min(1, (content.clientWidth - 24) / (pageWidth + 24));
+                const zoom = preview.querySelector('[data-evidence-zoom]').value;
+                wrapper.style.zoom = zoom === 'fit' ? Math.max(0.1, Math.min(1, (content.clientWidth - 24) / (pageWidth + 24))) : Number(zoom);
             };
+            updateWordZoom = fitPage;
+            preview.querySelector('[data-evidence-word-zoom]').hidden = false;
             wordResizeObserver = new ResizeObserver(fitPage);
             wordResizeObserver.observe(content);
             fitPage();
@@ -98,6 +107,7 @@ async function loadPreview() {
 }
 
 if (preview) {
+    preview.querySelector('[data-evidence-zoom]').addEventListener('change', () => updateWordZoom?.());
     preview.addEventListener('keydown', event => {
         if (event.key === 'Escape') {
             event.preventDefault();

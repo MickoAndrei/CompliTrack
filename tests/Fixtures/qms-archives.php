@@ -12,10 +12,14 @@ $directory = storage_path('framework/testing/qms-browser');
 Illuminate\Support\Facades\File::ensureDirectoryExists($directory);
 $manifest = json_decode(file_get_contents(public_path('build/manifest.json')), true);
 $bundle = 'file:///'.str_replace('\\', '/', public_path('build/'.$manifest['resources/js/app.js']['file']));
-$html = view('super-admin.archives')->render();
+foreach ([0 => 'super-admin', 1 => 'admin', 2 => 'auditor', 3 => 'auditee'] as $role => $portal) {
+$user->roleId = $role;
+$html = view($portal.'.archives')->render();
 $html = preg_replace('/<script\b[^>]*>.*?<\/script>/s', '', $html);
 $html = preg_replace('/<link[^>]+(?:fonts\.googleapis|fonts\.gstatic)[^>]*>/', '', $html);
-$html = str_replace('http://localhost', 'file:///'.str_replace('\\', '/', public_path()), $html);
+$html = preg_replace_callback('~((?:href|src)=")https?://[^/"]+~',
+    fn ($match) => $match[1].'file:///'.str_replace('\\', '/', public_path()), $html);
 $html = str_replace('</body>', '<script type="module" src="'.$bundle.'"></script></body>', $html);
-file_put_contents($directory.'/explorer.html', $html);
+file_put_contents($directory.'/'.($role === 0 ? 'explorer' : 'explorer-'.$role).'.html', $html);
+}
 echo "QMS browser fixture rendered without database writes.\n";

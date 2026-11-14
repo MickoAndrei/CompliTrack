@@ -65,6 +65,7 @@ class AuditeeController extends Controller
     {
         abort_unless((int) $request->user()->roleId === 2, 403);
         $audit = $this->evidence->audit($request->user(), $id);
+        $this->evidence->ensureCurrentVersion($audit, $request);
         $data = $request->validate(['itemId' => 'required|uuid', 'auditeeId' => 'required|string',
             'description' => 'required|string|max:2000', 'allowUpload' => 'sometimes|boolean',
             'referenceStandard' => 'required|in:ARTA-3days,ARTA-7days,ARTA-20days,ISO9001-9.2']);
@@ -103,7 +104,7 @@ class AuditeeController extends Controller
         }
         abort_unless(in_array($requests[$index]['status'], ['requested', 'needs_information'], true), 403);
         abort_if(count($requests[$index]['responses']) >= 100, 422, 'This request has reached its response limit.');
-        abort_unless((int) $request->input('version') === (int) $audit->version, 409, 'Refresh this audit before submitting.');
+        $this->evidence->ensureCurrentVersion($audit, $request);
         unset($data['action']);
         if ($data['method'] !== 'physical-original') { unset($data['availability']); }
         if ($data['method'] === 'file') {

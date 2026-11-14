@@ -58,6 +58,63 @@ class UserManagementMongoTest extends TestCase
         return \MongoDB\BSON\toCanonicalExtendedJSON(\MongoDB\BSON\fromPHP($document));
     }
 
+    public function test_super_admin_can_authorize_independent_auditors_for_verified_cet_offices_without_changing_home_units(): void
+    {
+        $office = Department::create(['departmentName' => 'Office of the Dean', 'departmentCode' => 'CET-DEAN', 'collegeName' => 'CET',
+            'collegeId' => $this->college->getKey(), 'unitType' => 'college_office', 'ownershipVerified' => true, 'isActive' => true]);
+        $auditor = $this->account(2, ['departmentId' => $this->units[0]->getKey(), 'assignedDepartmentIds' => [$this->units[0]->getKey()]]);
+        $options = $this->getJson('/api/v1/users/options')->assertOk()->json('options.departments');
+        $option = collect($options)->firstWhere('_id', (string) $office->getKey());
+        $this->assertTrue($option['auditEligible']);
+        $this->assertFalse($option['authorizedCet'], 'An office must not become a sixth academic department.');
+        $this->patchJson('/api/v1/users/'.$auditor->getKey(), ['assignedDepartmentIds' => [(string) $office->getKey()]])->assertOk()
+            ->assertJsonPath('data.departmentId', (string) $this->units[0]->getKey());
+        $this->assertTrue(app(\App\Services\AuditAssignment::class)->eligible($auditor->fresh(), $office));
+        $this->assertInstanceOf(ObjectId::class, $auditor->fresh()->assignedDepartmentIds[0]);
+        $this->patchJson('/api/v1/users/'.$auditor->getKey(), ['departmentId' => (string) $office->getKey()])->assertUnprocessable();
+        $outside = Department::create(['departmentName' => 'Outside Office', 'collegeName' => 'OTHER', 'unitType' => 'college_office', 'ownershipVerified' => true, 'isActive' => true]);
+        $this->patchJson('/api/v1/users/'.$auditor->getKey(), ['assignedDepartmentIds' => [(string) $outside->getKey()]])->assertUnprocessable();
+        $office->update(['ownershipVerified' => false]);
+        $this->patchJson('/api/v1/users/'.$auditor->getKey(), ['assignedDepartmentIds' => [(string) $office->getKey(), (string) $this->units[1]->getKey()]])->assertUnprocessable();
+        $this->assertSame((string) $this->units[0]->getKey(), (string) $auditor->fresh()->departmentId);
+        $atl = $this->account(1, ['departmentId' => $this->units[0]->getKey()]);
+        $this->actingAs($atl)->patchJson('/api/v1/users/'.$auditor->getKey(), ['assignedDepartmentIds' => []])->assertForbidden();
+    }
+
+    public function test_super_admin_can_correct_an_auditors_legacy_home_without_rewriting_historical_eligibility(): void
+    {
+        $legacy = Department::create(['departmentName' => '[DEMO] Engineering', 'unitType' => 'legacy_unclassified',
+            'collegeName' => 'Collage of Engineering and Technology', 'isActive' => true, 'ownershipVerified' => false]);
+        $auditor = $this->account(2, ['userCode' => 'AUD-LEGACY', 'departmentId' => (string) $legacy->getKey(),
+            'assignedDepartmentIds' => [(string) $legacy->getKey()]]);
+        $before = $auditor->getRawOriginal();
+        // Merely granting eligibility cannot validate an unclassified home department.
+        $this->patchJson('/api/v1/users/'.$auditor->getKey(), ['assignedDepartmentIds' => [(string) $this->units[1]->getKey()]])->assertUnprocessable();
+        // The actual editor sends only the changed home field, retaining hidden legacy assignments.
+        $this->patchJson('/api/v1/users/'.$auditor->getKey(), ['departmentId' => (string) $this->units[0]->getKey()])->assertOk()
+            ->assertJsonPath('data.departmentId', (string) $this->units[0]->getKey());
+        foreach (['password', 'userCode', 'assignedDepartmentIds'] as $field) {
+            $this->assertEquals($before[$field], $auditor->fresh()->getRawOriginal($field));
+        }
+        $this->assertInstanceOf(ObjectId::class, $auditor->fresh()->departmentId);
+        $this->patchJson('/api/v1/users/'.$auditor->getKey(), ['assignedDepartmentIds' => [
+            (string) $legacy->getKey(), (string) $this->units[0]->getKey(), (string) $this->units[1]->getKey(),
+        ]])->assertOk();
+        $eligibility = app(\App\Services\AuditAssignment::class);
+        $this->assertTrue($eligibility->eligible($auditor->fresh(), $this->units[1]));
+        $this->assertFalse($eligibility->eligible($auditor->fresh(), $this->units[0]));
+        $this->assertFalse($eligibility->units()->contains(fn ($unit) => (string) $unit->getKey() === (string) $legacy->getKey()));
+        $anotherLegacy = Department::create(['departmentName' => 'Other legacy', 'unitType' => 'legacy_unclassified', 'isActive' => true]);
+        $snapshot = $this->snapshot($auditor->fresh());
+        $this->patchJson('/api/v1/users/'.$auditor->getKey(), ['assignedDepartmentIds' => [
+            (string) $legacy->getKey(), (string) $anotherLegacy->getKey(),
+        ]])->assertUnprocessable();
+        $this->patchJson('/api/v1/users/'.$auditor->getKey(), ['departmentId' => (string) $legacy->getKey()])->assertUnprocessable();
+        $this->assertSame($snapshot, $this->snapshot($auditor->fresh()));
+        $this->patchJson('/api/v1/users/'.$auditor->getKey(), ['assignedDepartmentIds' => []])->assertOk();
+        $this->patchJson('/api/v1/users/'.$auditor->getKey(), ['assignedDepartmentIds' => [(string) $legacy->getKey()]])->assertUnprocessable();
+    }
+
     public function test_creation_uses_existing_user_collection_and_password_setup_without_changing_existing_accounts(): void
     {
         $before = $this->snapshot($this->super);

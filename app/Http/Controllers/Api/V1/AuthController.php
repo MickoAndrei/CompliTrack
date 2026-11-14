@@ -41,10 +41,13 @@ class AuthController extends Controller
             Auth::guard('web')->login($user, $request->boolean('remember'));
             $request->session()->regenerate();
 
+            app(\App\Services\AuditLogService::class)->record($request, 'Signed in', 'authentication', $user->getKey(), actor: $user);
+
             return response()->json(['user' => $user->toArray()]);
         }
 
         $token = auth('api')->login($user);
+        app(\App\Services\AuditLogService::class)->record($request, 'Signed in', 'authentication', $user->getKey(), actor: $user);
 
         return response()->json([
             'token' => $token,
@@ -56,6 +59,7 @@ class AuthController extends Controller
 
     public function logout(Request $request)
     {
+        app(\App\Services\AuditLogService::class)->record($request, 'Signed out', 'authentication', $request->user()?->getKey());
         if ($request->hasSession() && Auth::guard('web')->check()){
             Auth::guard('web')->logout();
             if ($request->hasSession()) {
@@ -63,7 +67,7 @@ class AuthController extends Controller
                 $request->session()->regenerateToken();
             }
         } else {
-            $auth('api')->logout(); // blacklist the JWT
+            auth('api')->logout(); // blacklist the JWT
         }
 
         return response()->json(['message' => 'Logged out.']);
@@ -87,6 +91,8 @@ class AuthController extends Controller
 
         $user->password = Hash::make($validated['password'], ['rounds' => 12]);
         $user->save();
+
+        app(\App\Services\AuditLogService::class)->record($request, 'Changed account password', 'user', $user->getKey(), actor: $user);
 
         return response()->json([
             'message' => 'Password updated successfully.',
@@ -203,6 +209,8 @@ class AuthController extends Controller
         $reset->delete();
 
         $passwordResets->complete($reset->token);
+
+        app(\App\Services\AuditLogService::class)->record($request, 'Reset account password', 'user', $user->getKey());
 
         return response()->json(['message' => 'Password reset successfully.']);
     }

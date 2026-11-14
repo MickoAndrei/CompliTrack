@@ -10,6 +10,7 @@ use Tests\TestCase;
 
 class QmsArchivesMongoTest extends TestCase
 {
+    use \Tests\Support\AuthorizesAuditPlan;
     private ?string $databaseName = null;
     private ?string $directory = null;
     protected function setUp(): void
@@ -57,6 +58,43 @@ class QmsArchivesMongoTest extends TestCase
             'uploadedByUserId' => $owner->getKey(), 'ownershipVerified' => true, 'visibility' => 'department']);
     }
     private function units() { return Department::where('unitType', 'academic_department')->orderBy('departmentCode')->get(); }
+
+    public function test_editor_saves_encrypted_revisions_preserves_originals_and_rejects_unsigned_callbacks(): void
+    {
+        $this->migrate();
+        config(['documents.url' => 'http://localhost:8082', 'documents.internal_url' => 'http://127.0.0.1:8082',
+            'documents.app_url' => 'http://host.docker.internal:8000', 'documents.secret' => str_repeat('t', 48)]);
+        $unit = $this->units()->first(); $leader = $this->leader($unit);
+        $category = QmsCategory::where('unitType', 'academic_department')->firstOrFail();
+        $original = "%PDF-1.4\nOriginal revision";
+        $data = ['purpose' => 'qms', 'unitId' => (string) $unit->getKey(), 'categoryId' => (string) $category->getKey(),
+            'title' => 'Editable record', 'recordType' => 'file', 'visibility' => 'department', 'copyAuthorized' => true,
+            'file' => UploadedFile::fake()->createWithContent('record.pdf', $original)];
+        $first = $this->actingAs($leader)->post('/api/v1/archives/upload', $data, ['Accept' => 'application/json'])
+            ->assertCreated()->json('data._id');
+        $editor = $this->postJson('/api/v1/archives/'.$first.'/editor')->assertOk()->json();
+        $session = $editor['sessionId']; $callback = '/api/document-editor/'.$session.'/callback';
+        $this->get('/api/document-editor/'.$session.'/file')->assertOk()->assertContent($original);
+        $this->postJson($callback, ['status' => 6, 'key' => $editor['config']['document']['key']])->assertForbidden();
+        $revised = "%PDF-1.4\nRevised text";
+        \Illuminate\Support\Facades\Http::fake(['http://127.0.0.1:8082/cache/revision.pdf' => \Illuminate\Support\Facades\Http::response($revised)]);
+        $payload = ['status' => 6, 'key' => $editor['config']['document']['key'], 'filetype' => 'pdf', 'url' => 'http://localhost:8082/cache/revision.pdf'];
+        $token = app(\App\Services\DocumentEditorToken::class)->sign($payload);
+        $this->postJson($callback, $payload + ['token' => $token])->assertOk()->assertJsonPath('error', 0);
+        $saved = $this->getJson('/api/v1/document-editor/'.$session.'/status')->assertOk()->assertJsonCount(1, 'savedVersions')->json('currentId');
+        $this->assertNotSame($first, $saved);
+        $this->get('/api/v1/archives/'.$first.'/download')->assertOk()->assertContent($original);
+        $this->get('/api/v1/archives/'.$saved.'/download')->assertOk()->assertContent($revised);
+        $this->getJson('/api/v1/archives/'.$saved)->assertOk()->assertJsonCount(2, 'versions')->assertJsonPath('data.versionNumber', 2);
+        $this->postJson($callback, $payload + ['token' => $token])->assertOk()->assertJsonPath('error', 0);
+        $this->getJson('/api/v1/document-editor/'.$session.'/status')->assertOk()->assertJsonCount(1, 'savedVersions');
+        $denied = $payload; $denied['url'] = 'http://attacker.test/file.pdf';
+        $this->postJson($callback, $denied + ['token' => app(\App\Services\DocumentEditorToken::class)->sign($denied)])->assertUnprocessable();
+        $this->actingAs($this->user($unit))->postJson('/api/v1/archives/'.$saved.'/editor')->assertForbidden();
+        $leader->update(['isActive' => false]);
+        $this->get('/api/document-editor/'.$session.'/file')->assertForbidden();
+        \Illuminate\Support\Facades\Cache::store('file')->forget('document-editor:'.$session);
+    }
 
     public function test_only_the_audit_team_leader_manages_qms_and_super_admin_sees_folders_only(): void
     {
@@ -145,7 +183,8 @@ class QmsArchivesMongoTest extends TestCase
         $this->getJson('/api/v1/archives/'.$public->getKey())->assertOk()->assertJsonPath('data.canManage', true);
         $this->post('/audits/'.$submitted->getKey(), ['action' => 'accept', 'version' => $submitted->version, 'reviewNotes' => 'Authorized existing ATL reviewed the mock result.'])->assertRedirect()->assertSessionHasNoErrors();
         $this->assertSame('accepted', $submitted->fresh()->status);
-        $this->post('/audits', ['title' => '[MOCK] ATL assignment acceptance test', 'scope' => 'Synthetic process', 'criteria' => 'Synthetic requirement', 'schedule' => now()->toDateString(),
+        $planId = $this->authorizedPlan($atl, $auditor, Department::findOrFail($auditor->assignedDepartmentIds[0]), 'Synthetic process', 'Synthetic requirement');
+        $this->post('/audits', ['planId' => $planId, 'independenceConfirmed' => '1', 'independenceNotes' => 'No own work or declared conflict', 'title' => '[MOCK] ATL assignment acceptance test', 'scope' => 'Synthetic process', 'criteria' => 'Synthetic requirement', 'schedule' => now()->toDateString(),
             'departmentId' => (string) $it->getKey(), 'auditorId' => (string) $auditor->getKey()])->assertRedirect()->assertSessionHasNoErrors();
         $this->actingAs($cluster)->get('/audits/'.$submitted->getKey())->assertForbidden();
         $car = ComplianceCheck::where('checkCode', 'CAR-DEMO-002')->firstOrFail();

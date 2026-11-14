@@ -23,6 +23,10 @@ The platform replaces manual paper trails and fragmented file storage with an au
 
 ### 1.2 Architectural Component Overview
 
+Web logins are isolated per browser tab; see [Browser tab sessions](docs/BROWSER_TAB_SESSIONS.md) for behavior, implementation, and verification.
+
+The responsive notification inbox and separate, read-only Super Admin activity history are documented in [Notifications and System Activity Logs](docs/NOTIFICATIONS_AND_ACTIVITY_LOGS.md).
+
 The application is structured into decoupled functional layers:
 
 1. **API Gateway & Core Application (Laravel 12 / PHP 8.2+):**

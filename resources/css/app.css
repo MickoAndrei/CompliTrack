@@ -1,4 +1,7 @@
 @import 'tailwindcss';
+@import './attention.css';
+@import './directories.css';
+@import './archive-preview.css';
 
 @source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
 @source '../../storage/framework/views/*.php';
@@ -27,6 +30,10 @@
 
 /* Profile layout: portal stylesheets use an unlayered reset, so keep these
    scoped rules unlayered as well to preserve the intended spacing. */
+.evidence-preview-modal .evidence-preview-footer { flex-wrap: wrap; }
+.evidence-preview-footer [data-evidence-word-zoom] { font-size: 13px; color: #00205b; }
+.evidence-preview-footer [data-evidence-zoom] { margin-left: 6px; padding: 7px 9px; border: 1px solid #dfe6ef; border-radius: 8px; background: white; color: #00205b; }
+
 .account-profile-page {
     width: 100%;
     max-width: 960px;

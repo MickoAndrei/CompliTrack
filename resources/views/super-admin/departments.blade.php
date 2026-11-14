@@ -1,6 +1,7 @@
 @extends('layouts.app')
 @section('title', 'Departments')
 @section('heading', 'Departments')
+@section('subtitle', 'Departments registered in the CET compliance workspace.')
 @push('styles')
 <link rel="stylesheet" href="{{ asset('css/super-admin-dashboard.css') }}?v={{ filemtime(public_path('css/super-admin-dashboard.css')) }}">
 @endpush

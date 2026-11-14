@@ -27,7 +27,7 @@ class LoginEntryTest extends TestCase
     }
 
     #[DataProvider('authenticatedEntries')]
-    public function test_signed_in_users_open_their_dashboard_from_another_tab(int $role, string $entry, string $dashboard): void
+    public function test_signed_in_users_open_their_dashboard_within_the_existing_session(int $role, string $entry, string $dashboard): void
     {
         $user = new User(['roleId' => $role, 'isActive' => true]);
         $this->actingAs($user, 'web');

@@ -3,6 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <script src="{{ asset('js/tab-session.js') }}?v={{ filemtime(public_path('js/tab-session.js')) }}"></script>
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>@yield('title', 'CompliTrack') | USTP Claveria</title>
     <link rel="preload" href="{{ asset('fonts/inter/inter-3100e775e861.woff2') }}" as="font" type="font/woff2" crossorigin>
@@ -40,6 +41,9 @@
         <link rel="stylesheet" href="{{ asset('css/sidebar.css') }}?v={{ filemtime(public_path('css/sidebar.css')) }}">
     @endauth
     @stack('styles')
+    @auth
+        <link rel="stylesheet" href="{{ asset('css/portal-header.css') }}?v={{ filemtime(public_path('css/portal-header.css')) }}">
+    @endauth
 </head>
 <body class="min-h-screen" data-user-id="{{ auth()->id() }}" data-portal-role="{{ auth()->user()?->roleId }}">
     @auth

@@ -22,6 +22,7 @@ class AuditLogDateRangeTest extends TestCase
         $query->shouldReceive('where')->once()->with('createdAt', '>=', Mockery::on(fn ($date) => $date->format('Y-m-d H:i:s') === '2026-11-01 00:00:00'))->andReturnSelf();
         $query->shouldReceive('where')->once()->with('createdAt', '<', Mockery::on(fn ($date) => $date->format('Y-m-d H:i:s') === '2026-11-11 00:00:00'))->andReturnSelf();
         $query->shouldReceive('orderBy')->with('createdAt', 'desc')->andReturnSelf();
+        $query->shouldReceive('orderBy')->with('_id', 'desc')->andReturnSelf();
         $query->shouldReceive('paginate')->andReturn(new LengthAwarePaginator([], 0, 10));
         $scopes = Mockery::mock(RoleScopeService::class);
         $scopes->shouldReceive('auditLogs')->with($actor)->once()->andReturn($query);

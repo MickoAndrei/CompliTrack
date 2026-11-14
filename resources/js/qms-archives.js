@@ -1,3 +1,6 @@
+import { clearComparisonPane, renderComparisonPane } from './archive-comparison';
+import { openDocumentEditor, closeDocumentEditor } from './document-editor';
+
 document.addEventListener('alpine:init', () => {
     window.Alpine.data('qmsArchives', () => ({
         tree: { colleges: [], units: [], categories: [] }, documents: [], meta: {}, loading: true, saving: false,
@@ -5,9 +8,76 @@ document.addEventListener('alpine:init', () => {
         detail: null, versions: [], activity: [], form: {}, previous: null, accessOptions: { accounts: [], audits: [] }, auditId: '', navExpanded: false,
         organization: null, selectedUser: '', responsibility: 'faculty_staff', scopeUnits: [], scopeColleges: [],
         requestNumber: 0, initialLoading: true,
+        navigationHistory: [{ college: '', unit: '', category: '' }], navigationIndex: 0,
+        compactPath: false, stopBreadcrumbs: null,
+        comparisonIds: ['', ''], comparisonVersions: [],
+        editorMessage: '', editorSession: null, editorPollTimer: null, editorSavedCount: 0, editorPollUntil: 0,
+        canEditDocument() { return this.detail?.canManage && /\.(pdf|docx)$/i.test(this.detail?.originalName || ''); },
+        async editDocument() {
+            this.error = ''; this.editorMessage = 'Connecting to the document server…';
+            try {
+                const { data } = await window.axios.post(`/api/v1/archives/${this.detail._id}/editor`);
+                clearTimeout(this.editorPollTimer);
+                this.editorSession = data.sessionId; this.editorSavedCount = 0;
+                this.$refs.editor.showModal();
+                await this.$nextTick();
+                await openDocumentEditor(this.$refs.editorBody, data, text => { this.editorMessage = text; });
+                this.pollEditor();
+            } catch (error) { this.error = error.message?.includes('document server') ? error.message : this.message(error); }
+        },
+        async pollEditor() {
+            const session = this.editorSession;
+            if (!session) return;
+            try {
+                const { data } = await window.axios.get(`/api/v1/document-editor/${session}/status`);
+                if (session !== this.editorSession) return;
+                if (data.savedVersions.length > this.editorSavedCount) {
+                    this.editorSavedCount = data.savedVersions.length;
+                    this.editorMessage = `Version ${data.savedVersions.at(-1).versionNumber} saved. Earlier versions are available for comparison.`;
+                    await this.inspect({ _id: data.currentId }, false);
+                    await this.load();
+                }
+            } catch { this.editorMessage = 'Save status is unavailable. Check version history before closing or retrying.'; }
+            if (session === this.editorSession && (this.$refs.editor.open || Date.now() < this.editorPollUntil)) {
+                this.editorPollTimer = setTimeout(() => this.pollEditor(), 3000);
+            }
+        },
+        closeEditor() {
+            closeDocumentEditor(this.$refs.editorBody);
+            this.editorPollUntil = Date.now() + 90000;
+            clearTimeout(this.editorPollTimer);
+            this.pollEditor();
+            this.notice = 'The editor is closing. Saved revisions will appear in version history when processing finishes.';
+        },
+        get comparableVersions() { return this.versions.filter(version => version.canDownload); },
+        async compareVersions() {
+            this.comparisonVersions = [...this.comparableVersions];
+            if (this.comparisonVersions.length < 2) return;
+            this.comparisonIds = [this.comparisonVersions[1]._id, this.comparisonVersions[0]._id];
+            this.$refs.comparison.showModal();
+            await this.$nextTick();
+            this.loadComparison(0); this.loadComparison(1);
+        },
+        loadComparison(index) {
+            const version = this.comparisonVersions.find(version => version._id === this.comparisonIds[index]);
+            return renderComparisonPane(index === 0 ? this.$refs.compareLeft : this.$refs.compareRight, version);
+        },
+        clearComparison() {
+            clearComparisonPane(this.$refs.compareLeft); clearComparisonPane(this.$refs.compareRight);
+            this.comparisonIds = ['', '']; this.comparisonVersions = [];
+        },
+        destroy() { this.stopBreadcrumbs?.(); this.clearComparison(); clearTimeout(this.editorPollTimer); this.editorSession = null; closeDocumentEditor(this.$refs.editorBody); },
         async init() {
             await this.refreshTree(); await this.load();
             this.initialLoading = false;
+            await this.$nextTick();
+            const observer = new ResizeObserver(() => {
+                if (!this.$refs.breadcrumbNav.clientWidth) return;
+                this.compactPath = this.$refs.breadcrumbMeasure.getBoundingClientRect().width > this.$refs.breadcrumbNav.clientWidth - 28;
+            });
+            observer.observe(this.$refs.breadcrumbNav);
+            observer.observe(this.$refs.breadcrumbMeasure);
+            this.stopBreadcrumbs = () => observer.disconnect();
             if (this.tree.canManageOrganization && new URLSearchParams(window.location.search).get('manage') === 'responsibilities') {
                 await this.manageOrganization();
             }
@@ -56,6 +126,13 @@ document.addEventListener('alpine:init', () => {
             }
             return trail;
         },
+        get breadcrumbs() {
+            const trail = [{ key: 'campus', name: 'Campus', college: '', unit: '', category: '' }];
+            if (this.college) trail.push({ key: 'college:' + this.collegeId, name: this.college.code || this.college.name, college: this.collegeId, unit: '', category: '' });
+            if (this.unit) trail.push({ key: 'unit:' + this.unitId, name: this.unit.name, college: this.collegeId, unit: this.unitId, category: '' });
+            return trail.concat(this.categoryTrail.map(crumb => ({ key: 'category:' + crumb._id, name: crumb.name, college: this.collegeId, unit: this.unitId, category: crumb._id })));
+        },
+        get visibleBreadcrumbs() { return this.compactPath ? this.breadcrumbs.slice(-1) : this.breadcrumbs; },
         get folders() { return this.tree.units.filter(unit => !this.collegeId || unit.collegeId === this.collegeId); },
         get categories() {
             if (!this.unit) return [];
@@ -67,7 +144,29 @@ document.addEventListener('alpine:init', () => {
             const unit = this.tree.units.find(unit => unit._id === this.form.unitId);
             return this.tree.categories.filter(category => unit && category.collegeId === unit.collegeId && category.unitType === unit.unitType);
         },
-        navigate(college = '', unit = '', category = '') { this.collegeId = college; this.unitId = unit; this.categoryId = category; this.load(true); },
+        navigate(college = '', unit = '', category = '') {
+            if (this.collegeId === college && this.unitId === unit && this.categoryId === category) return;
+            this.navigationHistory = this.navigationHistory.slice(0, this.navigationIndex + 1);
+            this.navigationHistory.push({ college, unit, category });
+            this.navigationIndex = this.navigationHistory.length - 1;
+            return this.openLocation({ college, unit, category });
+        },
+        openLocation({ college, unit, category }) {
+            this.collegeId = college; this.unitId = unit; this.categoryId = category;
+            return this.load(true);
+        },
+        navigateHistory(direction) {
+            const index = this.navigationIndex + direction;
+            if (index < 0 || index >= this.navigationHistory.length) return;
+            this.navigationIndex = index;
+            return this.openLocation(this.navigationHistory[index]);
+        },
+        navigateUp() {
+            if (this.categoryId) return this.navigate(this.collegeId, this.unitId, this.category?.parentId || '');
+            if (this.unitId) return this.navigate(this.collegeId);
+            if (this.collegeId) return this.navigate();
+        },
+        async refreshLocation() { await this.refreshTree(); return this.load(); },
         date(value) { return value ? new Date(value).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' }) : 'Not recorded'; },
         type(value) { return ({file: 'Digital file', 'digital-reference': 'Document reference', 'physical-original': 'Physical original'})[value] || value; },
         label(value) { return String(value || '').replaceAll('_', ' ').replace(/\b\w/g, letter => letter.toUpperCase()); },

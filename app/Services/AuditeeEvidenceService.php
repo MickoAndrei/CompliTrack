@@ -90,11 +90,26 @@ class AuditeeEvidenceService
 
     public function save(Audit $audit, Request $request, array $changes): void
     {
-        $request->validate(['version' => 'required|integer|min:1']);
+        $this->ensureCurrentVersion($audit, $request);
         abort_unless(in_array($audit->status, ['draft', 'ready', 'returned'], true), 403, 'This audit is locked.');
         $updated = Audit::where('_id', $audit->getKey())->where('version', (int) $request->input('version'))
+            ->where('status', $audit->status)
             ->update($changes + ['version' => (int) $audit->version + 1]);
-        abort_unless($updated === 1, 409, 'This audit changed. Refresh before saving.');
+        if ($updated !== 1) { $this->versionConflict($request); }
         app(AuditLogService::class)->record($request, 'Updated audit evidence request', 'audit', $audit->getKey());
+    }
+
+    public function ensureCurrentVersion(Audit $audit, Request $request): void
+    {
+        $request->validate(['version' => 'required|integer|min:1']);
+        if ((int) $request->input('version') !== (int) $audit->version) { $this->versionConflict($request); }
+    }
+
+    private function versionConflict(Request $request): never
+    {
+        $message = 'This audit changed while the form was open. Your entries have been kept. Review the updated audit and retry. If you selected a file, select it again.';
+        if ($request->expectsJson()) { abort(409, $message); }
+        // Normal form posts return to the workspace with old input instead of a generic error page.
+        throw \Illuminate\Validation\ValidationException::withMessages(['version' => $message]);
     }
 }

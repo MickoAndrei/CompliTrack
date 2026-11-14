@@ -13,6 +13,10 @@ use App\Http\Middleware\EnsureUserIsActive;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\DB;
 
+// Capability URLs are short-lived; save callbacks additionally require the server JWT.
+Route::get('/document-editor/{session}/file', [\App\Http\Controllers\Api\V1\DocumentEditorController::class, 'file'])->middleware('throttle:120,1');
+Route::post('/document-editor/{session}/callback', [\App\Http\Controllers\Api\V1\DocumentEditorController::class, 'callback'])->middleware('throttle:120,1');
+
 Route::prefix('v1')->group(function () {
     Route::get('/version', fn () => response()->json([
         'version' => config('app.version'),
@@ -38,6 +42,10 @@ Route::prefix('v1')->group(function () {
         // Admin/ATL directories are read-only; account and department writes belong to Super Admin.
         Route::middleware('role:1')->get('/admin/workspace', [\App\Http\Controllers\Web\AtlWorkspaceController::class, 'summary']);
         Route::middleware('role:0')->get('/users/options', [UserController::class, 'options']);
+        Route::middleware('role:0')->get('/roles', [\App\Http\Controllers\Api\V1\RolePermissionController::class, 'index']);
+        Route::middleware(['role:0', 'throttle:10,1'])->patch('/roles/{id}/permissions', [\App\Http\Controllers\Api\V1\RolePermissionController::class, 'update']);
+        Route::get('/audit-plans', [\App\Http\Controllers\Api\V1\AuditPlanController::class, 'index']);
+        Route::post('/audit-plans/{id}', [\App\Http\Controllers\Api\V1\AuditPlanController::class, 'update']);
         Route::middleware('role:0,1')->group(function () {
             Route::apiResource('users', UserController::class)->only(['index', 'show'])->parameters(['users' => 'id']);
             Route::apiResource('departments', DepartmentController::class)->only(['index', 'show'])->parameters(['departments' => 'id']);
@@ -58,6 +66,8 @@ Route::prefix('v1')->group(function () {
         Route::patch('/archives/categories/{id}', [\App\Http\Controllers\Api\V1\QmsArchiveController::class, 'updateCategory']);
         Route::get('/archives/{id}', [\App\Http\Controllers\Api\V1\QmsArchiveController::class, 'show']);
         Route::post('/archives/{id}/versions', [ArchiveController::class, 'version']);
+        Route::post('/archives/{id}/editor', [\App\Http\Controllers\Api\V1\DocumentEditorController::class, 'start']);
+        Route::get('/document-editor/{session}/status', [\App\Http\Controllers\Api\V1\DocumentEditorController::class, 'status']);
         Route::patch('/archives/{id}/permissions', [\App\Http\Controllers\Api\V1\QmsArchiveController::class, 'permissions']);
         Route::post('/archives/{id}/share', [\App\Http\Controllers\Api\V1\QmsArchiveController::class, 'share']);
         Route::delete('/archives/{id}/share/{auditId}', [\App\Http\Controllers\Api\V1\QmsArchiveController::class, 'revokeShare']);
@@ -75,6 +85,8 @@ Route::prefix('v1')->group(function () {
 
         // Notifications
         Route::get('/notifications', [NotificationController::class, 'index']);
+        Route::get('/notifications/{id}/open', [NotificationController::class, 'open']);
+        Route::get('/notifications/{id}', [NotificationController::class, 'show']);
         Route::patch('/notifications/{id}/read', [NotificationController::class, 'markRead']);
         Route::patch('/notifications/read-all', [NotificationController::class, 'markAllRead']);
 
@@ -89,6 +101,7 @@ Route::prefix('v1')->group(function () {
             Route::get('/system/dashboard/health', [\App\Http\Controllers\Api\V1\SuperAdminDashboardController::class, 'health']);
             Route::get('/dashboard/health', [\App\Http\Controllers\Api\V1\SuperAdminDashboardController::class, 'health']);
             Route::get('/logs', [AuditLogController::class, 'index']);
+            Route::get('/logs/{id}', [AuditLogController::class, 'show']);
             Route::get('/system/database-stats', DatabaseStatsController::class);
             Route::get('/system/health', function () {
                 try {

@@ -8,6 +8,25 @@ use Tests\TestCase;
 
 class AuditChecklistTest extends TestCase
 {
+    public function test_readiness_reports_each_gap_and_agrees_with_submission_validation(): void
+    {
+        $items = [
+            ['result' => 'C', 'remarks' => 'Checked', 'evidence' => [['notes' => 'Reviewed original']]],
+            ['result' => 'N', 'remarks' => '  ', 'evidence' => []],
+            ['result' => 'OFI', 'remarks' => 'Checked', 'evidence' => [['notes' => 'Reviewed']]],
+        ];
+        $readiness = AuditChecklist::readiness($items);
+        $this->assertSame(1, $readiness['decisions']);
+        $this->assertSame(1, $readiness['remarks']);
+        $this->assertSame(1, $readiness['evidence']);
+        $this->assertSame(1, $readiness['findings']);
+        $this->assertSame([1, 2], array_keys($readiness['incomplete']));
+        $this->assertFalse($readiness['eligible']);
+        $this->assertFalse(AuditChecklist::readiness([])['eligible']);
+        $this->assertTrue(AuditChecklist::readiness([$items[0]])['eligible']);
+        AuditChecklist::validateSubmission([$items[0]]);
+    }
+
     public function test_progress_counts_only_saved_nco_results(): void
     {
         $progress = AuditChecklist::progress([

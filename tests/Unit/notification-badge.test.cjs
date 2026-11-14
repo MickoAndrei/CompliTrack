@@ -45,18 +45,13 @@ function fixture(name) {
         ready: async () => { primaryReady = true; for (const callback of deferred) callback(); deferred.clear(); await new Promise(setImmediate); } };
 }
 
-test('Super Admin loads unread activity before opening and keeps cleared activity dismissed on polling', async () => {
-    const f = fixture('activityNotifications');
+test('Super Admin notification preview never queries audit logs', async () => {
+    const f = fixture('auditeeNotifications');
     f.setTotal(0);
     f.setActivities([{ _id: 'first' }, { _id: 'second' }]);
-    f.app.init();
-    await f.ready();
-    assert.equal(f.app.open, false);
-    assert.equal(f.app.badgeCount(), 2);
-    await f.app.clearNotifications();
-    await f.app.refreshUnreadCount();
+    f.app.init(); await f.ready(); await f.app.toggle();
     assert.equal(f.app.badgeCount(), 0);
-    assert.equal(f.app.activities.length, 0);
+    assert.ok(f.calls.every(call => call.url === '/api/v1/notifications'));
     f.app.destroy();
 });
 
@@ -73,7 +68,7 @@ test('reading a notification on the notifications page refreshes the header', as
     f.app.destroy();
 });
 
-for (const name of ['notificationBadge', 'auditeeNotifications', 'activityNotifications']) {
+for (const name of ['notificationBadge', 'auditeeNotifications']) {
     test(`${name}: defers the total until primary content is ready, then polls and cleans up`, async () => {
         const f = fixture(name);
         f.app.init();
@@ -97,7 +92,7 @@ for (const name of ['notificationBadge', 'auditeeNotifications', 'activityNotifi
     });
 }
 
-for (const name of ['auditeeNotifications', 'activityNotifications']) {
+for (const name of ['auditeeNotifications']) {
     test(`${name}: marking all read updates the badge`, async () => {
         const { app } = fixture(name);
         await app.refreshUnreadCount();
@@ -107,28 +102,19 @@ for (const name of ['auditeeNotifications', 'activityNotifications']) {
     });
 }
 
-test('Super Admin badge includes unread recent activity and Read all clears both kinds', async () => {
-    const { app } = fixture('activityNotifications');
+test('notification read actions never count or mutate audit activity', async () => {
+    const { app } = fixture('auditeeNotifications');
     app.unreadCount = 3;
-    app.activities = [{ _id: 'unread-activity' }, { _id: 'read-activity' }];
-    app.readActivityIds = ['read-activity'];
-    assert.equal(app.badgeCount(), 4);
+    app.activities = [{ _id: 'historical-log' }];
+    app.notifications = [{ _id: 'one', isRead: false }, { _id: 'one', isRead: false }];
+    assert.equal(app.badgeCount(), 3);
+    assert.equal(app.previewItems().length, 1, 'Stable IDs remove repeated display');
     await app.markAllRead();
-    assert.ok(app.readActivityIds.includes('unread-activity'));
     assert.equal(app.badgeCount(), 0);
+    assert.equal(app.activities.length, 1, 'Audit history is untouched');
 });
 
-test('Super Admin Read all works when only recent activity is unread', async () => {
-    const { app, setTotal } = fixture('activityNotifications');
-    setTotal(0);
-    app.activities = [{ _id: 'activity-only' }];
-    assert.equal(app.badgeCount(), 1);
-    await app.markAllRead();
-    assert.ok(app.readActivityIds.includes('activity-only'));
-    assert.equal(app.badgeCount(), 0);
-});
-
-for (const name of ['notificationBadge', 'auditeeNotifications', 'activityNotifications']) {
+for (const name of ['notificationBadge', 'auditeeNotifications']) {
     test(`${name}: notification changes refresh the badge without waiting for polling`, async () => {
         const f = fixture(name);
         f.app.init();

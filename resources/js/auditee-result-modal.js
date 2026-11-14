@@ -213,7 +213,8 @@ document.addEventListener('submit', async event => {
     form.querySelectorAll('button').forEach(button => { button.disabled = true; });
     message.textContent = 'Submitting evidence…';
     try {
-        const response = await fetch(form.action, { method: 'POST', credentials: 'same-origin',
+        // The reused evidence form has a submit button named "action".
+        const response = await fetch(form.getAttribute('action'), { method: 'POST', credentials: 'same-origin',
             headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' }, body: data });
         const result = await response.json();
         if (session !== modalSession || !dialog.open) return;

@@ -2,39 +2,27 @@
 @php($roleNames = ['Super Admin', 'Admin', 'Auditor', 'Auditee'])
 @php($userAvatarUrl = auth()->user()->avatarUrl())
 @php($userInitials = collect(explode(' ', auth()->user()->fullName ?? 'U'))->filter()->take(2)->map(fn ($part) => mb_substr($part, 0, 1))->implode(''))
-<header class="{{ in_array($roleId, [0, 2, 3], true) ? 'top-header-bar' : ($roleId === 1 ? 'topbar' : 'top-header') }}">
-    <div class="{{ in_array($roleId, [0, 2, 3], true) ? 'header-left' : ($roleId === 1 ? 'topbar-left' : 'header-titles') }}">
-        <button type="button" class="{{ in_array($roleId, [0, 2, 3], true) ? 'menu-toggle' : 'rounded-lg p-2 text-ustp-dark hover:bg-ustp-light lg:hidden' }}" aria-label="Open navigation" @click="sidebarOpen = true">
+<header class="top-header-bar app-header">
+    <div class="header-left">
+        <button type="button" class="menu-toggle" aria-label="Open navigation" @click="sidebarOpen = true">
             <i data-lucide="menu" class="size-5"></i>
         </button>
         <div>
-            @if ($roleId === 1)
-                <h2>@yield('heading', 'CompliTrack')</h2>
-            @else
-                <h1 class="{{ in_array($roleId, [0, 2, 3], true) ? 'header-page-title' : 'page-title' }}">@yield('heading', 'CompliTrack')</h1>
-            @endif
-            <p class="{{ in_array($roleId, [0, 2, 3], true) ? 'header-page-subtitle' : ($roleId === 1 ? '' : 'page-subtitle') }}">@if ($roleId === 2){{ request()->is('profile', 'auditor/profile') ? 'Account details & security' : 'My assigned audits, checklists, and findings' }}@else @yield('subtitle', 'USTP Claveria · Compliance Management') @endif</p>
+            <h1 class="header-page-title">@yield('heading', 'CompliTrack')</h1>
+            <p class="header-page-subtitle">@hasSection('subtitle') @yield('subtitle') @elseif ($roleId === 2){{ request()->is('profile', 'auditor/profile') ? 'Account details & security' : 'My assigned audits, checklists, and findings' }}@else USTP Claveria · Compliance Management @endif</p>
         </div>
     </div>
-    <div class="{{ in_array($roleId, [0, 2, 3], true) ? 'header-right' : ($roleId === 1 ? 'topbar-right' : 'header-actions') }}">
-        @if ($roleId === 0)
-            <div class="relative" x-data="activityNotifications()" @click.outside="close()" @keydown.escape.window="close()">
-                <button type="button" @click="toggle()" class="notification-bell-btn" :aria-label="badgeCount() > 0 ? `Recent activity, ${badgeCount()} unread items` : 'Recent activity'" :aria-expanded="open.toString()" aria-haspopup="true">
-                    <i data-lucide="bell" class="size-5"></i>
-                    <span x-show="badgeCount() > 0" x-cloak class="header-notification-count" aria-hidden="true" x-text="badgeCount() > 99 ? '99+' : badgeCount()"></span>
-                </button>
-                <x-notification-dropdown :activity="true" />
-            </div>
-        @elseif (in_array($roleId, [1, 3], true))
+    <div class="header-right">
+        @if (in_array($roleId, [0, 1, 3], true))
             <div class="relative" x-data="auditeeNotifications()" @click.outside="close()" @keydown.escape.window="close()">
-                <button type="button" @click="toggle()" class="{{ $roleId === 1 ? 'notif-btn' : 'notification-bell-btn' }}" :aria-label="badgeCount() > 0 ? `Notifications, ${badgeCount()} unread` : 'Notifications'" :aria-expanded="open.toString()" aria-haspopup="dialog">
+                <button type="button" @click="toggle()" class="notification-bell-btn" :aria-label="badgeCount() > 0 ? `Notifications, ${badgeCount()} unread` : 'Notifications'" :aria-expanded="open.toString()" aria-haspopup="dialog">
                     <i data-lucide="bell" class="size-5"></i>
                     <span x-show="badgeCount() > 0" x-cloak class="header-notification-count" aria-hidden="true" x-text="badgeCount() > 99 ? '99+' : badgeCount()"></span>
                 </button>
-                <x-notification-dropdown :notifications-url="$roleId === 1 ? '/admin/notifications' : '/auditee/notifications'" :compact="$roleId === 1" />
+                <x-notification-dropdown :notifications-url="match ($roleId) { 0 => '/super-admin/notifications', 1 => '/admin/notifications', default => '/auditee/notifications' }" />
             </div>
         @else
-            <a href="{{ match ($roleId) { 1 => '/admin/notifications', 2 => '/auditor/notifications', 3 => '/auditee/notifications', default => '/profile' } }}" class="{{ $roleId === 1 ? 'notif-btn' : 'notification-bell-btn' }}" x-data="notificationBadge()" :aria-label="badgeCount() > 0 ? `Notifications, ${badgeCount()} unread` : 'Notifications'">
+            <a href="{{ match ($roleId) { 1 => '/admin/notifications', 2 => '/auditor/notifications', 3 => '/auditee/notifications', default => '/profile' } }}" class="notification-bell-btn" x-data="notificationBadge()" :aria-label="badgeCount() > 0 ? `Notifications, ${badgeCount()} unread` : 'Notifications'">
                 <i data-lucide="bell" class="size-5"></i>
                 <span x-show="badgeCount() > 0" x-cloak class="header-notification-count" aria-hidden="true" x-text="badgeCount() > 99 ? '99+' : badgeCount()"></span>
             </a>

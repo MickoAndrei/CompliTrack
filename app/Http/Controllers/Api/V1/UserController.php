@@ -32,7 +32,8 @@ class UserController extends Controller
         $request->validate(['roleId' => 'sometimes|integer|between:0,3', 'departmentId' => 'sometimes|nullable|string|regex:/^[a-f0-9]{24}$/i',
             'responsibility' => 'sometimes|nullable|string|in:'.implode(',', config('qms.responsibilities')),
             'status' => 'sometimes|nullable|in:active,inactive', 'search' => 'sometimes|nullable|string|max:255',
-            'includeOptions' => 'sometimes|boolean']);
+            'sortBy' => 'sometimes|in:fullName,createdAt', 'sortDirection' => 'sometimes|in:asc,desc',
+            'includeOptions' => 'sometimes|boolean', 'includeSummary' => 'sometimes|boolean']);
         $management = $request->boolean('management');
         abort_if($management && (int) $request->user()->roleId !== 0, 403);
         // Management is restricted to Super Admin, whose user scope is the whole collection.
@@ -64,9 +65,15 @@ class UserController extends Controller
 
         $filtered = collect(['roleId', 'departmentId', 'responsibility', 'status', 'search'])
             ->contains(fn ($field) => $request->filled($field));
-        $page = $query->orderBy('fullName')
+        $directorySummary = ! $management && $request->boolean('includeSummary') ? [
+            'total' => (clone $query)->count(),
+            'active' => (clone $query)->where('isActive', true)->count(),
+            'inactive' => (clone $query)->where('isActive', false)->count(),
+        ] : null;
+        $page = $query->orderBy($request->query('sortBy', 'fullName'), $request->query('sortDirection', 'asc'))
+            ->orderBy('_id')
             ->paginate(min(max((int) $request->query('perPage', 20), 1), 100),
-                total: $management && !$filtered ? $summary['total'] : null);
+                total: $management && !$filtered ? $summary['total'] : ($directorySummary['total'] ?? null));
 
         return response()->json([
             'data' => $this->serializeUsers($page->items()),
@@ -77,6 +84,7 @@ class UserController extends Controller
                 'lastPage' => $page->lastPage(),
             ],
             ...($management ? ['summary' => $summary] : []),
+            ...($directorySummary !== null ? ['summary' => $directorySummary] : []),
             ...($management && $request->boolean('includeOptions', true)
                 ? ['options' => app(UserManagementPresenter::class)->options()] : []),
         ]);
@@ -240,7 +248,8 @@ class UserController extends Controller
         sort($oldAssignments); sort($newAssignments);
         // Unverified legacy ownership blocks new assignments, not unrelated account maintenance.
         if ($roleId !== (int) $user->roleId || (string) $departmentId !== (string) $user->departmentId || $oldAssignments !== $newAssignments) {
-            $this->validateDepartmentAssignment($request->user(), $roleId, $departmentId, $assignedIds, $collegeRole, $data['archiveCollegeIds'] ?? $user->archiveCollegeIds ?? []);
+            $this->validateDepartmentAssignment($request->user(), $roleId, $departmentId, $assignedIds, $collegeRole, $data['archiveCollegeIds'] ?? $user->archiveCollegeIds ?? [],
+                (int) $request->user()->roleId === 0 && $roleId === 2 && (int) $user->roleId === 2 ? $oldAssignments : []);
         }
         if ($collegeRole && $departmentId) {
             $unit = Department::find($departmentId);
@@ -261,9 +270,11 @@ class UserController extends Controller
         if ($oldAssignments !== $newAssignments) {
             $data['assignedDepartmentIds'] = array_map(static fn ($value) => MongoId::parse((string) $value, 'assignedDepartmentIds'), $assignedIds);
         } else { unset($data['assignedDepartmentIds']); }
+        $permissionsChanged = isset($data['roleId']) || array_key_exists('departmentId', $data) || isset($data['assignedDepartmentIds'])
+            || array_key_exists('archiveResponsibility', $data) || array_key_exists('archiveUnitIds', $data);
         $user->fill($data)->save();
 
-        $this->auditLogs->record($request, 'Updated user', 'user', $user->getKey());
+        $this->auditLogs->record($request, $permissionsChanged ? 'Updated user permissions' : 'Updated user', 'user', $user->getKey());
 
         return response()->json(['data' => $this->serialize($user->fresh())]);
     }
@@ -327,6 +338,7 @@ class UserController extends Controller
         array $assignedDepartmentIds,
         bool $collegeRole = false,
         array $collegeIds = [],
+        array $preservedLegacyAssignmentIds = [],
     ): void {
         if ($collegeRole && $departmentId) {
             $unit = Department::find($departmentId);
@@ -348,8 +360,19 @@ class UserController extends Controller
         foreach (array_unique(array_map('strval', $ids)) as $id) {
             $objectId = MongoId::parse($id, 'assignedDepartmentIds');
             $department = Department::find($objectId);
+            // A stale eligibility reference must not prevent correcting an auditor's home unit.
+            // Retain existing legacy references for history; never accept a new one or a legacy home.
+            if ($department && $department->unitType === 'legacy_unclassified'
+                && $id !== (string) $departmentId && in_array($id, $preservedLegacyAssignmentIds, true)) {
+                continue;
+            }
+            // Audit eligibility is separate from employment/organizational membership.
+            // Super Admin may authorize an independent CET auditor to audit a verified office.
+            $auditorOfficeTarget = $roleId === 2 && (int) $actor->roleId === 0 && $department
+                && $department->ownershipVerified && $department->collegeName === 'CET'
+                && $id !== (string) $departmentId && in_array($id, array_map('strval', $assignedDepartmentIds), true);
             if (! $department || ! $department->isActive || $department->unitType === 'legacy_unclassified'
-                || ($department->unitType === 'college_office' && $roleId !== 3 && !($collegeRole && in_array((string) $department->collegeId, array_map('strval', $collegeIds), true)))
+                || ($department->unitType === 'college_office' && $roleId !== 3 && !$auditorOfficeTarget && !($collegeRole && in_array((string) $department->collegeId, array_map('strval', $collegeIds), true)))
                 || ((int) $actor->roleId === 1 && $department->collegeName !== 'CET')) {
                 abort(422, 'The selected department is unavailable or outside your scope.');
             }

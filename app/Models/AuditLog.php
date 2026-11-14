@@ -14,6 +14,7 @@ class AuditLog extends Model
 
     protected $fillable = [
         'userId', 'userName', 'action', 'entityType', 'entityId', 'ipAddress', 'userAgent',
+        'category', 'outcome', 'route', 'method',
     ];
 
     protected $casts = [

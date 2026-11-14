@@ -99,11 +99,14 @@ CompliTrack employs a dual-database architecture:
 - **SQLite:** Dedicated to Laravel framework internal tables (sessions, cache, jobs, relational migrations) at `database/database.sqlite`. Setting `DB_CONNECTION=sqlite` does **not** store application records in SQLite.
 
 #### Specialized Documentation & Specifications
+- [Auditor Evaluation Consolidation](docs/AUDITOR_EVALUATION_CONSOLIDATION.md) — Assigned audit evaluations, authorized historical records, preserved CAR/evidence/notification relationships, and legacy workflow limits.
+- [Notifications and System Activity Logs](docs/NOTIFICATIONS_AND_ACTIVITY_LOGS.md) — Shared responsive inbox, separate read-only audit history, authorization boundaries, indexes, and verification.
 - [QMS Archives Implementation](docs/QMS_ARCHIVES_IMPLEMENTATION.md) — CET QMS Archives implementation, migrations, authorization rules, and legacy ownership decisions.
 - [QMS Development Data](docs/QMS_DEVELOPMENT_DATA.md) — Development mock document importer, Admin/ATL reuse, organizational accounts, and audit/CAR scenarios.
 - [Super Admin Dashboard](docs/SUPER_ADMIN_DASHBOARD.md) — Super Admin dashboard metrics, organizational responsibility controls, and verification results.
 - [User Management Implementation](docs/USER_MANAGEMENT_IMPLEMENTATION.md) — Account management, organizational validation, preservation rules, and test results.
 - [Performance Optimization](docs/PERFORMANCE_OPTIMIZATION.md) & [Performance Phase 2](docs/PERFORMANCE_PHASE_2.md) — Measured Users API, frontend, static asset and OPcache improvements, styling fixes, and regression benchmarks.
+- [Audit Plan Authorization](docs/AUDIT_PLAN_AUTHORIZATION.md) - Explicit approval permission, Roles & Permissions controls, plan workflow and verification.
 - [Audit Team Leader (ATL) Workspace](docs/ATL_WORKSPACE_IMPLEMENTATION.md) — Admin account/ATL workspace, scoped dashboard, submitted-audit review modal, and authorization boundaries.
 - [Password Reset Email Configuration](docs/PASSWORD_RESET_EMAIL.md) — Dedicated PHPMailer SMTP transport, Microsoft 365 OAuth setup, and `php artisan mail:check`.
 - [Directory File Structure](FILE_STRUCTURE.md) — Complete repository file and folder layout.
@@ -342,6 +345,9 @@ Access control is strictly enforced based on the integer `roleId` field:
 
 > [!IMPORTANT]
 > User authorization checks in `RoleMiddleware` evaluate the integer `roleId` directly—permissions are never inferred from usernames, emails, or user codes.
+
+Audit-plan approval additionally requires the explicit `audit_plans.approve` permission configured through Super Admin Roles & Permissions. It is never inferred from role ID or the Super Admin wildcard. See [Audit Plan Authorization](docs/AUDIT_PLAN_AUTHORIZATION.md).
+
 
 ---
 

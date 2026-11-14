@@ -15,7 +15,7 @@ class AtlWorkspace
     {
         abort_unless($actor->isActive && in_array((int) $actor->roleId, [1, 2], true), 403);
         $ids = (int) $actor->roleId === 2 ? $this->scopes->assignedDepartmentIds($actor)
-            : $this->scopes->departments($actor)->get(['_id'])->map(fn ($d) => MongoId::parse((string) $d->getKey()))->all();
+            : \App\Models\Department::where('collegeName', 'CET')->where('unitType', '!=', 'legacy_unclassified')->get(['_id'])->map(fn ($d) => MongoId::parse((string) $d->getKey()))->all();
         return Audit::whereIn((int) $actor->roleId === 2 ? 'auditorId' : 'reviewerId', [MongoId::parse((string) $actor->getKey()), (string) $actor->getKey()])
             ->whereIn('departmentId', array_merge($ids, array_map('strval', $ids)));
     }

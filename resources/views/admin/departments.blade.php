@@ -1,6 +1,7 @@
 @extends('layouts.app')
 @section('title', 'Departments')
 @section('heading', 'Departments')
+@section('subtitle', 'CET departments available for compliance tracking.')
 @push('styles')
 <link rel="stylesheet" href="{{ asset('css/user-management.css') }}?v={{ filemtime(public_path('css/user-management.css')) }}">
 @endpush

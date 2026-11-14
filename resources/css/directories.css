@@ -1,0 +1,65 @@
+/* Shared directory presentation follows the Activity Logs panel and metric cards. */
+.attention-page.directory-page { display: block; min-width: 0; }
+.attention-page.directory-page .metric-stat-card { display: flex; justify-content: space-between; align-items: center; min-width: 0; gap: 14px; padding: 20px 22px; background: #fff; border: 1px solid #edf2f7; border-radius: 14px; box-shadow: 0 2px 3px #00205b05; }
+.attention-page.directory-page .metric-info { min-width: 0; }
+.attention-page.directory-page .metric-label { display: block; font-size: 11px; font-weight: 500; color: #64748b; margin: 0 0 6px; }
+.attention-page.directory-page .metric-number { display: block; margin: 0; color: #0f172a; font-size: 27px; line-height: 1.1; font-weight: 800; overflow-wrap: anywhere; }
+.attention-page.directory-page .metric-icon-box { display: grid; place-items: center; width: 44px; height: 44px; flex: 0 0 44px; border-radius: 50%; }
+.attention-page.directory-page .metric-icon-box svg { display: block; box-sizing: border-box; width: 20px; height: 20px; padding: 0; color: inherit; background: transparent; border-radius: 0; }
+.attention-page.directory-page .metric-icon-box.purple { color: #6d28d9; background: #f5f3ff; }
+.attention-page.directory-page .metric-icon-box.blue { color: #2563eb; background: #eff6ff; }
+.attention-page.directory-page .metric-icon-box.green { color: #15803d; background: #f0fdf4; }
+.attention-page.directory-page .metric-icon-box.slate { color: #64748b; background: #f8fafc; }
+.attention-page.directory-page .metric-icon-box.danger { color: #dc2626; background: #fef2f2; }
+.attention-page.directory-page .um-summary { gap: 18px; }
+.attention-page.directory-page .um-page { gap: 24px; }
+.attention-page.directory-page :is(.um-filters, .table-filter-bar, .toolbar) { background: transparent; border: 0; border-radius: 0; padding: 0; margin: 0 0 20px; box-shadow: none; gap: 14px; flex-wrap: wrap; }
+.attention-page.directory-page .um-page > .um-filters { margin-bottom: 0; }
+.attention-page.directory-page .directory-filter-actions { display: flex; flex: 0 0 100%; justify-content: flex-end; flex-wrap: wrap; gap: 10px; }
+.attention-page.directory-page .um-filters label { color: #64748b; font-weight: 500; }
+.attention-page.directory-page :is(.um-filters, .um-pagination) :is(input, select) { border-color: #d5dce5; border-radius: 9px; color: #0f172a; font-size: 13px; }
+.attention-page.directory-page :is(.toolbar-left, .filter-left-controls) { flex: 1; min-width: 0; }
+.attention-page.directory-page :is(.search-box, .search-input-wrapper) { display: flex; align-items: center; width: min(100%, 460px); max-width: 100%; min-height: 42px; padding: 0 13px; gap: 10px; border: 1px solid #d5dce5; border-radius: 9px; background: #fff; }
+.attention-page.directory-page :is(.search-box, .search-input-wrapper) input[type="search"] { width: 100%; min-width: 0; height: auto; padding: 10px 0; border: 0; border-radius: 0; outline: 0; box-shadow: none; background: transparent; font-size: 13px; }
+.attention-page.directory-page :is(.search-box, .search-input-wrapper) > svg { position: static; transform: none; width: 17px; height: 17px; flex-shrink: 0; color: #94a3b8; }
+.attention-page.directory-page :is(.um-page .um-primary, .um-page .um-secondary, .um-pagination button, .table-filter-bar > button, .toolbar > button) { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 36px; padding: 8px 16px; border: 1px solid #d5dce5; border-radius: 999px; background: #fff; color: #475569; font: inherit; font-size: 12px; font-weight: 600; box-shadow: none; cursor: pointer; }
+.attention-page.directory-page :is(.um-page .um-primary, .user-create-trigger, .department-create-trigger) { background: #00205b; border-color: #00205b; color: #fff; }
+.attention-page.directory-page :is(.um-page .um-primary, .user-create-trigger) { background: #ffc72c; border-color: #eab308; color: #00205b; }
+body[data-portal-role="0"] .attention-page.directory-page .department-create-trigger { background: #ffc72c; border-color: #eab308; color: #00205b; }
+body[data-portal-role="0"] .attention-page.directory-page .department-create-trigger:hover:not(:disabled) { background: #eab308; }
+body[data-portal-role="0"] .attention-page.directory-page [aria-labelledby="departmentModalTitle"] .user-modal-submit { background: #ffc72c; border-color: #eab308; color: #00205b; }
+body[data-portal-role="0"] .attention-page.directory-page [aria-labelledby="departmentModalTitle"] .user-modal-submit:hover:not(:disabled) { background: #eab308; }
+.attention-page.directory-page .um-page .directory-filter-actions > .user-create-trigger,
+.attention-page.directory-page .um-dialog .user-create-submit { background: #ffc72c; border-color: #eab308; color: #00205b; }
+.attention-page.directory-page :is(.um-table-wrap, .content-card, .table-card, .um-loading, .admin-directory-loading) { border: 0; border-radius: 0; box-shadow: none; padding: 0; background: transparent; }
+.attention-page.directory-page :is(.um-table-wrap, .responsive-table-wrapper, .overflow-x-auto) { max-width: 100%; overflow-x: auto; }
+.attention-page.directory-page :is(.um-table, .directory-table) { width: 100%; border-collapse: collapse; font-size: 12px; }
+.attention-page.directory-page :is(.um-table, .directory-table) th { padding: 13px 10px; color: #475569; font-size: 12px; font-weight: 600; text-transform: none; letter-spacing: 0; background: #fff; border-bottom: 1px solid #e2e8f0; white-space: nowrap; }
+.attention-page.directory-page :is(.um-table, .directory-table) td { padding: 16px 10px; min-width: 0; max-width: none; color: #475569; font-size: 12px; vertical-align: top; line-height: 1.6; border-top: 0; border-bottom: 1px solid #eef1f5; white-space: normal; overflow-wrap: anywhere; }
+.attention-page.directory-page :is(.um-table, .directory-table) td:first-child { color: #0f172a; font-weight: 550; }
+.attention-page.directory-page .um-table strong { color: #0f172a; font-size: 12px; font-weight: 550; }
+.attention-page.directory-page :is(.um-role, .um-status, .directory-status) { display: inline-flex; justify-self: start; border-radius: 999px; padding: 4px 9px; font-size: 11px; font-weight: 500; }
+.attention-page.directory-page .directory-status { background: #f0fdf4; color: #166534; }
+.attention-page.directory-page .directory-status.is-inactive { background: #f1f5f9; color: #64748b; }
+.attention-page.directory-page .um-pagination { padding-top: 0; font-size: 12px; }
+#main-content .directory-page .app-pagination button.app-pagination-button { min-height: 36px; padding: 7px 16px; border-radius: 999px; color: #475569; font-weight: 600; }
+.attention-page.directory-page .directory-table td button { min-height: 34px; padding: 6px 12px; border: 1px solid #d5dce5; border-radius: 999px; background: #fff; color: #475569; font-size: 11px; font-weight: 600; }
+.attention-page.directory-page .directory-table td button.text-error { color: #dc2626; }
+.attention-page.directory-page .table-card > div:last-child { padding: 18px 0 0; }
+.attention-page.directory-page :is(button, a, input, select):focus-visible { outline: 3px solid #ffc72c; outline-offset: 3px; }
+@media (max-width: 1100px) { .attention-page.directory-page .um-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.attention-page.directory-page .directory-sort{display:flex;flex-direction:row;flex:0 0 auto;align-items:center;gap:8px;color:#64748b;font-size:12px;font-weight:600;white-space:nowrap}.attention-page.directory-page .directory-sort select{min-height:40px;max-width:100%;padding:8px 30px 8px 12px;border:1px solid #d5dce5;border-radius:10px;background-color:#fff;color:#334155;font:inherit}
+@media (max-width: 640px) {
+    .attention-page.directory-page .um-summary { grid-template-columns: minmax(0, 1fr); gap: 12px; }
+    .attention-page.directory-page :is(.toolbar-left, .filter-left-controls) { flex-basis: 100%; }
+    .attention-page.directory-page :is(.search-box, .search-input-wrapper) { width: 100%; }
+    .attention-page.directory-page :is(.um-table, .directory-table) { display: block; min-width: 0; }
+    .attention-page.directory-page :is(.um-table, .directory-table) thead { display: none; }
+    .attention-page.directory-page :is(.um-table, .directory-table) tbody { display: block; }
+    .attention-page.directory-page :is(.um-table, .directory-table) tr { display: block; padding: 12px; margin-bottom: 12px; border: 1px solid #e2e8f0; border-radius: 12px; }
+    .attention-page.directory-page :is(.um-table, .directory-table) td { display: grid; grid-template-columns: 95px minmax(0, 1fr); gap: 9px; padding: 7px 0; border: 0; }
+    .attention-page.directory-page :is(.um-table, .directory-table) td::before { display: block; content: attr(data-label); color: #64748b; font-size: 11px; font-weight: 500; }
+    .attention-page.directory-page :is(.um-table, .directory-table) td:first-child { display: grid; }
+    .attention-page.directory-page :is(.um-table, .directory-table) td > small { grid-column: 2; }
+    .attention-page.directory-page .um-table strong { min-width: 0; }
+}

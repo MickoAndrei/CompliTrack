@@ -20,6 +20,9 @@ class ComplianceCheckController extends Controller
 
     public function index(Request $request)
     {
+        if ($request->boolean('correctiveActions')) {
+            return response()->json(app(\App\Services\CorrectiveActionPresenter::class)->index($request))->header('Cache-Control', 'no-store, private');
+        }
         $query = $this->scopes->checks($request->user());
         if ($request->boolean('actionable')) { $query->whereIn('correctiveStatus', ['open', 'in_progress']); }
 
@@ -57,6 +60,10 @@ class ComplianceCheckController extends Controller
 
     public function show(Request $request, string $id)
     {
+        if ($request->boolean('correctiveActions')) {
+            return response()->json(['data' => app(\App\Services\CorrectiveActionPresenter::class)->detail($request->user(), $id)])
+                ->header('Cache-Control', 'no-store, private');
+        }
         $check = $this->scopes->checks($request->user())
             ->where('_id', MongoId::parse($id))
             ->firstOrFail();

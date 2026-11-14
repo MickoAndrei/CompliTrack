@@ -12,7 +12,7 @@ function fixture() {
             if (fail) throw Error('Offline');
             return {data: url.endsWith('/forgot-password') ? {watch: 'opaque-watch-fixture'} : {status}};
         }},
-        window: {location: {assign: value => redirects.push(value)},
+        window: {location: {assign: value => redirects.push(value)}, tabUrl: value => `${value}&_tab=reset-tab`,
             setInterval: (fn, delay) => {callback = fn; interval = delay; return 42;}, clearInterval: id => cleared.push(id)},
         document: {addEventListener: (name, fn) => {if (name === 'alpine:init') fn();}}, URLSearchParams,
     };
@@ -25,7 +25,7 @@ test('inbox tab polls every five seconds and returns to sign-in after reset comp
     const f = fixture(); f.app.email = 'recipient@example.test'; await f.app.submit();
     assert.equal(f.app.submitted, true); assert.equal(f.interval(), 5000);
     await f.tick(); assert.deepEqual(f.redirects, []);
-    f.complete(); await f.tick(); assert.deepEqual(f.redirects, ['/login?reset=success']);
+    f.complete(); await f.tick(); assert.deepEqual(f.redirects, ['/login?reset=success&_tab=reset-tab']);
     assert.ok(f.cleared.includes(42));
 });
 test('expired requests stop polling and component disposal cleans up its timer', async () => {

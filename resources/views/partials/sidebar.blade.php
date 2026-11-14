@@ -6,8 +6,9 @@
             ['Users', '/super-admin/users', 'users'],
             ['Roles', '/super-admin/roles', 'shield-check'],
             ['Departments', '/super-admin/departments', 'building-2'],
-            ['Archive Repository', '/super-admin/archives', 'archive'],
-            ['Logs', '/super-admin/logs', 'scroll-text'],
+            ['Documents', '/super-admin/archives', 'archive'],
+            ['Notifications', '/super-admin/notifications', 'bell'],
+            ['System Activity Logs', '/super-admin/logs', 'scroll-text'],
             ['Settings', '/super-admin/settings', 'settings-2'],
             ['Help & Standards', '/super-admin/help', 'circle-help'],
         ],
@@ -19,7 +20,7 @@
             ['Compliance Records', '/admin/compliance-records', 'list-checks'],
             ['Departments', '/admin/departments', 'building-2'],
             ['Users', '/admin/users', 'users'],
-            ['Archives', '/admin/archives', 'archive'],
+            ['Documents', '/admin/archives', 'archive'],
             ['Reports', '/admin/reports', 'chart-no-axes-combined'],
             ['Notifications', '/admin/notifications', 'bell'],
             ['Help & Standards', '/admin/help', 'circle-help'],
@@ -27,8 +28,7 @@
         2 => [
             ['Dashboard', '/auditor/dashboard', 'layout-dashboard'],
             ['My Assigned Audits', '/audits', 'clipboard-list'],
-            ['Compliance Checks', '/auditor/checks', 'clipboard-check'],
-            ['Archive Review', '/auditor/archives', 'archive'],
+            ['Documents', '/auditor/archives', 'archive'],
             ['Corrective Actions', '/auditor/corrective-actions', 'kanban'],
             ['Notifications', '/auditor/notifications', 'bell'],
             ['Help & Standards', '/auditor/help', 'circle-help'],
@@ -38,12 +38,15 @@
             ['My Audit Results', '/auditee/my-findings', 'clipboard-list'],
             ['Evidence Requests', '/auditee/evidence-requests', 'clipboard-check'],
             ['Provide Evidence', '/auditee/upload', 'upload-cloud'],
-            ['Archives', '/auditee/archives', 'archive'],
+            ['Documents', '/auditee/archives', 'archive'],
             ['Notifications', '/auditee/notifications', 'bell'],
             ['Help & Standards', '/auditee/help', 'circle-help'],
             ['Profile', $profilePath, 'circle-user-round'],
         ],
     ];
+    if ($roleId === 1 || app(\App\Services\AuditPlanPermissions::class)->allows(auth()->user(), false)) {
+        array_splice($menus[$roleId], 1, 0, [['Audit Plans', '/audit-plans', 'clipboard-list']]);
+    }
     $roleNames = ['Super Admin', 'Admin', 'Auditor', 'Auditee'];
     $homePaths = [0 => '/super-admin/dashboard', 1 => '/admin/dashboard', 2 => '/auditor/dashboard', 3 => '/auditee/dashboard'];
     $userAvatarUrl = auth()->user()->avatarUrl();
@@ -70,7 +73,7 @@
                     @endforeach
             @else
             @foreach ($menus[$roleId] ?? [] as [$label, $href, $icon])
-                @php($active = request()->is(ltrim($href, '/'), ltrim($href, '/').'/*'))
+                @php($active = request()->is(ltrim($href, '/'), ltrim($href, '/').'/*') || ($roleId === 2 && $href === '/audits' && request()->is('auditor/historical-records', 'auditor/checks', 'auditor/checks/*')))
                 <a href="{{ $href }}" @if ($active) aria-current="page" @endif
                    class="nav-link-item {{ $active ? 'active' : '' }}">
                     <i data-lucide="{{ $icon }}" class="nav-icon size-5 shrink-0"></i>

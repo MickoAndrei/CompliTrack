@@ -20,14 +20,22 @@
 ])
 @php($roleId = (int) auth()->user()->roleId)
 @php($adminDirectory = $roleId === 1 && in_array($endpoint, ['users', 'departments'], true))
+@php($directoryPage = in_array($roleId, [0, 1], true) && in_array($endpoint, ['users', 'departments'], true))
 @php($visualRole = $roleId === 3 ? 2 : $roleId)
 @php($searchLabel = match ($title) { 'User Management' => 'User', 'Archive Repository' => 'Archive', 'Audit Logs' => 'Audit Logs', default => strtolower($title) })
 @php($panelClass = match ($visualRole) { 0, 2 => 'app-view-panel active', 3 => 'view-panel active', default => '' })
-<section class="{{ $panelClass }} {{ $endpoint === 'logs' ? 'audit-logs-page' : '' }} {{ $roleId === 1 ? 'admin-resource-page' : '' }}" x-data="resourcePage({ endpoint: @js($endpoint), enhancedUsers: @js($enhancedUsers), columns: @js($columns), perPage: {{ (int) $perPage }}, detailBase: @js($detailBase), allowStatusUpdates: {{ $allowStatusUpdates ? 'true' : 'false' }}, allowArchiveActions: {{ $allowArchiveActions ? 'true' : 'false' }}, allowNotificationActions: {{ $allowNotificationActions ? 'true' : 'false' }}, allowUserCreate: {{ $allowUserCreate ? 'true' : 'false' }}, allowUserActions: {{ $allowUserActions ? 'true' : 'false' }}, actorRoleId: {{ $actorRoleId === null ? 'null' : (int) $actorRoleId }}, allowDepartmentCreate: {{ $allowDepartmentCreate ? 'true' : 'false' }}, allowDepartmentActions: {{ $allowDepartmentActions ? 'true' : 'false' }}, allowBroadcast: {{ $allowBroadcast ? 'true' : 'false' }} })" x-init="load()">
-    @if($roleId === 1 && $showHeading)<header class="admin-resource-heading"><h2>{{ $title }}</h2><p>{{ $description }}</p></header>@endif
+<section class="{{ $panelClass }} {{ $directoryPage ? 'attention-page directory-page' : '' }} {{ $endpoint === 'logs' ? 'audit-logs-page' : '' }} {{ $roleId === 1 ? 'admin-resource-page' : '' }}" x-data="resourcePage({ endpoint: @js($endpoint), directoryPage: @js($directoryPage), enhancedUsers: @js($enhancedUsers), columns: @js($columns), perPage: {{ (int) $perPage }}, detailBase: @js($detailBase), allowStatusUpdates: {{ $allowStatusUpdates ? 'true' : 'false' }}, allowArchiveActions: {{ $allowArchiveActions ? 'true' : 'false' }}, allowNotificationActions: {{ $allowNotificationActions ? 'true' : 'false' }}, allowUserCreate: {{ $allowUserCreate ? 'true' : 'false' }}, allowUserActions: {{ $allowUserActions ? 'true' : 'false' }}, actorRoleId: {{ $actorRoleId === null ? 'null' : (int) $actorRoleId }}, allowDepartmentCreate: {{ $allowDepartmentCreate ? 'true' : 'false' }}, allowDepartmentActions: {{ $allowDepartmentActions ? 'true' : 'false' }}, allowBroadcast: {{ $allowBroadcast ? 'true' : 'false' }} })" x-init="load()">
+    @if($roleId === 1 && $showHeading && !$directoryPage)<header class="admin-resource-heading"><h2>{{ $title }}</h2><p>{{ $description }}</p></header>@endif
     @if ($enhancedUsers)
         @include('super-admin.partials.user-management')
     @else
+    @if($directoryPage)
+    <div class="attention-stats" aria-label="Directory summary for current filters">
+        @foreach ([['total', $endpoint === 'users' ? 'Total Users' : 'Total Departments', $endpoint === 'users' ? 'users' : 'building-2', 'purple'], ['active', 'Active', 'circle-check', 'blue'], ['inactive', 'Inactive', 'circle-alert', 'danger']] as [$key, $label, $icon, $color])
+            <article class="metric-stat-card"><div class="metric-info"><span class="metric-label">{{ $label }}</span><strong class="metric-number color-dark" x-text="summary?.{{ $key }} ?? '—'"></strong></div><div class="metric-icon-box {{ $color }}"><i data-lucide="{{ $icon }}" aria-hidden="true"></i></div></article>
+        @endforeach
+    </div>
+    @endif
     <div x-page-notice="successPopupType" x-cloak x-show="successPopupVisible" x-transition class="fixed right-6 top-6 z-[100] flex min-h-[52px] w-[calc(100%-3rem)] max-w-sm items-center rounded-lg border-l-4 bg-ustp-navy pr-5 py-4 text-[13px] font-medium leading-5 text-white shadow-[0_10px_25px_rgba(5,27,68,0.18)]" :class="successPopupType === 'error' ? 'border-red-500' : 'border-ustp-gold'" style="padding-left: 24px" :role="successPopupType === 'error' ? 'alert' : 'status'" aria-live="polite">
         <span class="min-w-0 flex-1" x-text="successPopupMessage"></span>
     </div>
@@ -40,6 +48,9 @@
                 <span class="sr-only">Search {{ $searchLabel }}</span>
                 <input type="search" x-model="search" @input.debounce.350ms="load(1)" placeholder="Search {{ $searchLabel }}" aria-label="Search {{ $searchLabel }}" class="{{ in_array($roleId, [0, 2], true) ? 'input-search-field' : '' }}">
             </label>
+            @if($roleId === 1 && $endpoint === 'users')
+            <label class="directory-sort"><span>Sort by</span><select x-model="sortBy" @change="load(1)" aria-label="Sort users by"><option value="fullName:asc">Name: A to Z</option><option value="fullName:desc">Name: Z to A</option><option value="createdAt:desc">Newest first</option><option value="createdAt:asc">Oldest first</option></select></label>
+            @endif
             @if($roleId === 1 && $endpoint === 'notifications')
             <label class="admin-unread-filter"><input type="checkbox" x-model="unreadOnly" @change="load(1)">Unread only</label>
             <label class="admin-type-filter"><span class="sr-only">Notification type</span><select x-model="typeFilter" @change="load(1)" aria-label="Notification type"><option value="">All notification types</option>@foreach(['audit_assigned'=>'Audit assignments','audit_submitted'=>'Submitted audits','audit_returned'=>'Returned audits','audit_accepted'=>'Accepted audits','status_changed'=>'CAR updates','admin_broadcast'=>'Announcements'] as $value=>$label)<option value="{{ $value }}">{{ $label }}</option>@endforeach</select></label>
@@ -114,7 +125,7 @@
         <div class="admin-notification-list"><template x-for="row in rows" :key="row._id"><article class="admin-notification-card" :class="{'is-unread': !row.isRead}"><span class="admin-notification-icon" aria-hidden="true"><i data-lucide="bell"></i></span><div class="admin-notification-copy"><div class="atl-section-heading"><h3 x-text="row.title"></h3><span class="atl-status" x-text="row.isRead ? 'Read' : 'Unread'"></span></div><p x-text="row.message"></p><div class="admin-notification-meta"><span x-text="formatValue(row.type)"></span><time :datetime="row.createdAt" x-text="formatValue(row.createdAt)"></time></div><div class="admin-notification-actions"><button type="button" x-show="!row.isRead" @click="markRead(row)">Mark as read</button><a x-show="row.destination && row.destination.startsWith('/') && !row.destination.startsWith('//')" :href="row.destination">View related record</a></div></div></article></template></div>
         @else
         <div class="{{ match ($visualRole) { 0 => 'responsive-table-wrapper', 2 => 'table-container', default => 'overflow-x-auto' } }}">
-            <table class="{{ $adminDirectory ? 'um-table admin-directory-table' : '' }} min-w-full divide-y divide-slate-100 text-left text-sm {{ match ($visualRole) { 0, 3 => 'data-table', 2 => 'compliance-table', default => '' } }}">
+            <table class="{{ $directoryPage ? 'directory-table' : '' }} {{ $adminDirectory ? 'um-table admin-directory-table' : '' }} min-w-full divide-y divide-slate-100 text-left text-sm {{ match ($visualRole) { 0, 3 => 'data-table', 2 => 'compliance-table', default => '' } }}">
                 <thead class="bg-slate-50 text-xs uppercase tracking-wide text-ustp-muted">
                     <tr><template x-for="column in columns" :key="column.key"><th scope="col" class="whitespace-nowrap px-5 py-3 font-semibold" x-text="column.label"></th></template>@if(!$adminDirectory)<th x-show="allowArchiveActions || allowNotificationActions || allowUserActions || allowDepartmentActions" scope="col" class="px-5 py-3 font-semibold">Actions</th>@endif</tr>
                 </thead>
@@ -140,10 +151,10 @@
                                     <template x-if="['status', 'result', 'correctiveStatus'].includes(column.key) && !(column.key === 'correctiveStatus' && allowStatusUpdates && row.correctiveStatus)">
                                         <span class="rounded-full px-2.5 py-1 text-xs font-semibold capitalize" :class="statusClass(row[column.key])" x-text="formatValue(row[column.key])"></span>
                                     </template>
-                                    @if($adminDirectory)
-                                    <template x-if="column.key === 'isActive'"><span class="um-status" :class="{'is-inactive': !isRowActive(row)}" x-text="isRowActive(row) ? 'Active' : 'Inactive'"></span></template>
+                                    @if($directoryPage)
+                                    <template x-if="column.key === 'isActive'"><span class="um-status directory-status" :class="{'is-inactive': !isRowActive(row)}" x-text="isRowActive(row) ? 'Active' : 'Inactive'"></span></template>
                                     @endif
-                                    <template x-if="column.key !== 'checkCode' && column.key !== 'roleId' && {{ $adminDirectory ? "column.key !== 'isActive' &&" : '' }} !['status', 'result', 'correctiveStatus'].includes(column.key)">
+                                    <template x-if="column.key !== 'checkCode' && column.key !== 'roleId' && {{ $directoryPage ? "column.key !== 'isActive' &&" : '' }} !['status', 'result', 'correctiveStatus'].includes(column.key)">
                                         <span x-text="formatValue(row[column.key])"></span>
                                     </template>
                                 </td>

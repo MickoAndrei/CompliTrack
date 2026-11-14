@@ -41,6 +41,7 @@
     <section><h3>Submission and Review History</h3>
         @forelse($audit->history ?? [] as $event)
         <details class="atl-history"><summary>{{ ucfirst(str_replace('_', ' ', $event['action'] ?? 'Update')) }} · {{ $date($event['at'] ?? null) }}</summary><p>Actor: {{ $event['actor'] ?? 'Not recorded' }}</p><p>{{ $event['notes'] ?? '' }}</p>
+            @if(!empty($event['previousAssignment']))<h4>Previous assignment</h4><p>{{ $event['previousAssignment']['title'] ?? '' }} · {{ $event['previousAssignment']['schedule'] ?? '' }}</p><p>Auditor: {{ (string) ($event['previousAssignment']['auditorId'] ?? '') }}</p><p>{{ $event['previousAssignment']['scope'] ?? '' }}</p><p>{{ $event['previousAssignment']['criteria'] ?? '' }}</p>@endif
             @if(!empty($event['previousItems']))<h4>Previous evaluation snapshot</h4>@foreach($event['previousItems'] as $previous)<p><strong>{{ $previous['question'] ?? 'Question' }}</strong> · {{ $previous['result'] ?? 'Pending' }}</p><p>{{ $previous['remarks'] ?? '' }}</p><p>{{ $previous['finding'] ?? '' }}</p>@endforeach @endif
         </details>
         @empty<p class="atl-muted">No submission or review history recorded.</p>@endforelse

@@ -16,6 +16,25 @@ async function listen(server) {
   return `http://127.0.0.1:${server.address().port}`;
 }
 
+test('document server proxy strips its prefix and app cookies and preserves the public path', async (t) => {
+  const documents = http.createServer((req, res) => {
+    res.setHeader('Content-Type', 'application/json');
+    res.end(JSON.stringify({ url: req.url, cookie: req.headers.cookie || null,
+      host: req.headers['x-forwarded-host'], proto: req.headers['x-forwarded-proto'] }));
+  });
+  const proxy = createDevProxy({ documentTarget: await listen(documents) });
+  t.after(() => { proxy.close(); documents.close(); });
+  const base = await listen(proxy);
+  const response = await fetch(`${base}/document-server/web-apps/apps/api/documents/api.js?test=1`, {
+    headers: { cookie: 'complitrack_session=private', 'x-forwarded-proto': 'https' },
+  });
+  const data = await response.json();
+  assert.equal(data.url, '/web-apps/apps/api/documents/api.js?test=1');
+  assert.equal(data.cookie, null);
+  assert.equal(data.host, new URL(base).host + '/document-server');
+  assert.equal(data.proto, 'https');
+});
+
 test('hashed build assets are compressed and cached without caching authenticated responses', async (t) => {
   const root = await mkdtemp(path.join(os.tmpdir(), 'complitrack-assets-'));
   const source = 'export const value = "asset";\n'.repeat(1000);

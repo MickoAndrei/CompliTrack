@@ -1,0 +1,28 @@
+services:
+  documentserver:
+    image: onlyoffice/documentserver:10.0.0
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8082:80"
+    env_file:
+      - ./storage/app/private/onlyoffice.env
+    environment:
+      JWT_ENABLED: "true"
+      JWT_HEADER: Authorization
+      ALLOW_PRIVATE_IP_ADDRESS: "true"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - onlyoffice_data:/var/www/onlyoffice/Data
+      - onlyoffice_logs:/var/log/onlyoffice
+      - onlyoffice_library:/var/lib/onlyoffice
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/healthcheck"]
+      interval: 15s
+      timeout: 5s
+      retries: 40
+      start_period: 60s
+volumes:
+  onlyoffice_data:
+  onlyoffice_logs:
+  onlyoffice_library:

@@ -22,7 +22,7 @@ class ComplianceCheckService
 
     public function create(User $actor, array $data, Request $request): ComplianceCheck
     {
-        abort_unless((int) $actor->roleId === 2, 403);
+        abort_unless($actor->isActive && (int) $actor->roleId === 2, 403);
 
         $departmentId = MongoId::parse($data['departmentId'], 'departmentId');
         $auditeeId = MongoId::parse($data['auditeeId'], 'auditeeId');
@@ -91,18 +91,15 @@ class ComplianceCheckService
         ?string $remarks,
         Request $request,
     ): ComplianceCheck {
-        abort_unless((int) $actor->roleId === 2, 403);
+        abort_unless($actor->isActive && (int) $actor->roleId === 2, 403);
 
         $objectId = MongoId::parse($id);
         $check = $this->scopes->checks($actor)->where('_id', $objectId)->firstOrFail();
+        abort_unless($this->scopes->canAccessDepartment($actor, MongoId::parse((string) $check->departmentId)), 403);
+        abort_unless($check->result === 'non_compliant', 422, 'Only a nonconforming check can have a corrective action.');
         $previousStatus = $check->correctiveStatus;
 
-        $allowed = match ($previousStatus) {
-            'open' => ['in_progress'],
-            'in_progress' => ['closed'],
-            'closed' => ['open'],
-            default => [],
-        };
+        $allowed = self::allowedTransitions($check);
 
         if (!in_array($nextStatus, $allowed, true)) {
             throw ValidationException::withMessages([
@@ -160,5 +157,13 @@ class ComplianceCheckService
             'status_changed', 'Corrective action updated', $check->checkCode.' status changed to '.$nextStatus.'.', $actor->getKey(), $check->getKey());
 
         return $check->fresh();
+    }
+
+    public static function allowedTransitions(ComplianceCheck $check): array
+    {
+        if ($check->result !== 'non_compliant') { return []; }
+        return match ($check->correctiveStatus) {
+            'open' => ['in_progress'], 'in_progress' => ['closed'], 'closed' => ['open'], default => [],
+        };
     }
 }

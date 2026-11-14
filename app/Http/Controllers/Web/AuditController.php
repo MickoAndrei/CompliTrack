@@ -20,14 +20,39 @@ class AuditController extends Controller
 
     public function index(Request $request)
     {
-        $query = $this->query($request);
+        if ((int) $request->user()->roleId === 2) {
+            $request->validate(['search' => 'nullable|string|max:160', 'departmentId' => ['nullable', 'string', 'regex:/^[a-f0-9]{24}$/i'],
+                'status' => 'nullable|in:draft,ready,in_progress,submitted,returned,accepted', 'page' => 'nullable|integer|min:1']);
+            try {
+                $data = app(\App\Services\AuditorAuditListing::class)->page($request->user(), $request);
+            } catch (\MongoDB\Driver\Exception\Exception $exception) {
+                report($exception);
+                return response()->view('auditor.audits', ['loadError' => true], 503)->header('Cache-Control', 'private, no-store');
+            }
+            return response()->view($request->ajax() ? 'auditor.partials.assigned-audit-fragment' : 'auditor.audits', $data)->header('Cache-Control', 'private, no-store');
+        }
         $request->validate(['view' => 'nullable|in:reviews', 'status' => 'nullable|in:draft,ready,submitted,returned,accepted']);
-        if ($request->query('view') === 'reviews' && (int) $request->user()->roleId === 1) { $query->whereIn('status', ['submitted', 'returned', 'accepted']); }
+        $query = $this->query($request);
+        $admin = (int) $request->user()->roleId === 1;
+        if ($admin && $request->query('view') === 'reviews') {
+            $status = $request->query('status', 'submitted');
+            abort_unless(in_array($status, ['submitted', 'returned', 'accepted'], true), 422);
+            $counts = [];
+            foreach (['submitted', 'returned', 'accepted'] as $state) { $counts[$state] = (clone $query)->where('status', $state)->count(); }
+            $audits = $query->where('status', $status)->orderBy('updatedAt', 'desc')->paginate(20)->withQueryString();
+            return view('admin.audit-reviews', compact('audits', 'counts', 'status'));
+        }
         if ($request->filled('status')) { $query->where('status', $request->query('status')); }
         $audits = $query->orderBy('createdAt', 'desc')->paginate(20)->withQueryString();
-        $departments = $this->scopes->departments($request->user())->get();
-        $auditors = (int) $request->user()->roleId === 1 ? $this->scopes->users($request->user())->where('roleId', 2)->where('isActive', true)->get() : collect();
-        return view('auditor.audits', compact('audits', 'departments', 'auditors'));
+        if (!$admin) { return view('auditor.audits', compact('audits')); }
+        $assignment = app(\App\Services\AuditAssignment::class);
+        $plans = $assignment->plans($request->user());
+        $units = $assignment->units();
+        $auditors = $this->scopes->users($request->user())->where('roleId', 2)->where('isActive', true)->orderBy('fullName')->get();
+        $people = $auditors->keyBy(fn ($u) => (string) $u->getKey());
+        $counts = [];
+        foreach (['draft', 'ready'] as $state) { $counts[$state] = $this->query($request)->where('status', $state)->count(); }
+        return view('admin.audit-assignments', compact('audits', 'plans', 'units', 'auditors', 'people', 'counts', 'assignment'));
     }
 
     public function metrics(Request $request)
@@ -84,14 +109,7 @@ class AuditController extends Controller
     public function store(Request $request, CounterService $counter)
     {
         abort_unless((int) $request->user()->roleId === 1 && $request->user()->isActive, 403);
-        $data = $request->validate([
-            'title' => 'required|string|max:200', 'scope' => 'required|string|max:3000',
-            'criteria' => 'required|string|max:3000', 'schedule' => 'required|date',
-            'departmentId' => 'required|string', 'auditorId' => 'required|string',
-        ]);
-        $department = $this->scopes->departments($request->user())->where('_id', MongoId::parse($data['departmentId']))->where('isActive', true)->firstOrFail();
-        $auditor = $this->scopes->users($request->user())->where('_id', MongoId::parse($data['auditorId']))->where('roleId', 2)->where('isActive', true)->firstOrFail();
-        abort_unless(in_array((string) $department->getKey(), array_map('strval', $this->scopes->assignedDepartmentIds($auditor)), true), 403);
+        $data = app(\App\Services\AuditAssignment::class)->validate($request);
         // One audit record owns its assignment. Prevent an accidental form resubmission
         // without preventing distinct audits for the same department or auditor.
         $assignmentKey = hash('sha256', json_encode([$data['title'], $data['scope'], $data['criteria'], $data['schedule'],
@@ -101,9 +119,9 @@ class AuditController extends Controller
         }
         try {
         $audit = Audit::create($data + ['auditCode' => $counter->next('IQA', yearly: true),
-            'departmentName' => $department->departmentName, 'reviewerId' => $request->user()->getKey(),
+            'reviewerId' => $request->user()->getKey(),
             'assignmentKey' => $assignmentKey,
-            'status' => 'draft', 'version' => 1, 'items' => [], 'interviews' => [], 'history' => []]);
+            'status' => 'draft', 'version' => 1, 'items' => [], 'interviews' => [], 'history' => [['action' => 'assigned', 'actor' => (string) $request->user()->getKey(), 'at' => now()->utc()->toIso8601String()]]]);
         } catch (\Throwable $exception) {
             if ((int) $exception->getCode() === 11000) {
                 throw ValidationException::withMessages(['title' => 'This audit assignment already exists. Refresh the assignment list.']);
@@ -114,7 +132,35 @@ class AuditController extends Controller
         app(\App\Services\NotificationDispatchService::class)->persist($audit->auditorId,
             'audit:'.$audit->getKey().':assigned', 'audit_assigned', 'Audit assigned',
             $audit->auditCode.' has been assigned to you. Open My Assigned Audits.', $request->user()->getKey());
-        return redirect('/audits/'.$audit->getKey())->with('status', 'Audit assigned.');
+        return redirect('/audits')->with('status', 'Audit assigned.');
+    }
+
+    public function amend(Request $request, string $id)
+    {
+        abort_unless((int) $request->user()->roleId === 1 && $request->user()->isActive, 403);
+        $audit = $this->query($request)->where('_id', MongoId::parse($id))->firstOrFail();
+        $request->validate(['version' => 'required|integer', 'changeReason' => 'required|string|max:2000']);
+        abort_unless((int) $audit->version === (int) $request->input('version'), 409);
+        abort_unless(in_array($audit->status, ['draft', 'ready'], true)
+            && !collect($audit->history ?? [])->contains('action', 'submit'), 403, 'Submitted audits retain their assignment.');
+        $data = app(\App\Services\AuditAssignment::class)->validate($request);
+        abort_unless((string) $audit->planId === $data['planId'] && (string) $audit->departmentId === $data['departmentId'], 422, 'Plan and unit must be retained.');
+        $previous = $audit->only(['planId', 'auditorId', 'departmentId', 'title', 'schedule', 'scope', 'criteria', 'independenceNotes', 'planAuthorizationSnapshot']);
+        $history = $audit->history ?? [];
+        $history[] = ['action' => 'assignment_changed', 'actor' => (string) $request->user()->getKey(),
+            'at' => now()->utc()->toIso8601String(), 'notes' => $request->input('changeReason'), 'previousAssignment' => $previous];
+        // Retain original creation retry protection when an assignment changes.
+        foreach (['planId', 'auditorId', 'departmentId'] as $field) { $data[$field] = MongoId::parse($data[$field]); }
+        $updated = $this->query($request)->where('_id', $audit->getKey())->where('version', (int) $audit->version)
+            ->where('status', $audit->status)->update($data + ['history' => $history, 'version' => (int) $audit->version + 1]);
+        abort_unless($updated === 1, 409, 'This audit changed. Refresh before saving again.');
+        $this->logs->record($request, 'Changed audit assignment', 'audit', $audit->getKey());
+        foreach (array_unique([(string) $audit->auditorId, (string) $data['auditorId']]) as $recipient) {
+            app(\App\Services\NotificationDispatchService::class)->persist($recipient,
+                'audit:'.$audit->getKey().':assignment:'.($audit->version + 1).':'.$recipient,
+                'audit_assignment_changed', 'Audit assignment updated', $audit->auditCode.': '.$request->input('changeReason'), $request->user()->getKey());
+        }
+        return redirect('/audits')->with('status', 'Assignment updated with history.');
     }
 
     public function show(Request $request, string $id)
@@ -125,12 +171,29 @@ class AuditController extends Controller
         if ($request->boolean('review')) {
             abort_unless((int) $request->user()->roleId === 1, 403);
             $ids = $audit->planArchiveIds ?? [];
+            if ($audit->planId) { $ids[] = (string) $audit->planId; }
             foreach ($audit->items ?? [] as $item) { foreach ($item['evidence'] ?? [] as $e) { if (!empty($e['archiveId'])) { $ids[] = $e['archiveId']; } } }
             foreach ($audit->evidenceRequests ?? [] as $entry) { foreach ($entry['responses'] ?? [] as $response) { if (!empty($response['archiveId'])) { $ids[] = $response['archiveId']; } } }
             $attachments = app(\App\Services\AtlWorkspace::class)->evidence($request->user(), $ids);
             return response()->view('admin.audit-review', compact('audit', 'progress', 'attachments'))->header('Cache-Control', 'no-store');
         }
-        return view('auditor.audit-workspace', compact('audit', 'auditees', 'progress'));
+        $readiness = AuditChecklist::readiness($audit->items ?? []);
+        $peopleIds = [(string) $audit->auditorId, (string) $audit->reviewerId];
+        foreach ($audit->history ?? [] as $event) { $peopleIds[] = $event['actor'] ?? ''; }
+        foreach ($audit->items ?? [] as $item) {
+            foreach ($item['evidence'] ?? [] as $evidence) { $peopleIds[] = $evidence['reviewedBy'] ?? ''; }
+        }
+        foreach ($audit->evidenceRequests ?? [] as $entry) { $peopleIds[] = $entry['auditeeId'] ?? ''; }
+        $people = User::whereIn('_id', array_values(array_unique(array_filter($peopleIds))))->get(['fullName'])->keyBy(fn ($person) => (string) $person->getKey());
+        $attachmentIds = $audit->planArchiveIds ?? [];
+        foreach ($audit->items ?? [] as $item) {
+            foreach ($item['evidence'] ?? [] as $evidence) { if (!empty($evidence['archiveId'])) { $attachmentIds[] = $evidence['archiveId']; } }
+        }
+        foreach ($audit->evidenceRequests ?? [] as $entry) {
+            foreach ($entry['responses'] ?? [] as $response) { if (!empty($response['archiveId'])) { $attachmentIds[] = $response['archiveId']; } }
+        }
+        $attachments = collect(app(\App\Services\AtlWorkspace::class)->evidence($request->user(), $attachmentIds))->keyBy('id');
+        return response()->view('auditor.audit-workspace', compact('audit', 'auditees', 'progress', 'readiness', 'people', 'attachments'))->header('Cache-Control', 'no-store');
     }
 
     public function update(Request $request, string $id)

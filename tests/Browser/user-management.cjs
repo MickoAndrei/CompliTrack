@@ -43,6 +43,8 @@ const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
                         const p=config.params||{};let filtered=users.filter(u=>(p.roleId===undefined||u.roleId===Number(p.roleId))&&(!p.departmentId||u.departmentId===p.departmentId)&&(!p.responsibility||u.archiveResponsibility===p.responsibility)&&(!p.status||u.isActive===(p.status==='active'))&&(!p.search||[u.fullName,u.email,u.userCode].some(v=>v.toLowerCase().includes(p.search.toLowerCase()))));
                         const perPage=Number(p.perPage||10),page=Number(p.page||1);
                         body={data:filtered.slice((page-1)*perPage,page*perPage),meta:{total:filtered.length,currentPage:page,lastPage:Math.max(1,Math.ceil(filtered.length/perPage)),perPage},options,summary:{total:users.length,active:users.filter(u=>u.isActive).length,auditors:users.filter(u=>u.roleId===2).length,auditees:users.filter(u=>u.roleId===3).length}};
+                    }else if(config.url==='/api/v1/users/options'){
+                        body={options};
                     }else if(config.url==='/api/v1/users'&&config.method==='post'){
                         if(window.failSave)throw {response:{data:{message:'The email has already been taken.',errors:{email:['Use another email address.']}}}};
                         const row={...payload,_id:id(90),userCode:'ATE-NEW',canDeactivate:true,organizationalUnits:[],organizationalColleges:[],departmentName:units[0].name};users.push(row);body={data:row};
@@ -101,6 +103,19 @@ const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
             await evaluate(`${state}.userForm.archiveResponsibility='college_dean';${state}.changeResponsibility()`);
             await waitFor(`${state}.collegeResponsibility()`);
             assert.equal(await evaluate(`[...document.querySelectorAll('select')].find(select=>select.getAttribute('x-model')==='userForm.archiveCollegeIds[0]').required`),true);
+            await waitFor(`!${state}.userOptionsLoading`);
+            for(const responsibility of ['department_head','college_secretary','faculty_staff','']){
+                await evaluate(`(()=>{const select=document.querySelector('[x-model="userForm.archiveResponsibility"]');select.value=${JSON.stringify(responsibility)};select.dispatchEvent(new Event('change',{bubbles:true}));})()`);
+                const model=responsibility==='department_head'?'userForm.archiveUnitIds[0]':responsibility==='college_secretary'?'userForm.archiveCollegeIds[0]':'userForm.departmentId';
+                await waitFor(`(()=>{const select=[...document.querySelectorAll('[x-ref=userEditor] select')].find(el=>el.getAttribute('x-model')===${JSON.stringify(model)});return select.getClientRects().length>0;})()`);
+                const dropdown=await evaluate(`(()=>{const select=[...document.querySelectorAll('[x-ref=userEditor] select')].find(el=>el.getAttribute('x-model')===${JSON.stringify(model)});return {visible:select.getClientRects().length>0,disabled:select.disabled,options:select.options.length};})()`);
+                assert.ok(dropdown.visible&&!dropdown.disabled&&dropdown.options>1,'Dependent dropdown available for '+responsibility+' '+JSON.stringify(dropdown));
+            }
+            await evaluate(`(()=>{const select=[...document.querySelectorAll('[x-ref=userEditor] select')].find(el=>el.getAttribute('x-model.number')==='userForm.roleId');select.value='2';select.dispatchEvent(new Event('change',{bubbles:true}));})()`);
+            assert.equal(await evaluate(`document.querySelector('[x-model="userForm.archiveResponsibility"]').disabled && document.querySelector('#um-responsibility-hint').textContent.includes('Locked for Auditors')`),true,'Auditor restriction is explained');
+            await evaluate(`${state}.startUserEdit(window.fixtureUsers[1]);${state}.userForm.archiveResponsibility='faculty_staff';${state}.changeResponsibility()`);
+            assert.equal(await evaluate(`${state}.userForm.departmentId===window.fixtureUsers[1].departmentId`),true,'Changing ATL responsibility preserves locked department');
+            assert.equal(await evaluate(`document.querySelector('#um-department-hint').getClientRects().length>0 && document.querySelector('[x-model="userForm.departmentId"]').disabled`),true,'Locked department has an indicator');
             await send('Input.dispatchKeyEvent',{type:'keyDown',key:'Escape',code:'Escape',windowsVirtualKeyCode:27});await waitFor('!document.querySelector("[x-ref=userEditor]").open');
             if([1440,390].includes(width)){
                 await evaluate(`${state}.clearUserFilters()`);await waitFor(`!${state}.loading`);
@@ -121,8 +136,8 @@ const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
             await waitFor(`!${state}.saving && !document.querySelector('[x-ref=userAction]').open && !${state}.loading`);
         }
         await evaluate(`window.failList=true;${state}.load()`);await waitFor(`${state}.error && !${state}.loading`);
-        await waitFor('document.querySelector(".um-table-wrap").getClientRects().length===0 && document.querySelector(".um-error").getClientRects().length>0');
-        await evaluate(`window.failList=false;${state}.load()`);await waitFor(`!${state}.loading && !${state}.error`);
+        await waitFor('document.querySelector(".um-table-wrap").getClientRects().length===0 && [...document.querySelectorAll(".page-notification.is-error")].some(node=>node.getClientRects().length>0 && node.textContent.includes("Users could not be loaded"))');
+        await evaluate(`window.failList=false;[...document.querySelectorAll('.page-notification.is-error')].find(node=>node.textContent.includes('Users could not be loaded')).querySelector('.page-notification-actions button').click()`);await waitFor(`!${state}.loading && !${state}.error`);
         assert.equal(exceptions.length,0,JSON.stringify(exceptions));
         console.log('PASS create, atomic edit payload, validation errors, reset confirmation, deactivate/reactivate, failure and retry');
         await send('Browser.close');
