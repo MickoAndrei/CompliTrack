@@ -31,7 +31,9 @@ class AuditController extends Controller
             }
             return response()->view($request->ajax() ? 'auditor.partials.assigned-audit-fragment' : 'auditor.audits', $data)->header('Cache-Control', 'private, no-store');
         }
-        $request->validate(['view' => 'nullable|in:reviews', 'status' => 'nullable|in:draft,ready,submitted,returned,accepted']);
+        $request->validate(['view' => 'nullable|in:reviews', 'status' => 'nullable|in:draft,ready,submitted,returned,accepted',
+            'search' => 'nullable|string|max:160', 'departmentId' => ['nullable', 'string', 'regex:/^[a-f0-9]{24}$/i'],
+            'auditorId' => ['nullable', 'string', 'regex:/^[a-f0-9]{24}$/i'], 'page' => 'nullable|integer|min:1']);
         $query = $this->query($request);
         $admin = (int) $request->user()->roleId === 1;
         if ($admin && $request->query('view') === 'reviews') {
@@ -43,8 +45,29 @@ class AuditController extends Controller
                 return response()->view('admin.audit-reviews', ['loadError' => true], 503);
             }
         }
+        if ($admin) {
+            $ids = fn ($field) => (clone $query)->toBase()->distinct($field)->get()->filter(fn ($id) => preg_match('/^[a-f0-9]{24}$/i', (string) $id))
+                ->map(fn ($id) => MongoId::parse(strtolower((string) $id)))->unique(fn ($id) => (string) $id)->values()->all();
+            $registerDepartments = Department::whereIn('_id', $ids('departmentId'))->orderBy('departmentName')->get();
+            $registerAuditors = User::whereIn('_id', $ids('auditorId'))->orderBy('fullName')->get();
+        }
         if ($request->filled('status')) { $query->where('status', $request->query('status')); }
-        $audits = $query->orderBy('createdAt', 'desc')->paginate(20)->withQueryString();
+        if ($admin) {
+            foreach (['departmentId', 'auditorId'] as $field) {
+                if ($request->filled($field)) {
+                    $id = strtolower((string) $request->query($field));
+                    $query->whereIn($field, [$id, MongoId::parse($id)]);
+                }
+            }
+            if ($request->filled('search') && trim($request->query('search')) !== '') {
+                $search = '/'.preg_quote(trim($request->query('search')), '/').'/i';
+                $query->where(function ($query) use ($search) {
+                    $query->where('auditCode', 'regex', $search)->orWhere('title', 'regex', $search)
+                        ->orWhere('departmentName', 'regex', $search)->orWhere('planTitle', 'regex', $search);
+                });
+            }
+        }
+        $audits = $query->orderBy('createdAt', 'desc')->orderBy('_id', 'desc')->paginate(10)->withQueryString();
         if (!$admin) { return view('auditor.audits', compact('audits')); }
         $assignment = app(\App\Services\AuditAssignment::class);
         $plans = $assignment->plans($request->user());
@@ -53,7 +76,7 @@ class AuditController extends Controller
         $people = $auditors->keyBy(fn ($u) => (string) $u->getKey());
         $counts = [];
         foreach (['draft', 'ready'] as $state) { $counts[$state] = $this->query($request)->where('status', $state)->count(); }
-        return view('admin.audit-assignments', compact('audits', 'plans', 'units', 'auditors', 'people', 'counts', 'assignment'));
+        return view('admin.audit-assignments', compact('audits', 'plans', 'units', 'auditors', 'people', 'counts', 'assignment', 'registerDepartments', 'registerAuditors'));
     }
 
     public function metrics(Request $request)

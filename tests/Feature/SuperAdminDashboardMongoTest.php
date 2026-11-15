@@ -159,6 +159,14 @@ class SuperAdminDashboardMongoTest extends TestCase
         $this->getJson($query.'&sortBy=collegeName&sortDirection=desc')->assertOk()->assertJsonCount(5, 'data');
         $this->getJson($query.'&sortBy=password')->assertUnprocessable();
         $this->getJson($query.'&sortDirection=invalid')->assertUnprocessable();
+        Department::where('departmentCode', 'SORT-0')->update(['isActive' => false]);
+        $this->getJson($query.'&status=inactive&campusName=Claveria')->assertOk()->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.departmentName', 'Sort Zulu')->assertJsonPath('meta.total', 1)
+            ->assertJsonPath('summary.inactive', 1)->assertJsonPath('summary.active', 0);
+        $this->getJson($query.'&status=active')->assertOk()->assertJsonCount(5, 'data')
+            ->assertJsonPath('meta.total', 5)->assertJsonPath('meta.lastPage', 1);
+        $this->getJson($query.'&campusName=Jasaan')->assertOk()->assertJsonCount(0, 'data')->assertJsonPath('meta.total', 0);
+        $this->getJson($query.'&status=invalid')->assertUnprocessable();
     }
 
     public function test_health_checks_use_realtime_response_and_do_not_fabricate_availability(): void

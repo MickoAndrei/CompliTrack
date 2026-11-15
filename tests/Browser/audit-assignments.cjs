@@ -24,10 +24,10 @@ const server = http.createServer(async (req, res) => {
     if (/^\/audits\/[a-f0-9]{24}$/i.test(url.pathname)) {
         res.setHeader('Content-Type', 'text/html'); res.end(fs.readFileSync(path.join(fixtures, 'review.html'))); return;
     }
-    if (['/assignments.html', '/reviews.html', '/roles.html', '/plans.html', '/approvals.html'].includes(url.pathname)) {
+    if (['/audits', '/assignments.html', '/reviews.html', '/roles.html', '/plans.html', '/approvals.html'].includes(url.pathname)) {
         const isPlanPage = ['/roles.html', '/plans.html', '/approvals.html'].includes(url.pathname);
         if (isPlanPage) planMode = url.pathname === '/approvals.html' ? 'approver' : 'preparer';
-        let html = fs.readFileSync(path.join(isPlanPage ? planFixtures : fixtures, url.pathname.slice(1)), 'utf8');
+        let html = fs.readFileSync(path.join(isPlanPage ? planFixtures : fixtures, url.pathname === '/audits' ? 'assignments.html' : url.pathname.slice(1)), 'utf8');
         html = html.replace(/https?:\/\/[^/"'\s]+/g, '')
             .replace(/\/build\/assets\/app-[^"\s]+\.js/g, '/build/' + manifest['resources/js/app.js'].file)
             .replace(/\/build\/assets\/app-[^"\s]+\.css/g, '/build/' + manifest['resources/css/app.css'].file);
@@ -78,31 +78,49 @@ const server = http.createServer(async (req, res) => {
             assert.equal(await evaluate('document.documentElement.scrollWidth > innerWidth'), false, `Register fits ${width}px`);
             assert.equal(await evaluate('document.querySelectorAll("a[data-atl-review]").length'), 0);
             assert.equal(await evaluate('document.querySelector(".header-page-subtitle").textContent.trim()'), 'Assign auditors to departments and offices based on authorized audit plans.');
+            assert.equal(await evaluate('!!document.querySelector(".assignment-register .assignment-filter-actions [data-new-assignment]")'), true, 'New assignment sits below the fields inside the register');
+            assert.equal(await evaluate('document.querySelector(".assignment-pagination > span").textContent.trim()'), '1 record \u00b7 Page 1 of 1');
+            assert.equal(await evaluate('document.querySelectorAll(".assignment-pagination [aria-disabled=true]").length'), 2, 'Single-page registers keep pagination visible with unavailable directions disabled');
+            await evaluate(`(()=>{const form=document.querySelector('[data-assignment-filters]');form.elements.search.value='Workflow';form.elements.search.dispatchEvent(new Event('input',{bubbles:true}));})()`);
+            await waitFor('new URL(location.href).searchParams.get("search")==="Workflow" && document.querySelector("[data-assignment-loading]").hidden');
+            await evaluate(`(()=>{const form=document.querySelector('[data-assignment-filters]');for(const name of ['departmentId','auditorId'])form.elements[name].selectedIndex=1;form.elements.status.value='draft';form.elements.status.dispatchEvent(new Event('change',{bubbles:true}));})()`);
+            await waitFor('(()=>{const query=new URL(location.href).searchParams;return query.get("status")==="draft"&&!!query.get("departmentId")&&!!query.get("auditorId")&&query.get("search")==="Workflow";})()');
+            await evaluate('document.querySelector(".assignment-filter-actions a").click()');
+            await waitFor('[...document.querySelectorAll("[data-assignment-filters] input[type=search],[data-assignment-filters] select")].every(field=>!field.value) && !new URL(location.href).searchParams.has("search")');
+            await evaluate('document.querySelector("[data-view-audit-scope]").click()');
+            await waitFor('document.querySelector("#audit-scope-dialog").open');
+            assert.equal(await evaluate(`(()=>{const dialog=document.querySelector('#audit-scope-dialog'),header=dialog.querySelector('header'),body=dialog.querySelector('.assignment-modal-body');dialog.querySelector('[data-scope-content]').textContent='Long scope details. '.repeat(300);const box=dialog.getBoundingClientRect(),top=header.getBoundingClientRect().top;body.scrollTop=body.scrollHeight;return box.left>=0&&box.right<=innerWidth&&box.top>=0&&box.bottom<=innerHeight&&getComputedStyle(header).backgroundColor==='rgb(0, 32, 91)'&&getComputedStyle(dialog).overflowY==='hidden'&&body.scrollTop>0&&header.getBoundingClientRect().top===top&&dialog.querySelectorAll('button').length===1;})()`),true,'Scope popup has one close control, a fixed navy header and scrollable content');
+            await evaluate('document.querySelector("[data-close-audit-scope]").click()');
+            await waitFor('!document.querySelector("#audit-scope-dialog").open && document.activeElement.matches("[data-view-audit-scope]")');
             await evaluate('document.querySelector("[data-new-assignment]").click()');
             await waitFor('document.querySelector("#audit-assignment-dialog").open');
             assert.ok(await evaluate('(()=>{const r=document.querySelector("#audit-assignment-dialog").getBoundingClientRect();return r.left>=0 && r.right<=innerWidth && r.top>=0 && r.bottom<=innerHeight})()'), 'Assignment modal fits');
+            assert.equal(await evaluate(`(()=>{const dialog=document.querySelector('#audit-assignment-dialog'),body=dialog.querySelector('.assignment-modal-body'),header=dialog.querySelector('header'),footer=dialog.querySelector('footer');const top=header.getBoundingClientRect().top,bottom=footer.getBoundingClientRect().bottom;body.scrollTop=body.scrollHeight;const valid=getComputedStyle(header).backgroundColor==='rgb(0, 32, 91)'&&getComputedStyle(dialog.querySelector('[data-save-assignment]')).backgroundColor==='rgb(255, 199, 44)'&&getComputedStyle(dialog).overflowY==='hidden'&&getComputedStyle(document.body).overflowY==='hidden'&&body.scrollTop>0&&header.getBoundingClientRect().top===top&&footer.getBoundingClientRect().bottom===bottom;body.scrollTop=0;return valid;})()`),true,'Create User popup styling keeps header/footer fixed and only the body scrolls');
             assert.equal(await evaluate('document.querySelector(".assignment-modal-form").checkValidity()'), false);
-            await evaluate('(()=>{const p=document.querySelector("select[name=planId]");p.selectedIndex=1;p.dispatchEvent(new Event("change",{bubbles:true}));const u=document.querySelector("select[name=departmentId]");u.value=[...u.options].find(o=>o.value&&!o.disabled).value;u.dispatchEvent(new Event("change",{bubbles:true}))})()');
+            await evaluate('(()=>{const p=document.querySelector("select[name=planId]");p.selectedIndex=1;p.dispatchEvent(new Event("change",{bubbles:true}));const u=document.querySelector("#audit-assignment-dialog select[name=departmentId]");u.value=[...u.options].find(o=>o.value&&!o.disabled).value;u.dispatchEvent(new Event("change",{bubbles:true}))})()');
             assert.equal(await evaluate('document.querySelector("[data-plan-scope]").value'), 'Process');
-            assert.equal(await evaluate('[...document.querySelector("select[name=auditorId]").options].filter(o=>o.value&&!o.disabled).length'), 1);
-            assert.equal(await evaluate('document.querySelector("select[name=auditorId]").disabled'), false);
-            await evaluate('(()=>{const o=[...document.querySelector("select[name=auditorId]").options].find(o=>o.value&&!o.disabled);window.eligibleAuditorOption=o;window.eligibleAuditorUnits=o.dataset.units;o.dataset.units="[]";document.querySelector("select[name=departmentId]").dispatchEvent(new Event("change",{bubbles:true}))})()');
-            assert.equal(await evaluate('document.querySelector("select[name=auditorId]").disabled'), true);
+            assert.equal(await evaluate('[...document.querySelector("#audit-assignment-dialog select[name=auditorId]").options].filter(o=>o.value&&!o.disabled).length'), 1);
+            assert.equal(await evaluate('document.querySelector("#audit-assignment-dialog select[name=auditorId]").disabled'), false);
+            await evaluate('(()=>{const o=[...document.querySelector("#audit-assignment-dialog select[name=auditorId]").options].find(o=>o.value&&!o.disabled);window.eligibleAuditorOption=o;window.eligibleAuditorUnits=o.dataset.units;o.dataset.units="[]";document.querySelector("#audit-assignment-dialog select[name=departmentId]").dispatchEvent(new Event("change",{bubbles:true}))})()');
+            assert.equal(await evaluate('document.querySelector("#audit-assignment-dialog select[name=auditorId]").disabled'), true);
             assert.equal(await evaluate('document.querySelector("[data-save-assignment]").disabled'), true);
             assert.ok(await evaluate('document.querySelector("[data-assignment-auditor-help]").textContent.includes("A Super Admin must authorize")'));
-            await evaluate('window.eligibleAuditorOption.dataset.units=window.eligibleAuditorUnits;document.querySelector("select[name=departmentId]").dispatchEvent(new Event("change",{bubbles:true}))');
-            assert.equal(await evaluate('document.querySelector("select[name=auditorId]").disabled'), false);
+            await evaluate('window.eligibleAuditorOption.dataset.units=window.eligibleAuditorUnits;document.querySelector("#audit-assignment-dialog select[name=departmentId]").dispatchEvent(new Event("change",{bubbles:true}))');
+            assert.equal(await evaluate('document.querySelector("#audit-assignment-dialog select[name=auditorId]").disabled'), false);
             assert.equal(await evaluate('document.querySelector("[name=schedule]").min'), '2020-01-01');
             const shot = await send('Page.captureScreenshot', { format: 'png' });
             fs.writeFileSync(path.join(fixtures, `assignment-modal-${width}.png`), Buffer.from(shot.result.data, 'base64'));
             await evaluate('document.querySelector("[data-close-assignment]").click()');
             await waitFor('document.activeElement.matches("[data-new-assignment]")');
-            await evaluate('document.querySelector("[data-edit-assignment]").click()');
-            assert.equal(await evaluate('document.querySelector("[name=planId]").disabled && document.querySelector("[name=departmentId]").disabled'), true);
+            await evaluate(`(()=>{window.beforeEditUrl=location.href;window.editOpener=document.querySelector('[data-edit-assignment]');const search=document.querySelector('[data-assignment-filters] [name=search]');search.value='Pending search';search.dispatchEvent(new Event('input',{bubbles:true}));window.editOpener.click();})()`);
+            await new Promise(resolve => setTimeout(resolve, 450));
+            assert.equal(await evaluate('location.href===window.beforeEditUrl && window.editOpener.isConnected'),true,'Opening a popup cancels a pending search and preserves its focus target');
+            assert.equal(await evaluate('document.querySelector("[name=planId]").disabled && document.querySelector("#audit-assignment-dialog [name=departmentId]").disabled'), true);
             assert.equal(await evaluate('document.querySelector("[name=changeReason]").required'), true);
             await send('Input.dispatchKeyEvent', { type: 'keyDown', key: 'Escape', code: 'Escape', windowsVirtualKeyCode: 27 });
             await send('Input.dispatchKeyEvent', { type: 'keyUp', key: 'Escape', code: 'Escape', windowsVirtualKeyCode: 27 });
             await waitFor('!document.querySelector("#audit-assignment-dialog").open');
+            assert.equal(await evaluate('document.activeElement===window.editOpener'),true,'Closing the popup returns focus to its assignment');
             await send('Page.navigate', { url: 'http://127.0.0.1:9350/reviews.html' });
             await waitFor('!!document.querySelector("a[data-atl-review]") && !!window.Alpine && !document.documentElement.hidden');
             await new Promise(r => setTimeout(r, 300));

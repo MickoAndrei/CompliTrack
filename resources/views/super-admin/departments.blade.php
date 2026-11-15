@@ -1,5 +1,6 @@
 @extends('layouts.app')
 @section('title', 'Departments')
+@section('body-class', 'department-page')
 @section('heading', 'Departments')
 @section('subtitle', 'Departments registered in the CET compliance workspace.')
 @push('styles')

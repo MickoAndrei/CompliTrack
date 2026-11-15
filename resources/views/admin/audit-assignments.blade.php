@@ -8,14 +8,19 @@
 @section('content')
 <div class="space-y-6 atl-assignment-page" data-assignment-page>
     @include('auditor.audit-feedback')
-    <header class="atl-actions" style="justify-content:flex-end"><button type="button" class="atl-primary" data-new-assignment>+ New Audit Assignment</button></header>
     <div class="assignment-stats">
         <article><span>Scheduled / preparing</span><strong>{{ $counts['draft'] }}</strong></article>
         <article><span>Authorized plans available</span><strong>{{ $plans->count() }}</strong></article>
         <article><span>In Progress</span><strong>{{ $counts['ready'] }}</strong></article>
     </div>
-    <section class="assignment-register"><h2>Assignment Register</h2>
-        <form action="/audits" method="GET" class="atl-filters" data-assignment-filters><label>Status<select name="status"><option value="">All statuses</option>@foreach(['draft' => 'Scheduled / preparing', 'ready' => 'In Progress', 'submitted' => 'Submitted', 'returned' => 'Returned', 'accepted' => 'Completed'] as $value => $label)<option value="{{ $value }}" @selected(request('status') === $value)>{{ $label }}</option>@endforeach</select></label><a href="/audits" class="atl-secondary">Reset Filter</a></form>
+    <section class="assignment-register"><header class="atl-section-heading"><h2>Assignment Register</h2></header>
+        <form action="/audits" method="GET" class="assignment-filters" data-assignment-filters>
+            <label class="assignment-search">Search assignments<input type="search" name="search" value="{{ request('search') }}" maxlength="160" placeholder="Audit reference, title or department"></label>
+            <label>Status<select name="status"><option value="">All statuses</option>@foreach(['draft' => 'Scheduled / preparing', 'ready' => 'In Progress', 'submitted' => 'Submitted', 'returned' => 'Returned', 'accepted' => 'Completed'] as $value => $label)<option value="{{ $value }}" @selected(request('status') === $value)>{{ $label }}</option>@endforeach</select></label>
+            <label>Department / office<select name="departmentId"><option value="">All departments / offices</option>@foreach($registerDepartments as $unit)<option value="{{ $unit->getKey() }}" @selected(strtolower((string) request('departmentId')) === (string) $unit->getKey())>{{ $unit->departmentName }}</option>@endforeach</select></label>
+            <label>Assigned auditor<select name="auditorId"><option value="">All auditors</option>@foreach($registerAuditors as $auditor)<option value="{{ $auditor->getKey() }}" @selected(strtolower((string) request('auditorId')) === (string) $auditor->getKey())>{{ $auditor->fullName }}</option>@endforeach</select></label>
+            <div class="assignment-filter-actions"><button type="button" class="atl-primary" data-new-assignment>+ New Audit Assignment</button><a href="/audits" class="atl-secondary">Clear filters</a></div>
+        </form>
         <p data-assignment-filter-message role="status" aria-live="polite" hidden></p>
         <div data-assignment-loading role="status" hidden>
             <span class="sr-only">Loading assignments...</span>
@@ -34,36 +39,46 @@
             </td></tr>
         @empty<tr><td colspan="7">No audit assignments match this register.</td></tr>@endforelse
         </tbody></table></div>
-        {{ $audits->links() }}
+        <nav class="assignment-pagination" aria-label="Assignment Register pages">
+            <span>{{ $audits->total() }} {{ $audits->total() === 1 ? 'record' : 'records' }} &middot; Page {{ $audits->currentPage() }} of {{ $audits->lastPage() }}</span>
+            <div>
+                @if($audits->onFirstPage())<span class="assignment-page-button is-disabled" aria-disabled="true">Previous</span>@else<a class="assignment-page-button" href="{{ $audits->previousPageUrl() }}" rel="prev">Previous</a>@endif
+                @if($audits->hasMorePages())<a class="assignment-page-button" href="{{ $audits->nextPageUrl() }}" rel="next">Next</a>@else<span class="assignment-page-button is-disabled" aria-disabled="true">Next</span>@endif
+            </div>
+        </nav>
         </div>
     </section>
     <dialog id="audit-assignment-dialog" class="assignment-dialog" aria-labelledby="assignment-dialog-title" data-reopen="{{ $errors->any() ? '1' : '0' }}" data-old="{{ json_encode(old()) }}">
-        <header class="atl-section-heading"><h2 id="assignment-dialog-title">New Audit Assignment</h2><button type="button" class="atl-secondary" data-close-assignment aria-label="Close assignment modal">Close</button></header>
+        <header class="assignment-modal-header"><div><span class="assignment-eyebrow">AUDIT ASSIGNMENT</span><h2 id="assignment-dialog-title">New Audit Assignment</h2></div><button type="button" class="assignment-modal-close" data-close-assignment aria-label="Close assignment modal"><i data-lucide="x" aria-hidden="true"></i></button></header>
         <form method="POST" action="/audits" class="assignment-modal-form">@csrf
             <input type="hidden" name="assignmentId"><input type="hidden" name="version">
+            <div class="assignment-modal-body">
             @if($plans->isEmpty())<p role="status" class="atl-evidence-note">No audit plans have confirmed assignment authorization in your permitted archives. Prepare and submit a plan in <a href="/audit-plans">Audit Plans</a>; an explicitly permitted approver must approve it before it can be selected. Existing assignments remain available.</p>@endif
             <label>Authorized Audit Plan<select name="planId" required><option value="">Select an authorized plan</option>@foreach($plans as $plan)<option value="{{ $plan->getKey() }}" data-plan="{{ json_encode(array_replace($plan->assignmentAuthorization, ['unitIds' => array_map('strval', $plan->assignmentAuthorization['unitIds'])])) }}">{{ $plan->title ?: $plan->originalName }}</option>@endforeach</select></label>
             <label>Assignment title<input name="title" required maxlength="200"></label>
             <fieldset><legend>Auditable Unit Type</legend><label><input type="radio" name="unitType" value="department" checked> Department</label><label><input type="radio" name="unitType" value="office"> Office</label></fieldset>
             <label>Department / Office to Audit<select name="departmentId" required><option value="">Select a unit covered by the plan</option>@foreach($units as $unit)<option value="{{ $unit->getKey() }}" data-unit-type="{{ $unit->unitType === 'academic_department' ? 'department' : 'office' }}">{{ $unit->departmentName }}</option>@endforeach</select></label>
-            <p class="atl-muted">The Office of the Dean is a college office. Only verified CET units within the selected plan are available.</p>
+            <p class="assignment-info-note">The Office of the Dean is a college office. Only verified CET units within the selected plan are available.</p>
             <label>Assigned Auditor<select name="auditorId" required aria-describedby="assignment-auditor-help"><option value="">Select an eligible auditor</option>@foreach($auditors as $auditor)<option value="{{ $auditor->getKey() }}" data-units="{{ json_encode($units->filter(fn ($unit) => $assignment->eligible($auditor, $unit))->map(fn ($unit) => (string) $unit->getKey())->values()) }}">{{ $auditor->fullName }}</option>@endforeach</select></label>
-            <p id="assignment-auditor-help" class="atl-muted" data-assignment-auditor-help role="status" aria-live="polite">Select an authorized plan and a department or office to see eligible auditors.</p>
-            <label>Scheduled Audit Date<input type="date" name="schedule" required></label>
+            <p id="assignment-auditor-help" class="assignment-info-note" data-assignment-auditor-help role="status" aria-live="polite">Select an authorized plan and a department or office to see eligible auditors.</p>
+            <label class="assignment-schedule">Scheduled Audit Date<input type="date" name="schedule" required></label>
             <label>Audit Scope<textarea data-plan-scope readonly rows="3"></textarea></label>
             <label>Audit Criteria<textarea data-plan-criteria readonly rows="3"></textarea></label>
-            <p data-plan-procedure class="atl-muted"></p>
+            <p data-plan-procedure class="assignment-info-note"></p>
             <label>Independence / conflict check notes<textarea name="independenceNotes" maxlength="2000" required rows="3"></textarea></label>
-            <label class="assignment-confirm"><input type="checkbox" name="independenceConfirmed" value="1" required> I verified independence and conflicts under the referenced procedure, including responsibility for the work being audited.</label>
+            <label class="assignment-confirm"><input type="checkbox" name="independenceConfirmed" value="1" required><span>I verified independence and conflicts under the referenced procedure, including responsibility for the work being audited.</span></label>
             <label data-change-reason hidden>Reason for assignment change<textarea name="changeReason" maxlength="2000" rows="3"></textarea></label>
+            </div>
             <footer class="atl-actions"><button type="button" class="atl-secondary" data-close-assignment>Cancel</button><button type="submit" class="atl-primary" data-save-assignment>Assign Auditor</button></footer>
         </form>
     </dialog>
 </div>
 <dialog id="audit-scope-dialog" class="assignment-scope-dialog" aria-labelledby="audit-scope-title">
-    <header><h2 id="audit-scope-title">Audit Scope and Criteria</h2><button type="button" class="atl-secondary" data-close-audit-scope aria-label="Close scope and criteria">Close</button></header>
-    <p class="atl-muted" data-scope-audit></p>
-    <h3>Scope</h3><p class="assignment-scope-text" data-scope-content></p>
-    <h3>Criteria</h3><p class="assignment-scope-text" data-criteria-content></p>
+    <header class="assignment-modal-header"><div><span class="assignment-eyebrow">AUDIT DETAILS</span><h2 id="audit-scope-title">Audit Scope and Criteria</h2></div><button type="button" class="assignment-modal-close" data-close-audit-scope aria-label="Close scope and criteria"><i data-lucide="x" aria-hidden="true"></i></button></header>
+    <div class="assignment-modal-body">
+        <p class="assignment-info-note" data-scope-audit></p>
+        <section><h3>Scope</h3><p class="assignment-scope-text" data-scope-content></p></section>
+        <section><h3>Criteria</h3><p class="assignment-scope-text" data-criteria-content></p></section>
+    </div>
 </dialog>
 @endsection

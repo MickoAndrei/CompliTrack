@@ -6,14 +6,14 @@
 .attention-page .attention-heading p { color: #64748b; font-size: 14px; line-height: 1.6; margin: 0; }
 .attention-page .attention-heading > svg { width: 24px; height: 24px; color: #64748b; flex-shrink: 0; }
 .attention-page .attention-actions, .attention-page .notification-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-.attention-page .attention-button { display: inline-flex; align-items: center; justify-content: center; gap: 8px; border: 1px solid #d5dce5; border-radius: 999px; min-height: 36px; padding: 7px 16px; background: #fff; color: #475569; font: inherit; font-size: 13px; font-weight: 600; line-height: 1.4; text-decoration: none; cursor: pointer; white-space: normal; }
-.attention-page .attention-button svg { width: 16px; height: 16px; flex-shrink: 0; }
-.attention-page .attention-button:hover:not(:disabled) { background: #f1f5f9; border-color: #94a3b8; }
-.attention-page .attention-button.is-primary { background: #00205b; border-color: #00205b; color: #fff; }
-.attention-page .attention-button.is-primary:hover:not(:disabled) { background: #003477; }
+:is(.attention-page, .atl-workspace) .attention-button { display: inline-flex; align-items: center; justify-content: center; gap: 8px; border: 1px solid #d5dce5; border-radius: 999px; min-height: 36px; padding: 7px 16px; background: #fff; color: #475569; font: inherit; font-size: 13px; font-weight: 600; line-height: 1.4; text-decoration: none; cursor: pointer; white-space: normal; }
+:is(.attention-page, .atl-workspace) .attention-button svg { width: 16px; height: 16px; flex-shrink: 0; }
+:is(.attention-page, .atl-workspace) .attention-button:hover:not(:disabled) { background: #f1f5f9; border-color: #94a3b8; }
+:is(.attention-page, .atl-workspace) .attention-button.is-primary { background: #00205b; border-color: #00205b; color: #fff; }
+:is(.attention-page, .atl-workspace) .attention-button.is-primary:hover:not(:disabled) { background: #003477; }
 body[data-portal-role="0"] .notification-inbox :is(.broadcast-trigger, .attention-broadcast .attention-button.is-primary) { background: #ffc72c; border-color: #eab308; color: #00205b; }
 body[data-portal-role="0"] .notification-inbox :is(.broadcast-trigger, .attention-broadcast .attention-button.is-primary):hover:not(:disabled) { background: #eab308; border-color: #eab308; }
-.attention-page .attention-button:disabled { opacity: .5; cursor: default; }
+:is(.attention-page, .atl-workspace) .attention-button:disabled { opacity: .5; cursor: default; }
 .attention-page :is(button, a, input, select, textarea):focus-visible { outline: 3px solid #ffc72c; outline-offset: 3px; }
 .attention-page .attention-search { display: flex; align-items: center; gap: 12px; border: 1px solid #d5dce5; border-radius: 999px; padding: 0 18px; min-height: 48px; margin-bottom: 18px; }
 .attention-page .attention-search svg { width: 19px; height: 19px; color: #94a3b8; flex-shrink: 0; }
@@ -54,8 +54,8 @@ body[data-portal-role="0"] .notification-inbox :is(.broadcast-trigger, .attentio
 .attention-page .attention-skeleton span:first-child { width: 38%; height: 16px; }
 .attention-page .attention-skeleton span:last-child { width: 60%; }
 @keyframes attention-pulse { 50% { opacity: .45; } }
-.attention-page .attention-pagination { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; padding-top: 20px; color: #64748b; font-size: 12px; }
-.attention-page .attention-pagination > div { display: flex; gap: 8px; }
+:is(.attention-page, .atl-workspace) .attention-pagination { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; padding-top: 20px; color: #64748b; font-size: 12px; }
+:is(.attention-page, .atl-workspace) .attention-pagination > div { display: flex; gap: 8px; }
 .attention-page .attention-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; margin: 0 0 24px; }
 .attention-page .attention-stats .metric-stat-card { min-width: 0; gap: 14px; }
 .attention-page .attention-stats .metric-info { min-width: 0; }
@@ -94,7 +94,27 @@ body[data-portal-role="0"] .notification-inbox :is(.broadcast-trigger, .attentio
 .attention-page .attention-dialog footer { padding: 18px 26px; border-top: 1px solid #e2e8f0; display: flex; gap: 12px; align-items: center; justify-content: flex-end; flex-wrap: wrap; }
 .attention-page .attention-dialog footer p { font-size: 12px; color: #64748b; margin: 0 auto 0 0; }
 .attention-page .attention-overlay { position: fixed; inset: 0; z-index: 100; display: flex; align-items: center; justify-content: center; padding: 16px; background: #0f172a80; overflow: auto; }
-.attention-page .attention-broadcast { display: grid; gap: 20px; background: #fff; border-radius: 18px; padding: 24px; max-width: 560px; width: 100%; margin: auto; }
+.attention-page .attention-broadcast { display: flex; flex-direction: column; background: #fff; color: #0f2345; border-radius: 16px; padding: 0; max-width: 900px; width: 100%; max-height: calc(100dvh - 32px); margin: auto; overflow: hidden; box-shadow: 0 20px 70px #00205b40; }
+.attention-page .attention-broadcast .broadcast-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; padding: 24px 28px; border-bottom: 1px solid #e2e8f0; background: #f8fafc; flex-shrink: 0; }
+.attention-page .attention-broadcast h2 { font-size: 22px; font-weight: 800; margin: 4px 0; color: #00205b; }
+.attention-page .broadcast-eyebrow { font-size: 10px; font-weight: 750; letter-spacing: .12em; color: #64748b; }
+.attention-page .broadcast-close { display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; width: 36px; height: 36px; padding: 0; background: #fff; color: #00205b; border: 1px solid #d9e2ee; border-radius: 8px; cursor: pointer; }
+.attention-page .broadcast-close svg { width: 20px; height: 20px; }
+.attention-page .broadcast-close:hover { background: #eef2f7; border-color: #94a3b8; }
+.attention-page .broadcast-body { display: grid; gap: 24px; padding: 24px 28px; min-height: 0; overflow-y: auto; overscroll-behavior: contain; scrollbar-gutter: stable; }
+.attention-page .broadcast-body > p { font-size: 13px; line-height: 1.7; margin: 0; color: #334155; }
+.attention-page .attention-broadcast label { gap: 7px; font-weight: 600; color: #334155; }
+.attention-page .attention-broadcast :is(select, textarea) { padding: 10px 11px; border-radius: 7px; border-color: #cbd5e1; color: #0f2345; }
+.attention-page .attention-broadcast textarea { resize: vertical; }
+.attention-page .attention-broadcast > footer { flex-shrink: 0; padding: 18px 28px; border-top: 1px solid #e2e8f0; justify-content: flex-end; }
+.attention-page .attention-broadcast > footer .attention-button { border-radius: 8px; padding: 10px 16px; font-size: 13px; font-weight: 650; }
+.attention-page .broadcast-is-open { overflow: hidden; background: #061531a6; }
+html:has(.broadcast-is-open), body:has(.broadcast-is-open) { overflow: hidden; }
+#main-content:has(.broadcast-is-open) { overflow-y: hidden; }
+body[data-portal-role="0"] .attention-broadcast .broadcast-header { background: #00205b; border-color: #00205b; }
+body[data-portal-role="0"] .attention-broadcast h2 { color: #fff; }
+body[data-portal-role="0"] .attention-broadcast .broadcast-eyebrow { color: #e2e8f0; }
+@media (max-width: 640px) { .attention-page .attention-broadcast :is(.broadcast-header, .broadcast-body, footer) { padding: 18px; } }
 .attention-page .attention-broadcast .attention-heading { margin: 0; }
 @media (max-width: 1000px) {
     .attention-page .attention-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -113,7 +133,7 @@ body[data-portal-role="0"] .notification-inbox :is(.broadcast-trigger, .attentio
     .attention-page .notification-title h3 { font-size: 14px; }
     .attention-page .notification-excerpt { font-size: 13px; }
     .attention-page .notification-actions { justify-content: flex-start; gap: 8px; }
-    .attention-page .attention-button { padding: 7px 12px; font-size: 12px; }
+    :is(.attention-page, .atl-workspace) .attention-button { padding: 7px 12px; font-size: 12px; }
     .attention-page .attention-tabs button { padding: 7px 10px; font-size: 12px; }
     .attention-page .attention-filter-row { flex-wrap: wrap; }
     .attention-page .attention-stats { grid-template-columns: minmax(0, 1fr); gap: 12px; }

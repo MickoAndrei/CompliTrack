@@ -45,7 +45,7 @@
         <link rel="stylesheet" href="{{ asset('css/portal-header.css') }}?v={{ filemtime(public_path('css/portal-header.css')) }}">
     @endauth
 </head>
-<body class="min-h-screen" data-user-id="{{ auth()->id() }}" data-portal-role="{{ auth()->user()?->roleId }}">
+<body class="min-h-screen @yield('body-class')" data-user-id="{{ auth()->id() }}" data-portal-role="{{ auth()->user()?->roleId }}">
     @auth
         @php($portalLayout = 'app-container')
         @php($mainLayout = 'main-wrapper')

@@ -16,6 +16,16 @@
 .attention-page.directory-page :is(.um-filters, .table-filter-bar, .toolbar) { background: transparent; border: 0; border-radius: 0; padding: 0; margin: 0 0 20px; box-shadow: none; gap: 14px; flex-wrap: wrap; }
 .attention-page.directory-page .um-page > .um-filters { margin-bottom: 0; }
 .attention-page.directory-page .directory-filter-actions { display: flex; flex: 0 0 100%; justify-content: flex-end; flex-wrap: wrap; gap: 10px; }
+.attention-page.directory-page .um-page .directory-filter-actions { justify-content: flex-start; }
+.attention-page.directory-page .department-filter-actions { justify-content: flex-start; }
+.attention-page.directory-page .department-filters { display: flex; flex: 1 1 100%; min-width: 0; flex-wrap: wrap; align-items: flex-end; gap: 14px; }
+.attention-page.directory-page .department-filters label { display: flex; flex: 1 1 150px; min-width: 0; flex-direction: column; gap: 7px; color: #64748b; font-size: 12px; font-weight: 500; }
+.attention-page.directory-page .department-filters label:not(.department-search) { flex: 0 1 max(150px, calc((100% - 306px) / 4)); }
+.attention-page.directory-page .department-filters .department-search,
+.attention-page.directory-page .um-filters .um-search { flex: 0 1 250px; }
+.attention-page.directory-page .department-filters :is(input, select) { box-sizing: border-box; width: 100%; min-width: 0; border: 1px solid #d5dce5; border-radius: 9px; padding: 10px 11px; background: #fff; color: #0f172a; font: inherit; font-size: 13px; }
+.attention-page.directory-page .department-filter-actions > button { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 36px; padding: 8px 16px; border: 1px solid #d5dce5; border-radius: 999px; background: #fff; color: #475569; font: inherit; font-size: 12px; font-weight: 600; box-shadow: none; cursor: pointer; }
+.attention-page.directory-page .department-filter-actions > button svg { width: 18px; height: 18px; }
 .attention-page.directory-page .um-filters label { color: #64748b; font-weight: 500; }
 .attention-page.directory-page :is(.um-filters, .um-pagination) :is(input, select) { border-color: #d5dce5; border-radius: 9px; color: #0f172a; font-size: 13px; }
 .attention-page.directory-page :is(.toolbar-left, .filter-left-controls) { flex: 1; min-width: 0; }
@@ -31,13 +41,13 @@ body[data-portal-role="0"] .attention-page.directory-page [aria-labelledby="depa
 body[data-portal-role="0"] .attention-page.directory-page [aria-labelledby="departmentModalTitle"] .user-modal-submit:hover:not(:disabled) { background: #eab308; }
 .attention-page.directory-page .um-page .directory-filter-actions > .user-create-trigger,
 .attention-page.directory-page .um-dialog .user-create-submit { background: #ffc72c; border-color: #eab308; color: #00205b; }
-.attention-page.directory-page :is(.um-table-wrap, .content-card, .table-card, .um-loading, .admin-directory-loading) { border: 0; border-radius: 0; box-shadow: none; padding: 0; background: transparent; }
-.attention-page.directory-page :is(.um-table-wrap, .responsive-table-wrapper, .overflow-x-auto) { max-width: 100%; overflow-x: auto; }
-.attention-page.directory-page :is(.um-table, .directory-table) { width: 100%; border-collapse: collapse; font-size: 12px; }
-.attention-page.directory-page :is(.um-table, .directory-table) th { padding: 13px 10px; color: #475569; font-size: 12px; font-weight: 600; text-transform: none; letter-spacing: 0; background: #fff; border-bottom: 1px solid #e2e8f0; white-space: nowrap; }
-.attention-page.directory-page :is(.um-table, .directory-table) td { padding: 16px 10px; min-width: 0; max-width: none; color: #475569; font-size: 12px; vertical-align: top; line-height: 1.6; border-top: 0; border-bottom: 1px solid #eef1f5; white-space: normal; overflow-wrap: anywhere; }
-.attention-page.directory-page :is(.um-table, .directory-table) td:first-child { color: #0f172a; font-weight: 550; }
-.attention-page.directory-page .um-table strong { color: #0f172a; font-size: 12px; font-weight: 550; }
+:is(.attention-page.directory-page, .atl-progress-card) :is(.um-table-wrap, .content-card, .table-card, .um-loading, .admin-directory-loading) { border: 0; border-radius: 0; box-shadow: none; padding: 0; background: transparent; }
+:is(.attention-page.directory-page, .atl-progress-card) :is(.um-table-wrap, .responsive-table-wrapper, .overflow-x-auto) { max-width: 100%; overflow-x: auto; }
+:is(.attention-page.directory-page, .atl-progress-card) :is(.um-table, .directory-table) { width: 100%; border-collapse: collapse; font-size: 12px; }
+:is(.attention-page.directory-page, .atl-progress-card) :is(.um-table, .directory-table) th { padding: 13px 10px; color: #475569; font-size: 12px; font-weight: 600; text-transform: none; letter-spacing: 0; background: #fff; border-bottom: 1px solid #e2e8f0; white-space: nowrap; }
+:is(.attention-page.directory-page, .atl-progress-card) :is(.um-table, .directory-table) td { padding: 16px 10px; min-width: 0; max-width: none; color: #475569; font-size: 12px; vertical-align: top; line-height: 1.6; border-top: 0; border-bottom: 1px solid #eef1f5; white-space: normal; overflow-wrap: anywhere; }
+:is(.attention-page.directory-page, .atl-progress-card) :is(.um-table, .directory-table) td:first-child { color: #0f172a; font-weight: 550; }
+:is(.attention-page.directory-page, .atl-progress-card) .um-table strong { color: #0f172a; font-size: 12px; font-weight: 550; }
 .attention-page.directory-page :is(.um-role, .um-status, .directory-status) { display: inline-flex; justify-self: start; border-radius: 999px; padding: 4px 9px; font-size: 11px; font-weight: 500; }
 .attention-page.directory-page .directory-status { background: #f0fdf4; color: #166534; }
 .attention-page.directory-page .directory-status.is-inactive { background: #f1f5f9; color: #64748b; }
@@ -50,16 +60,19 @@ body[data-portal-role="0"] .attention-page.directory-page [aria-labelledby="depa
 @media (max-width: 1100px) { .attention-page.directory-page .um-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 .attention-page.directory-page .directory-sort{display:flex;flex-direction:row;flex:0 0 auto;align-items:center;gap:8px;color:#64748b;font-size:12px;font-weight:600;white-space:nowrap}.attention-page.directory-page .directory-sort select{min-height:40px;max-width:100%;padding:8px 30px 8px 12px;border:1px solid #d5dce5;border-radius:10px;background-color:#fff;color:#334155;font:inherit}
 @media (max-width: 640px) {
+    .attention-page.directory-page .department-filters label:not(.department-search) { flex: 1 1 150px; }
+    .attention-page.directory-page .department-filters .department-search,
+    .attention-page.directory-page .um-filters .um-search { flex-basis: 100%; }
     .attention-page.directory-page .um-summary { grid-template-columns: minmax(0, 1fr); gap: 12px; }
     .attention-page.directory-page :is(.toolbar-left, .filter-left-controls) { flex-basis: 100%; }
     .attention-page.directory-page :is(.search-box, .search-input-wrapper) { width: 100%; }
-    .attention-page.directory-page :is(.um-table, .directory-table) { display: block; min-width: 0; }
-    .attention-page.directory-page :is(.um-table, .directory-table) thead { display: none; }
-    .attention-page.directory-page :is(.um-table, .directory-table) tbody { display: block; }
-    .attention-page.directory-page :is(.um-table, .directory-table) tr { display: block; padding: 12px; margin-bottom: 12px; border: 1px solid #e2e8f0; border-radius: 12px; }
-    .attention-page.directory-page :is(.um-table, .directory-table) td { display: grid; grid-template-columns: 95px minmax(0, 1fr); gap: 9px; padding: 7px 0; border: 0; }
-    .attention-page.directory-page :is(.um-table, .directory-table) td::before { display: block; content: attr(data-label); color: #64748b; font-size: 11px; font-weight: 500; }
-    .attention-page.directory-page :is(.um-table, .directory-table) td:first-child { display: grid; }
-    .attention-page.directory-page :is(.um-table, .directory-table) td > small { grid-column: 2; }
-    .attention-page.directory-page .um-table strong { min-width: 0; }
+    :is(.attention-page.directory-page, .atl-progress-card) :is(.um-table, .directory-table) { display: block; min-width: 0; }
+    :is(.attention-page.directory-page, .atl-progress-card) :is(.um-table, .directory-table) thead { display: none; }
+    :is(.attention-page.directory-page, .atl-progress-card) :is(.um-table, .directory-table) tbody { display: block; }
+    :is(.attention-page.directory-page, .atl-progress-card) :is(.um-table, .directory-table) tr { display: block; padding: 12px; margin-bottom: 12px; border: 1px solid #e2e8f0; border-radius: 12px; }
+    :is(.attention-page.directory-page, .atl-progress-card) :is(.um-table, .directory-table) td { display: grid; grid-template-columns: 95px minmax(0, 1fr); gap: 9px; padding: 7px 0; border: 0; }
+    :is(.attention-page.directory-page, .atl-progress-card) :is(.um-table, .directory-table) td::before { display: block; content: attr(data-label); color: #64748b; font-size: 11px; font-weight: 500; }
+    :is(.attention-page.directory-page, .atl-progress-card) :is(.um-table, .directory-table) td:first-child { display: grid; }
+    :is(.attention-page.directory-page, .atl-progress-card) :is(.um-table, .directory-table) td > small { grid-column: 2; }
+    :is(.attention-page.directory-page, .atl-progress-card) .um-table strong { min-width: 0; }
 }

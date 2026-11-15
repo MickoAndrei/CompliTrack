@@ -42,17 +42,27 @@
     @php($toolbarClass = match ($visualRole) { 0, 2 => 'table-filter-bar', 1 => 'toolbar', 3 => 'toolbar-row', default => 'toolbar' })
     @php($controlClass = match ($visualRole) { 0, 2 => 'filter-left-controls', 1 => 'toolbar-left', 3 => '', default => 'toolbar-left' })
     <div class="{{ $toolbarClass }} {{ $adminDirectory ? 'um-filters' : '' }}">
-        <div class="{{ $controlClass }}">
+        <div class="{{ $roleId === 0 && $endpoint === 'departments' ? 'department-filters' : $controlClass }}">
+            @if($roleId === 0 && $endpoint === 'departments')
+            <label class="department-search"><span>Search department</span><input type="search" x-model="search" @input.debounce.350ms="load(1)" placeholder="Department name or code" aria-label="Search department"></label>
+            @else
             <label class="{{ match ($visualRole) { 0, 2 => 'search-input-wrapper', 1 => 'search-box', 3 => 'search-input-box', default => 'search-box' } }}">
                 <i data-lucide="search" aria-hidden="true"></i>
                 <span class="sr-only">Search {{ $searchLabel }}</span>
                 <input type="search" x-model="search" @input.debounce.350ms="load(1)" placeholder="Search {{ $searchLabel }}" aria-label="Search {{ $searchLabel }}" class="{{ in_array($roleId, [0, 2], true) ? 'input-search-field' : '' }}">
             </label>
+            @endif
             @if($roleId === 1 && $endpoint === 'users')
             <label class="directory-sort"><span>Sort by</span><select x-model="sortBy" @change="load(1)" aria-label="Sort users by"><option value="fullName:asc">Name: A to Z</option><option value="fullName:desc">Name: Z to A</option><option value="createdAt:desc">Newest first</option><option value="createdAt:asc">Oldest first</option></select></label>
             @endif
             @if($endpoint === 'departments')
+            @if($roleId === 0)
+            <label><span>Campus</span><select x-model="departmentFilters.campusName" @change="load(1)" aria-label="Filter departments by campus"><option value="">All campuses</option>@foreach(config('qms.campuses') as $campus)<option value="{{ $campus }}">{{ $campus }}</option>@endforeach</select></label>
+            <label><span>Status</span><select x-model="departmentFilters.status" @change="load(1)" aria-label="Filter departments by status"><option value="">All statuses</option><option value="active">Active</option><option value="inactive">Inactive</option></select></label>
+            @endif
+            @if($roleId !== 0)
             <label class="department-sort flex items-center gap-2 text-xs"><span class="whitespace-nowrap">Sort by</span><select x-model="sortBy" @change="load(1)" aria-label="Sort departments by" class="std-select min-w-0 rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs"><option value="departmentName:asc">Department: A to Z</option><option value="departmentName:desc">Department: Z to A</option><option value="departmentCode:asc">Code: A to Z</option><option value="departmentCode:desc">Code: Z to A</option><option value="campusName:asc">Campus: A to Z</option><option value="campusName:desc">Campus: Z to A</option><option value="collegeName:asc">College: A to Z</option><option value="collegeName:desc">College: Z to A</option></select></label>
+            @endif
             @endif
             @if($roleId === 1 && $endpoint === 'notifications')
             <label class="admin-unread-filter"><input type="checkbox" x-model="unreadOnly" @change="load(1)">Unread only</label>
@@ -87,7 +97,9 @@
         <button x-show="allowUserCreate" x-cloak type="button" @click="startUserCreate()" class="{{ $roleId === 1 ? 'btn-gold user-create-trigger' : 'btn btn-gold user-create-trigger' }}"><i data-lucide="user-round-plus" aria-hidden="true"></i><span>Create User</span></button>
         @endif
         @if($allowDepartmentCreate)
+        @if($roleId === 0)<div class="directory-filter-actions department-filter-actions">@endif
         <button x-show="allowDepartmentCreate" x-cloak type="button" @click="startDepartmentCreate()" class="{{ $roleId === 1 ? 'btn-gold department-create-trigger' : 'btn btn-gold department-create-trigger' }}"><i data-lucide="building-2" aria-hidden="true"></i><span>Add Department</span></button>
+        @if($roleId === 0)<button type="button" class="attention-button" @click="clearDepartmentFilters()">Clear filters</button></div>@endif
         @endif
         <button x-show="allowBroadcast" x-cloak type="button" @click="startBroadcast()" class="btn-gold"><i data-lucide="send" aria-hidden="true"></i><span>Broadcast</span></button>
     </div>
@@ -191,10 +203,14 @@
             </table>
         </div>
         @endif
+        @if($roleId === 0 && $endpoint === 'departments')
+        @include('components.partials.attention-pagination', ['label' => 'Departments pages'])
+        @else
         <div class="flex flex-col gap-3 border-t border-slate-100 px-5 py-4 text-sm sm:flex-row sm:items-center sm:justify-between">
             <p class="text-ustp-muted"><span x-text="meta.total || 0"></span> records</p>
             <x-pagination-controls :label="$title.' pages'" />
         </div>
+        @endif
     </div>
     <template x-if="message"><div class="mt-4"><x-alert-banner type="success"><span x-text="message"></span></x-alert-banner></div></template>
     @if(!$adminDirectory)
@@ -227,7 +243,7 @@
             <footer class="user-modal-footer"><span>New users will receive an account setup email.</span><div><button type="button" @click="userModalOpen = false" class="user-modal-cancel">Cancel</button><button type="submit" :disabled="saving" class="user-modal-submit"><i data-lucide="user-round-plus" aria-hidden="true"></i><span x-text="saving ? 'Saving...' : (userForm._id ? 'Save changes' : 'Create User')"></span></button></div></footer>
         </form>
     </div>
-    <div x-cloak x-show="departmentModalOpen" class="user-modal-overlay fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-ustp-dark/50 p-4" @keydown.escape.window="departmentModalOpen = false" @click.self="departmentModalOpen = false" role="dialog" aria-modal="true" aria-labelledby="departmentModalTitle">
+    <div x-cloak x-show="departmentModalOpen" :class="{'department-dialog-open': departmentModalOpen}" class="user-modal-overlay fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-ustp-dark/50 p-4" @keydown.escape.window="departmentModalOpen = false" @click.self="departmentModalOpen = false" role="dialog" aria-modal="true" aria-labelledby="departmentModalTitle">
         <form @submit.prevent="saveDepartment()" class="department-modal-form my-auto w-full max-w-xl rounded-2xl bg-white shadow-xl">
             <header class="user-modal-header">
                 <span class="user-modal-heading-icon department-modal-heading-icon"><i data-lucide="building-2" aria-hidden="true"></i></span>

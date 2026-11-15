@@ -35,10 +35,14 @@ class DepartmentController extends Controller
         $sort = $request->validate([
             'sortBy' => 'sometimes|in:departmentName,departmentCode,campusName,collegeName',
             'sortDirection' => 'sometimes|in:asc,desc',
+            'status' => 'sometimes|in:active,inactive',
         ]);
         $query = $this->scopes->departments($request->user());
         if ($request->filled('campusName')) {
             $query->where('campusName', $request->query('campusName'));
+        }
+        if ($request->filled('status')) {
+            $query->where('isActive', $request->query('status') === 'active');
         }
         if ($request->filled('search')) {
             $search = '/'.preg_quote(trim((string) $request->query('search')), '/').'/i';

@@ -11,7 +11,7 @@
         <label>Department / office<select x-model="filters.departmentId" @change="load(1)"><option value="">All departments / offices</option><template x-for="unit in options.departments" :key="unit._id"><option :value="unit._id" x-text="unit.name"></option></template></select></label>
         <label>Position<select x-model="filters.responsibility" @change="load(1)"><option value="">All positions</option><template x-for="responsibility in options.responsibilities" :key="responsibility"><option :value="responsibility" x-text="responsibilityName(responsibility)"></option></template></select></label>
         <label>Account status<select x-model="filters.status" @change="load(1)"><option value="">All statuses</option><option value="active">Active</option><option value="inactive">Inactive</option></select></label>
-        <div class="directory-filter-actions"><button class="um-secondary" type="button" @click="clearUserFilters()">Clear filters</button><button class="um-primary user-create-trigger" type="button" @click="startUserCreate()" :disabled="loading || !summary"><i data-lucide="user-round-plus" aria-hidden="true"></i>Create User</button></div>
+        <div class="directory-filter-actions"><button class="um-primary user-create-trigger" type="button" @click="startUserCreate()" :disabled="loading || !summary"><i data-lucide="user-round-plus" aria-hidden="true"></i>Create User</button><button class="um-secondary" type="button" @click="clearUserFilters()">Clear filters</button></div>
     </div>
     <div class="um-loading" x-show="loading"><span class="sr-only" role="status">Loading users...</span><x-dashboard-skeleton type="table" :columns="7" /></div>
     <div x-page-notice class="um-error" role="alert" x-show="error" x-cloak><p x-text="error"></p><button class="um-secondary" type="button" @click="load()">Retry</button></div>
@@ -32,7 +32,7 @@
             </tr></template></tbody>
         </table>
     </div>
-    <footer class="um-pagination" x-show="!loading && !error" x-cloak><span x-text="`${meta.total} matching users · Page ${page} of ${meta.lastPage}`"></span><label>Per page<select x-model.number="perPage" @change="load(1)"><option :value="10">10</option><option :value="20">20</option><option :value="50">50</option></select></label><div><button class="um-secondary" type="button" @click="load(page - 1)" :disabled="page <= 1 || loading">Previous</button><button class="um-secondary" type="button" @click="load(page + 1)" :disabled="page >= meta.lastPage || loading">Next</button></div></footer>
+    @include('components.partials.attention-pagination', ['label' => 'User pages'])
 </div>
 <div class="um-menu" x-ref="userMenu" popover="auto" role="menu" aria-label="User actions" @keydown="menuKey($event)" @toggle="if ($event.newState === 'closed') menuTarget = null">
     <button role="menuitem" type="button" @click="viewUser(menuTarget)">View User Details</button><button role="menuitem" type="button" @click="startUserEdit(menuTarget)">Edit user</button><button role="menuitem" type="button" @click="requestUserAction('reset', menuTarget)">Send password reset link</button>

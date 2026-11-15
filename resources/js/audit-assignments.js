@@ -5,7 +5,13 @@ onDocumentReady(() => {
     const results = document.querySelector('[data-assignment-results]');
     const loading = document.querySelector('[data-assignment-loading]');
     const message = document.querySelector('[data-assignment-filter-message]');
-    let pendingFilter;
+    let pendingFilter, searchTimer;
+    const syncFilters = url => {
+        for (const control of filters.querySelectorAll('input[name], select[name]')) {
+            const value = url.searchParams.get(control.name) || '';
+            control.value = ['departmentId', 'auditorId'].includes(control.name) ? value.toLowerCase() : value;
+        }
+    };
     const loadResults = async url => {
         pendingFilter?.abort();
         const request = new AbortController();
@@ -25,12 +31,12 @@ onDocumentReady(() => {
             if (request.signal.aborted || pendingFilter !== request) return;
             results.replaceChildren(...updated.childNodes);
             window.history.replaceState(window.history.state, '', url);
-            filters.querySelector('[name="status"]').value = url.searchParams.get('status') || '';
+            syncFilters(url);
         } catch (error) {
             if (request.signal.aborted || pendingFilter !== request) return;
-            filters.querySelector('[name="status"]').value = new URL(window.location.href).searchParams.get('status') || '';
+            syncFilters(new URL(window.location.href));
             message.hidden = false;
-            message.textContent = 'Unable to update assignments. The previous results are still shown. Select a status or Reset Filter to retry.';
+            message.textContent = 'Unable to update assignments. The previous results are still shown. Change a filter or use Clear filters to retry.';
         } finally {
             if (pendingFilter === request) {
                 results.setAttribute('aria-busy', 'false');
@@ -42,23 +48,31 @@ onDocumentReady(() => {
     if (filters && results) {
         filters.addEventListener('submit', event => {
             event.preventDefault();
+            clearTimeout(searchTimer);
             const url = new URL(filters.action);
-            const status = filters.querySelector('[name="status"]').value;
-            if (status) url.searchParams.set('status', status);
+            for (const [key, value] of new FormData(filters)) {
+                if (String(value).trim()) url.searchParams.set(key, String(value).trim());
+            }
             loadResults(url);
         });
-        filters.querySelector('[name="status"]').addEventListener('change', () => filters.requestSubmit());
+        filters.querySelectorAll('select').forEach(select => select.addEventListener('change', () => filters.requestSubmit()));
+        filters.querySelector('[name="search"]')?.addEventListener('input', () => {
+            pendingFilter?.abort();
+            clearTimeout(searchTimer);
+            searchTimer = setTimeout(() => filters.requestSubmit(), 350);
+        });
         const navigate = event => {
             const link = event.target.closest('a[href]');
             if (!link || event.button !== 0 || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
             const url = new URL(link.href);
             if (url.origin !== window.location.origin || url.pathname !== '/audits') return;
             event.preventDefault();
+            clearTimeout(searchTimer);
             loadResults(url);
         };
         filters.addEventListener('click', navigate);
         results.addEventListener('click', navigate);
-        window.addEventListener('pagehide', () => pendingFilter?.abort());
+        window.addEventListener('pagehide', () => { clearTimeout(searchTimer); pendingFilter?.abort(); });
     }
     const scopeDialog = document.querySelector('#audit-scope-dialog');
     if (scopeDialog) {
@@ -122,6 +136,9 @@ onDocumentReady(() => {
         dialog.querySelector('[data-save-assignment]').disabled = !field('planId').value || !field('departmentId').value || !eligibleCount;
     };
     const open = (button, data = {}) => {
+        clearTimeout(searchTimer);
+        pendingFilter?.abort();
+        if (filters) syncFilters(new URL(window.location.href));
         opener = button; form.reset();
         field('assignmentId').value = data.id || data.assignmentId || '';
         const editing = !!field('assignmentId').value;
@@ -152,6 +169,6 @@ onDocumentReady(() => {
         field('departmentId').disabled = false;
     });
     dialog.querySelectorAll('[data-close-assignment]').forEach(button => button.addEventListener('click', () => dialog.close()));
-    dialog.addEventListener('close', () => opener?.focus());
+    dialog.addEventListener('close', () => (opener?.isConnected ? opener : document.querySelector('[data-new-assignment]'))?.focus());
     if (dialog.dataset.reopen === '1') open(document.querySelector('[data-new-assignment]'), JSON.parse(dialog.dataset.old || '{}'));
 });

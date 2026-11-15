@@ -3,7 +3,7 @@ import { onDocumentReady } from './dom-ready';
 document.addEventListener('alpine:init', () => {
     Alpine.data('atlWorkspace', () => ({
         data: null, loading: true, error: '', page: 1, perPage: 5, attentionPage: 1,
-        get meta() { return { lastPage: this.data?.assignmentPages || 1 }; },
+        get meta() { return { total: this.data?.assignmentTotal || 0, lastPage: this.data?.assignmentPages || 1 }; },
         get attentionPages() { return Math.max(1, Math.ceil((this.data?.attention.length || 0) / 5)); },
         get visibleAttention() { return (this.data?.attention || []).slice((this.attentionPage - 1) * 5, this.attentionPage * 5); },
         init() { this.load(); },
@@ -17,7 +17,7 @@ document.addEventListener('alpine:init', () => {
                 this.page = this.data.assignmentPage || page;
                 this.attentionPage = Math.min(this.attentionPage, this.attentionPages);
                 this.$nextTick(() => window.renderIcons?.());
-            } catch (error) { this.error = error.response?.data?.message || 'Unable to load your ATL workspace. Use Refresh to retry.'; }
+            } catch (error) { this.error = error.response?.data?.message || 'Unable to load your ATL workspace. Reload the page to retry.'; }
             finally { this.loading = false; this.requesting = false; }
         },
     }));

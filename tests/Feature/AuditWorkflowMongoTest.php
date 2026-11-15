@@ -263,6 +263,53 @@ class AuditWorkflowMongoTest extends TestCase
         $this->saveAction($audit, 'evaluate', ['item' => 0, 'result' => 'N', 'remarks' => 'Overwrite'])->assertForbidden();
     }
 
+    public function test_assignment_register_search_and_filters_preserve_reviewer_scope(): void
+    {
+        [$admin, $auditor, $audit] = $this->fixture();
+        session()->forget(['errors', '_old_input']);
+        $this->actingAs($admin);
+        $filters = ['search' => 'workflow', 'departmentId' => (string) $audit->departmentId,
+            'auditorId' => (string) $auditor->getKey(), 'status' => 'draft'];
+        $this->get('/audits?'.http_build_query($filters))->assertOk()
+            ->assertViewHas('audits', fn ($records) => $records->total() === 1 && (string) $records->first()->getKey() === (string) $audit->getKey());
+        foreach (['search' => 'no matching audit', 'departmentId' => (string) new ObjectId(),
+            'auditorId' => (string) new ObjectId(), 'status' => 'accepted'] as $field => $value) {
+            $this->get('/audits?'.http_build_query(array_replace($filters, [$field => $value])))->assertOk()
+                ->assertViewHas('audits', fn ($records) => $records->total() === 0);
+        }
+        // Legacy string references must match the same filters as BSON identifiers.
+        DB::connection('mongodb')->getMongoDB()->selectCollection('audits')->updateOne(['_id' => new ObjectId((string) $audit->getKey())],
+            ['$set' => ['departmentId' => (string) $audit->departmentId, 'auditorId' => (string) $auditor->getKey()]]);
+        $this->get('/audits?'.http_build_query($filters))->assertOk()->assertViewHas('audits', fn ($records) => $records->total() === 1);
+        $this->get('/audits?'.http_build_query(array_replace($filters, ['departmentId' => strtoupper($filters['departmentId']), 'auditorId' => strtoupper($filters['auditorId'])])))
+            ->assertOk()->assertViewHas('audits', fn ($records) => $records->total() === 1);
+        Department::findOrFail($audit->departmentId)->update(['isActive' => false]);
+        $auditor->update(['isActive' => false]);
+        $this->get('/audits?'.http_build_query($filters))->assertOk()
+            ->assertViewHas('audits', fn ($records) => $records->total() === 1)
+            ->assertViewHas('registerDepartments', fn ($records) => $records->contains(fn ($unit) => (string) $unit->getKey() === $filters['departmentId']))
+            ->assertViewHas('registerAuditors', fn ($records) => $records->contains(fn ($person) => (string) $person->getKey() === $filters['auditorId']));
+        $audit->update(['reviewerId' => new ObjectId()]);
+        $this->get('/audits?'.http_build_query($filters))->assertOk()->assertViewHas('audits', fn ($records) => $records->total() === 0);
+        $this->getJson('/audits?departmentId=invalid')->assertUnprocessable();
+        $this->getJson('/audits?search[]=invalid')->assertUnprocessable();
+        for ($index = 0; $index < 11; $index++) {
+            Audit::create(['auditCode' => 'PAGE-'.$index, 'title' => 'Pagination sample', 'departmentId' => $filters['departmentId'],
+                'auditorId' => $filters['auditorId'], 'reviewerId' => $admin->getKey(), 'status' => 'draft', 'items' => [], 'history' => []]);
+        }
+        $paging = array_replace($filters, ['search' => 'Pagination sample']);
+        $firstPage = $this->get('/audits?'.http_build_query($paging))->assertOk()->viewData('audits');
+        $this->assertSame(11, $firstPage->total());
+        $this->assertCount(10, $firstPage);
+        $next = $firstPage->nextPageUrl();
+        parse_str(parse_url($next, PHP_URL_QUERY), $nextFilters);
+        $this->assertSame($paging, array_intersect_key($nextFilters, $paging));
+        $lastPage = $this->get($next)->assertOk()->viewData('audits');
+        $this->assertCount(1, $lastPage);
+        $this->assertSame(2, $lastPage->currentPage());
+        $this->assertEmpty($firstPage->pluck('_id')->map('strval')->intersect($lastPage->pluck('_id')->map('strval')));
+    }
+
     public function test_checklist_evidence_findings_metrics_submission_and_revision_persist(): void
     {
         [$admin, $auditor, $audit] = $this->fixture();

@@ -20,7 +20,8 @@ window.axios={get:async(url,{params})=>{
  assignments:rows.slice((page-1)*params.perPage,page*params.perPage),assignmentPage:page,assignmentPages:last,assignmentTotal:rows.length,
  departmentCompliance:window.empty?[]:Array.from({length:5},(_,i)=>({id:i,name:['Computer Engineering','Civil Engineering','Electrical Engineering','Information Technology','Mechanical Engineering'][i],percentage:i===0?null:75,completedAudits:3,counts:{C:3,N:1,O:1}}))}}};
 }};`;
-const styles = ['fonts','admin-portal','admin-ui','user-management','pagination'].map(name=>`<link rel="stylesheet" href="/css/${name}.css">`).join('');
+const manifest = JSON.parse(fs.readFileSync(path.join(root, 'public/build/manifest.json'), 'utf8'));
+const styles = `<link rel="stylesheet" href="/build/${manifest['resources/css/app.css'].file}">` + ['fonts','admin-portal','admin-ui','user-management','pagination'].map(name=>`<link rel="stylesheet" href="/css/${name}.css">`).join('');
 const server = http.createServer((req,res)=>{
  const url = new URL(req.url, 'http://localhost');
  if(url.pathname==='/') {res.setHeader('Content-Type','text/html; charset=utf-8');res.end(`<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">${styles}<style>[x-cloak]{display:none!important}.sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%)}</style><script>${fixture}</script><script>${workspace}</script><script defer src="/alpine.js"></script><body data-portal-role="1"><main id="main-content" style="padding:24px">${fragment}</main>`);return;}
@@ -41,11 +42,10 @@ try{
  const wait=async expression=>{for(let i=0;i<80;i++){if(await evaluate(expression))return;await delay(50);}throw Error('Timed out: '+expression);};
  const checkHeights=async()=>{
   const state=await evaluate(`(()=>{const cards=[...document.querySelectorAll('.atl-overview-grid > .atl-card')];return {heights:cards.map(el=>Math.round(el.getBoundingClientRect().height)),expected:innerWidth<=600?840:600,scrollable:[...cards,...document.querySelectorAll('.atl-panel-content')].some(el=>['auto','scroll'].includes(getComputedStyle(el).overflowY)),clipped:cards.some(el=>el.scrollHeight>el.clientHeight+1)}})()`);
-  assert.deepEqual(state.heights,[state.expected,state.expected],'Both panels keep their height');
+  assert.ok(state.heights.every(height=>height>=state.expected-2)&&Math.abs(state.heights[0]-state.heights[1])<=1,'Both panels retain equal heights and fit their header content');
   assert.equal(state.scrollable,false,'Panels have no internal scrolling');
   assert.equal(state.clipped,false,'All panel content fits');
-  const dividers=await evaluate(`[...document.querySelectorAll('.atl-panel-header')].map(el=>el.getBoundingClientRect().bottom-el.closest('.atl-card').getBoundingClientRect().top)`);
-  assert.ok(Math.abs(dividers[0]-dividers[1])<1,'Header dividers align in both cards');
+  assert.equal(await evaluate(`!!document.querySelector('.atl-compliance-card .atl-panel-header .atl-compliance-note')`),true,'The compliance description stays inside its header');
  };
  const checkSkeletons=async()=>{
   await wait(`window.pending?.length===1`);
@@ -64,25 +64,27 @@ try{
   await wait(`[...document.querySelectorAll('.atl-panel-skeleton')].every(el=>!el.getClientRects().length)`);await checkHeights();
   assert.equal(await evaluate(`document.querySelectorAll('.atl-attention-row').length`),5);
   assert.equal(await evaluate(`document.documentElement.scrollWidth>innerWidth`),false,`Fits ${width}px`);
+  assert.equal(await evaluate(`(()=>{const table=document.querySelector('.atl-progress-card .um-table'),header=getComputedStyle(table.querySelector('th')),wrap=getComputedStyle(table.parentElement);return header.backgroundColor==='rgb(255, 255, 255)'&&header.fontSize==='12px'&&wrap.borderTopWidth==='0px';})()`),true,'Assignment table uses the Super Admin Users header and border styling');
+  if(width<=640) assert.equal(await evaluate(`getComputedStyle(document.querySelector('.atl-progress-card .um-table thead')).display`),'none','Mobile assignments use labeled row cards like Users');
   assert.equal(await evaluate(`(()=>{const a=document.querySelector('.atl-attention-card').getBoundingClientRect(),b=document.querySelector('.atl-compliance-card').getBoundingClientRect();return Math.abs(a.top-b.top)<2})()`),width>1000);
   await evaluate(`document.querySelector('.atl-attention-pagination button:last-child').click()`);await wait(`document.querySelectorAll('.atl-attention-row').length===3`);
   await checkHeights();
   await evaluate(`document.querySelector('.atl-attention-pagination button:first-child').click()`);await wait(`document.querySelectorAll('.atl-attention-row').length===5`);
-  await evaluate(`window.hold=true;document.querySelector('.admin-dashboard > .atl-section-heading button').click()`);await checkSkeletons();await release();
+  await evaluate(`window.hold=true;void Alpine.$data(document.querySelector('.atl-workspace')).load()`);await checkSkeletons();await release();
   await wait(`[...document.querySelectorAll('.atl-panel-content')].every(el=>el.getClientRects().length)`);await checkHeights();
-  await evaluate(`document.querySelector('.atl-progress-footer .app-pagination button:last-child').click()`);await wait(`document.querySelector('.atl-progress-footer .app-pagination-status').textContent==='Page 2 of 3'`);
-  await evaluate(`document.querySelector('.atl-progress-footer select').value='10';document.querySelector('.atl-progress-footer select').dispatchEvent(new Event('change',{bubbles:true}))`);await wait(`document.querySelectorAll('.um-table tbody tr').length===10`);
-  assert.equal(await evaluate(`document.querySelector('.atl-progress-footer .app-pagination-status').textContent`),'Page 1 of 2');
-  await evaluate(`document.querySelector('.atl-progress-footer .app-pagination button:last-child').click()`);await wait(`document.querySelectorAll('.um-table tbody tr').length===2`);
-  assert.equal(await evaluate(`document.querySelector('.atl-progress-footer .app-pagination button:last-child').disabled`),true);
-  await evaluate(`document.querySelector('.atl-progress-footer select').value='5';document.querySelector('.atl-progress-footer select').dispatchEvent(new Event('change',{bubbles:true}))`);await wait(`document.querySelectorAll('.um-table tbody tr').length===5`);
+  assert.equal(await evaluate(`document.querySelector('.atl-progress-card .attention-pagination > span').textContent`),'12 records \u00b7 Page 1 of 3');
+  assert.equal(await evaluate(`document.querySelector('.atl-progress-card select')===null`),true);
+  await evaluate(`document.querySelector('.atl-progress-card .attention-pagination button:last-child').click()`);await wait(`document.querySelector('.atl-progress-card .attention-pagination > span').textContent==='12 records \u00b7 Page 2 of 3'`);
+  await evaluate(`document.querySelector('.atl-progress-card .attention-pagination button:last-child').click()`);await wait(`document.querySelectorAll('.um-table tbody tr').length===2`);
+  assert.equal(await evaluate(`document.querySelector('.atl-progress-card .attention-pagination button:last-child').disabled`),true);
+  await evaluate(`document.querySelector('.atl-progress-card .attention-pagination button:first-child').click()`);await wait(`document.querySelectorAll('.um-table tbody tr').length===5`);
   const shot=await send('Page.captureScreenshot',{format:'png',captureBeyondViewport:true});fs.writeFileSync(path.join(directory,`dashboard-${width}.png`),Buffer.from(shot.result.data,'base64'));
   console.log(`${width}px: equal stable heights, initial/refresh skeletons, attention and assignment paging passed`);
  }
- await evaluate(`window.empty=true;document.querySelector('.admin-dashboard > .atl-section-heading button').click()`);await wait(`document.querySelectorAll('.um-table tbody tr').length===0`);
- assert.equal(await evaluate(`document.querySelector('.atl-progress-footer .app-pagination-status').textContent`),'Page 1 of 1');
+ await evaluate(`window.empty=true;void Alpine.$data(document.querySelector('.atl-workspace')).load()`);await wait(`document.querySelectorAll('.um-table tbody tr').length===0`);
+ await wait(`document.querySelector('.atl-progress-card .attention-pagination').getClientRects().length===0`);
  await checkHeights();
- await evaluate(`window.fail=true;document.querySelector('.admin-dashboard > .atl-section-heading button').click()`);await wait(`document.querySelector('.atl-error').textContent.includes('Unable to load')`);
+ await evaluate(`window.fail=true;void Alpine.$data(document.querySelector('.atl-workspace')).load()`);await wait(`document.querySelector('.atl-error').textContent.includes('Unable to load')`);
  await checkHeights();
  assert.deepEqual(errors,[]);console.log('Empty and error states passed');
 }finally{clearTimeout(timer);ws?.close();browser?.kill();server.close();}})().catch(e=>{console.error(e);process.exitCode=1;});

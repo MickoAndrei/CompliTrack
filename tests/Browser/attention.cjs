@@ -108,6 +108,13 @@ const server = http.createServer(async (request, response) => {
                 const state = await evaluate(`({ count: document.querySelectorAll('.notification-item').length, overflow: document.documentElement.scrollWidth > innerWidth, text: document.querySelector('.notification-inbox').textContent, table: !!document.querySelector('.notification-inbox table') })`);
                 assert.equal(state.count, 3); assert.equal(state.overflow, false, `Inbox role ${role}, ${width}px fits`); assert.equal(state.table, false);
                 assert.ok(state.text.includes('Evidence uploaded'));
+                if (role === 0) {
+                    await evaluate('document.querySelector(".broadcast-trigger").click()');
+                    await waitFor('document.querySelector(".broadcast-is-open") && document.querySelectorAll(".broadcast-body select option").length>1');
+                    assert.equal(await evaluate(`(()=>{const form=document.querySelector('.attention-broadcast'),box=form.getBoundingClientRect();return box.left>=0&&box.right<=innerWidth&&box.top>=0&&box.bottom<=innerHeight&&getComputedStyle(form.querySelector('header')).backgroundColor==='rgb(0, 32, 91)'&&getComputedStyle(form.querySelector('.is-primary')).backgroundColor==='rgb(255, 199, 44)'&&getComputedStyle(form.querySelector('.broadcast-body')).overflowY==='auto'&&getComputedStyle(document.body).overflowY==='hidden';})()`), true, 'Broadcast matches Create User styling and fits the viewport');
+                    await evaluate('document.querySelector(".broadcast-close").click()');
+                    await waitFor('!document.querySelector(".broadcast-is-open")');
+                }
                 const header = await evaluate(`(() => {
                     const styles = (selector, properties) => {
                         const element = document.querySelector(selector), css = getComputedStyle(element);

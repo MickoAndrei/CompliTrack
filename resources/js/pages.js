@@ -286,6 +286,13 @@ document.addEventListener('alpine:init', () => {
         meta: { total: 0, lastPage: 1 },
         page: 1,
         search: '',
+        departmentFilters: { campusName: '', status: '' },
+        clearDepartmentFilters() {
+            this.search = '';
+            this.departmentFilters = { campusName: '', status: '' };
+            this.sortBy = 'departmentName:asc';
+            this.load(1);
+        },
         sortBy: config.endpoint === 'users' ? 'fullName:asc' : config.endpoint === 'departments' ? 'departmentName:asc' : 'createdAt:desc',
         startDate: '', endDate: '', draftStartDate: '', draftEndDate: '', dateRangeError: null,
         exporting: false,
@@ -466,6 +473,7 @@ document.addEventListener('alpine:init', () => {
                         ...(this.directoryPage ? { includeSummary: 1 } : {}),
                         ...(this.endpoint === 'notifications' ? { status: this.notificationStatus, type: this.typeFilter, includeSummary: true } : {}),
                         ...(this.search ? { search: this.search } : {}),
+                        ...(this.endpoint === 'departments' ? Object.fromEntries(Object.entries(this.departmentFilters).filter(([, value]) => value !== '')) : {}),
                         ...(['users', 'departments'].includes(this.endpoint) ? { sortBy: this.sortBy.split(':')[0], sortDirection: this.sortBy.split(':')[1] } : {}),
                         ...(this.endpoint === 'logs' ? { ...this.auditLogParams(), includeSummary: true } : {}),
                 };
