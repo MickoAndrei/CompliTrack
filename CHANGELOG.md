@@ -2,6 +2,60 @@
 
 All notable changes to CompliTrack are documented here.
 
+## [Unreleased] - 2026-11-15
+
+### Added
+
+- Added a formal CAR register with recorded CAR numbers, scoped summary counts, searchable legacy records, and a printable fourteen-column CAR log.
+- Added explicit `cars.verify` and `cars.close` role permissions, managed through Super Admin with password confirmation and permission history. Existing roles receive no automatic grants.
+
+### Changed
+
+- Redesigned the Admin dashboard, Audit Reviews queue, and Corrective Action Monitoring with scoped metrics, filters, responsive tables, and detailed review dialogs.
+- Improved audit reviews with persisted submission dates, revision comparisons, evidence previews, and confirmation flows for accepting results or returning them for revision.
+- Standardized Super Admin User Management popup headers in USTP blue, improved text contrast and section indentation, and reused gold-accented notes. Added a red Deactivate button and clearer action labels.
+- Added assignment tooltips to user positions and truncated long email addresses with full-address tooltips.
+
+### Fixed
+
+- Kept User Management page scrolling below the header and popup scrolling inside rounded cards, with fixed popup headers and footers and background scrolling blocked while dialogs are open.
+- Required assigned Auditors to hold both explicit CAR permissions before verification and closure; Admin monitoring remains read-only and existing ownership and department checks still apply.
+
+## [Unreleased] - 2026-11-14
+
+### Added
+
+- Added searchable, role-specific help centers for Super Admin, Admin, Auditor, and Auditee users.
+- Added audit-plan approval and return workflows with explicit `audit_plans.approve` permission management, decision history, and approved-plan checks for audit assignments.
+- Added separate browser-tab sessions so signing in or out in one tab does not replace another tab's account.
+- Added ONLYOFFICE document editing and read-only previews with signed sessions, authorized file access, save callbacks, comparison support, Document Server startup tooling, and a health-check command.
+- Added user-managed QMS subfolders with create, rename, move, and confirmed empty-folder deletion, plus campus references and authorized audit-plan archiving.
+- Added regression coverage for audit-plan authorization, tab sessions, document editing, folder access, notifications, and responsive audit interfaces.
+
+### Changed
+
+- Refined audit assignments, My Assigned Audits, the Auditor workspace, and corrective-action views with scoped filters, clearer evaluations, evidence handling, and recorded workflow history.
+- Redesigned the QMS document browser and previews while preserving existing organizational roots, document records, and encrypted files.
+- Updated notification inboxes, activity logs, directory summaries, and shared portal headers for consistent role-aware presentation.
+- Documented audit workflows, document editing, folder management, tab sessions, and notification behavior in `docs/`.
+
+### Fixed
+
+- Tightened QMS folder, document, and editor authorization using explicit organizational responsibilities and document visibility, with live access checks for editor sessions.
+- Corrected audit assignment and plan eligibility handling, preserved authorized user assignments, and improved document-preview behavior across the role portals.
+
+## [Unreleased] - 2026-11-12
+
+### Added
+
+- Added database-backed profile-image storage and a migration command for existing profile images, with web and mobile regression coverage.
+- Added technical documentation in `DOCUMENTATION.md` and documented profile-image storage.
+
+### Changed
+
+- Updated web and mobile profile-image retrieval, upload handling, and avatar caching to use database-backed images.
+- Reorganized the README and refreshed application icons and repository ignore rules.
+
 ## [Unreleased] - 2026-11-11
 
 ### Added
