@@ -1,5 +1,7 @@
 # Existing ONLYOFFICE integration
 
+The [automatic-access redesign](QMS_AUTOMATIC_ACCESS_REDESIGN.md) updates the policy described in this integration record: ATL manages the CET repository; Auditor accounts with a Chair responsibility retain editing in their own department, and assigned auditors can edit their authorized internal notes. Explicit audit evidence remains tied to historical versions; new saves do not copy audit-share grants. The current validation results are recorded in the redesign document.
+
 CompliTrack reuses its existing Docker Document Server and `DocsAPI.DocEditor` integration. No replacement editor installation, new document server, database reset, or new application collection was introduced.
 
 ## Deployment inspected on 2026-11-14

@@ -20,7 +20,9 @@ class DocumentEditorAccess
     {
         $key = 'onlyoffice.units.'.(string) $actor->getKey().'.'.(int) $editing;
         if (!request()->attributes->has($key)) {
-            if (in_array($actor->archiveResponsibility, ['department_head', 'department_secretary'], true) && (int) $actor->roleId !== 2) {
+            if (app(QmsArchiveAccess::class)->isAuditTeamLeader($actor)) {
+                $units = app(QmsRepositoryPolicy::class)->units();
+            } elseif (in_array($actor->archiveResponsibility, ['department_head'], true)) {
                 $units = Department::where('isActive', true)->where('ownershipVerified', true)->whereIn('_id', app(QmsArchiveAccess::class)->ids(($actor->archiveUnitIds ?? []) ?: [$actor->departmentId]));
             } elseif ((int) $actor->roleId === 1 && !in_array($actor->archiveResponsibility, ['college_dean', 'college_secretary', 'cluster_administrator'], true)) {
                 $audits = app(QmsAuditArchive::class)->assignments($actor);
@@ -40,6 +42,7 @@ class DocumentEditorAccess
 
     public function classificationAllowed(User $actor, ArchiveDocument $document): bool
     {
+        if (app(QmsArchiveAccess::class)->isAuditTeamLeader($actor)) { return true; }
         // Administrative roles do not override a protected classification in the editor.
         if (in_array($document->visibility, ['owner', 'restricted'], true) && (int) $actor->roleId !== 2) {
             return (string) $document->uploadedByUserId === (string) $actor->getKey()
@@ -50,11 +53,15 @@ class DocumentEditorAccess
 
     public function canEdit(User $actor, ArchiveDocument $document, bool $visibleChecked = false): bool
     {
-        if (!$actor->isActive || !in_array((int) $actor->roleId, [1, 3], true) || (!$visibleChecked && !$this->visible($actor, $document))) { return false; }
+        $folder = $document->categoryId ? app(QmsRequestReferences::class)->find(\App\Models\QmsCategory::class, $document->categoryId) : null;
+        if ($folder?->folderPolicy === 'notes') {
+            return $this->visible($actor, $document) && app(QmsRepositoryPolicy::class)->permissions($actor, $folder)['upload'];
+        }
+        if (!$actor->isActive || (!in_array((int) $actor->roleId, [1, 3], true) && $actor->archiveResponsibility !== 'department_head') || (!$visibleChecked && !$this->visible($actor, $document))) { return false; }
         $unit = $this->units($actor, true)->first(fn ($unit) => (string) $unit->getKey() === (string) $document->departmentId);
         if (!$unit) { return false; }
-        if (in_array($actor->archiveResponsibility, ['department_head', 'department_secretary', 'college_secretary', 'cluster_administrator'], true)) {
-            $folder = $document->categoryId ? \App\Models\QmsCategory::find($document->categoryId) : null;
+        if (in_array($actor->archiveResponsibility, ['department_head', 'college_secretary', 'cluster_administrator'], true)) {
+            $folder = $document->categoryId ? app(QmsRequestReferences::class)->find(\App\Models\QmsCategory::class, $document->categoryId) : null;
             return app(QmsFolderAccess::class)->permissions($actor, $unit, $folder)['upload'];
         }
         // The existing ATL assignment is an explicit unit scope, not a global archive grant.

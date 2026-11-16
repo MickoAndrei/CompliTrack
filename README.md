@@ -99,6 +99,10 @@ CompliTrack employs a dual-database architecture:
 - **SQLite:** Dedicated to Laravel framework internal tables (sessions, cache, jobs, relational migrations) at `database/database.sqlite`. Setting `DB_CONNECTION=sqlite` does **not** store application records in SQLite.
 
 #### Specialized Documentation & Specifications
+
+- [QMS Document Manager Improvements](docs/QMS_DOCUMENT_MANAGER_IMPROVEMENTS.md) — Repository and department shortcuts, folder/document actions, latest versions, automatic access and internal scrolling.
+
+- [QMS Documents Automatic Access Redesign](docs/QMS_AUTOMATIC_ACCESS_REDESIGN.md) — Manual audit-cycle folders, automatic department/assignment policies, independent Chair/Auditor responsibilities, and preserved evidence versions.
 - [Auditor Evaluation Consolidation](docs/AUDITOR_EVALUATION_CONSOLIDATION.md) — Assigned audit evaluations, authorized historical records, preserved CAR/evidence/notification relationships, and legacy workflow limits.
 - [Notifications and System Activity Logs](docs/NOTIFICATIONS_AND_ACTIVITY_LOGS.md) — Shared responsive inbox, separate read-only audit history, authorization boundaries, indexes, and verification.
 - [QMS Archives Implementation](docs/QMS_ARCHIVES_IMPLEMENTATION.md) — CET QMS Archives implementation, migrations, authorization rules, and legacy ownership decisions.

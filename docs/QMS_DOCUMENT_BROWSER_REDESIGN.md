@@ -1,5 +1,7 @@
 # QMS document browser redesign
 
+The subsequent [automatic-access redesign](QMS_AUTOMATIC_ACCESS_REDESIGN.md) implements manual Audit Cycles, Assigned Audit Folders, My Department, full CET ATL access, and independent Chair/Auditor responsibilities. Its authorization policy replaces the earlier policy decisions described below.
+
 The shared QMS component follows the supplied folder-browser screenshots with an internal navigation rail, authorized folder tree, breadcrumbs, search, server-side sorting and document-type filters, list/grid layouts, document selection, action menus, existing details/history and previews, and upload progress. The existing navy/gold branding and all four portal wrappers remain in use. Layout preference is the only browser-local persisted state; document metadata and permissions are fetched from authenticated endpoints.
 
 Loading placeholders match the new navigation, heading, controls, folder cards, and responsive file columns. Both initial loading and subsequent page/filter requests follow the selected list/grid layout. Shimmer honors reduced motion. Browser verification covers 320, 390, 768, and 1440 pixel widths and checks that skeleton and loaded list columns match.

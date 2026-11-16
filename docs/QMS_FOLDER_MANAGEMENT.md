@@ -1,5 +1,7 @@
 # QMS folder management
 
+The [automatic-access redesign](QMS_AUTOMATIC_ACCESS_REDESIGN.md) defines the current manual repository policies, full CET ATL management, and independent Chair/Auditor responsibilities. The legacy category and department-folder API details below remain applicable to existing folders; the earlier ATL and Auditor scope table is superseded by that redesign.
+
 The existing browser now offers **+ New → New Folder / Upload File** using independent current-location capabilities. The compact native dialog shows the parent location, focuses the name field and reports validation errors. User subfolders have rename, move and confirmed empty-only delete actions. Campus/college roots remain navigation roots; users select an authorized department or office for ownership.
 
 ## Existing hierarchy and additive schema
@@ -17,7 +19,6 @@ Names are limited to 100 characters, normalize sibling-name casing/whitespace, a
 | Responsibility | Default folder-management scope |
 | --- | --- |
 | Department Head / Chair | Own authorized department |
-| Department Secretary | Own authorized department |
 | College Secretary | Explicitly assigned active college and its departments/offices |
 | College Dean | Read-only; management requires an explicit scoped grant |
 | Admin / ATL | Departments of current reviewer assignments; no global folder-management authority |

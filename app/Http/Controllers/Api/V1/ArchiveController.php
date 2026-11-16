@@ -40,17 +40,38 @@ class ArchiveController extends Controller
     {
         $request->validate(['search' => 'nullable|string|max:120', 'collegeId' => 'nullable|string|regex:/^[a-f0-9]{24}$/i', 'unitId' => 'nullable|string|regex:/^[a-f0-9]{24}$/i',
             'categoryId' => 'nullable|string|regex:/^[a-f0-9]{24}$/i', 'recordType' => 'nullable|in:file,digital-reference,physical-original',
-            'view' => 'nullable|in:my,shared,audit,recent,starred', 'sort' => 'nullable|in:newest,oldest,name',
-            'auditId' => 'nullable|string|regex:/^[a-f0-9]{24}$/i']);
+            'view' => 'nullable|in:my,shared,audit,recent,starred,department,cycles,assigned', 'sort' => 'nullable|in:newest,oldest,name,modified',
+            'auditId' => 'nullable|string|regex:/^[a-f0-9]{24}$/i', 'scope' => 'nullable|in:current,authorized']);
         $query = app(\App\Services\QmsAuditArchive::class)->applyContext($this->scopes->archives($request->user()), $request->user(), $request);
         $actorIds = [MongoId::parse((string) $request->user()->getKey()), (string) $request->user()->getKey()];
+        $browser = app(\App\Services\QmsBrowser::class);
+        if ($request->query('view') === 'department') {
+            $own = $browser->departmentUnits($request->user())->get(['_id'])->map(fn ($u) => $u->getKey())->all();
+            $query->whereIn('departmentId', array_merge(app(\App\Services\QmsArchiveAccess::class)->ids($own), array_map('strval', $own)));
+        }
+        if (in_array($request->query('view'), ['cycles', 'assigned'], true)) {
+            $folders = app(\App\Services\QmsRepositoryPolicy::class)->navigation($request->user());
+            $assignments = $browser->assignments($request->user())->map(fn ($a) => (string) $a->getKey())->all();
+            $folderIds = $request->query('view') === 'assigned'
+                ? array_column(array_filter($folders, fn ($f) => in_array($f['auditAssignmentId'], $assignments, true) && in_array($f['folderPolicy'], ['evidence', 'notes'], true)), '_id')
+                : $browser->auditFolderIds($folders);
+            $query->where(function ($q) use ($folderIds, $request) {
+                $q->whereIn('categoryId', app(\App\Services\QmsArchiveAccess::class)->ids($folderIds));
+                if ($request->query('view') === 'cycles') {
+                    $q->orWhereNotNull('auditId')->orWhereRaw(['sharedAuditIds.0' => ['$exists' => true]])
+                        ->orWhereIn('_id', app(\App\Services\QmsArchiveAccess::class)->referencedEvidenceIds($request->user()));
+                }
+            });
+        }
         // Views only narrow the authorized query; saved references never grant access.
         if ($request->query('view') === 'shared') {
             $query->whereIn('accessUserIds', $actorIds);
         } elseif ($request->query('view') === 'starred') {
-            $query->whereIn('_id', app(\App\Services\QmsArchiveAccess::class)->ids($request->user()->qmsStarredIds ?? []));
+            $groups = app(\App\Services\QmsArchiveAccess::class)->ids($browser->starredGroups($request->user()));
+            $query->where(fn ($q) => $q->whereIn('_id', $groups)->orWhereIn('versionGroupId', array_merge($groups, array_map('strval', $groups))));
         } elseif ($request->query('view') === 'recent') {
-            $query->where('createdAt', '>=', now()->utc()->subDays(30));
+            $query->where(fn ($q) => $q->where('updatedAt', '>=', now()->utc()->subDays(30))
+                ->orWhere(fn ($q) => $q->whereNull('updatedAt')->where('createdAt', '>=', now()->utc()->subDays(30))));
         } elseif ($request->query('view') === 'audit' && !$request->filled('planId') && !$request->filled('auditId')) {
             if ((int) $request->user()->roleId !== 2) {
                 $query->whereRaw(['$or' => [
@@ -63,10 +84,11 @@ class ArchiveController extends Controller
         if ($request->filled('collegeId')) { $query->where('collegeId', MongoId::parse($request->query('collegeId'))); }
         if ($request->filled('unitId')) { $query->whereIn('departmentId', [MongoId::parse($request->query('unitId')), $request->query('unitId')]); }
         if ($request->filled('categoryId')) {
-            $category = \App\Models\QmsCategory::find(MongoId::parse($request->query('categoryId')));
-            $ids = $category ? app(\App\Services\QmsArchiveAccess::class)->ids(\App\Models\QmsCategory::where('parentId', MongoId::parse((string) $category->getKey()))->get(['_id'])->map(fn ($child) => $child->getKey())->push($category->getKey())->all()) : [];
-            $query->whereIn('categoryId', $ids);
+            $query->whereIn('categoryId', [MongoId::parse($request->query('categoryId')), $request->query('categoryId')]);
+        } elseif ($request->query('scope') === 'current' && in_array($request->query('view'), ['my', 'department', 'cycles', 'assigned'], true)) {
+            $query->whereNull('categoryId');
         }
+        if ($request->query('view') !== 'audit') { $query = $browser->latest($query); }
         if ($request->filled('recordType')) {
             if ($request->query('recordType') === 'file') { $query->where(fn ($q) => $q->where('recordType', 'file')->orWhereNull('recordType')); }
             else { $query->where('recordType', $request->query('recordType')); }
@@ -98,11 +120,18 @@ class ArchiveController extends Controller
         }
 
         $sort = $request->query('sort', 'newest');
-        $page = $query->orderBy($sort === 'name' ? 'title' : 'createdAt', $sort === 'newest' ? 'desc' : 'asc')->orderBy('_id')
+        $page = $query->orderBy($sort === 'name' ? 'title' : ($sort === 'modified' ? 'updatedAt' : 'createdAt'), in_array($sort, ['newest', 'modified'], true) ? 'desc' : 'asc')->orderBy('_id')
             ->paginate(min(max((int) $request->query('perPage', 20), 1), 100));
 
+        $rows = collect($page->items());
+        $references = app(\App\Services\QmsRequestReferences::class);
+        $references->prime(Department::class, $rows->pluck('departmentId')->all());
+        $references->prime(User::class, $rows->pluck('uploadedByUserId')->all());
+        $references->prime(\App\Models\QmsCategory::class, $rows->pluck('categoryId')->all());
+        $capabilities = app(\App\Services\QmsDocumentActions::class)->presentationCapabilities($rows);
         return response()->json([
-            'data' => collect($page->items())->map(fn (ArchiveDocument $archive) => $this->serialize($archive)),
+            // These rows came from the current request's authoritative authorized query.
+            'data' => $rows->map(fn (ArchiveDocument $archive) => app(\App\Services\QmsArchivePresenter::class)->document($archive, $request->user(), true, $capabilities[(string) $archive->getKey()] ?? null)),
             'meta' => [
                 'currentPage' => $page->currentPage(),
                 'perPage' => $page->perPage(),
@@ -260,6 +289,18 @@ class ArchiveController extends Controller
 
     private function storeQms(Request $request, ?ArchiveDocument $previous = null)
     {
+        // Serialize uploads and repository moves/deletions on the same existing college record.
+        $repositoryFolder = \App\Models\QmsCategory::find($request->input('categoryId'));
+        if ($repositoryFolder?->folderPolicy) {
+            if ($request->attributes->get('onlyofficeSave') === true) {
+                \App\Models\College::where('_id', $repositoryFolder->collegeId)->increment('qmsFolderRevision');
+                return $this->storeQmsRecord($request, $previous);
+            }
+            return \Illuminate\Support\Facades\DB::connection('mongodb')->transaction(function () use ($request, $previous, $repositoryFolder) {
+                \App\Models\College::where('_id', $repositoryFolder->collegeId)->increment('qmsFolderRevision');
+                return $this->storeQmsRecord($request, $previous);
+            }, 3);
+        }
         $request->validate(['unitId' => 'required|string|regex:/^[a-f0-9]{24}$/i']);
         // The authenticated ONLYOFFICE callback already owns the MongoDB transaction.
         if ($request->attributes->get('onlyofficeSave') === true) {
@@ -286,7 +327,8 @@ class ArchiveController extends Controller
         $access = app(\App\Services\QmsArchiveAccess::class);
         $unit = Department::findOrFail(MongoId::parse($data['unitId']));
         $category = \App\Models\QmsCategory::where('_id', MongoId::parse($data['categoryId']))->where('isActive', true)
-            ->where('collegeId', MongoId::parse((string) $unit->collegeId))->where('unitType', $unit->unitType)->firstOrFail();
+            ->where('collegeId', MongoId::parse((string) $unit->collegeId))
+            ->where(fn ($q) => $q->where('unitType', $unit->unitType)->orWhere('folderPolicy', 'administration'))->firstOrFail();
         $folderPermissions = app(\App\Services\QmsFolderAccess::class)->permissions($request->user(), $unit, $category);
         abort_unless($category->userManaged || ($category->classification && $category->classification !== 'department') ? $folderPermissions['upload'] : ($access->canCreate($request->user(), $unit) || $folderPermissions['upload']), 403);
         if ($category->userManaged || ($category->classification && $category->classification !== 'department')) {
@@ -320,7 +362,7 @@ class ArchiveController extends Controller
             'visibility' => $previous ? ($previous->visibility ?: 'owner') : $data['visibility'],
             'accessUserIds' => $previous ? ($previous->accessUserIds ?? []) : $access->ids($data['accessUserIds'] ?? []),
             'downloadAllowed' => $previous ? $previous->downloadAllowed !== false : $request->boolean('downloadAllowed', true),
-            'sharedAuditIds' => $request->attributes->get('onlyofficeSave') ? ($previous?->sharedAuditIds ?? []) : [], 'versionGroupId' => $previous ? ($previous->versionGroupId ?? $previous->getKey()) : new \MongoDB\BSON\ObjectId(),
+            'sharedAuditIds' => [], 'versionGroupId' => $previous ? ($previous->versionGroupId ?? $previous->getKey()) : new \MongoDB\BSON\ObjectId(),
             'versionNumber' => $previous ? ($previous->versionNumber ?: 1) + 1 : 1, 'previousVersionId' => $previous?->getKey(), 'qmsSchemaVersion' => 1,
         ];
         try { $document = ArchiveDocument::create(array_merge($metadata, $fileData)); }

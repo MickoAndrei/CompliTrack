@@ -94,7 +94,7 @@ class OnlyOfficeMongoTest extends TestCase
         $this->assertSame(1, ArchiveDocument::count());
         $view = $this->start($owner, $document, 'view');
         $this->postJson('/api/v1/document-editor/'.$view['sessionId'].'/save')->assertForbidden();
-        $other = $this->actor($unit, 'department_secretary');
+        $other = $this->actor($unit, 'department_head');
         $this->actingAs($other)->postJson($url)->assertForbidden();
         $owner->forceFill(['archiveResponsibility' => 'faculty_staff'])->save();
         $this->actingAs($owner)->postJson($url)->assertForbidden();
@@ -103,8 +103,8 @@ class OnlyOfficeMongoTest extends TestCase
     public function test_editor_permissions_collaboration_and_direct_retrieval_enforce_live_department_scope(): void
     {
         $unit = Department::where('departmentCode', 'CET-IT')->firstOrFail(); $other = Department::where('departmentCode', 'CET-ENV')->firstOrFail();
-        $owner = $this->actor($unit); $secretary = $this->actor($unit, 'department_secretary'); $document = $this->document($unit, $owner);
-        $first = $this->start($owner, $document); $second = $this->start($secretary, $document);
+        $owner = $this->actor($unit); $collaborator = $this->actor($unit, 'department_head'); $document = $this->document($unit, $owner);
+        $first = $this->start($owner, $document); $second = $this->start($collaborator, $document);
         $this->assertSame($first['config']['document']['key'], $second['config']['document']['key']);
         $this->assertSame('word', $first['config']['documentType']);
         $this->assertTrue($first['config']['document']['permissions']['edit']);
@@ -121,8 +121,8 @@ class OnlyOfficeMongoTest extends TestCase
         $this->actingAs($this->actor($other))->postJson('/api/v1/documents/'.$document->getKey().'/editor', ['mode' => 'edit'])->assertNotFound();
         $atl = $this->actor($unit, 'faculty_staff', 1);
         Audit::create(['reviewerId' => $atl->getKey(), 'departmentId' => $other->getKey(), 'status' => 'draft']);
-        $this->actingAs($atl)->postJson('/api/v1/documents/'.$document->getKey().'/editor', ['mode' => 'view'])->assertForbidden();
-        $this->postJson('/api/v1/documents/'.$document->getKey().'/editor', ['mode' => 'edit'])->assertForbidden();
+        $this->start($atl, $document, 'view');
+        $this->start($atl, $document, 'edit');
         $mixedRoleChair = $this->actor($unit, 'department_head', 1);
         Audit::create(['reviewerId' => $mixedRoleChair->getKey(), 'departmentId' => $other->getKey(), 'status' => 'draft']);
         $this->start($mixedRoleChair, $document);
@@ -171,6 +171,26 @@ class OnlyOfficeMongoTest extends TestCase
             $this->assertNotSame($editor['config']['document']['key'], $reopened['config']['document']['key']);
             $this->sendCallback($reopened, ['status' => 4])->assertJsonPath('error', 0);
         }
+    }
+
+    public function test_repository_notes_callbacks_join_the_save_transaction_and_recheck_reassignment(): void
+    {
+        $unit = Department::where('departmentCode', 'CET-IT')->firstOrFail();
+        $auditor = $this->actor($unit, 'faculty_staff', 2, ['assignedDepartmentIds' => [$unit->getKey()]]);
+        $audit = Audit::create(['departmentId' => $unit->getKey(), 'auditorId' => $auditor->getKey(), 'status' => 'draft']);
+        $folder = $this->actingAs($auditor)->postJson('/api/v1/documents/folders', ['name' => 'Auditor notes', 'folderPolicy' => 'notes',
+            'auditAssignmentId' => (string) $audit->getKey()])->assertCreated()->json('data._id');
+        $document = $this->document($unit, $auditor, 'docx', ['categoryId' => $folder, 'visibility' => 'restricted']);
+        $editor = $this->start($auditor, $document); $checksum = $document->checksum;
+        $bytes = $this->package('docx', 'Edited private notes');
+        Http::fake(['http://127.0.0.1:8082/cache/files/notes.docx' => Http::response($bytes)]);
+        $values = ['status' => 6, 'filetype' => 'docx', 'url' => 'https://editor.example.test/document-server/cache/files/notes.docx'];
+        $this->sendCallback($editor, $values)->assertJsonPath('error', 0);
+        $this->getJson('/api/v1/document-editor/'.$editor['sessionId'].'/status')->assertOk()->assertJsonCount(1, 'savedVersions');
+        $this->assertSame($checksum, $document->fresh()->checksum);
+        $audit->update(['auditorId' => $this->actor($unit)->getKey()]);
+        $this->sendCallback($editor, $values)->assertForbidden();
+        $this->assertSame(2, ArchiveDocument::count());
     }
 
     public function test_invalid_and_conflicting_saves_never_replace_originals(): void

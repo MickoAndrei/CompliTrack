@@ -21,6 +21,7 @@ class QmsFolderAccess
         $query = Department::where('isActive', true)->where('ownershipVerified', true)->where('unitType', '!=', 'legacy_unclassified');
         $access = app(QmsArchiveAccess::class);
         if (!$actor->isActive || !in_array((int) $actor->roleId, [0, 1, 2, 3], true)) { return $query->whereRaw(['_id' => null]); }
+        if ($access->isAuditTeamLeader($actor)) { return app(QmsRepositoryPolicy::class)->units(); }
         $query->whereIn('collegeId', $access->ids(College::where('isActive', true)->get(['_id'])->map(fn ($college) => $college->getKey())->all()));
         if ($actor->archiveResponsibility === 'cluster_administrator') {
             $colleges = College::where('isActive', true);
@@ -34,7 +35,8 @@ class QmsFolderAccess
             return $query->whereIn('collegeId', $access->ids(College::whereIn('_id', $access->ids($actor->archiveCollegeIds ?? []))->where('isActive', true)->get(['_id'])->map(fn ($college) => $college->getKey())->all()));
         }
         if ((int) $actor->roleId === 0) { return $query->whereRaw(['_id' => null]); }
-        if ((int) $actor->roleId !== 2 && in_array($actor->archiveResponsibility, ['department_head', 'department_secretary'], true)) {
+        if (in_array($actor->archiveResponsibility, ['department_head'], true)) {
+            if ((int) $actor->roleId === 2) { return $query->whereIn('_id', $access->ids(array_merge(($actor->archiveUnitIds ?? []) ?: [$actor->departmentId], $actor->assignedDepartmentIds ?? []))); }
             return $query->whereIn('_id', $access->ids(($actor->archiveUnitIds ?? []) ?: [$actor->departmentId]));
         }
         if ((int) $actor->roleId === 1) {
@@ -43,12 +45,27 @@ class QmsFolderAccess
         }
         if ((int) $actor->roleId === 2) { return $query->whereIn('_id', $access->ids($actor->assignedDepartmentIds ?? [])); }
         $explicit = $actor->archiveUnitIds ?? [];
-        $ids = in_array($actor->archiveResponsibility, ['department_head', 'department_secretary'], true) && $explicit !== [] ? $explicit : [$actor->departmentId];
+        $ids = in_array($actor->archiveResponsibility, ['department_head'], true) && $explicit !== [] ? $explicit : [$actor->departmentId];
         return $query->whereIn('_id', $access->ids($ids));
     }
 
     public function permissions(User $actor, Department $unit, ?QmsCategory $folder = null): array
     {
+        if ($folder?->folderPolicy) {
+            if ($folder->folderPolicy === 'administration') {
+                return array_fill_keys(self::ACTIONS, app(QmsRepositoryPolicy::class)->leader($actor)
+                    && (string) $unit->collegeId === (string) $folder->collegeId && $folder->isActive);
+            }
+            if ((string) $folder->departmentId !== (string) $unit->getKey()) { return array_fill_keys(self::ACTIONS, false); }
+            return app(QmsRepositoryPolicy::class)->permissions($actor, $folder);
+        }
+        if (app(QmsArchiveAccess::class)->isAuditTeamLeader($actor) && app(QmsRepositoryPolicy::class)->unit((string) $unit->getKey())) {
+            $matches = !$folder || ($folder->isActive && (string) $folder->collegeId === (string) $unit->collegeId && $folder->unitType === $unit->unitType
+                && (!$folder->userManaged || (string) $folder->departmentId === (string) $unit->getKey()));
+            $permissions = array_fill_keys(self::ACTIONS, $matches);
+            if (!$folder?->userManaged) { foreach (['rename', 'move', 'delete', 'manage'] as $action) { $permissions[$action] = false; } }
+            return $permissions;
+        }
         $key = 'qms.folder.scope.'.(string) $actor->getKey();
         if (!request()->attributes->has($key)) { request()->attributes->set($key, $this->units($actor)->get(['_id'])->map(fn ($unit) => (string) $unit->getKey())->all()); }
         $scope = in_array((string) $unit->getKey(), request()->attributes->get($key), true);
@@ -57,11 +74,12 @@ class QmsFolderAccess
         $grant = collect($actor->qmsFolderGrants ?? [])->first(fn ($grant) => (string) ($grant['unitId'] ?? '') === (string) $unit->getKey());
         $classification = $folder?->classification ?: 'department';
         $classified = $classification === 'department' || ($grant && in_array($classification, $grant['classifications'] ?? [], true));
-        $manager = in_array($actor->archiveResponsibility, ['department_head', 'department_secretary', 'college_secretary', 'cluster_administrator'], true)
+        $manager = in_array($actor->archiveResponsibility, ['department_head', 'college_secretary', 'cluster_administrator'], true)
             || ((int) $actor->roleId === 1 && $actor->archiveResponsibility !== 'college_dean');
+        if ((int) $actor->roleId === 2) { $manager = $actor->archiveResponsibility === 'department_head' && app(QmsRepositoryPolicy::class)->departmentMember($actor, (string) $unit->getKey()); }
         $actions = $grant ? ($grant['actions'] ?? []) : ($manager ? self::ACTIONS : ['view']);
-        if ((int) $actor->roleId === 2 || ((int) $actor->roleId === 3 && !in_array($actor->archiveResponsibility, ['department_head', 'department_secretary', 'college_secretary', 'college_dean', 'cluster_administrator'], true))) {
-            $actions = array_intersect($actions, ['view']);
+        if (((int) $actor->roleId === 2 && !$manager) || ((int) $actor->roleId === 3 && !in_array($actor->archiveResponsibility, ['department_head', 'college_secretary', 'college_dean', 'cluster_administrator'], true))) {
+            $actions = array_intersect($actions, $grant && (int) $actor->roleId === 3 ? ['view', 'upload'] : ['view']);
         }
         $view = $scope && $matches && $classified && in_array('view', $actions, true);
         $permissions = array_fill_keys(self::ACTIONS, false);
@@ -86,8 +104,14 @@ class QmsFolderAccess
         if (request()->attributes->has($key)) { return request()->attributes->get($key); }
         $ids = [];
         $folders = QmsCategory::where('userManaged', true)->get();
+        app(QmsRequestReferences::class)->remember($folders);
+        app(QmsRequestReferences::class)->prime(Audit::class, $folders->pluck('auditAssignmentId')->all());
         $units = Department::whereIn('_id', app(QmsArchiveAccess::class)->ids($folders->pluck('departmentId')->all()))->get()->keyBy(fn ($unit) => (string) $unit->getKey());
         foreach ($folders as $folder) {
+            if ($folder->folderPolicy) {
+                if (!app(QmsRepositoryPolicy::class)->permissions($actor, $folder)['view']) { $ids[] = $folder->getKey(); }
+                continue;
+            }
             $unit = $units->get((string) $folder->departmentId);
             if (!$unit || !$this->permissions($actor, $unit, $folder)['view']) { $ids[] = $folder->getKey(); }
         }

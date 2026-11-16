@@ -43,6 +43,7 @@
     @stack('styles')
     @auth
         <link rel="stylesheet" href="{{ asset('css/portal-header.css') }}?v={{ filemtime(public_path('css/portal-header.css')) }}">
+        <link rel="stylesheet" href="{{ asset('css/portal-typography.css') }}?v={{ filemtime(public_path('css/portal-typography.css')) }}">
     @endauth
 </head>
 <body class="min-h-screen @yield('body-class')" data-user-id="{{ auth()->id() }}" data-portal-role="{{ auth()->user()?->roleId }}">

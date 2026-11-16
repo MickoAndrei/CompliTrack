@@ -63,6 +63,8 @@ Route::prefix('v1')->group(function () {
         Route::get('/documents/tree', [\App\Http\Controllers\Api\V1\QmsArchiveController::class, 'tree']);
         Route::get('/documents/audit-folders', [\App\Http\Controllers\Api\V1\QmsArchiveController::class, 'auditFolders']);
         Route::post('/documents/folders', [\App\Http\Controllers\Api\V1\QmsFolderController::class, 'store']);
+        Route::get('/documents/folders/{id}', [\App\Http\Controllers\Api\V1\QmsFolderController::class, 'show']);
+        Route::patch('/documents/folders/{id}/star', [\App\Http\Controllers\Api\V1\QmsFolderController::class, 'star']);
         Route::patch('/documents/folders/{id}', [\App\Http\Controllers\Api\V1\QmsFolderController::class, 'update']);
         Route::delete('/documents/folders/{id}', [\App\Http\Controllers\Api\V1\QmsFolderController::class, 'destroy']);
         Route::patch('/documents/folder-grants/{id}', [\App\Http\Controllers\Api\V1\QmsFolderController::class, 'grants']);
@@ -70,6 +72,8 @@ Route::prefix('v1')->group(function () {
         Route::patch('/documents/organization/{id}', [\App\Http\Controllers\Api\V1\QmsArchiveController::class, 'assign']);
         Route::patch('/documents/categories/{id}', [\App\Http\Controllers\Api\V1\QmsArchiveController::class, 'updateCategory']);
         Route::get('/documents/{id}', [\App\Http\Controllers\Api\V1\QmsArchiveController::class, 'show']);
+        Route::patch('/documents/{id}', [\App\Http\Controllers\Api\V1\QmsArchiveController::class, 'updateDocument']);
+        Route::delete('/documents/{id}', [\App\Http\Controllers\Api\V1\QmsArchiveController::class, 'deleteDocument']);
         Route::patch('/documents/{id}/star', [\App\Http\Controllers\Api\V1\QmsArchiveController::class, 'star']);
         Route::post('/documents/{id}/versions', [ArchiveController::class, 'version']);
         Route::post('/documents/{id}/editor', [\App\Http\Controllers\Api\V1\DocumentEditorController::class, 'start']);
