@@ -195,3 +195,6 @@ html:has(.qms-explorer){height:100%;overflow:hidden;scrollbar-gutter:auto}body:h
 .qms-upload .corrective-upload-drop-title{font-weight:600;overflow-wrap:anywhere}
 .qms-upload .corrective-upload-hint{font-size:12px;color:#64748b}
 .qms-upload .corrective-upload-remove{margin-top:8px;color:#64748b;font-size:12px;text-decoration:underline}
+.qms-upload .qms-form-grid>*{min-width:0}
+.qms-upload .qms-form-grid :is(input,select){min-width:0;max-width:100%;box-sizing:border-box}
+.qms-upload .corrective-upload-file-field>input{width:1px;height:1px;padding:0;border:0}

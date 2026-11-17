@@ -505,7 +505,7 @@ document.addEventListener('alpine:init', () => {
                 return true;
             } catch (error) { this.error = this.message(error); return false; }
         },
-        uploadFile: null, uploadDragging: false, uploadDestination: null, uploadChecks: [], uploadChecksLoading: false,
+        uploadFile: null, uploadDragging: false, uploadDestination: null, uploadChecks: [], uploadChecksLoading: false, uploadRequestNumber: 0,
         get folderUpload() { return [2, 3].includes(Number(document.body.dataset.portalRole)) && !this.previous; },
         selectUploadFile(file) {
             if (this.saving) return;
@@ -514,6 +514,7 @@ document.addEventListener('alpine:init', () => {
         },
         async create(previous = null) {
             if (!previous && !this.currentFolderPermissions.upload) return;
+            const requestNumber = ++this.uploadRequestNumber;
             this.previous = previous; this.notice = ''; this.error = '';
             this.form = { unitId: previous?.departmentId || this.unitId || this.tree.units.find(unit => unit.canCreate)?._id || '',
                 categoryId: previous?.categoryId || this.categoryId || '', title: previous?.title || '', description: previous?.description || '',
@@ -527,13 +528,14 @@ document.addEventListener('alpine:init', () => {
                 this.uploadChecksLoading = true;
                 try {
                     const { data } = await window.axios.get('/api/v1/compliance-checks', {params:{result:'non_compliant', actionable:true, perPage:100}});
+                    if (requestNumber !== this.uploadRequestNumber) return;
                     const actorKey = Number(document.body.dataset.portalRole) === 2 ? 'auditorId' : 'auditeeId';
                     this.uploadChecks = (data.data || []).filter(check => String(check.departmentId) === this.uploadDestination.unitId
                         && String(check[actorKey]) === document.body.dataset.userId);
                     const requested = new URLSearchParams(location.search).get('checkId');
                     if (this.uploadChecks.some(check => check._id === requested)) this.form.checkId = requested;
                 } catch { /* File uploads remain available without an optional finding. */ }
-                finally { this.uploadChecksLoading = false; }
+                finally { if (requestNumber === this.uploadRequestNumber) this.uploadChecksLoading = false; }
             }
         },
         async save() {
