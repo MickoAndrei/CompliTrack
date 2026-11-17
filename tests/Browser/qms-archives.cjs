@@ -534,6 +534,11 @@ const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
             assert.equal(await evaluate('window.savedFolderUpload.recordType'),'file');
             await evaluate('uploadApp.tree.repositoryFolders[1].permissions.upload=false;uploadApp.create()');
             assert.equal(await evaluate('document.querySelector("[x-ref=upload]").open'),false,'Read-only folders cannot open upload');
+            await evaluate(`uploadApp.repositoryId='';uploadApp.categoryId='';uploadApp.unitId=uploadApp.tree.units[0]._id;uploadApp.currentView='department';uploadApp.tree.units[0].folderPermissions={view:true,upload:false,correctiveUpload:true};void uploadApp.create()`);
+            await waitFor('document.querySelector("[x-ref=upload]").open && !uploadApp.uploadChecksLoading');
+            assert.equal(await evaluate('document.querySelector("[x-ref=uploadForm] select").required'),true,'Finding-only uploads require a related open finding');
+            await evaluate('uploadApp.$refs.upload.close();uploadApp.tree.units[0].folderPermissions.correctiveUpload=false;void uploadApp.create()');
+            assert.equal(await evaluate('document.querySelector("[x-ref=upload]").open'),false,'A root without general or corrective upload rights remains read-only');
 
         }
         console.log('PASS auditor and auditee folder upload popup, destination and read-only permissions');

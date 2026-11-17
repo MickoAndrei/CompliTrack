@@ -109,7 +109,8 @@ document.addEventListener('alpine:init', () => {
             if (!['my','department'].includes(this.currentView) || !this.unit) return {};
             return this.category ? (this.category.folderPermissions?.[this.unitId] || {upload: this.unit.canCreate}) : (this.unit.folderPermissions || {upload:this.unit.canCreate});
         },
-        get canNew() { return this.currentFolderPermissions.create || this.currentFolderPermissions.upload; },
+        get canUploadHere() { return this.currentFolderPermissions.upload || this.currentFolderPermissions.correctiveUpload; },
+        get canNew() { return this.currentFolderPermissions.create || this.canUploadHere; },
         folderDetail: null, documentAction: '', documentTarget: null, documentName: '', documentDestination: '', documentActionError: '',
         get documentDestinations() {
             return this.tree.categories.filter(folder => this.documentTarget && folder.collegeId === this.documentTarget.collegeId
@@ -513,7 +514,7 @@ document.addEventListener('alpine:init', () => {
             if (file) this.form.title = file.name;
         },
         async create(previous = null) {
-            if (!previous && !this.currentFolderPermissions.upload) return;
+            if (!previous && !this.canUploadHere) return;
             const requestNumber = ++this.uploadRequestNumber;
             this.previous = previous; this.notice = ''; this.error = '';
             this.form = { unitId: previous?.departmentId || this.unitId || this.tree.units.find(unit => unit.canCreate)?._id || '',
@@ -522,6 +523,7 @@ document.addEventListener('alpine:init', () => {
                 visibility: previous?.visibility || 'owner', downloadAllowed: previous?.downloadAllowed ?? true, copyAuthorized: false, checkId: '' };
             this.uploadFile = null; this.uploadDragging = false; this.uploadChecks = [];
             this.uploadDestination = { unitId: this.unitId, categoryId: this.categoryId,
+                correctiveOnly: !this.currentFolderPermissions.upload,
                 name: [this.unit?.name, (this.repositoryFolder || this.category)?.name].filter(Boolean).join(' / ') };
             this.$refs.uploadForm.reset(); this.$refs.upload.showModal();
             if (this.folderUpload) {

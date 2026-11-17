@@ -61,6 +61,22 @@ class QmsArchivesMongoTest extends TestCase
         $upload($payload)->assertForbidden();
         $check->forceFill(['departmentId' => $unit->getKey(), 'correctiveStatus' => 'closed'])->save();
         $upload($payload)->assertForbidden();
+        foreach ([2, 3] as $role) {
+            $ordinary = $this->user($unit, 'faculty_staff', $role, ['assignedDepartmentIds' => [$unit->getKey()]]);
+            $field = $role === 2 ? 'auditorId' : 'auditeeId';
+            $check->forceFill([$field => $ordinary->getKey(), 'correctiveStatus' => 'open'])->save();
+            $this->actingAs($ordinary);
+            $permissions = app(\App\Services\QmsFolderAccess::class)->permissions($ordinary, $unit);
+            $this->assertFalse($permissions['upload']);
+            $this->assertTrue($permissions['correctiveUpload']);
+            $rootPayload = array_replace($payload, ['categoryId' => '']);
+            $upload($rootPayload)->assertCreated();
+            $upload(array_replace($rootPayload, ['checkId' => '']))->assertForbidden();
+            $upload($payload)->assertForbidden();
+            $check->forceFill(['correctiveStatus' => 'closed'])->save();
+            $upload($rootPayload)->assertForbidden();
+            $this->assertFalse(app(\App\Services\QmsFolderAccess::class)->permissions($ordinary, $unit)['correctiveUpload']);
+        }
     }
     protected function setUp(): void
     {

@@ -88,6 +88,15 @@ class QmsFolderAccess
         if ((int) $actor->roleId === 0) { $permissions['upload'] = false; }
         // Organizational and configured QMS nodes are immutable through folder-management APIs.
         if (!$folder?->userManaged) { foreach (['rename', 'move', 'delete', 'manage'] as $action) { $permissions[$action] = false; } }
+        // Finding authorization permits corrective files at a visible department root only.
+        // It does not grant general folder uploads or access to nested folders.
+        if (!$folder && $view && in_array((int) $actor->roleId, [2, 3], true)) {
+            $field = (int) $actor->roleId === 2 ? 'auditorId' : 'auditeeId';
+            $permissions['correctiveUpload'] = app(RoleScopeService::class)->checks($actor)
+                ->whereIn($field, [MongoId::parse((string) $actor->getKey()), (string) $actor->getKey()])
+                ->whereIn('departmentId', [MongoId::parse((string) $unit->getKey()), (string) $unit->getKey()])
+                ->where('result', 'non_compliant')->whereIn('correctiveStatus', ['open', 'in_progress'])->exists();
+        }
         return $permissions;
     }
 

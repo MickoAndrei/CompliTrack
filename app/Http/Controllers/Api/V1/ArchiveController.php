@@ -331,20 +331,21 @@ class ArchiveController extends Controller
             ->where('collegeId', MongoId::parse((string) $unit->collegeId))
             ->where(fn ($q) => $q->where('unitType', $unit->unitType)->orWhere('folderPolicy', 'administration'))->firstOrFail() : null;
         $folderPermissions = app(\App\Services\QmsFolderAccess::class)->permissions($request->user(), $unit, $category);
-        abort_unless(!$category || $category->userManaged || ($category->classification && $category->classification !== 'department') ? $folderPermissions['upload'] : ($access->canCreate($request->user(), $unit) || $folderPermissions['upload']), 403);
-        if ($category && ($category->userManaged || ($category->classification && $category->classification !== 'department'))) {
-            $allowed = app(\App\Services\QmsFolderAccess::class)->allowedVisibility($category);
-            abort_unless(in_array($previous?->visibility ?: $data['visibility'], $allowed, true), 422, 'Document visibility cannot exceed its folder classification.');
-        }
-        if ($previous) {
-            abort_unless((string) $previous->departmentId === (string) $unit->getKey() && ($previous->recordType ?: 'file') === $data['recordType'], 422);
-        }
         $check = null;
         if (!empty($data['checkId'])) {
             abort_if($previous || $data['recordType'] !== 'file', 422, 'Corrective evidence must be a new file.');
             $check = ComplianceCheck::findOrFail(MongoId::parse($data['checkId']));
             $this->authorizeCheckUpload($request->user(), $check);
             abort_unless((string) $check->departmentId === (string) $unit->getKey(), 422, 'The finding must belong to this folder department.');
+        }
+        $correctiveRootUpload = !$category && $check && $folderPermissions['view'];
+        abort_unless($correctiveRootUpload || ((!$category || $category->userManaged || ($category->classification && $category->classification !== 'department')) ? $folderPermissions['upload'] : ($access->canCreate($request->user(), $unit) || $folderPermissions['upload'])), 403);
+        if ($category && ($category->userManaged || ($category->classification && $category->classification !== 'department'))) {
+            $allowed = app(\App\Services\QmsFolderAccess::class)->allowedVisibility($category);
+            abort_unless(in_array($previous?->visibility ?: $data['visibility'], $allowed, true), 422, 'Document visibility cannot exceed its folder classification.');
+        }
+        if ($previous) {
+            abort_unless((string) $previous->departmentId === (string) $unit->getKey() && ($previous->recordType ?: 'file') === $data['recordType'], 422);
         }
         $path = null;
         $fileData = [];
