@@ -379,6 +379,7 @@ class ArchiveController extends Controller
                 $linked = $check->getConnection()->getMongoDB()->selectCollection($check->getTable())->updateOne(
                     ['_id' => MongoId::parse((string) $check->getKey()), 'result' => 'non_compliant', 'correctiveStatus' => ['$in' => ['open', 'in_progress']]],
                     ['$addToSet' => ['linkedArchiveIds' => $document->getKey()]],
+                    ['session' => $check->getConnection()->getSession()],
                 );
                 abort_unless($linked->getMatchedCount() === 1, 409, 'The finding is no longer open for corrective evidence.');
                 if ((int) $request->user()->roleId === 3) {

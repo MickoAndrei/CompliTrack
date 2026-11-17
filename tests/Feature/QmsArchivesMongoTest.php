@@ -38,6 +38,21 @@ class QmsArchivesMongoTest extends TestCase
             $this->assertSame('open', $check->fresh()->correctiveStatus);
         }
         $this->actingAs($owner);
+        $beforeLinks = array_map('strval', $check->fresh()->linkedArchiveIds);
+        $beforeDocuments = ArchiveDocument::count();
+        \App\Models\Notification::creating(fn () => throw new \RuntimeException('Simulated notification failure'));
+        $this->withoutExceptionHandling();
+        try {
+            $upload($payload);
+            $this->fail('Notification failure should roll back the upload.');
+        } catch (\RuntimeException $exception) {
+            $this->assertSame('Simulated notification failure', $exception->getMessage());
+        } finally {
+            \App\Models\Notification::flushEventListeners();
+            $this->withExceptionHandling();
+        }
+        $this->assertSame($beforeDocuments, ArchiveDocument::count());
+        $this->assertSame($beforeLinks, array_map('strval', $check->fresh()->linkedArchiveIds));
         $upload(array_replace($payload, ['categoryId' => '', 'checkId' => '']))->assertCreated();
         $stranger = $this->user($unit, 'department_head');
         $this->actingAs($stranger); $upload($payload)->assertForbidden();

@@ -29,7 +29,8 @@ $bundle = 'file:///'.str_replace('\\', '/', public_path('build/'.$manifest['reso
 $html = view('auditee.dashboard', ['checks' => collect([$check]), 'published' => collect(), 'requests' => collect(), 'notifications' => collect()])->render();
 $html = preg_replace('/<script\b[^>]*>.*?<\/script>/s', '', $html);
 $html = preg_replace('/<link[^>]+(?:fonts\.googleapis|fonts\.gstatic)[^>]*>/', '', $html);
-$html = str_replace('http://localhost', 'file:///'.str_replace('\\', '/', public_path()), $html);
+$html = preg_replace_callback('~((?:href|src)=")https?://[^/"]+~',
+    fn ($match) => $match[1].'file:///'.str_replace('\\', '/', public_path()), $html);
 $html = str_replace('</body>', '<script type="module" src="'.$bundle.'"></script></body>', $html);
 file_put_contents($directory.'/dashboard.html', $html);
 $previewArchives = collect(['preview.pdf', 'preview.png', 'preview.docx'])->map(function ($name, $index) {

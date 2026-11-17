@@ -9,14 +9,14 @@ const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
 (async () => {
     execFileSync('php', ['tests/Fixtures/car-timeline.php'], { cwd: root, windowsHide: true });
     const browser = spawn(process.env.EDGE_BINARY || 'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe',
-        ['--headless', '--disable-gpu', '--allow-file-access-from-files', '--remote-debugging-port=9342',
-        `--user-data-dir=${path.join(fixtures, 'edge-profile')}`, 'about:blank'], { windowsHide: true, stdio: 'ignore' });
+        ['--headless', '--disable-gpu', '--allow-file-access-from-files', '--remote-debugging-port=9352',
+        `--user-data-dir=${path.join(fixtures, 'edge-profile-current')}`, 'about:blank'], { windowsHide: true, stdio: 'ignore' });
     let ws;
     const watchdog = setTimeout(() => { console.error('CAR browser checks timed out'); process.exitCode = 1; ws?.close(); browser.kill(); }, 60000);
     try {
         let tabs;
         for (let i = 0; i < 60; i++) {
-            try { tabs = await (await fetch('http://127.0.0.1:9342/json')).json(); break; } catch { await delay(200); }
+            try { tabs = await (await fetch('http://127.0.0.1:9352/json')).json(); break; } catch { await delay(200); }
         }
         assert.ok(tabs, 'Headless browser must start');
         ws = new WebSocket(tabs.find(tab => tab.type === 'page').webSocketDebuggerUrl);
@@ -24,7 +24,7 @@ const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
         let sequence = 0;
         const pending = new Map();
         ws.addEventListener('message', event => { const message = JSON.parse(event.data); if (pending.has(message.id)) { pending.get(message.id)(message); pending.delete(message.id); } });
-        const send = (method, params = {}) => new Promise(resolve => { const id = ++sequence; pending.set(id, resolve); ws.send(JSON.stringify({ id, method, params })); });
+        const send = (method, params = {}) => new Promise((resolve, reject) => { const id = ++sequence; const timer = setTimeout(() => { pending.delete(id); reject(new Error('Browser did not respond: ' + method + ' ' + (params.expression || '').slice(0, 100))); }, 10000); pending.set(id, message => { clearTimeout(timer); resolve(message); }); ws.send(JSON.stringify({ id, method, params })); });
         const evaluate = async expression => {
             const response = await send('Runtime.evaluate', { expression, awaitPromise: true, returnByValue: true });
             if (response.result.exceptionDetails) throw new Error(JSON.stringify(response.result.exceptionDetails));
@@ -32,13 +32,14 @@ const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
         };
         const waitFor = async expression => { for (let i = 0; i < 80; i++) { if (await evaluate(expression)) return; await delay(50); } throw new Error(`Timed out: ${expression}`); };
         await send('Page.enable');
+        await send('Page.addScriptToEvaluateOnNewDocument', {source: "document.addEventListener('alpine:initialized', () => { window.fixtureReady = true; });"});
         const cycle = fs.readFileSync(path.join(fixtures, 'cycles.html'), 'utf8');
         const closed = fs.readFileSync(path.join(fixtures, 'closed.html'), 'utf8');
         const compliant = fs.readFileSync(path.join(fixtures, 'compliant.html'), 'utf8');
         for (const width of [1440, 900, 390, 320]) {
             await send('Emulation.setDeviceMetricsOverride', { width, height: 950, deviceScaleFactor: 1, mobile: width < 600 });
             await send('Page.navigate', { url: pathToFileURL(path.join(fixtures, 'dashboard.html')).href });
-            await waitFor('!!window.Alpine && !!document.querySelector("[data-result-modal-tab=corrective]")');
+            await waitFor('window.fixtureReady && !!document.querySelector("[data-result-modal-tab=corrective]")');
             await evaluate(`window.originalUrl=location.href;window.detailHtml=${JSON.stringify(cycle)};window.fetch=async url=>({ok:true,redirected:false,text:async()=>window.detailHtml});window.action=document.querySelector('[data-result-modal-tab=corrective]');window.action.click();`);
             await waitFor(`!!document.querySelector('.car-timeline') && document.querySelector('[data-result-tab=corrective]').getAttribute('aria-selected')==='true'`);
             assert.equal(await evaluate(`!document.querySelector('[data-result-panel=corrective]').hidden&&document.querySelector('[data-result-panel=overview]').hidden&&location.href===window.originalUrl`), true);
