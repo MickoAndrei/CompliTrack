@@ -1,0 +1,34 @@
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const vm = require('node:vm');
+const path = require('node:path');
+
+(async () => {
+    let factory;
+    const pending = [];
+    const context = {
+        document: {body: {dataset: {portalRole: '2', userId: 'actor'}}, addEventListener: (_, callback) => callback()},
+        window: {Alpine: {data: (_, callback) => { factory = callback; }}, axios: {get: () => new Promise(resolve => pending.push(resolve))}},
+        location: {search: ''}, URLSearchParams,
+    };
+    const source = fs.readFileSync(path.join(__dirname, '../../resources/js/qms-archives.js'), 'utf8').replace(/^import .*;\r?\n/gm, '');
+    vm.runInNewContext(source, context);
+    const app = factory();
+    app.tree.units = ['first', 'second'].map(_id => ({_id, name: _id, canCreate: true}));
+    app.currentView = 'department';
+    app.$refs = {uploadForm: {reset() {}}, upload: {showModal() {}}};
+    app.unitId = 'first';
+    const first = app.create();
+    app.unitId = 'second';
+    const second = app.create();
+    const response = (id, departmentId) => ({data: {data: [{_id: id, departmentId, auditorId: 'actor'}]}});
+    pending[1](response('current', 'second'));
+    await second;
+    assert.equal(app.uploadChecks[0]._id, 'current');
+    pending[0](response('stale', 'second'));
+    await first;
+    assert.equal(app.uploadChecks[0]._id, 'current', 'Stale responses cannot replace current folder findings');
+    assert.equal(app.uploadDestination.unitId, 'second');
+    assert.equal(app.uploadChecksLoading, false);
+    console.log('PASS folder upload discards out-of-order finding responses');
+})().catch(error => { console.error(error); process.exitCode = 1; });

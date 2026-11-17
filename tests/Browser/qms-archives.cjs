@@ -534,14 +534,7 @@ const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
             assert.equal(await evaluate('window.savedFolderUpload.recordType'),'file');
             await evaluate('uploadApp.tree.repositoryFolders[1].permissions.upload=false;uploadApp.create()');
             assert.equal(await evaluate('document.querySelector("[x-ref=upload]").open'),false,'Read-only folders cannot open upload');
-            await evaluate(`window.pendingFindings=[];const previousAdapter=axios.defaults.adapter;axios.defaults.adapter=config=>config.url.endsWith('/compliance-checks')?new Promise(resolve=>pendingFindings.push(resolve)):previousAdapter(config);uploadApp.tree.repositoryFolders[1].permissions.upload=true;void uploadApp.create();uploadApp.$refs.upload.close();uploadApp.repositoryId='';uploadApp.categoryId='';uploadApp.unitId=uploadApp.tree.units[1]._id;uploadApp.currentView='department';void uploadApp.create()`);
-            await waitFor('window.pendingFindings.length===2');
-            await evaluate(`pendingFindings[1]({data:{data:[{_id:'current-finding',departmentId:uploadApp.unitId,auditorId:document.body.dataset.userId,auditeeId:document.body.dataset.userId}]},status:200});`);
-            await waitFor('uploadApp.uploadChecks[0]?._id === "current-finding"');
-            await evaluate(`pendingFindings[0]({data:{data:[{_id:'stale-finding',departmentId:uploadApp.unitId,auditorId:document.body.dataset.userId,auditeeId:document.body.dataset.userId}]},status:200});`);
-            await delay(30);
-            assert.equal(await evaluate('uploadApp.uploadChecks[0]._id'),'current-finding','Late findings from a previous popup cannot replace the current folder findings');
-            await evaluate('uploadApp.$refs.upload.close()');
+
         }
         console.log('PASS auditor and auditee folder upload popup, destination and read-only permissions');
         assert.equal(exceptions.length,0,JSON.stringify(exceptions));
