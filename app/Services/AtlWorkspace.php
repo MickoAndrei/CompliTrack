@@ -24,7 +24,7 @@ class AtlWorkspace
     {
         $this->authorize($actor);
         return $this->scopes->checks($actor)->where('result', 'non_compliant')
-            ->whereIn('correctiveStatus', ['open', 'in_progress', 'closed']);
+            ->whereIn('correctiveStatus', \App\Support\CarStatus::storedValues(['open', 'in_progress', 'awaiting_verification', 'returned_for_revision', 'closed']));
     }
 
     public function dashboard(User $actor, int $page = 1, int $perPage = 5): array
@@ -44,7 +44,7 @@ class AtlWorkspace
             'schedule' => $audit->schedule, 'progress' => AuditChecklist::progress($audit->items ?? []),
         ])->values();
         $cars = $this->cars($actor)->get(['checkCode', 'departmentId', 'correctiveStatus', 'dueDate']);
-        $openCars = $cars->whereIn('correctiveStatus', ['open', 'in_progress']);
+        $openCars = $cars->whereIn('correctiveStatus', ['open', 'in_progress', 'awaiting_verification', 'returned_for_revision']);
         $overdue = $openCars->filter(fn ($car) => $this->isOverdue($car));
         $attention = $assignments->whereIn('status', ['submitted', 'returned'])->sortBy(fn ($a) => $a['status'] === 'submitted' ? 0 : 1)
             ->take(10)->map(fn ($audit) => ['kind' => 'audit', 'id' => $audit['id'], 'reference' => $audit['reference'],
@@ -79,7 +79,7 @@ class AtlWorkspace
 
     public function isOverdue(ComplianceCheck $car): bool
     {
-        return in_array($car->correctiveStatus, ['open', 'in_progress'], true) && $car->dueDate
+        return in_array($car->correctiveStatus, ['open', 'in_progress', 'awaiting_verification', 'returned_for_revision'], true) && $car->dueDate
             && $car->dueDate->copy()->timezone(config('system.timezone', config('app.timezone')))->endOfDay()->isPast();
     }
 
@@ -104,11 +104,7 @@ class AtlWorkspace
 
     public static function date(mixed $value): string
     {
-        if (!$value) { return 'Not recorded'; }
-        try {
-            if ($value instanceof \MongoDB\BSON\UTCDateTime) { $value = $value->toDateTime(); }
-            return Carbon::parse($value)->timezone(config('system.timezone', config('app.timezone')))->format('M j, Y g:i A');
-        } catch (\Throwable) { return 'Not recorded'; }
+        return \App\Support\PortalDate::format($value);
     }
 
     private function authorize(User $actor): void

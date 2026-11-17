@@ -113,12 +113,41 @@ class UserManagementMongoTest extends TestCase
                 ->assertJsonPath('data.roleId', 2)->assertJsonPath('data.archiveResponsibility', $position)
                 ->assertJsonPath('data.departmentId', $home)->assertJsonPath('data.assignedDepartmentIds', [$home]);
             $actor = User::findOrFail($id);
-            $this->assertSame([$home], app(\App\Services\QmsArchiveAccess::class)->organizationalUnits($actor)->get()
+            // The automatic-access redesign preserves Chair responsibility separately from audit assignments.
+            // This fixture has no college in cluster_b; assigning that position yields no cluster units.
+            $expected = $position === 'department_head' ? [$home, $positionUnit] : ($cluster ? [] : [$home]);
+            $this->assertEqualsCanonicalizing($expected, app(\App\Services\QmsArchiveAccess::class)->organizationalUnits($actor)->get()
                 ->map(fn ($unit) => (string) $unit->getKey())->all());
         }
         $this->patchJson('/api/v1/users/'.$id, ['archiveResponsibility' => null, 'archiveUnitIds' => [],
             'archiveCollegeIds' => [], 'archiveCluster' => null])->assertOk()->assertJsonPath('data.archiveResponsibility', null);
         $this->actingAs(User::findOrFail($id))->patchJson('/api/v1/users/'.$id, ['archiveResponsibility' => 'faculty_staff'])->assertForbidden();
+    }
+
+    public function test_auditor_chair_scope_does_not_authorize_unassigned_audits_or_unshared_assignment_evidence(): void
+    {
+        [$home, $assigned, $chair, $unrelated] = $this->units->take(4)->all();
+        $actor = $this->account(2, ['departmentId' => $home->getKey(), 'assignedDepartmentIds' => [$assigned->getKey()],
+            'archiveResponsibility' => 'department_head', 'archiveUnitIds' => [$chair->getKey()]]);
+        $assignment = Audit::create(['departmentId' => $assigned->getKey(), 'auditorId' => $actor->getKey(), 'status' => 'ready']);
+        $notAssigned = Audit::create(['departmentId' => $chair->getKey(), 'auditorId' => $actor->getKey(), 'status' => 'ready']);
+        $this->assertTrue(app(\App\Services\AuditAssignment::class)->eligible($actor, $assigned));
+        $this->assertFalse(app(\App\Services\AuditAssignment::class)->eligible($actor, $chair));
+        $this->assertSame([(string) $assignment->getKey()], app(\App\Services\AtlWorkspace::class)->audits($actor)->get()->map(fn ($a) => (string) $a->getKey())->all());
+        $make = fn ($unit, $extra = []) => \App\Models\ArchiveDocument::create($extra + ['title' => 'Scope regression',
+            'departmentId' => $unit->getKey(), 'collegeId' => $this->college->getKey(), 'ownershipVerified' => true,
+            'visibility' => 'department', 'recordType' => 'file']);
+        $chairFile = $make($chair);
+        $unshared = $make($assigned);
+        $foreign = $make($unrelated);
+        $shared = $make($assigned, ['sharedAuditIds' => [$assignment->getKey()]]);
+        $this->actingAs($actor);
+        $visible = app(\App\Services\QmsArchiveAccess::class)->documents($actor)->get()->map(fn ($d) => (string) $d->getKey())->all();
+        $this->assertContains((string) $chairFile->getKey(), $visible);
+        $this->assertContains((string) $shared->getKey(), $visible);
+        $this->assertNotContains((string) $unshared->getKey(), $visible);
+        $this->assertNotContains((string) $foreign->getKey(), $visible);
+        $this->get('/audits/'.$notAssigned->getKey())->assertNotFound();
     }
 
     public function test_auditee_creation_and_editing_do_not_require_an_office_position_name(): void
@@ -251,10 +280,62 @@ class UserManagementMongoTest extends TestCase
         $this->assertSame($before, $this->snapshot($person));
         $legacy = Department::create(['departmentName' => 'Legacy', 'departmentCode' => 'OTHER', 'unitType' => 'academic_department', 'isActive' => true, 'ownershipVerified' => true]);
         foreach ([[], [(string) $legacy->getKey()], [(string) $this->units[0]->getKey(), (string) $this->units[1]->getKey()]] as $ids) {
-            $this->patchJson('/api/v1/documents/organization/'.$person->getKey(), ['responsibility' => 'department_secretary', 'unitIds' => $ids, 'collegeIds' => []])->assertForbidden();
+            $this->patchJson('/api/v1/documents/organization/'.$person->getKey(), ['responsibility' => 'department_head', 'unitIds' => $ids, 'collegeIds' => []])->assertForbidden();
         }
-        $this->patchJson('/api/v1/users/'.$person->getKey(), ['archiveResponsibility' => 'department_secretary', 'archiveUnitIds' => [(string) $this->units[1]->getKey()], 'archiveCollegeIds' => []])->assertOk();
+        $this->patchJson('/api/v1/users/'.$person->getKey(), ['archiveResponsibility' => 'department_head', 'archiveUnitIds' => [(string) $this->units[1]->getKey()], 'archiveCollegeIds' => []])->assertOk();
         $this->assertSame(3, $person->fresh()->roleId);
+    }
+
+    public function test_removed_position_is_unavailable_and_rejected_without_changing_accounts(): void
+    {
+        $this->assertNotContains('department_secretary', config('qms.responsibilities'));
+        $person = $this->account(3, ['departmentId' => $this->units[0]->getKey()]);
+        $before = $this->snapshot($person);
+        $this->postJson('/api/v1/users', $this->payload(['archiveResponsibility' => 'department_secretary']))->assertUnprocessable();
+        $this->patchJson('/api/v1/users/'.$person->getKey(), [
+            'archiveResponsibility' => 'department_secretary', 'archiveUnitIds' => [(string) $this->units[0]->getKey()],
+        ])->assertUnprocessable();
+        $this->assertSame($before, $this->snapshot($person));
+        $this->get('/super-admin/departments')->assertOk()->assertDontSee('Department Secretary');
+    }
+
+    public function test_removed_position_migration_preserves_identity_and_records_without_promoting_management_access(): void
+    {
+        $home = $this->units[0]; $other = $this->units[1];
+        $person = $this->account(3, ['departmentId' => $home->getKey(), 'archiveResponsibility' => 'department_secretary',
+            'archiveUnitIds' => [$other->getKey()], 'fullName' => '[MOCK] Department Secretary']);
+        $person->forceFill(['mockSeedKey' => 'legacy-secretary'])->save();
+        $personId = (string) $person->getKey();
+        $before = $person->getRawOriginal();
+        $dean = $this->account(3, ['archiveResponsibility' => 'college_secretary', 'archiveCollegeIds' => [$this->college->getKey()]]);
+        $deanBefore = $this->snapshot($dean);
+        $db = DB::connection('mongodb')->getMongoDB();
+        $documentId = $db->archive_documents->insertOne(['uploadedByUserId' => $person->getKey(),
+            'departmentId' => $home->getKey(), 'title' => '[MOCK] IT syllabus uploaded by Department Secretary',
+            'mockSeedKey' => 'legacy-syllabus', 'encryptedPath' => 'preserve.enc'])->getInsertedId();
+        $audit = Audit::create(['auditeeId' => $person->getKey(), 'departmentId' => $home->getKey(), 'status' => 'ready']);
+        $auditBefore = $audit->fresh()->getRawOriginal();
+        $migration = require database_path('migrations/2026_11_16_000000_remove_department_secretary_position.php');
+        $migration->up(); $migration->up();
+        $person->refresh();
+        $this->assertSame($personId, (string) $person->getKey());
+        foreach (['password', 'roleId', 'departmentId', 'email', 'isActive'] as $field) {
+            $this->assertEquals($before[$field], $person->getRawOriginal($field));
+        }
+        $this->assertSame('faculty_staff', $person->archiveResponsibility);
+        $this->assertSame([], $person->archiveUnitIds);
+        $this->assertSame('[MOCK] Faculty Staff', $person->fullName);
+        $this->assertSame($deanBefore, $this->snapshot($dean->fresh()));
+        $this->assertEquals($auditBefore, $audit->fresh()->getRawOriginal());
+        $document = $db->archive_documents->findOne(['_id' => $documentId]);
+        $this->assertEquals($person->getKey(), $document['uploadedByUserId']);
+        $this->assertSame('preserve.enc', $document['encryptedPath']);
+        $this->assertSame('[MOCK] IT syllabus', $document['title']);
+        $permissions = app(\App\Services\QmsFolderAccess::class)->permissions($person, $home);
+        $this->assertTrue($permissions['view']);
+        $this->assertFalse($permissions['upload']);
+        $this->assertFalse($permissions['manage']);
+        $this->assertFalse(app(\App\Services\QmsFolderAccess::class)->permissions($person, $other)['view']);
     }
 
     public function test_counts_filters_search_and_pagination_use_database_records_without_read_side_effects(): void

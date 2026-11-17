@@ -38,7 +38,7 @@ class AuditPlanWorkflow
             'reviewerIds' => 'required|array|min:1|max:100', 'reviewerIds.*' => 'required|string|regex:/^[a-f0-9]{24}$/i|distinct',
             'scope' => 'required|string|max:3000', 'criteria' => 'required|string|max:3000',
             'scheduleStart' => 'required|date_format:Y-m-d', 'scheduleEnd' => 'required|date_format:Y-m-d|after_or_equal:scheduleStart',
-            'procedureReference' => 'required|string|max:1000',
+            'procedureReference' => ['required', 'string', 'max:1000', \App\Support\IndependenceProcedure::rule()],
         ])->validate();
         $units = app(AuditAssignment::class)->units()->map(fn ($unit) => (string) $unit->getKey())->all();
         abort_if(array_diff($fields['unitIds'], $units), 422, 'Select verified active CET departments or offices.');
@@ -69,6 +69,18 @@ class AuditPlanWorkflow
         abort_unless($version === (int) $data['version'], 409, 'The plan changed. Reload before saving.');
         $status = $old['status'] ?? 'draft';
         $action = $data['action'];
+        $classification = $archive->auditPlanClassification;
+        if (in_array($action, ['save', 'submit', 'approve'], true) && !AuditPlanDocument::eligible($archive)) {
+            // Legacy classification is an explicit, reasoned preparation decision, never filename inference.
+            abort_unless($action === 'save' && $this->canPrepare($actor, $archive), 422,
+                'This document needs a verified audit-plan classification. Return or revise it for explicit classification. Existing approvals and assignments are retained.');
+            $classificationData = $request->validate(['confirmPlanDocument' => 'accepted', 'classificationReason' => 'required|string|min:10|max:1000']);
+            abort_unless($archive->ownershipVerified && filled($archive->documentReference ?: $archive->fileCode), 422,
+                'A controlled document code/reference and verified ownership are required.');
+            $classification = ['purpose' => 'audit-plan', 'verifiedBy' => (string) $actor->getKey(),
+                'reason' => $classificationData['classificationReason'], 'at' => now()->utc()->toIso8601String(),
+                'documentVersion' => $archive->versionNumber ?: 1, 'checksum' => $archive->checksum];
+        }
         abort_unless(match ($action) {
             'save' => in_array($status, ['draft', 'returned'], true),
             'submit' => $version > 0 && in_array($status, ['draft', 'returned'], true),
@@ -81,7 +93,8 @@ class AuditPlanWorkflow
         $history = $old['history'] ?? [];
         $history[] = ['decision' => $action, 'actorId' => \App\Support\MongoId::parse((string) $actor->getKey()), 'actorName' => $actor->fullName, 'at' => $at,
             'remarks' => $data['remarks'], 'previousStatus' => $old['status'] ?? null,
-            'previousHeader' => $old['header'] ?? [], 'previousAuthorization' => $archive->assignmentAuthorization ?? null];
+            'previousHeader' => $old['header'] ?? [], 'previousAuthorization' => $archive->assignmentAuthorization ?? null,
+            'previousClassification' => $archive->auditPlanClassification ?? null];
         $newStatus = match ($action) { 'submit' => 'submitted', 'approve' => 'accepted', 'return' => 'returned', default => 'draft' };
         $plan = ['status' => $newStatus, 'version' => $version + 1, 'header' => $header, 'history' => $history,
             'preparedBy' => $old['preparedBy'] ?? MongoId::parse((string) $actor->getKey()), 'updatedAt' => $at,
@@ -95,7 +108,7 @@ class AuditPlanWorkflow
         $write = ArchiveDocument::where('_id', $archive->getKey());
         if ($version === 0) { $write->whereNull('auditPlan.version'); }
         else { $write->where('auditPlan.version', $version)->where('auditPlan.status', $status); }
-        abort_unless($write->update(['auditPlan' => $plan, 'assignmentAuthorization' => $authorization]) === 1,
+        abort_unless($write->update(['auditPlan' => $plan, 'assignmentAuthorization' => $authorization, 'auditPlanClassification' => $classification]) === 1,
             409, 'The plan changed. Reload before saving.');
         app(AuditLogService::class)->record($request, 'Audit plan '.$action, 'archive_document', $archive->getKey());
         return $archive->fresh();

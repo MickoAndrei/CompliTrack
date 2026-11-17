@@ -60,7 +60,7 @@ const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
                     if(config.url==='/api/v1/system/dashboard'){if(window.failDashboard)throw Error('Fixture outage');body={data:structuredClone(data)};}
                     else if(config.url.endsWith('/dashboard/health'))body={data:{laravel:'ok',mongodb:'ok',realtime:window.healthOk?'ok':'unavailable',checkedAt:'2026-11-09T01:00:00Z',components:[{name:'Laravel',status:'Operational'},{name:'Node.js Service',status:window.healthOk?'Operational':'Unavailable'},{name:'MongoDB Cluster',status:'Operational'},{name:'FCM Push Service',status:window.healthOk?'Not Configured':'Unknown'}]}};
                     else if(config.url.endsWith('/tree'))body={campus:'USTP Claveria Campus',colleges:[{_id:id(1),name:'College of Engineering and Technology',code:'CET'}],units,categories:[],total:0,canManageOrganization:true};
-                    else if(config.url.endsWith('/organization'))body={users:[{_id:id(90),name:'Department Head account',email:'browser@example.test',roleId:3,departmentId:id(10),responsibility:'department_head',unitIds:[id(10)],collegeIds:[]}],responsibilities:['department_head','department_secretary','college_dean','college_secretary','faculty_staff']};
+                    else if(config.url.endsWith('/organization'))body={users:[{_id:id(90),name:'Department Head account',email:'browser@example.test',roleId:3,departmentId:id(10),responsibility:'department_head',unitIds:[id(10)],collegeIds:[]}],responsibilities:['department_head','college_dean','college_secretary','faculty_staff']};
                     else if(config.url.includes('/departments')){
                         const params=config.params||{},perPage=Number(params.perPage||5),page=Number(params.page||1);
                         let rows=units.slice(0,5).map(unit=>({_id:unit._id,departmentCode:unit.code,departmentName:unit.name,collegeName:'CET',campusName:'Claveria',isActive:true}));
@@ -180,7 +180,7 @@ const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
             assert.equal(await evaluate('getComputedStyle(document.querySelector("table.sa-skeleton-table .sa-skeleton")).animationName'), 'none');
             await send('Emulation.setEmulatedMedia',{features:[]});
             await evaluate('window.holdDepartmentRecords=false;window.pendingDepartmentRecords.splice(0).forEach(resolve=>resolve())');
-            await waitFor('document.querySelectorAll(".data-table tbody tr").length===5');
+            await waitFor('document.querySelectorAll(".directory-table tbody tr").length===5');
             assert.equal(await evaluate('document.querySelector(".sa-organization table.sa-skeleton-table").getClientRects().length>0'), true, 'Responsibilities continue loading independently');
             await evaluate('window.holdOrganization=false;window.pendingOrganization.splice(0).forEach(resolve=>resolve())');
             await waitFor('document.querySelector(".sa-organization-records").getClientRects().length>0 && document.querySelector(".sa-organization-records").textContent.includes("Department Head account")');

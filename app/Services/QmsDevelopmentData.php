@@ -64,7 +64,7 @@ class QmsDevelopmentData
             $this->accounts['atl'] = $atl;
             $this->accountReport[] = ['key' => 'atl', 'id' => (string) $atl->getKey(), 'email' => $atl->email, 'roleId' => 1, 'status' => 'reused_unchanged'];
             foreach ($units as $code => $unit) {
-                foreach (['department_head', 'department_secretary', 'faculty_staff'] as $responsibility) {
+                foreach (['department_head', 'faculty_staff'] as $responsibility) {
                     $this->accounts[$code.':'.$responsibility] = $this->account($code.':'.$responsibility, $responsibility, 3, $unit);
                 }
                 $this->accounts[$code.':auditor'] = $this->account($code.':auditor', 'auditor', 2, $unit);
@@ -92,7 +92,7 @@ class QmsDevelopmentData
                     'Synthetic '.QmsCategory::where('code', $category)->firstOrFail()->name, 'file', 'department');
             }
             $people = ['DEMO-COORD' => $atl, 'DEMO-ATL' => $atl, 'DEMO-AUD' => $this->accounts['CET-IT:auditor'],
-                'DEMO-CHAIR' => $this->accounts['CET-IT:department_head'], 'DEMO-FAC' => $this->accounts['CET-IT:faculty_staff'], 'DEMO-LAB' => $this->accounts['CET-IT:department_secretary']];
+                'DEMO-CHAIR' => $this->accounts['CET-IT:department_head'], 'DEMO-FAC' => $this->accounts['CET-IT:faculty_staff'], 'DEMO-LAB' => $this->accounts['CET-IT:department_head']];
             foreach ($kit['audits'] as $source) { $this->kitAudit($source, $kit, $people, $units['CET-IT']); }
             $matrix = [
                 ['checklist-draft', 'CET-ABE', 'draft', [null, null]],
@@ -152,21 +152,21 @@ class QmsDevelopmentData
 
     private function departmentDocuments(string $code, Department $unit): void
     {
-        $secretary = $this->accounts[$code.':department_secretary']; $faculty = $this->accounts[$code.':faculty_staff'];
-        $public = $this->document($code.':public', $secretary, $unit, '1.0.2', 'Synthetic course-file register', 'file', 'department');
+        $head = $this->accounts[$code.':department_head']; $faculty = $this->accounts[$code.':faculty_staff'];
+        $public = $this->document($code.':public', $head, $unit, '1.0.2', 'Synthetic course-file register', 'file', 'department');
         $this->documents[$code.':public'] = $public;
         $versionKey = self::KEY.':document:'.$code.':version2';
         $version = ArchiveDocument::where('mockSeedKey', $versionKey)->first();
         if (!$version) {
-            $request = $this->uploadRequest($secretary, $unit, '1.0.2', 'Synthetic course-file register — revision 2', 'file', 'department', $code.' revision 2');
+            $request = $this->uploadRequest($head, $unit, '1.0.2', 'Synthetic course-file register — revision 2', 'file', 'department', $code.' revision 2');
             $version = ArchiveDocument::findOrFail(app(\App\Http\Controllers\Api\V1\ArchiveController::class)->version($request, (string) $public->getKey())->getData(true)['data']['_id']);
             $version->forceFill(['mockSeedKey' => $versionKey, 'sourceMetadata' => ['isMock' => true, 'revision' => '02', 'effectiveDate' => now()->toDateString(), 'effectivity' => 'Development simulation; not institutional approval']])->save();
         }
         $this->manifest[] = $this->manifest($version, 'controlled_version_2');
         $restricted = $this->document($code.':restricted', $faculty, $unit, '2.0.1', 'Synthetic faculty development record', 'file', 'restricted');
         $restricted->forceFill(['accessUserIds' => [new ObjectId((string) $this->accounts[$code.':department_head']->getKey())]])->save();
-        $this->documents[$code.':physical'] = $this->document($code.':physical', $secretary, $unit, '1.0.2', 'Synthetic signed-original register', 'physical-original', 'department');
-        $this->document($code.':reference', $secretary, $unit, '3.0.2', 'Synthetic document reference', 'digital-reference', 'department');
+        $this->documents[$code.':physical'] = $this->document($code.':physical', $head, $unit, '1.0.2', 'Synthetic signed-original register', 'physical-original', 'department');
+        $this->document($code.':reference', $head, $unit, '3.0.2', 'Synthetic document reference', 'digital-reference', 'department');
     }
 
     private function document(string $key, User $owner, Department $unit, string $category, string $title, string $type, string $visibility): ArchiveDocument
@@ -198,7 +198,7 @@ class QmsDevelopmentData
             if ($key === 'CET-IT:public') {
                 $path = base_path('dataset_files/CompliTrack_CET_Demo_Kit-3/documents/Academics/1.2_Approved_OBE_Syllabi/DEMO-FM-USTP-ACAD-01_Systems_Integration_BSIT_DEMO_3A.docx');
                 $files['file'] = new UploadedFile($path, 'MOCK-IT-syllabus.docx', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', null, true);
-                $data['title'] = '[MOCK] IT syllabus uploaded by Department Secretary';
+                $data['title'] = '[MOCK] IT syllabus uploaded by Department Head';
             }
         }
         return $this->request($this->accounts['atl'], $data, $files);
@@ -266,7 +266,7 @@ class QmsDevelopmentData
 
     private function scenarioAudit(string $key, Department $unit, string $status, array $results): void
     {
-        $code = $unit->departmentCode; $auditor = $this->accounts[$code.':auditor']; $owner = $this->accounts[$code.':department_secretary'];
+        $code = $unit->departmentCode; $auditor = $this->accounts[$code.':auditor']; $owner = $this->accounts[$code.':department_head'];
         $items = []; $requests = [];
         foreach ($results as $index => $result) {
             $id = $this->uuid($key.':item:'.$index); $requestId = $this->uuid($key.':request:'.$index);

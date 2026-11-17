@@ -67,7 +67,7 @@
     <section class="workflow-card" aria-labelledby="activity-title">
         <div class="dashboard-section-heading"><h2 id="activity-title">Recent Activity</h2><a href="/auditee/notifications">All notifications</a></div>
         @forelse($activity as $entry)
-        <article class="dashboard-record"><div class="dashboard-section-heading"><h3><a @if(str_starts_with($entry['url'], '/auditee/finding-details/')) data-result-modal-open aria-haspopup="dialog" @endif href="{{ $entry['url'] }}">{{ $entry['title'] }}</a></h3>@if($entry['at'])<time datetime="{{ $entry['at']->toIso8601String() }}">{{ $entry['at']->format('M j, Y') }}</time>@endif</div><p>{{ $entry['detail'] }}</p></article>
+        <article class="dashboard-record"><div class="dashboard-section-heading"><h3><a @if(str_starts_with($entry['url'], '/auditee/finding-details/')) data-result-modal-open aria-haspopup="dialog" @endif href="{{ $entry['url'] }}">{{ $entry['title'] }}</a></h3>@if($entry['at'])<time datetime="{{ $entry['at']->toIso8601String() }}">{{ \App\Support\PortalDate::format($entry['at']) }}</time>@endif</div><p>{{ $entry['detail'] }}</p></article>
         @empty
         <div class="dashboard-empty"><i data-lucide="bell" aria-hidden="true"></i><div><h3>No activity yet</h3><p>New results and audit updates will appear here.</p></div></div>
         @endforelse

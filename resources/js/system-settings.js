@@ -1,3 +1,4 @@
+import { portalDate } from './portal-date';
 document.addEventListener('alpine:init', () => {
     Alpine.data('systemSettings', () => ({
         state: {}, loading: true, busy: false, message: '', error: '',
@@ -53,6 +54,6 @@ document.addEventListener('alpine:init', () => {
             this.password = '';
             if (ok) this.closeConfirmation();
         },
-        formattedDate(value) { return value ? new Date(value).toLocaleString() : 'Not yet'; },
+        formattedDate(value) { return value ? portalDate(value, {precise:true}) : 'Not yet'; },
     }));
 });

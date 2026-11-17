@@ -1,7 +1,7 @@
 @php($date = fn ($value) => \App\Services\AtlWorkspace::date($value))
 <div class="atl-review-record" data-audit-id="{{ $audit->getKey() }}">
     <header class="atl-review-overview"><h3>Overview</h3>
-        <span class="atl-eyebrow">{{ ['submitted' => 'Awaiting Review', 'returned' => 'Returned', 'accepted' => 'Reviewed'][$audit->status] ?? ucfirst($audit->status) }} · Version {{ $audit->version }}</span>
+        <span class="atl-eyebrow">{{ \App\Support\AuditStatus::label($audit->status) }} · Version {{ $audit->version }}</span>
         <h3>{{ $audit->auditCode }} — {{ $audit->title }}</h3>
         <p>{{ $audit->departmentName }} · Scheduled {{ $date($audit->schedule) }}</p>
         <p>Assigned auditor: {{ $people[(string) $audit->auditorId]?->fullName ?? 'Account unavailable' }}</p>

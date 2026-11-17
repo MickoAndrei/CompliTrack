@@ -2,6 +2,8 @@
 
 Applied to remote **complitrack** for the current app on port 8000. No database reset, `.env` edits, Firebase dependencies, new authentication roles, or replacement Admin accounts were introduced.
 
+The results and counts below record the original seed run. Current fresh seeds use Department Heads and Faculty/Staff only at department level (17 new accounts when the same Admin/ATL and IT Auditor are reused). Existing accounts with the removed position are converted to Faculty / Staff by the position cleanup migration; account IDs and historical records are preserved.
+
 ## Result
 
 | Item | Result |
@@ -27,9 +29,9 @@ The existing Admin/ATL was selected from active primary-role `1` users. There wa
 
 The existing active IT Auditor already had a canonical IT assignment, so its existing ID was reused without adding or changing assignments. The older demo auditor/auditee accounts in unclassified departments were not silently reassigned.
 
-Created accounts:
+Current fresh-seed accounts (17 new accounts with the reuse described above):
 
-- A Department Head, Department Secretary, and representative Faculty/Staff member in **each** of CET-ABE, CET-ENV, CET-FPT, CET-HM, and CET-IT: 15 accounts.
+- A Department Head and representative Faculty/Staff member in **each** of CET-ABE, CET-ENV, CET-FPT, CET-HM, and CET-IT: 10 accounts.
 - An Auditor for ABE, ENV, FPT, and HM: 4 accounts. IT reuses its existing Auditor.
 - CET College Dean and College Secretary: 2 accounts, with explicit CET college scope and the Dean office as their home office.
 - A distinct Cluster Head Administrator: 1 account, with explicit CET scope. It uses existing primary role `3` with an organizational responsibility, not the Admin/ATL role, and cannot accept/return audit submissions.
@@ -61,7 +63,7 @@ An encrypted backup of every affected collection and its indexes was written and
 | IQA-2026-002-DEMO | IT | ready | Kit spot check: 2 C and 1 pending physical-original request |
 | QMS-DEMO-SCHEDULED | IT | draft, no items | Assigned audit awaiting preparation |
 | QMS-DEMO-CHECKLIST-DRAFT | ABE | draft | Persisted draft questions without evaluations |
-| QMS-DEMO-EVIDENCE-REQUEST | ENV | ready | Secretary-addressed evidence request awaiting response |
+| QMS-DEMO-EVIDENCE-REQUEST | ENV | ready | Department Head-addressed evidence request awaiting response |
 | QMS-DEMO-DIGITAL-SUBMISSION | FPT | ready | Submitted authorized file awaiting auditor review |
 | QMS-DEMO-PHYSICAL-REVIEW | HM | ready | Mock signed-original verification and a pending item |
 | QMS-DEMO-SUBMITTED | ABE | submitted | N/C/O checklist awaiting existing ATL review |
@@ -79,7 +81,7 @@ The kit's CARs are `CAR-DEMO-001` (closed), `CAR-DEMO-002` (in_progress / awaiti
 
 Department users see their assigned organization's permitted records. Deans, College Secretaries, and Cluster Heads use explicit college scope. Restricted faculty records require explicit grants, and auditors receive only explicitly shared assigned evidence. Cross-department searches, direct URLs, previews, and downloads enforce the same policy.
 
-The Auditee dashboard adds a read-only organizational oversight summary for Head/Secretary/Dean/College Secretary/Cluster responsibilities. It shows scoped audit references, states, and CAR counts, without private checklist drafts or auditor notes. Evidence response and audit-review actions remain assigned to their original responsible accounts. Document details now display available document codes, source revisions, and effective dates. Shared request files use existing file preview/download controls without creating duplicate evidence systems.
+The Auditee dashboard adds a read-only organizational oversight summary for Head/Dean/College Secretary/Cluster responsibilities. It shows scoped audit references, states, and CAR counts, without private checklist drafts or auditor notes. Evidence response and audit-review actions remain assigned to their original responsible accounts. Document details now display available document codes, source revisions, and effective dates. Shared request files use existing file preview/download controls without creating duplicate evidence systems.
 
 ## Commands and actual validation
 
@@ -104,7 +106,7 @@ node tests/Browser/qms-development-live.cjs
 - An intermediate targeted test expected an Admin with a valid IT membership to be denied an ordinary IT document. That expectation was corrected by using the actual existing ATL's unclassified legacy department in the fixture; final checks passed with the real authorization distinction.
 - The second main-database seed run reported `alreadySeeded: true` with unchanged record counts and no duplicate users, archives, audits, CARs, or notifications.
 - Post-seed verification passed: **45 encrypted files verified, 10 metadata-only records, all original users/roles/checks unchanged**.
-- Live browser acceptance on port 8000 passed with new mock accounts: IT Secretary authentication, actual stored Word syllabus preview above preserved details, ENV Secretary's denied IT download/empty IT search, and CET Dean's six authorized folders at mobile width with no horizontal overflow.
+- Live browser acceptance on port 8000 passed with new mock accounts: IT Department Head authentication, actual stored Word syllabus preview above preserved details, ENV Department Head's denied IT download/empty IT search, and CET Dean's six authorized folders at mobile width with no horizontal overflow.
 - Production build, PHP syntax checks, Blade compilation, and whitespace checks passed. Vite retains the existing main-bundle-size warning.
 
 Live screenshots are in `storage/framework/testing/qms-live/it-document-preview.png` and `dean-mobile-archives.png`. Passwords and tokens were not printed by the browser test.

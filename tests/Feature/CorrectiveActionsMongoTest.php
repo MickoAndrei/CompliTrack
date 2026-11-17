@@ -112,7 +112,7 @@ class CorrectiveActionsMongoTest extends TestCase
     public function test_cards_search_filters_and_pagination_use_only_authorized_cars(): void
     {
         $this->car(); $this->car(['correctiveStatus' => 'in_progress']); $this->car(['correctiveStatus' => 'closed']);
-        $waiting = $this->car(['correctiveStatus' => 'in_progress']);
+        $waiting = $this->car(['correctiveStatus' => 'awaiting_verification']);
         $waiting->forceFill(['evidenceResponses' => [['method' => 'digital-reference', 'reference' => 'Revised control', 'at' => now()->subDay()->toIso8601String(), 'author' => (string) $this->auditee->getKey()]]])->save();
         $this->car(['auditorId' => $this->account(2)->getKey(), 'remarks' => 'PRIVATE other auditor']);
         $this->car(['result' => 'compliant', 'correctiveStatus' => null]);
@@ -208,7 +208,7 @@ class CorrectiveActionsMongoTest extends TestCase
         foreach (['history=1&car=', 'export=log&car='] as $query) {
             $this->get('/admin/compliance-records?monitor=1&'.$query.$private->getKey())->assertNotFound();
         }
-        $admin->update(['archiveResponsibility' => 'department_secretary', 'archiveUnitIds' => [(string) new \MongoDB\BSON\ObjectId()]]);
+        $admin->update(['archiveResponsibility' => 'department_head', 'archiveUnitIds' => [(string) new \MongoDB\BSON\ObjectId()]]);
         $this->actingAs($admin)->get('/admin/compliance-records?monitor=1')->assertOk()->assertDontSee('CAR-01');
         $this->get('/admin/compliance-records?monitor=1&sort=bad')->assertSessionHasErrors('sort');
     }
@@ -253,7 +253,7 @@ class CorrectiveActionsMongoTest extends TestCase
         $admin = $this->account(1);
         $this->car(['carLog' => ['carNo' => 'FORMAL-OPEN']]);
         $this->car(['carLog' => ['carNo' => 'FORMAL-PROGRESS'], 'correctiveStatus' => 'in_progress', 'dueDate' => now()->subDays(2)]);
-        $waiting = $this->car(['carLog' => ['carNo' => 'FORMAL-WAITING'], 'correctiveStatus' => 'in_progress']);
+        $waiting = $this->car(['carLog' => ['carNo' => 'FORMAL-WAITING'], 'correctiveStatus' => 'awaiting_verification']);
         $waiting->forceFill(['evidenceResponses' => [['method' => 'physical-original', 'at' => now()->toIso8601String(), 'author' => (string) $this->auditee->getKey()]]])->save();
         $this->car(['carLog' => ['carNo' => 'FORMAL-CLOSED'], 'correctiveStatus' => 'closed', 'closedAt' => now(), 'dueDate' => now()->subDays(3)]);
         $this->car(['dueDate' => now()->subDays(4)]);

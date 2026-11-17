@@ -20,6 +20,7 @@
 ])
 @php($roleId = (int) auth()->user()->roleId)
 @php($adminDirectory = $roleId === 1 && in_array($endpoint, ['users', 'departments'], true))
+@php($superAdminDepartments = $roleId === 0 && $endpoint === 'departments')
 @php($directoryPage = in_array($roleId, [0, 1], true) && in_array($endpoint, ['users', 'departments'], true))
 @php($visualRole = $roleId === 3 ? 2 : $roleId)
 @php($searchLabel = match ($title) { 'User Management' => 'User', 'Archive Repository' => 'Archive', 'Audit Logs' => 'Audit Logs', default => strtolower($title) })
@@ -139,8 +140,8 @@
         @if($roleId === 1 && $endpoint === 'notifications')
         <div class="admin-notification-list"><template x-for="row in rows" :key="row._id"><article class="admin-notification-card" :class="{'is-unread': !row.isRead}"><span class="admin-notification-icon" aria-hidden="true"><i data-lucide="bell"></i></span><div class="admin-notification-copy"><div class="atl-section-heading"><h3 x-text="row.title"></h3><span class="atl-status" x-text="row.isRead ? 'Read' : 'Unread'"></span></div><p x-text="row.message"></p><div class="admin-notification-meta"><span x-text="formatValue(row.type)"></span><time :datetime="row.createdAt" x-text="formatValue(row.createdAt)"></time></div><div class="admin-notification-actions"><button type="button" x-show="!row.isRead" @click="markRead(row)">Mark as read</button><a x-show="row.destination && row.destination.startsWith('/') && !row.destination.startsWith('//')" :href="row.destination">View related record</a></div></div></article></template></div>
         @else
-        <div class="{{ match ($visualRole) { 0 => 'responsive-table-wrapper', 2 => 'table-container', default => 'overflow-x-auto' } }}">
-            <table class="{{ $directoryPage ? 'directory-table' : '' }} {{ $adminDirectory ? 'um-table admin-directory-table' : '' }} min-w-full divide-y divide-slate-100 text-left text-sm {{ match ($visualRole) { 0, 3 => 'data-table', 2 => 'compliance-table', default => '' } }}">
+        <div class="{{ $superAdminDepartments ? 'um-table-wrap' : match ($visualRole) { 0 => 'responsive-table-wrapper', 2 => 'table-container', default => 'overflow-x-auto' } }}">
+            <table class="{{ $directoryPage ? 'directory-table' : '' }} {{ $adminDirectory ? 'um-table admin-directory-table' : '' }} {{ $superAdminDepartments ? 'um-table' : 'min-w-full divide-y divide-slate-100 text-left text-sm '.match ($visualRole) { 0, 3 => 'data-table', 2 => 'compliance-table', default => '' } }}">
                 <thead class="bg-slate-50 text-xs uppercase tracking-wide text-ustp-muted">
                     <tr><template x-for="column in columns" :key="column.key"><th scope="col" class="whitespace-nowrap px-5 py-3 font-semibold" x-text="column.label"></th></template>@if(!$adminDirectory)<th x-show="allowArchiveActions || allowNotificationActions || allowUserActions || allowDepartmentActions" scope="col" class="px-5 py-3 font-semibold">Actions</th>@endif</tr>
                 </thead>
@@ -301,7 +302,14 @@
             </footer>
         </div>
     </div>
-    <div x-cloak x-show="deactivateConfirmOpen" class="user-modal-overlay fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-ustp-dark/50 p-4" @keydown.escape.window="closeDeactivateModals()" @click.self="closeDeactivateModals()" role="dialog" aria-modal="true">
+    <div x-cloak x-show="deactivateConfirmOpen" class="user-modal-overlay fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-ustp-dark/50 p-4" @keydown.escape.window="closeDeactivateModals()" @click.self="closeDeactivateModals()" role="dialog" aria-modal="true" @if($superAdminDepartments) aria-labelledby="deactivate-department-title" @endif>
+        @if($superAdminDepartments)
+        <div class="um-dialog um-confirm um-deactivate department-confirm-dialog">
+            <header><h2 id="deactivate-department-title">Deactivate department?</h2><button type="button" @click="closeDeactivateModals()" aria-label="Close deactivate department dialog" class="um-close"><i data-lucide="x" aria-hidden="true"></i></button></header>
+            <div class="um-dialog-body"><p x-text="deactivateTarget?.departmentName"></p><p>Users in this department will be affected. A Super Admin can reactivate the department.</p></div>
+            <footer><button type="button" @click="closeDeactivateModals()" class="um-secondary">Cancel</button><button type="button" @click="confirmDeactivate()" :disabled="deactivateSending" class="um-primary" x-text="deactivateSending ? 'Deactivating...' : 'Deactivate department'"></button></footer>
+        </div>
+        @else
         <div class="my-auto w-full max-w-md rounded-2xl bg-white shadow-xl overflow-hidden">
             <header class="user-modal-header">
                 <span class="user-modal-heading-icon" style="background-color: rgb(239 68 68 / 0.1); color: rgb(239 68 68);">
@@ -328,8 +336,16 @@
                 </div>
             </footer>
         </div>
+        @endif
     </div>
-    <div x-cloak x-show="reactivateConfirmOpen" class="user-modal-overlay fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-ustp-dark/50 p-4" @keydown.escape.window="closeReactivateModals()" @click.self="closeReactivateModals()" role="dialog" aria-modal="true" aria-labelledby="reactivate-user-title">
+    <div x-cloak x-show="reactivateConfirmOpen" class="user-modal-overlay fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-ustp-dark/50 p-4" @keydown.escape.window="closeReactivateModals()" @click.self="closeReactivateModals()" role="dialog" aria-modal="true" aria-labelledby="{{ $superAdminDepartments ? 'reactivate-department-title' : 'reactivate-user-title' }}">
+        @if($superAdminDepartments)
+        <div class="um-dialog um-confirm um-reactivate department-confirm-dialog">
+            <header><h2 id="reactivate-department-title">Reactivate department?</h2><button type="button" @click="closeReactivateModals()" aria-label="Close reactivate department dialog" class="um-close"><i data-lucide="x" aria-hidden="true"></i></button></header>
+            <div class="um-dialog-body"><p x-text="reactivateTarget?.departmentName"></p><p>The department will become active and available again.</p></div>
+            <footer><button type="button" @click="closeReactivateModals()" class="um-secondary">Cancel</button><button type="button" @click="confirmReactivate()" :disabled="reactivateSending" class="um-primary" x-text="reactivateSending ? 'Reactivating...' : 'Reactivate department'"></button></footer>
+        </div>
+        @else
         <div class="my-auto w-full max-w-md rounded-2xl bg-white shadow-xl overflow-hidden">
             <header class="user-modal-header">
                 <span class="user-modal-heading-icon" style="background-color: rgb(34 197 94 / 0.1); color: rgb(5 150 105);"><i :data-lucide="reactivateType === 'department' ? 'building-2' : 'user-round-check'" aria-hidden="true"></i></span>
@@ -341,6 +357,7 @@
             </div>
             <footer class="user-modal-footer"><span x-text="reactivateType === 'department' ? 'The department will be available again.' : 'This restores account access.'"></span><div><button type="button" @click="closeReactivateModals()" class="user-modal-cancel">Cancel</button><button type="button" @click="confirmReactivate()" :disabled="reactivateSending" class="rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-60" x-text="reactivateSending ? 'Reactivating...' : 'Yes, reactivate'"></button></div></footer>
         </div>
+        @endif
     </div>
     <div x-cloak x-show="reactivateErrorOpen" class="user-modal-overlay fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-ustp-dark/50 p-4" @keydown.escape.window="closeReactivateModals()" @click.self="closeReactivateModals()" role="alertdialog" aria-modal="true" aria-labelledby="reactivate-error-title">
         <div class="my-auto w-full max-w-md rounded-2xl bg-white shadow-xl overflow-hidden">

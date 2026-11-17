@@ -21,7 +21,7 @@ class AdminPortalViewTest extends TestCase
     public function test_admin_dashboard_has_summary_cards_without_quick_actions(): void
     {
         $this->get('/admin/dashboard')->assertOk()
-            ->assertSee('admin-dashboard')->assertSee('admin-stat-heading')
+            ->assertSee('admin-dashboard')->assertSee('admin-stat-info')
             ->assertSee('admin-stat-number')->assertSee('css/admin-ui.css')
             ->assertSee('Audit Team Leader Dashboard')->assertSee('Active Audits')->assertSee('Pending Audit Reviews')
             ->assertSee('Overdue Corrective Actions')->assertSee('Requires My Attention')
@@ -75,7 +75,7 @@ class AdminPortalViewTest extends TestCase
         }
         $this->get('/admin/notifications')->assertOk()->assertSee('notification-list')
             ->assertSee('Unread')->assertSee('Read')->assertSee('View details');
-        $this->get('/admin/reports')->assertOk()->assertSee('admin-reports')->assertSee('Recorded Check Compliance');
+        $this->get('/admin/reports')->assertOk()->assertSee('admin-reports')->assertSee('Annual IQA report')->assertSee('Export CSV');
         $this->get('/admin/documents')->assertOk()->assertSee('qms-explorer')->assertSee('QMS Documents');
     }
 

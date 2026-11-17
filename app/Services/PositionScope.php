@@ -13,7 +13,7 @@ class PositionScope
         }
         $collegePosition = in_array($user->archiveResponsibility, ['college_dean', 'college_secretary', 'cluster_administrator'], true);
         $explicitUnits = $user->archiveUnitIds ?? [];
-        $unitIds = in_array($user->archiveResponsibility, ['department_head', 'department_secretary'], true) && $explicitUnits !== []
+        $unitIds = in_array($user->archiveResponsibility, ['department_head'], true) && $explicitUnits !== []
             ? $explicitUnits : array_merge([$user->departmentId], $explicitUnits);
         $ids = app(QmsArchiveAccess::class)->ids($collegePosition ? ($user->archiveCollegeIds ?? []) : $unitIds);
         if ($ids === []) {

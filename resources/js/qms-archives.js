@@ -1,3 +1,4 @@
+import { portalDate } from './portal-date';
 import { clearComparisonPane, renderComparisonPane } from './archive-comparison';
 import { openDocumentEditor, closeDocumentEditor } from './document-editor';
 
@@ -7,7 +8,7 @@ document.addEventListener('alpine:init', () => {
         collegeId: '', unitId: '', categoryId: '', search: '', recordType: '', page: 1, error: '', notice: '',
         detail: null, versions: [], activity: [], form: {}, previous: null, accessOptions: { accounts: [], audits: [] }, auditId: '', navExpanded: false,
         organization: null, selectedUser: '', responsibility: 'faculty_staff', cluster: '', scopeUnits: [], scopeColleges: [],
-        requestNumber: 0, initialLoading: true, loadingFiles: false, loadedLocationKey: '', treeReady: false, navigationRequest: null,
+        detailNumber: 0, detailLoading: false, detailError: '', detailTarget: null, folderDetailLoading: false, folderDetailError: '', folderDetailTarget: null, folderDetailNumber: 0, requestNumber: 0, initialLoading: true, loadingFiles: false, loadedLocationKey: '', treeReady: false, navigationRequest: null,
         navigationHistory: [{ college: '', unit: '', category: '' }], navigationIndex: 0,
         compactPath: false, stopBreadcrumbs: null,
         currentView: 'my', layout: 'list', sort: 'newest', selectedId: '', actionId: '', uploadProgress: 0,
@@ -140,10 +141,13 @@ document.addEventListener('alpine:init', () => {
             } catch (error) { this.error = this.message(error); }
         },
         async inspectFolder(folder) {
+            const number = ++this.folderDetailNumber; this.folderDetail = null; this.folderDetailTarget = folder; this.folderDetailLoading = true; this.folderDetailError = '';
+            if (!this.$refs.folderDetails.open) this.$refs.folderDetails.showModal();
             try {
                 const {data} = await window.axios.get(`/api/v1/documents/folders/${folder._id}`, {params:{unitId:folder.departmentId || folder.unitId || this.unitId || undefined}});
-                this.folderDetail = data.data; this.$refs.folderDetails.showModal();
-            } catch (error) { this.error = this.message(error); }
+                if (number === this.folderDetailNumber) this.folderDetail = data.data;
+            } catch (error) { if (number === this.folderDetailNumber) this.folderDetailError = this.message(error); }
+            finally { if (number === this.folderDetailNumber) this.folderDetailLoading = false; }
         },
         openDocumentAction(document, operation) {
             this.documentTarget = document; this.documentAction = operation; this.documentName = document.title;
@@ -245,12 +249,12 @@ document.addEventListener('alpine:init', () => {
             return document.originalName?.split('.').pop()?.toUpperCase() || 'File';
         },
         moveSelection(event) {
-            if (!['ArrowDown', 'ArrowUp', 'ArrowRight', 'ArrowLeft', 'Home', 'End'].includes(event.key) || event.target.closest('button,a,input,select,summary')) return;
+            if (!['ArrowDown', 'ArrowUp', 'ArrowRight', 'ArrowLeft', 'My Drive', 'End'].includes(event.key) || event.target.closest('button,a,input,select,summary')) return;
             const cards = [...this.$refs.fileBrowser.querySelectorAll('.qms-document')];
             if (!cards.length) return;
             event.preventDefault();
             const current = cards.indexOf(event.target.closest('.qms-document'));
-            const index = event.key === 'Home' ? 0 : event.key === 'End' ? cards.length - 1 : Math.max(0, Math.min(cards.length - 1, current + (['ArrowDown','ArrowRight'].includes(event.key) ? 1 : -1)));
+            const index = event.key === 'My Drive' ? 0 : event.key === 'End' ? cards.length - 1 : Math.max(0, Math.min(cards.length - 1, current + (['ArrowDown','ArrowRight'].includes(event.key) ? 1 : -1)));
             this.selectedId = this.documents[index]._id; cards[index].focus();
         },
         comparisonIds: ['', ''], comparisonVersions: [],
@@ -327,7 +331,7 @@ document.addEventListener('alpine:init', () => {
             clearComparisonPane(this.$refs.compareLeft); clearComparisonPane(this.$refs.compareRight);
             this.comparisonIds = ['', '']; this.comparisonVersions = [];
         },
-        destroy() { ++this.requestNumber; this.navigationRequest?.abort(); this.stopBreadcrumbs?.(); this.clearComparison(); clearTimeout(this.editorPollTimer); this.editorSession = null; closeDocumentEditor(this.$refs.editorBody); },
+        destroy() { ++this.detailNumber; ++this.folderDetailNumber; ++this.requestNumber; this.navigationRequest?.abort(); this.stopBreadcrumbs?.(); this.clearComparison(); clearTimeout(this.editorPollTimer); this.editorSession = null; closeDocumentEditor(this.$refs.editorBody); },
         async init() {
             try { const saved = localStorage.getItem('complitrack.qms.layout'); if (['grid','list'].includes(saved)) this.layout = saved; } catch { /* Use the default layout. */ }
             if (!await this.refreshTree()) { this.initialLoading = false; this.loading = false; return; }
@@ -433,11 +437,11 @@ document.addEventListener('alpine:init', () => {
                     trail.unshift({key:folder._id,name:folder.name,repositoryFolder:folder});
                     folder = (this.tree.repositoryFolders || []).find(f => f._id === folder.parentId);
                 }
-                return [{key:'repository-root',name:this.currentView === 'my' ? 'Home' : this.viewName,repositoryFolder:null},...trail];
+                return [{key:'repository-root',name:this.currentView === 'my' ? 'My Drive' : this.viewName,repositoryFolder:null},...trail];
             }
             if (this.currentView === 'audit') return (this.archiveBreadcrumbs.length ? this.archiveBreadcrumbs : [{key:'audit-root',name:'Audit Plans',path:{}}])
                 .map(crumb => ({key:crumb.key,name:crumb.name,auditPath:crumb.path}));
-            const trail = [{ key: 'campus', name: this.currentView === 'my' ? 'Home' : this.viewName, college: '', unit: '', category: '' }];
+            const trail = [{ key: 'campus', name: this.currentView === 'my' ? 'My Drive' : this.viewName, college: '', unit: '', category: '' }];
             if (this.college) trail.push({ key: 'college:' + this.collegeId, name: this.college.code || this.college.name, college: this.collegeId, unit: '', category: '' });
             if (this.unit) trail.push({ key: 'unit:' + this.unitId, name: this.unit.name, college: this.collegeId, unit: this.unitId, category: '' });
             return trail.concat(this.categoryTrail.map(crumb => ({ key: 'category:' + crumb._id, name: crumb.name, college: this.collegeId, unit: this.unitId, category: crumb._id })));
@@ -495,18 +499,22 @@ document.addEventListener('alpine:init', () => {
             if (this.collegeId) return this.navigate();
         },
         async refreshLocation() { await this.refreshTree(); return this.load(); },
-        date(value) { return value ? new Date(value).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' }) : 'Not recorded'; },
+        date(value) { return portalDate(value, {precise:true}); },
         type(value) { return ({file: 'Digital file', 'digital-reference': 'Document reference', 'physical-original': 'Physical original'})[value] || value; },
         label(value) { return String(value || '').replaceAll('_', ' ').replace(/\b\w/g, letter => letter.toUpperCase()); },
         async inspect(document, open = true) {
+            const number = ++this.detailNumber;
+            this.detailTarget = document; this.detailLoading = true; this.detailError = ''; this.detail = null;
             this.error = ''; this.notice = '';
+            if (open && !this.$refs.details.open) this.$refs.details.showModal();
             try {
                 const response = (await window.axios.get(`/api/v1/documents/${document._id}`, {params:this.currentView === 'audit' ? this.archivePath : {}})).data;
+                if (number !== this.detailNumber) return false;
                 this.detail = response.data; this.versions = response.versions; this.activity = response.activity;
                 this.accessOptions = response.accessOptions || { accounts: [], audits: [] }; this.auditId = '';
-                if (open && !this.$refs.details.open) this.$refs.details.showModal();
                 return true;
-            } catch (error) { this.error = this.message(error); return false; }
+            } catch (error) { if (number === this.detailNumber) this.detailError = this.message(error); return false; }
+            finally { if (number === this.detailNumber) this.detailLoading = false; }
         },
         uploadFile: null, uploadDragging: false, uploadDestination: null, uploadChecks: [], uploadChecksLoading: false, uploadChecksError: '', uploadRequestNumber: 0,
         get folderUpload() { return [2, 3].includes(Number(document.body.dataset.portalRole)) && !this.previous; },

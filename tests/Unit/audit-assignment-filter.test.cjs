@@ -5,7 +5,7 @@ const vm = require('node:vm');
 
 function setup() {
     const handlers = {}, resultHandlers = {}, requests = [];
-    const status = { value: '' }, message = { hidden: true, textContent: '' };
+    const status = { value: '', name: 'status' }, message = { hidden: true, textContent: '' };
     const loading = { hidden: true };
     const results = { rows: ['original'], busy: false,
         setAttribute: (_name, value) => { results.busy = value === 'true'; },
@@ -14,13 +14,15 @@ function setup() {
     let changes = 0, prevented = 0;
     const filters = { action: 'http://example.test/audits',
         querySelector: () => status,
+        querySelectorAll: () => [status],
         addEventListener: (name, callback) => { handlers[name] = callback; },
         requestSubmit: () => handlers.submit({ preventDefault: () => { prevented++; } }) };
     status.addEventListener = (name, callback) => { handlers['status:' + name] = callback; };
     const window = { location: { href: 'http://example.test/audits?page=3', origin: 'http://example.test' }, addEventListener: () => {},
         history: { state: { existing: true }, replaceState: (state, _title, url) => { assert.deepEqual(state, { existing: true }); window.location.href = String(url); changes++; } } };
     const source = fs.readFileSync('resources/js/audit-assignments.js', 'utf8').replace(/^import .*;\r?\n/, '');
-    vm.runInNewContext(source, { URL, AbortController, window,
+    vm.runInNewContext(source, { URL, AbortController, window, clearTimeout, setTimeout,
+        FormData: class { *[Symbol.iterator]() { yield ['status', status.value]; } },
         document: { querySelector: selector => ({ '[data-assignment-filters]': filters, '[data-assignment-results]': results, '[data-assignment-loading]': loading, '[data-assignment-filter-message]': message })[selector] || null },
         onDocumentReady: callback => callback(),
         DOMParser: class { parseFromString(html) { return { querySelector: () => html === 'missing' ? null : { childNodes: [html] } }; } },

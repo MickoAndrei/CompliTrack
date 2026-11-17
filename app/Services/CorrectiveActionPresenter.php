@@ -66,18 +66,6 @@ class CorrectiveActionPresenter
         $finding = trim((string) ($item['finding'] ?? '')) ?: trim((string) $check->remarks);
         $title = trim((string) ($item['question'] ?? '')) ?: ($finding ?: 'Corrective action requires review');
         $status = $check->correctiveStatus;
-        if (in_array($status, ['open', 'in_progress'], true)) {
-            $latestStatus = collect($check->statusHistory ?? [])->map(fn ($event) => CarTimeline::date($event['timestamp'] ?? null)?->getTimestampMs())->filter()->max();
-            $submitted = collect($check->evidenceResponses ?? [])->map(fn ($response) => CarTimeline::date($response['at'] ?? null)?->getTimestampMs())->filter()->max();
-            foreach ($check->linkedArchiveIds ?? [] as $id) {
-                $archive = $context['archives']->get((string) $id);
-                if ($archive && (string) $archive->departmentId === (string) $check->departmentId
-                    && (string) $archive->uploadedByUserId === (string) $check->auditeeId) {
-                    $submitted = max($submitted ?? 0, CarTimeline::date($archive->createdAt)?->getTimestampMs() ?? 0);
-                }
-            }
-            if ($submitted && (!$latestStatus || $submitted >= $latestStatus)) { $status = 'awaiting_verification'; }
-        }
         return ['_id' => (string) $check->getKey(), 'checkCode' => $check->checkCode, 'auditItem' => $title,
             'finding' => $finding ?: 'Not recorded', 'auditorRemarks' => trim((string) ($item['remarks'] ?? '')) ?: $check->remarks,
             'referenceStandard' => trim((string) ($item['reference'] ?? '')) ?: $check->referenceStandard,
@@ -86,6 +74,7 @@ class CorrectiveActionPresenter
             'auditeeName' => $context['people']->get((string) $check->auditeeId)?->fullName ?? 'Not recorded',
             'auditorName' => $context['people']->get((string) $check->auditorId)?->fullName ?? 'Not recorded',
             'correctiveStatus' => $check->correctiveStatus, 'displayStatus' => $status,
+            'nextAction' => \App\Support\CarStatus::nextAction($status),
             'statusLabel' => $status === 'awaiting_verification' ? 'Awaiting Verification' : CarTimeline::label($status),
             'createdAt' => CarTimeline::date($check->createdAt)?->toIso8601String(), 'dueDate' => CarTimeline::date($check->dueDate)?->toIso8601String()];
     }
@@ -136,7 +125,9 @@ class CorrectiveActionPresenter
         }
         $transitions = (int) $actor->roleId === 2 ? ComplianceCheckService::allowedTransitions($check) : [];
         if (in_array('closed', $transitions, true) && (!app(CarPermissions::class)->allows($actor, CarPermissions::VERIFY)
-            || !app(CarPermissions::class)->allows($actor, CarPermissions::CLOSE))) { $transitions = []; }
-        return $card + ['timeline' => $timeline, 'evidence' => $evidence, 'responses' => $responses, 'allowedTransitions' => $transitions];
+            || !app(CarPermissions::class)->allows($actor, CarPermissions::CLOSE))) { $transitions = array_values(array_diff($transitions, ['closed'])); }
+        return $card + ['timeline' => $timeline, 'evidence' => $evidence, 'responses' => $responses, 'allowedTransitions' => $transitions,
+            'transitionExplanation' => !$transitions && in_array($check->correctiveStatus, ['in_progress', 'awaiting_verification'], true)
+                ? 'Closure requires the assigned auditor to have both cars.verify and cars.close permissions. An account administrator must confirm the configured authority; this page does not grant it.' : null];
     }
 }

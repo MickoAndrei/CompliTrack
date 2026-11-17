@@ -24,11 +24,12 @@ class ComplianceCheckController extends Controller
             return response()->json(app(\App\Services\CorrectiveActionPresenter::class)->index($request))->header('Cache-Control', 'no-store, private');
         }
         $query = $this->scopes->checks($request->user());
-        if ($request->boolean('actionable')) { $query->whereIn('correctiveStatus', ['open', 'in_progress']); }
+        if ($request->boolean('actionable')) { $query->whereIn('correctiveStatus', \App\Support\CarStatus::storedValues(['open', 'in_progress', 'returned_for_revision'])); }
 
         foreach (['correctiveStatus', 'result', 'referenceStandard'] as $field) {
             if ($request->filled($field)) {
-                $query->where($field, $request->query($field));
+                if ($field === 'correctiveStatus') { $query->whereIn($field, \App\Support\CarStatus::storedValues([$request->query($field)])); }
+                else { $query->where($field, $request->query($field)); }
             }
         }
         if ($request->filled('search')) {
@@ -39,7 +40,7 @@ class ComplianceCheckController extends Controller
             });
         }
         if ($request->boolean('overdue')) {
-            $query->where('correctiveStatus', 'open')
+            $query->whereIn('correctiveStatus', \App\Support\CarStatus::storedValues(['open']))
                 ->where('createdAt', '<', now()->utc()->subDays(7));
         }
 
@@ -128,6 +129,19 @@ class ComplianceCheckController extends Controller
         $data['departmentName'] = $department?->departmentName;
         $data['auditorName'] = $auditor?->fullName;
         $data['auditeeName'] = $auditee?->fullName;
+        $data['correctiveStatus'] = $check->correctiveStatus;
+        $data['statusLabel'] = \App\Support\CarTimeline::label($check->correctiveStatus);
+        $data['nextAction'] = \App\Support\CarStatus::nextAction($check->correctiveStatus);
+        $actor = request()->user();
+        $canAct = (int) $actor->roleId === 2
+            && preg_match('/^[a-f0-9]{24}$/i', (string) $check->departmentId)
+            && $this->scopes->canAccessDepartment($actor, MongoId::parse((string) $check->departmentId));
+        $transitions = $canAct ? ComplianceCheckService::allowedTransitions($check) : [];
+        if (!app(\App\Services\CarPermissions::class)->allows($actor, \App\Services\CarPermissions::VERIFY)
+            || !app(\App\Services\CarPermissions::class)->allows($actor, \App\Services\CarPermissions::CLOSE)) {
+            $transitions = array_values(array_diff($transitions, ['closed']));
+        }
+        $data['allowedTransitions'] = $transitions;
 
         return $data;
     }

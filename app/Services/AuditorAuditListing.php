@@ -64,7 +64,7 @@ class AuditorAuditListing
         };
         return ['id' => (string) $audit->getKey(), 'title' => $audit->title ?: 'Title not recorded', 'code' => $audit->auditCode,
             'departmentId' => (string) $audit->departmentId, 'department' => $audit->departmentName ?: 'Department not recorded',
-            'scheduled' => $scheduled, 'status' => $status, 'label' => $status === 'in_progress' ? 'In Progress' : ucfirst($status),
+            'scheduled' => $scheduled, 'status' => $status, 'label' => \App\Support\AuditStatus::label($audit->status),
             'progress' => $progress, 'action' => $action, 'feedback' => $feedback,
             'awaitingAtl' => $status === 'submitted' && !empty($audit->reviewerId),
             'url' => '/audits/'.$audit->getKey().(in_array($status, ['submitted', 'accepted', 'returned'], true) ? '#review' : '#checklist')];

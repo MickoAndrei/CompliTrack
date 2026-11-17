@@ -1,3 +1,4 @@
+import { portalDate } from './portal-date';
 import { enhancedUserManagement } from './user-management';
 import { deferAfterPrimaryReady } from './page-work';
 import { readNotifications } from './notification-data';
@@ -505,7 +506,7 @@ document.addEventListener('alpine:init', () => {
             if (value === null || value === undefined || value === '') return '—';
             if (typeof value === 'boolean') return value ? 'Active' : 'Inactive';
             if (typeof value === 'object') return Array.isArray(value) ? value.join(', ') : JSON.stringify(value);
-            if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}T/.test(value)) return new Date(value).toLocaleString();
+            if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}T/.test(value)) return portalDate(value, {precise:true});
             return String(value).replaceAll('_', ' ');
         },
 
@@ -794,11 +795,10 @@ document.addEventListener('alpine:init', () => {
         },
 
         statusOptions(row) {
-            const labels = { open: 'Open', in_progress: 'In Progress', closed: 'Closed' };
-            const next = { open: 'in_progress', in_progress: 'closed', closed: 'open' }[row.correctiveStatus];
+            const labels = { open: 'Open', in_progress: 'In Progress', closed: 'Closed', awaiting_verification: 'Awaiting Verification', returned_for_revision: 'Returned for Revision' };
             return [
-                { value: row.correctiveStatus, label: labels[row.correctiveStatus], disabled: true },
-                { value: next, label: labels[next], disabled: false },
+                { value: row.correctiveStatus, label: row.statusLabel || labels[row.correctiveStatus] || row.correctiveStatus, disabled: true },
+                ...(row.allowedTransitions || []).map(next => ({value:next,label:labels[next],disabled:false})),
             ];
         },
 

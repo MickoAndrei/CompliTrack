@@ -39,7 +39,7 @@ class UserOrganization
         if ($collegeRole ? count($colleges) !== 1 || $units !== [] : $colleges !== []) {
             $fail('archiveCollegeIds', 'College positions require one college and no department assignment.');
         }
-        if (in_array($responsibility, ['department_head', 'department_secretary'], true)) {
+        if (in_array($responsibility, ['department_head'], true)) {
             $unit = count($units) === 1 ? Department::whereIn('_id', $units)->where('unitType', 'academic_department')->where('collegeName', 'CET')->first() : null;
             if (!$unit) {
                 $fail('archiveUnitIds', 'Select one active, verified CET academic department for this position.');

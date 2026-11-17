@@ -1,34 +1,24 @@
 @extends('layouts.app')
-@section('title', 'Reports')
-@section('heading', 'Compliance Reports')
+@section('title', 'Annual IQA Reports')
+@section('heading', 'Annual IQA Reports')
+@push('styles')
+<style>
+.annual-report{display:grid;gap:1rem}.annual-report form{display:flex;flex-wrap:wrap;gap:1rem;align-items:end}.annual-report label{display:grid;gap:.4rem;min-width:0}.annual-report select,.annual-report input{max-width:100%;border:1px solid #94a3b8;padding:.5rem;border-radius:.4rem}.annual-report .report-scroll{overflow:auto;max-width:100%}.annual-report table{border-collapse:collapse;width:100%}.annual-report th,.annual-report td{padding:.65rem;border:1px solid #cbd5e1;text-align:left;white-space:nowrap}.annual-report caption{text-align:left;margin-bottom:.7rem}.annual-report button,.annual-report .export{padding:.6rem;background:#142c4c;color:white;border-radius:.4rem}.annual-report .scope{max-width:100ch;line-height:1.6}
+@media print{body{height:auto!important;overflow:visible!important;background:white!important}.sidebar,.app-header,.annual-report form{display:none!important}.app-container:has(.annual-report),.main-wrapper:has(.annual-report){display:block!important;width:auto!important;height:auto!important;margin:0!important;overflow:visible!important}#main-content:has(.annual-report){height:auto!important;max-height:none!important;padding:0!important;overflow:visible!important}.annual-report .report-scroll{overflow:visible}.annual-report table{font-size:8pt}.annual-report td,.annual-report th{padding:3px;white-space:normal}.annual-report thead{display:table-header-group}.annual-report tr{break-inside:avoid}@page{size:A4 landscape;margin:10mm}}
+</style>
+@endpush
 @section('content')
-<section class="admin-dashboard admin-reports view-section active" x-data="dashboardPage({ roleId: 1, heading: 'Compliance Reports', subheading: 'CET compliance performance and corrective-action trends.' })" x-init="load()">
-    <p class="atl-muted">These reports summarize recorded compliance checks and CARs. <a href="/admin/dashboard#atl-compliance-title">View accepted audit checklist compliance on the ATL dashboard.</a></p>
-    <div class="report-summary-grid stats-grid">
-        @foreach([['totalChecks','Checks reviewed','clipboard-check'], ['complianceRate','Check compliance rate','chart-no-axes-combined'], ['openCars','Open corrective actions','circle-alert'], ['totalDepts','Departments covered','building-2']] as [$key,$label,$icon])
-        <article class="stat-card"><div class="admin-stat-heading"><h3>{{ $label }}</h3><span class="stat-icon {{ $key === 'openCars' ? 'amber' : 'blue' }}"><i data-lucide="{{ $icon }}" aria-hidden="true"></i></span></div><strong class="admin-stat-number" x-text="loading ? '—' : {{ $key === 'complianceRate' ? '(stats.totalChecks ? `${stats.complianceRate ?? 0}%` : \'Not Yet Assessed\')' : '(stats.'.$key.' ?? 0)' }}"></strong></article>
-        @endforeach
-    </div>
-    <template x-if="error"><div x-page-notice class="card report-error" role="alert"><p x-text="error"></p><button type="button" class="btn-gold" @click="load()">Retry report</button></div></template>
-    <div class="charts-grid report-charts">
-        <article class="card chart-card"><div class="card-header"><h4>Recorded Check Compliance by Department</h4><span class="muted-label">Recorded compliance checks</span></div>
-            <div class="report-bars" x-show="!loading && reportData?.deptCompliance?.length">
-                <template x-for="department in reportData?.deptCompliance || []" :key="department.departmentCode">
-                    <div class="report-bar-row"><div class="report-bar-label"><span x-text="department.departmentName"></span><strong x-text="department.assessedChecks === 0 ? 'Not Yet Assessed' : `${department.compliancePercentage}%`"></strong></div><div class="report-bar-track"><span :style="`width: ${Math.min(100, department.compliancePercentage)}%`"></span></div></div>
-                </template>
-            </div>
-            <p x-show="!loading && !reportData?.deptCompliance?.length" class="empty-report">No department results are available yet.</p>
-            <div x-show="loading" class="report-loading" aria-label="Loading report"></div>
-        </article>
-        <article class="card chart-card"><div class="card-header"><h4>Monthly Compliance Trend</h4><span class="muted-label">Last six months</span></div>
-            <div class="report-trend" x-show="!loading && reportData?.monthlyComplianceTrend?.length">
-                <template x-for="month in reportData?.monthlyComplianceTrend || []" :key="month.month">
-                    <div class="report-trend-column"><strong x-text="month.assessedChecks === 0 ? 'Not Yet Assessed' : `${month.compliancePercentage}%`"></strong><span class="report-trend-bar" :style="`height: ${month.assessedChecks === 0 ? 0 : Math.max(2, Math.min(100, month.compliancePercentage))}%`"></span><small x-text="month.month"></small></div>
-                </template>
-            </div>
-            <p x-show="!loading && !reportData?.monthlyComplianceTrend?.length" class="empty-report">No monthly results are available yet.</p>
-            <div x-show="loading" class="report-loading" aria-label="Loading report"></div>
-        </article>
-    </div>
+<section class="annual-report admin-reports" x-data="annualReport">
+    <form @submit.prevent="load()"><label>Scheduled audit year<input type="number" min="2000" max="2200" required x-model="year"></label><label>Audit plan<select x-model="planId"><option value="">All authorized plans</option><template x-for="plan in report?.plans || []" :key="plan.id"><option :value="plan.id" x-text="plan.title"></option></template></select></label><button :disabled="loading">Apply filters</button><a class="export" :href="csvUrl" x-show="!loading && !error && current">Export CSV</a><button type="button" @click="window.print()" :disabled="loading || !!error || !current">Print report</button></form>
+    <p role="status" x-show="loading">Loading annual audit report…</p><p x-show="!current && !loading">Apply filters to update the displayed report and enable export.</p>
+    <div role="alert" x-show="error"><span x-text="error"></span> <button type="button" @click="load()">Retry</button></div>
+    <template x-if="report && !loading && !error && current"><div>
+        <h2 x-text="`Annual IQA report · ${report.year}`"></h2><p x-text="`Generated ${date(report.generatedAt)}`"></p><p class="scope" x-text="report.scope"></p>
+        <p x-text="report.planId ? 'Audit plan: ' + (report.plans.find(plan => plan.id === report.planId)?.title || report.planId) : 'Audit plan: All authorized plans'"></p>
+        <p>Accepted / Completed means the ATL accepted the audit. Checklist readiness is evaluated separately before submission. CAR closure preserves the original N finding.</p>
+        <div class="report-scroll" tabindex="0" aria-label="Annual audit report table"><table><caption>Audit lifecycle and accepted checklist results</caption><thead><tr><th>Unit</th><th>Planned</th><th>Assigned</th><th>In Progress</th><th>Submitted</th><th>Returned</th><th>Accepted / Completed</th><th>C</th><th>N</th><th>O</th><th>C / (C + N)</th><th>Outstanding evidence</th></tr></thead><tbody><template x-for="row in report.rows" :key="row.unitId"><tr><th scope="row" x-text="row.unit"></th><template x-for="key in ['planned','assigned','inProgress','submitted','returned','accepted','C','N','O']"><td x-text="row[key]"></td></template><td x-text="row.compliance === null ? 'Not yet assessed' : row.compliance + '%'"></td><td x-text="row.outstandingEvidence"></td></tr></template></tbody></table></div>
+        <div class="report-scroll" tabindex="0" aria-label="Corrective actions and legacy checks"><table><caption>CAR monitoring and separate legacy checks</caption><thead><tr><th>Unit</th><th>Open CARs</th><th>Overdue</th><th>Awaiting Verification</th><th>Closed</th><th>Unknown legacy state</th><th>Checklist-linked CARs</th><th>Legacy checks</th><th>Legacy compliant checks</th></tr></thead><tbody><template x-for="row in report.rows" :key="row.unitId"><tr><th scope="row" x-text="row.unit"></th><template x-for="key in ['openCars','overdueCars','awaitingVerificationCars','closedCars','unknownCars','linkedCars','legacyChecks','legacyCompliant']"><td x-text="row[key]"></td></template></tr></template></tbody></table></div>
+        <p x-show="!report.rows.length">No authorized units match this plan and year.</p>
+    </div></template>
 </section>
 @endsection

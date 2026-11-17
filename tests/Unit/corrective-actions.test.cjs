@@ -10,7 +10,8 @@ function fixture() {
             get: async (url, options) => { calls.push({ url, ...options }); return { data: { data: [], summary: {}, departments: [], meta: { total: 0, lastPage: 1, currentPage: 1 } } }; },
             patch: async (url, data) => { calls.push({ url, data }); },
         } } };
-    vm.runInNewContext(fs.readFileSync('resources/js/corrective-actions.js', 'utf8'), context);
+    const dates = fs.readFileSync('resources/js/portal-date.js', 'utf8').replace('export function', 'function');
+    vm.runInNewContext(dates + '\n' + fs.readFileSync('resources/js/corrective-actions.js', 'utf8').replace(/^import .*;\r?\n/gm, ''), context);
     const app = factory(); app.$nextTick = callback => callback();
     app.$refs = { details: { open: false, showModal() { this.open = true; } } };
     return { app, calls, axios: context.window.axios };
@@ -53,5 +54,5 @@ test('failed verification retains the notes and shows the backend authorization 
     const f = fixture(); f.app.detail = { _id: 'car', allowedTransitions: ['closed'] }; f.app.remarks = 'Verification note';
     f.axios.patch = async () => { throw { response: { data: { message: 'This department is outside your scope.' } } }; };
     await f.app.submitTransition(); assert.equal(f.app.remarks, 'Verification note'); assert.match(f.app.detailError, /outside your scope/);
-    assert.equal(f.app.saving, false); assert.equal(f.app.date(null), 'Date not recorded');
+    assert.equal(f.app.saving, false); assert.equal(f.app.date(null), 'Not recorded');
 });

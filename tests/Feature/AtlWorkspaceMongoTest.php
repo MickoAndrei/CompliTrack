@@ -129,7 +129,8 @@ class AtlWorkspaceMongoTest extends TestCase
     public function test_popup_and_decisions_preserve_evaluations_and_record_review_history(): void
     {
         $audit = $this->audit();
-        $allowed = ArchiveDocument::create(['title' => 'Authorized file', 'departmentId' => $audit->departmentId, 'ownershipVerified' => true, 'recordType' => 'file']);
+        $allowed = ArchiveDocument::create(['title' => 'Authorized file', 'departmentId' => $audit->departmentId, 'ownershipVerified' => true, 'recordType' => 'file',
+            'uploadedByUserId' => $this->admin->getKey(), 'visibility' => 'owner']);
         $denied = ArchiveDocument::create(['title' => 'SECRET DENIED TITLE', 'departmentId' => $audit->departmentId, 'ownershipVerified' => false, 'recordType' => 'file']);
         $audit->update(['planArchiveIds' => [$allowed->getKey(), $denied->getKey()]]);
         $detail = $this->actingAs($this->admin)->get('/audits/'.$audit->getKey().'?review=1')->assertOk()

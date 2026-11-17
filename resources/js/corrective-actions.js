@@ -1,3 +1,4 @@
+import { portalDate } from './portal-date';
 document.addEventListener('alpine:init', () => {
     window.Alpine.data('correctiveActions', () => ({
         rows: [], summary: null, departments: [], meta: { total: 0, lastPage: 1 }, page: 1,
@@ -49,9 +50,6 @@ document.addEventListener('alpine:init', () => {
         },
         actionLabel(status) { return ({ in_progress: 'Start corrective action', closed: 'Verify and close CAR', open: 'Reopen CAR with notes' })[status] || 'Record action'; },
         label(value) { return value ? String(value).replaceAll('-', ' ').replaceAll('_', ' ') : 'Not recorded'; },
-        date(value) {
-            if (!value || Number.isNaN(new Date(value).getTime())) return 'Date not recorded';
-            return new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value));
-        },
+        date(value) { return portalDate(value, {precise:true}); },
     }));
 });

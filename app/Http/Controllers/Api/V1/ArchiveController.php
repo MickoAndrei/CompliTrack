@@ -225,7 +225,7 @@ class ArchiveController extends Controller
             $linked = $check->getConnection()->getMongoDB()
                 ->selectCollection($check->getTable())
                 ->updateOne(
-                    ['_id' => MongoId::parse((string) $check->getKey()), 'result' => 'non_compliant', 'correctiveStatus' => ['$in' => ['open', 'in_progress']]],
+                    ['_id' => MongoId::parse((string) $check->getKey()), 'result' => 'non_compliant', 'correctiveStatus' => ['$in' => \App\Support\CarStatus::storedValues(['open', 'in_progress', 'returned_for_revision'])]],
                     ['$addToSet' => ['linkedArchiveIds' => $archive->getKey()]],
                 );
             if ($linked->getMatchedCount() !== 1) {
@@ -380,7 +380,7 @@ class ArchiveController extends Controller
             $document = ArchiveDocument::create(array_merge($metadata, $fileData, $check ? ['referenceStandard' => $check->referenceStandard] : []));
             if ($check) {
                 $linked = $check->getConnection()->getMongoDB()->selectCollection($check->getTable())->updateOne(
-                    ['_id' => MongoId::parse((string) $check->getKey()), 'result' => 'non_compliant', 'correctiveStatus' => ['$in' => ['open', 'in_progress']]],
+                    ['_id' => MongoId::parse((string) $check->getKey()), 'result' => 'non_compliant', 'correctiveStatus' => ['$in' => \App\Support\CarStatus::storedValues(['open', 'in_progress', 'returned_for_revision'])]],
                     ['$addToSet' => ['linkedArchiveIds' => $document->getKey()]],
                     ['session' => $check->getConnection()->getSession()],
                 );
@@ -411,7 +411,7 @@ class ArchiveController extends Controller
 
     private function authorizeCheckUpload(User $actor, ComplianceCheck $check): void
     {
-        if ($check->result !== 'non_compliant' || !in_array($check->correctiveStatus, ['open', 'in_progress'], true)) {
+        if ($check->result !== 'non_compliant' || !in_array($check->correctiveStatus, ['open', 'in_progress', 'returned_for_revision'], true)) {
             abort(403, 'Evidence can only be linked to a non-compliant check.');
         }
 

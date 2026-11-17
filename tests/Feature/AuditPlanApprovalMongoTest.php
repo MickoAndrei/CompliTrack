@@ -32,7 +32,8 @@ class AuditPlanApprovalMongoTest extends TestCase
         config(['system.path' => $this->directory.'/system']);
         $this->withoutVite();
         $this->seed(\Database\Seeders\RoleSeeder::class);
-        $this->unit = Department::create(['collegeName' => 'CET', 'departmentCode' => 'CET-IT', 'departmentName' => 'Information Technology',
+        $college = \App\Models\College::create(['collegeCode' => 'CET', 'collegeName' => 'CET', 'isActive' => true, 'campusName' => 'Claveria']);
+        $this->unit = Department::create(['collegeId' => $college->getKey(),'collegeName' => 'CET', 'departmentCode' => 'CET-IT', 'departmentName' => 'Information Technology',
             'ownershipVerified' => true, 'isActive' => true, 'unitType' => 'academic_department']);
         $home = Department::create(['collegeName' => 'CET', 'departmentCode' => 'CET-ENV', 'departmentName' => 'Environmental Engineering',
             'ownershipVerified' => true, 'isActive' => true, 'unitType' => 'academic_department']);
@@ -77,7 +78,7 @@ class AuditPlanApprovalMongoTest extends TestCase
     private function action(User $actor, string $action, array $extra = [])
     {
         return $this->actingAs($actor)->postJson('/api/v1/audit-plans/'.$this->archive->getKey(), array_replace([
-            'action' => $action, 'version' => $this->archive->fresh()->auditPlan['version'] ?? 0, 'remarks' => 'Recorded '.$action.' remarks',
+            'action' => $action, 'confirmPlanDocument' => true, 'classificationReason' => 'Verified this controlled document against the audit-plan register', 'version' => $this->archive->fresh()->auditPlan['version'] ?? 0, 'remarks' => 'Recorded '.$action.' remarks',
         ], $extra));
     }
 
@@ -85,6 +86,23 @@ class AuditPlanApprovalMongoTest extends TestCase
     {
         $this->action($this->atl, 'save', $this->header)->assertOk()->assertJsonPath('status', 'draft');
         $this->action($this->atl, 'submit')->assertOk()->assertJsonPath('status', 'submitted');
+    }
+
+    public function test_document_classification_and_placeholder_procedures_are_enforced_by_api(): void
+    {
+        $this->action($this->atl, 'save', $this->header + ['confirmPlanDocument' => false])->assertUnprocessable();
+        foreach (['none', 'N/A', '---', 'TBD'] as $placeholder) {
+            $this->action($this->atl, 'save', array_replace($this->header, ['procedureReference' => $placeholder]))->assertUnprocessable();
+        }
+        $this->assertNull($this->archive->fresh()->auditPlan);
+        $this->submit();
+        $this->assertSame('audit-plan', $this->archive->fresh()->auditPlanClassification['purpose']);
+        // Classification belongs to this controlled version, not all future uploads.
+        $this->archive->update(['versionNumber' => 2]);
+        $this->permission(3, true)->assertOk();
+        $this->action($this->approver, 'approve')->assertUnprocessable();
+        $this->assertSame('submitted', $this->archive->fresh()->auditPlan['status']);
+        $this->assertCount(2, $this->archive->fresh()->auditPlan['history']);
     }
 
     public function test_all_roles_including_super_admin_wildcard_are_denied_without_explicit_permission(): void

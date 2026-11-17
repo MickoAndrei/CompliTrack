@@ -53,7 +53,7 @@ const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
                 client.defaults.adapter=async config=>{
                     window.fixtureCalls.push({url:config.url,method:config.method,params:config.params});
                     let data;
-                    if(config.url.endsWith('/tree')){if(!window.treeReleased)await new Promise(resolve=>window.releaseTree=resolve);if(window.failTree)throw Error('Tree failure');tree.canManageOrganization=document.body.dataset.portalRole==='1';data=tree;}
+                    if(config.url.endsWith('/tree')){if(!window.treeReleased)await new Promise(resolve=>window.releaseTree=resolve);if(window.failTree)throw Error('Tree failure');tree.canManageOrganization=document.body.dataset.portalRole==='1';data=JSON.parse(JSON.stringify(tree));}
                     else if(config.url.endsWith('/organization'))data={users:[{_id:id(90),name:'Authorized department head',email:'browser@example.test',roleId:3,responsibility:'department_head',unitIds:[id(10)],collegeIds:[]}],responsibilities:['department_head','college_dean','college_secretary','cluster_administrator','faculty_staff']};
                     else if(config.url==='/api/v1/documents/audit-folders'){
                         if(window.failAuditArchive)throw {response:{status:404,data:{message:'Archive access changed'}}};
@@ -136,7 +136,7 @@ const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
             assert.equal(await evaluate('document.documentElement.scrollWidth<=innerWidth'), true, 'Loaded grid fits viewport');
             assert.equal(await evaluate('document.scrollingElement.scrollHeight<=innerHeight'),true,'QMS uses internal scrolling instead of an outer page scrollbar');
             assert.equal(await evaluate('document.querySelector(".qms-workspace:not(.qms-loading-skeleton) .qms-main").clientHeight>0'),true,'The listing keeps usable scrollable height');
-            assert.equal(await evaluate('document.querySelector(".qms-location-search input").placeholder'), 'Search Home', 'Search follows the current address');
+            assert.equal(await evaluate('document.querySelector(".qms-location-search input").placeholder'), 'Search My Drive', 'Search follows the current address');
             assert.equal(await evaluate('document.querySelector(".qms-location-bar .qms-address-home").checkVisibility()'), true, 'Address bar has an accessible Home button');
             if ([390, 1440].includes(width)) {
                 const capture = await send('Page.captureScreenshot', { format:'png', captureBeyondViewport:false });
@@ -362,6 +362,35 @@ const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
             await waitFor('!Alpine.$data(document.querySelector(".qms-explorer")).collegeId');
             await waitFor('!Alpine.$data(document.querySelector(".qms-explorer")).compactPath');
             console.log(`PASS role ${role}: navigation icons, collapsed breadcrumb, ancestor navigation and root expansion`);
+            // Assert Chromium's accessibility tree and actual keyboard events, not only aria attributes.
+            await evaluate('window.folderActionMenu=[...document.querySelectorAll(".qms-main > .qms-folders .qms-folder-actions")].find(el=>el.checkVisibility())');
+            const menu='window.folderActionMenu';
+            const key=async (key,code,windowsVirtualKeyCode)=>{await send('Input.dispatchKeyEvent',{type:'keyDown',key,code,windowsVirtualKeyCode,...(key==='Enter'?{text:'\r'}:{})});await send('Input.dispatchKeyEvent',{type:'keyUp',key,code,windowsVirtualKeyCode});await delay(30)};
+            const openMenu=async()=>{await evaluate(menu+'.querySelector("summary").focus()');await key('Enter','Enter',13);await waitFor(menu+'.open')};
+            await openMenu();
+            for(const [index,name] of [[0,/Open/],[1,/Star/],[2,/View Details|View details/]]){
+                const object=await send('Runtime.evaluate',{expression:menu+'.querySelectorAll("button")['+index+']',returnByValue:false});
+                const tree=await send('Accessibility.getPartialAXTree',{objectId:object.result.result.objectId,fetchRelatives:false});
+                const button=tree.result.nodes.find(node=>node.role?.value==='button');
+                assert.ok(button&&!button.ignored,'Folder action is exposed as a button');assert.match(button.name.value,name,'Folder action has its actual accessible name');
+            }
+            await key('Tab','Tab',9);
+            assert.equal(await evaluate('document.activeElement==='+menu+'.querySelector("button")'),true,'Open is keyboard reachable');
+            await key('Escape','Escape',27);
+            assert.equal(await evaluate('!'+menu+'.open && document.activeElement==='+menu+'.querySelector("summary")'),true,'Escape closes actions and returns focus');
+            await openMenu();await key('Tab','Tab',9);await key('Tab','Tab',9);await key('Enter','Enter',13);
+            await waitFor('!'+menu+'.open');
+            assert.equal(await evaluate('document.activeElement==='+menu+'.querySelector("summary")'),true,'Star returns focus to its trigger');
+            await waitFor(menu+'.querySelectorAll("button")[1].textContent==="Unstar"');
+            await openMenu();await key('Tab','Tab',9);await key('Tab','Tab',9);await key('Tab','Tab',9);await key('Enter','Enter',13);
+            await waitFor('document.querySelector("[x-ref=folderDetails]").open');
+            await key('Escape','Escape',27);await waitFor('!document.querySelector("[x-ref=folderDetails]").open');
+            assert.equal(await evaluate('document.activeElement==='+menu+'.querySelector("summary")'),true,'Details Escape returns focus to its trigger');
+            await openMenu();await key('Tab','Tab',9);await key('Enter','Enter',13);
+            await waitFor('!!Alpine.$data(document.querySelector(".qms-explorer")).unitId');
+            await evaluate('Alpine.$data(document.querySelector(".qms-explorer")).navigate()');
+            await waitFor('!Alpine.$data(document.querySelector(".qms-explorer")).unitId');
+            console.log('PASS role '+role+': AX names, keyboard Open/Star/Details, Escape and focus return');
             await evaluate('Alpine.$data(document.querySelector(".qms-explorer")).switchView("cycles")');
             await waitFor('!Alpine.$data(document.querySelector(".qms-explorer")).loading');
             assert.equal(await evaluate('Alpine.$data(document.querySelector(".qms-explorer")).repositoryChildren[0].name'),'Manually named cycle','Manual folder labels are retained');

@@ -97,7 +97,7 @@ class ComplianceCheckService
         $check = $this->scopes->checks($actor)->where('_id', $objectId)->firstOrFail();
         abort_unless($this->scopes->canAccessDepartment($actor, MongoId::parse((string) $check->departmentId)), 403);
         abort_unless($check->result === 'non_compliant', 422, 'Only a nonconforming check can have a corrective action.');
-        $previousStatus = $check->correctiveStatus;
+        $previousStatus = $check->getRawOriginal('correctiveStatus');
         if ($nextStatus === 'closed') {
             $permissions = app(CarPermissions::class);
             abort_unless($permissions->allows($actor, CarPermissions::VERIFY)
@@ -111,9 +111,9 @@ class ComplianceCheckService
                 'correctiveStatus' => 'This corrective-action status transition is not allowed.',
             ]);
         }
-        if ($previousStatus === 'closed' && trim((string) $remarks) === '') {
+        if (($check->correctiveStatus === 'closed' || !\App\Support\CarStatus::known($check->correctiveStatus)) && trim((string) $remarks) === '') {
             throw ValidationException::withMessages([
-                'remarks' => 'Remarks are required when reopening a closed check.',
+                'remarks' => 'Remarks are required when reopening or resolving an unknown legacy state.',
             ]);
         }
         if ($nextStatus === 'closed' && trim((string) $remarks) === '') {
@@ -131,6 +131,7 @@ class ComplianceCheckService
             '$push' => [
                 'statusHistory' => [
                     'status' => $nextStatus,
+                    'previousStatus' => $previousStatus,
                     'changedByUserId' => $actor->getKey(),
                     'remarks' => $remarks,
                     'timestamp' => new UTCDateTime($now->getTimestamp() * 1000),
@@ -140,7 +141,7 @@ class ComplianceCheckService
 
         if ($nextStatus === 'closed') {
             $update['$set']['closedAt'] = new UTCDateTime($now->getTimestamp() * 1000);
-        } elseif ($previousStatus === 'closed') {
+        } elseif (\App\Support\CarStatus::canonical($previousStatus) === 'closed') {
             $update['$unset'] = ['closedAt' => ''];
         }
 
@@ -159,7 +160,7 @@ class ComplianceCheckService
         $this->auditLogs->record($request, "Changed check status to {$nextStatus}", 'compliance_check', $check->getKey());
         app(NotificationDispatchService::class)->persist($check->auditeeId,
             'check:'.$check->getKey().':status:'.(count($check->statusHistory ?? []) + 1),
-            'status_changed', 'Corrective action updated', $check->checkCode.' status changed to '.$nextStatus.'.', $actor->getKey(), $check->getKey());
+            'status_changed', 'Corrective action updated', $check->checkCode.' status changed to '.\App\Support\CarTimeline::label($nextStatus).'.', $actor->getKey(), $check->getKey());
 
         return $check->fresh();
     }
@@ -168,7 +169,8 @@ class ComplianceCheckService
     {
         if ($check->result !== 'non_compliant') { return []; }
         return match ($check->correctiveStatus) {
-            'open' => ['in_progress'], 'in_progress' => ['closed'], 'closed' => ['open'], default => [],
+            'open' => ['in_progress'], 'in_progress' => ['closed'], 'awaiting_verification' => ['in_progress', 'closed'],
+            'returned_for_revision' => ['in_progress'], 'closed' => ['open'], default => ['open'],
         };
     }
 }

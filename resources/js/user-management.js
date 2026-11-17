@@ -1,3 +1,4 @@
+import { portalDate } from './portal-date.js';
 const endpoint = '/api/v1/users';
 const message = (error, fallback) => error.response?.data?.message || fallback;
 
@@ -19,11 +20,11 @@ export function enhancedUserManagement(config) {
             this.userForm.archiveUnitIds = []; this.userForm.archiveCollegeIds = [];
             if (!this.originalUser?.isAuditTeamLeader && Number(this.userForm.roleId) !== 2) this.userForm.departmentId = '';
         },
-        responsibilityName(value) { return ({ department_head: 'Department Head', department_secretary: 'Department Secretary', college_dean: 'College Dean', college_secretary: 'College Secretary', cluster_administrator: 'Cluster Administrator', faculty_staff: 'Faculty / Staff' })[value] || 'Not assigned'; },
+        responsibilityName(value) { return ({ department_head: 'Department Head', college_dean: 'College Dean', college_secretary: 'College Secretary', cluster_administrator: 'Cluster Administrator', faculty_staff: 'Faculty / Staff' })[value] || 'Not assigned'; },
         headUnits() { return this.options.departments.filter(unit => unit.authorizedCet || this.originalUser?.archiveUnitIds?.includes(unit._id)); },
         assignmentNames(row) { return row.clusterName || [...(row.organizationalColleges || []), ...(row.organizationalUnits || [])].join(', ') || row.departmentName || 'Not assigned'; },
         availableUnits() {
-            const head = Number(this.userForm.roleId) !== 2 && ['department_head', 'department_secretary'].includes(this.userForm.archiveResponsibility);
+            const head = Number(this.userForm.roleId) !== 2 && ['department_head'].includes(this.userForm.archiveResponsibility);
             return this.options.departments.filter(unit => (head ? unit.authorizedCet : unit.active && unit.verified && unit.unitType !== 'legacy_unclassified')
                 || unit._id === this.originalUser?.departmentId);
         },
@@ -91,7 +92,7 @@ export function enhancedUserManagement(config) {
             try {
                 const { _id, ...payload } = structuredClone(Alpine.raw(this.userForm));
                 payload.departmentId ||= null; payload.archiveResponsibility ||= null; payload.archiveCluster ||= null;
-                if (['department_head', 'department_secretary'].includes(payload.archiveResponsibility) && !payload.departmentId) payload.departmentId = payload.archiveUnitIds[0] || null;
+                if (['department_head'].includes(payload.archiveResponsibility) && !payload.departmentId) payload.departmentId = payload.archiveUnitIds[0] || null;
                 if (this.originalUser) {
                     // Send only changed values so existing credentials and legacy relationships keep their BSON representation.
                     for (const key of Object.keys(payload)) {
@@ -151,6 +152,6 @@ export function enhancedUserManagement(config) {
             } catch (error) { this.actionError = message(error, 'This action could not be completed.'); }
             finally { this.saving = false; }
         },
-        userDate(value) { return value ? new Date(value).toLocaleString() : 'Not recorded'; },
+        userDate(value) { return portalDate(value, {precise:true}); },
     };
 }

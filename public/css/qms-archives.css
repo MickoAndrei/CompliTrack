@@ -198,3 +198,13 @@ html:has(.qms-explorer){height:100%;overflow:hidden;scrollbar-gutter:auto}body:h
 .qms-upload .qms-form-grid>*{min-width:0}
 .qms-upload .qms-form-grid :is(input,select){min-width:0;max-width:100%;box-sizing:border-box}
 .qms-upload .corrective-upload-file-field>input{width:1px;height:1px;padding:0;border:0}
+/* Keep names readable and expose complete values through titled, focusable controls. */
+.qms-explorer .qms-action-popover button{font-size:13px;line-height:1.4;color:#172b49}
+.qms-explorer .qms-file-name h4{word-break:normal;overflow-wrap:normal;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.qms-explorer .qms-folder strong:focus-visible,.qms-explorer .qms-folder-row-owner:focus-visible{outline:2px solid #315c99;outline-offset:2px}
+
+/* Names take priority over secondary metadata on narrower lists. */
+@media(min-width:1101px){.qms-explorer .qms-folder-row-heading,.qms-explorer .qms-main .qms-folder{grid-template-columns:minmax(0,2.5fr) minmax(130px,1.2fr) minmax(130px,1fr) 65px 28px;column-gap:16px}}
+.qms-explorer .qms-main .qms-action-popover button{font-size:13px;line-height:1.4;color:#172b49}
+
+.qms-explorer .qms-documents:not(.is-list) .qms-file-name h4{display:block;white-space:nowrap;word-break:normal;overflow-wrap:normal;overflow:hidden;text-overflow:ellipsis}

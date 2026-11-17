@@ -1,3 +1,4 @@
+import '../../core/utils/car_status.dart';
 import 'model_json.dart';
 
 class ComplianceCheckModel {
@@ -14,6 +15,8 @@ class ComplianceCheckModel {
     this.auditeeName,
     this.remarks,
     this.correctiveStatus,
+    this.allowedTransitions = const [],
+    this.nextAction,
     this.dueDate,
     this.closedAt,
     this.linkedArchiveIds = const [],
@@ -33,6 +36,8 @@ class ComplianceCheckModel {
   final String? auditeeName;
   final String? remarks;
   final String? correctiveStatus;
+  final List<String> allowedTransitions;
+  final String? nextAction;
   final DateTime? dueDate;
   final DateTime? closedAt;
   final List<String> linkedArchiveIds;
@@ -52,7 +57,9 @@ class ComplianceCheckModel {
       auditorName: ModelJson.optionalString(json, 'auditorName'),
       auditeeName: ModelJson.optionalString(json, 'auditeeName'),
       remarks: ModelJson.optionalString(json, 'remarks'),
-      correctiveStatus: ModelJson.optionalString(json, 'correctiveStatus'),
+      correctiveStatus: canonicalCarStatus(ModelJson.optionalString(json, 'correctiveStatus')),
+      allowedTransitions: (json['allowedTransitions'] as List? ?? const []).whereType<String>().toList(),
+      nextAction: ModelJson.optionalString(json, 'nextAction'),
       dueDate: json['dueDate'] == null
           ? null
           : ModelJson.requiredDateTime(json, 'dueDate'),

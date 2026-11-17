@@ -123,7 +123,7 @@ const server = http.createServer((req, res) => {
             assert.ok(await evaluate('(()=>{const v=document.querySelector(".aw-history-scroll"),t=document.querySelector(".aw-timeline"),n=t.querySelectorAll(".aw-event")[4];return !n||v.clientHeight<=n.getBoundingClientRect().bottom-t.getBoundingClientRect().top+7})()'), 'At most five nodes are visible');
             assert.equal(await evaluate('(()=>{const v=document.querySelector(".aw-history-scroll");v.scrollTop=v.scrollHeight;return v.scrollTop>0})()'), true, 'Remaining nodes are scrollable');
             await evaluate('document.querySelector(".aw-history-scroll").scrollTop=0');
-            await evaluate('document.querySelector("#aw-panel-review button[type=button]").click()');
+            await evaluate('[...document.querySelectorAll("#aw-panel-review button[type=button]")].find(button => button.textContent.includes("Item 2")).click()');
             await waitFor(`${component}.selected === 1 && ${component}.panel === 'evidence'`);
             await evaluate(`${component}.openModal('evidence')`);
             await setField('#workspace-evidence-dialog select[name=method]', 'physical-original');

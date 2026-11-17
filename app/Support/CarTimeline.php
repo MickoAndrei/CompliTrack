@@ -12,8 +12,9 @@ class CarTimeline
 {
     public static function label(?string $status): string
     {
-        return match ($status) {
+        return match (CarStatus::canonical($status)) {
             'open' => 'Open', 'in_progress' => 'In Progress', 'closed' => 'Closed',
+            'awaiting_verification' => 'Awaiting Verification',
             default => $status ? ucfirst(str_replace(['_', '-'], ' ', $status)) : 'No CAR',
         };
     }
@@ -28,7 +29,7 @@ class CarTimeline
                 if (is_array($value)) { $value = $value['$numberLong'] ?? null; }
                 if (is_numeric($value)) { return CarbonImmutable::createFromTimestampMsUTC($value); }
             }
-            return is_string($value) && trim($value) !== '' ? CarbonImmutable::parse($value)->utc() : null;
+            return is_string($value) && trim($value) !== '' ? CarbonImmutable::parse($value, 'UTC')->utc() : null;
         } catch (\Throwable) { return null; }
     }
 
@@ -67,7 +68,7 @@ class CarTimeline
             else { $event['label'] = ++$submissions > 1 ? 'Corrective evidence resubmitted' : 'Corrective evidence submitted'; }
         }
         unset($event);
-        if ($lastStatus !== null && $events[$lastStatus]['status'] === $check->correctiveStatus) { $current = $lastStatus; }
+        if ($lastStatus !== null && CarStatus::canonical($events[$lastStatus]['status']) === $check->correctiveStatus) { $current = $lastStatus; }
         if ($current === null) {
             $current = count($events);
             $events[] = ['kind' => 'status', 'status' => $check->correctiveStatus, 'label' => self::label($check->correctiveStatus),

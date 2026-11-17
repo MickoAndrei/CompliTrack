@@ -1,6 +1,7 @@
+import '../../../core/utils/car_status.dart';
+import '../../../core/utils/date_formatter.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:intl/intl.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_icons.dart';
 import '../../../data/models/compliance_check_model.dart';
@@ -60,7 +61,7 @@ class _CorrectiveBoardScreenState extends State<CorrectiveBoardScreen> {
                   title: 'Corrective Actions',
                   subtitle: 'Review and manage actions timeline',
                 ),
-                for (final status in const ['in_progress', 'open', 'closed'])
+                for (final status in <String>{'in_progress', 'open', 'awaiting_verification', 'returned_for_revision', 'closed', ...actions.map((check) => check.correctiveStatus).whereType<String>()})
                   _StatusSection(
                     status: status,
                     checks: actions
@@ -97,7 +98,10 @@ class _StatusSection extends StatelessWidget {
     final (label, color) = switch (status) {
       'in_progress' => ('In Progress', AppColors.warning),
       'open' => ('Open', AppColors.error),
-      _ => ('Closed', AppColors.success),
+      'closed' => ('Closed', AppColors.success),
+      'awaiting_verification' => ('Awaiting Verification', AppColors.warning),
+      'returned_for_revision' => ('Returned for Revision', AppColors.warning),
+      _ => ('Unknown legacy state: $status', AppColors.ustpMuted),
     };
 
     return Padding(
@@ -237,8 +241,7 @@ class _ActionCard extends StatelessWidget {
                 Text(
                   check.statusHistory.isNotEmpty
                       ? _formatDate(check.statusHistory.last['timestamp'])
-                      : DateFormat('yyyy-MM-dd')
-                          .format(check.createdAt.toLocal()),
+                      : formatPortalDate(check.createdAt),
                   style: const TextStyle(
                     fontSize: 8,
                     color: AppColors.ustpMuted,
@@ -319,6 +322,9 @@ Future<void> _showStatusHistory(
                 ),
               ),
               const SizedBox(height: 13),
+              Text('Current state: ${check.correctiveStatus ?? 'Not recorded'}'),
+              if (check.nextAction != null) Text(check.nextAction!),
+              const Text('Recorded history'),
               if (check.statusHistory.isEmpty)
                 const Text(
                   'No status history is available for this action.',
@@ -357,7 +363,7 @@ class _HistoryItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final status = entry['status']?.toString() ?? 'unknown';
+    final status = canonicalCarStatus(entry['status']?.toString()) ?? 'unknown';
     final (label, color, icon) = switch (status) {
       'open' => ('Opened', AppColors.error, AppIcons.open),
       'in_progress' => ('In Progress', AppColors.warning, AppIcons.inProgress),
@@ -447,5 +453,5 @@ String _formatDate(dynamic timestamp) {
       : DateTime.tryParse(timestamp?.toString() ?? '');
   return parsed == null
       ? 'Date unavailable'
-      : DateFormat('yyyy-MM-dd').format(parsed.toLocal());
+      : formatPortalDate(timestamp);
 }

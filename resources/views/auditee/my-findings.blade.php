@@ -19,7 +19,7 @@
         @forelse($published as $entry)
         @php($resultStatus = match($entry['result']) { 'C' => 'compliant', 'N' => 'non_compliant', 'O' => 'observation', default => 'unknown' })
         <details class="results-shared"><summary><span>{{ $entry['auditCode'] }}</span><x-status-badge class="results-status-badge" :status="$resultStatus" :label="match($entry['result']) { 'C' => 'C — Compliant', 'N' => 'N — Non-Conformance', 'O' => 'O — Observation', default => 'Unknown result' }"/><span class="results-details-label">View Details</span></summary>
-            <dl class="workflow-details"><dt>Shared audit remarks</dt><dd>{{ $entry['summary'] }}</dd><dt>Department</dt><dd>{{ $entry['department'] }}</dd><dt>Shared on</dt><dd>{{ $entry['at'] }}</dd><dt>Corrective action</dt><dd>A shared checklist decision does not automatically create a CAR.</dd></dl>
+            <dl class="workflow-details"><dt>Shared audit remarks</dt><dd>{{ $entry['summary'] }}</dd><dt>Department</dt><dd>{{ $entry['department'] }}</dd><dt>Shared on</dt><dd>{{ \App\Support\PortalDate::format($entry['at']) }}</dd><dt>Corrective action</dt><dd>A shared checklist decision does not automatically create a CAR.</dd></dl>
             <a href="/auditee/evidence-requests#request-{{ $entry['requestId'] }}">View permitted evidence request and responses</a>
         </details>
         @empty

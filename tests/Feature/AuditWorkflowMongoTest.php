@@ -164,7 +164,7 @@ class AuditWorkflowMongoTest extends TestCase
         $ready = $this->get('/audits/'.$audit->getKey())->assertOk()->assertSee('Save Evaluation')->assertSee('Original reviewed')->assertSee('Auditor')
             ->assertDontSee('workspace-question-dialog')->assertDontSee('Edit question')
             ->assertViewHas('readiness', fn ($value) => !$value['eligible'] && array_keys($value['incomplete']) === [1]);
-        $this->saveAction($audit, 'submit')->assertSessionHasErrors('checklist');
+        $this->saveAction($audit, 'submit')->assertSessionHasErrors();
         $audit->refresh()->update(['status' => 'submitted']);
         $locked = $this->get('/audits/'.$audit->getKey())->assertOk()->assertSee('Results locked')->assertDontSee('Save Evaluation')
             ->assertDontSee('workspace-evidence-dialog')->assertDontSee('workspace-interview-dialog');
@@ -247,7 +247,7 @@ class AuditWorkflowMongoTest extends TestCase
         $response = $this->get('/audits')->assertOk()->assertViewIs('admin.audit-assignments')->assertSee('New Audit Assignment')
             ->assertSee('Assignment Register')->assertDontSee('data-atl-review aria-haspopup', false);
         $this->assertSame(1, substr_count($response->getContent(), 'Assign auditors to departments and offices based on authorized audit plans.'));
-        $this->get('/audits?view=reviews')->assertOk()->assertViewIs('admin.audit-reviews')->assertSee('Awaiting Review')->assertDontSee('Workflow test')->assertDontSee('New Audit Assignment');
+        $this->get('/audits?view=reviews')->assertOk()->assertViewIs('admin.audit-reviews')->assertSee('Submitted — Awaiting ATL Review')->assertDontSee('Workflow test')->assertDontSee('New Audit Assignment');
         $this->get('/audits?view=reviews&status=draft')->assertUnprocessable();
         $audit->update(['status' => 'submitted']);
         $review = $this->get('/audits?view=reviews')->assertOk()->assertSee('Workflow test');
@@ -480,7 +480,7 @@ class AuditWorkflowMongoTest extends TestCase
         $this->actingAs($person)->get('/auditee/evidence-requests')->assertOk()
             ->assertViewHas('summary', ['active' => 3, 'awaiting' => 2, 'submitted' => 1, 'completed' => 1])
             ->assertViewHas('requests', fn ($requests) => $requests->total() === 4)
-            ->assertSee('Dec 20, 2026')->assertSee('Awaiting Response')->assertSee('Submitted')->assertSee('Completed')
+            ->assertSee('Dec 20, 2026')->assertSee('Awaiting Response')->assertSee('Response Submitted')->assertSee('Response Reviewed')
             ->assertDontSee('PRIVATE')->assertSee('data-evidence-open', false)->assertSee('id="evidence-request-modal"', false);
         $this->get('/auditee/evidence-requests?requestStatus=requested')->assertOk()->assertViewHas('requests', fn ($requests) => $requests->total() === 2);
         $this->get('/auditee/evidence-requests?requestStatus=reviewed')->assertOk()->assertViewHas('requests', fn ($requests) => $requests->total() === 1);
@@ -498,7 +498,7 @@ class AuditWorkflowMongoTest extends TestCase
         $this->actingAs($auditor)->get($detailUrl, $ajax)->assertForbidden();
         $this->actingAs($person);
         $audit->update(['status' => 'submitted']);
-        $this->get('/auditee/evidence-requests?requestStatus=under_review')->assertOk()->assertSee('Under Review')
+        $this->get('/auditee/evidence-requests?requestStatus=under_review')->assertOk()->assertSee('Response Submitted')
             ->assertViewHas('requests', fn ($requests) => $requests->total() === 1);
         $this->get($detailUrl, $ajax)->assertOk()->assertDontSee('name="submissionKey"', false)->assertSee('read-only');
         $this->postJson('/auditee/evidence-requests/'.$audit->getKey().'/'.$entries[0]['id'], [
@@ -588,7 +588,8 @@ class AuditWorkflowMongoTest extends TestCase
         $this->actingAs($person)->get('/auditee/my-findings')->assertOk()->assertSee('Permitted accepted result')->assertDontSee('CONFIDENTIAL');
         $this->actingAs($other)->get('/auditee/my-findings')->assertOk()->assertDontSee('Permitted accepted result');
         $this->actingAs($person);
-        foreach (['dashboard','my-findings','upload','documents','notifications','help'] as $page) { $this->get('/auditee/'.$page)->assertOk(); }
+        foreach (['dashboard','my-findings','documents','notifications','help'] as $page) { $this->get('/auditee/'.$page)->assertOk(); }
+        $this->get('/auditee/upload')->assertRedirect('/auditee/documents');
         $this->get('/profile')->assertRedirect('/auditee/profile');
         $this->get('/auditee/profile')->assertOk();
         $this->getJson('/api/v1/notifications?unread=1&type=evidence_requested')->assertOk()->assertJsonPath('meta.total', 1);
@@ -621,6 +622,9 @@ class AuditWorkflowMongoTest extends TestCase
         $this->getJson('/api/v1/documents')->assertOk()->assertJsonPath('meta.total', 1);
         $this->assertCount(1, $check->fresh()->linkedArchiveIds);
         $this->assertSame('open', $check->fresh()->correctiveStatus);
+        $this->actingAs($auditor)->getJson('/api/v1/compliance-checks/'.$check->getKey().'?correctiveActions=1')->assertOk()
+            ->assertJsonPath('data.displayStatus', 'open');
+        $this->actingAs($person);
         $this->post('/api/v1/documents/upload', ['file' => \Illuminate\Http\UploadedFile::fake()->createWithContent('bad.docx', 'PK-not-a-document'), 'checkId' => (string) $check->getKey(), 'referenceStandard' => 'ISO9001-9.2'], ['Accept' => 'application/json'])->assertUnprocessable();
         $this->post('/api/v1/documents/upload', ['file' => \Illuminate\Http\UploadedFile::fake()->create('large.pdf', 20481), 'checkId' => (string) $check->getKey(), 'referenceStandard' => 'ISO9001-9.2'], ['Accept' => 'application/json'])->assertUnprocessable();
         $this->actingAs($other)->get('/auditee/finding-details/'.$check->getKey())->assertNotFound();

@@ -1,3 +1,5 @@
+import '../../../core/utils/car_status.dart';
+import '../../../core/utils/date_formatter.dart';
 import 'package:flutter/material.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_icons.dart';
@@ -212,9 +214,11 @@ class FindingDetailScreen extends StatelessWidget {
     );
   }
 
-  static String _statusLabel(Object? value) => switch (value) {
+  static String _statusLabel(Object? value) => switch (canonicalCarStatus(value?.toString())) {
         'open' => 'Open',
         'in_progress' => 'In Progress',
+      'awaiting_verification' => 'Awaiting Verification',
+      'returned_for_revision' => 'Returned for Revision',
         'closed' => 'Closed',
         final String status => status,
         _ => 'Status updated',
@@ -224,7 +228,7 @@ class FindingDetailScreen extends StatelessWidget {
     if (value == null) return 'Time unavailable';
     final date = DateTime.tryParse(value.toString());
     if (date == null) return value.toString();
-    return date.toLocal().toString().split('.').first;
+    return formatPortalDate(value);
   }
 }
 

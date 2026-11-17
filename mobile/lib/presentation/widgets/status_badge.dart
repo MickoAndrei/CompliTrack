@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../core/utils/car_status.dart';
 import '../../core/constants/app_colors.dart';
 
 class StatusBadge extends StatelessWidget {
@@ -11,9 +12,11 @@ class StatusBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final normalized = status.toLowerCase().replaceAll(' ', '_');
+    final normalized = canonicalCarStatus(status) ?? status;
     final (bgColor, textColor, label) = switch (normalized) {
       'open' || 'non_compliant' => (const Color(0xFFFEE2E2), AppColors.error, normalized == 'open' ? 'Open' : 'Non-Compliant'),
+      'awaiting_verification' => (const Color(0xFFFEF9C3), AppColors.ustpDark, 'Awaiting Verification'),
+      'returned_for_revision' => (const Color(0xFFFEE2E2), AppColors.error, 'Returned for Revision'),
       'in_progress' => (const Color(0xFFFEF9C3), AppColors.ustpDark, 'In Progress'),
       'closed' || 'compliant' => (const Color(0xFFDCFCE7), AppColors.success, normalized == 'closed' ? 'Closed' : 'Compliant'),
       _ => (AppColors.ustpLight, AppColors.ustpMuted, status),

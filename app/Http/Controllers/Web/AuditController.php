@@ -85,7 +85,7 @@ class AuditController extends Controller
         $checks = $this->scopes->checks($request->user())->whereIn('departmentId', $this->scopes->assignedDepartmentIds($request->user()))->get();
         $stats = ['totalChecks' => $checks->whereIn('result', ['compliant', 'non_compliant'])->count(),
             'compliantChecks' => $checks->where('result', 'compliant')->count(),
-            'openCars' => $checks->whereIn('correctiveStatus', ['open', 'in_progress'])->count(),
+            'openCars' => $checks->whereIn('correctiveStatus', ['open', 'in_progress', 'awaiting_verification', 'returned_for_revision'])->count(),
             'closedCars' => $checks->where('correctiveStatus', 'closed')->count(),
             'nonconformities' => $checks->where('result', 'non_compliant')->count(), 'pendingChecks' => 0,
             'nonCompliantChecks' => $checks->where('result', 'non_compliant')->count(),
@@ -205,7 +205,7 @@ class AuditController extends Controller
             $revisionBaseline = isset($previous['previousItems']) ? collect($previous['previousItems'])->keyBy('id') : null;
             return response()->view('admin.audit-review', compact('audit', 'progress', 'attachments', 'people', 'revisionBaseline'))->header('Cache-Control', 'no-store');
         }
-        $readiness = AuditChecklist::readiness($audit->items ?? []);
+        $readiness = AuditChecklist::readiness($audit->items ?? [], $audit->evidenceRequests ?? []);
         $peopleIds = [(string) $audit->auditorId, (string) $audit->reviewerId];
         foreach ($audit->history ?? [] as $event) { $peopleIds[] = $event['actor'] ?? ''; }
         foreach ($audit->items ?? [] as $item) {
@@ -278,7 +278,7 @@ class AuditController extends Controller
             $changes['interviews'] = array_merge($audit->interviews ?? [], [$data + ['auditeeName' => $person->fullName, 'author' => (string) $request->user()->getKey(), 'at' => now()->utc()->toIso8601String()]]);
         } elseif ($action === 'submit') {
             abort_if($audit->status === 'draft', 422);
-            AuditChecklist::validateSubmission($items);
+            AuditChecklist::validateSubmission($items, $audit->evidenceRequests ?? []);
             $changes['status'] = 'submitted';
         } elseif ($review) {
             $request->validate(['reviewNotes' => $action === 'return'
@@ -297,7 +297,7 @@ class AuditController extends Controller
                 $action === 'submit' ? $audit->reviewerId : $audit->auditorId,
                 'audit:'.$audit->getKey().':version:'.((int) $audit->version + 1),
                 $action === 'submit' ? 'audit_submitted' : ($action === 'accept' ? 'audit_accepted' : 'audit_returned'),
-                $audit->auditCode.' '.$changes['status'],
+                $audit->auditCode.' '.\App\Support\AuditStatus::label($changes['status']),
                 ($action === 'submit' ? 'Checklist and audit results submitted. ' : '').'Open Audits to review '.$audit->auditCode.'. '.$request->input('reviewNotes', ''),
                 $request->user()->getKey());
         }

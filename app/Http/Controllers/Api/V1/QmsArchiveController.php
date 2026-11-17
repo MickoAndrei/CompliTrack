@@ -124,7 +124,7 @@ class QmsArchiveController extends Controller
             $options['accounts'] = User::where('isActive', true)->where('roleId', '!=', 2)->whereRaw(['$or' => [
                 ['departmentId' => ['$in' => $unitValues]], ['archiveUnitIds' => ['$in' => $unitValues]],
                 ['$and' => [['archiveCollegeIds' => ['$in' => $collegeValues]], ['archiveResponsibility' => ['$in' => ['college_dean', 'college_secretary', 'cluster_administrator']]]]],
-            ]])->get(['fullName'])->map(fn ($user) => ['_id' => (string) $user->getKey(), 'name' => $user->fullName]);
+            ]])->get(['fullName', 'userCode'])->map(fn ($user) => ['_id' => (string) $user->getKey(), 'name' => $user->fullName, 'identifier' => $user->userCode ?: (string) $user->getKey()]);
             $options['audits'] = Audit::where('departmentId', MongoId::parse((string) $document->departmentId))->get(['auditCode', 'auditorId'])
                 ->filter(function ($audit) use ($document) {
                     $auditor = User::find($audit->auditorId);

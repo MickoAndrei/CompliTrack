@@ -23,6 +23,9 @@ class AuditPlanController extends Controller
             $canPrepare = $workflow->canPrepare($actor, $archive);
             return ['id' => (string) $archive->getKey(), 'title' => $archive->title ?: $archive->originalName,
                 'reference' => $archive->documentReference ?: $archive->fileCode, 'plan' => $plan,
+                'documentEligible' => \App\Services\AuditPlanDocument::eligible($archive),
+                'legacyWarning' => (!\App\Services\AuditPlanDocument::eligible($archive) || !\App\Support\IndependenceProcedure::meaningful($plan['header']['procedureReference'] ?? null))
+                    ? 'Legacy plan: document classification or independence procedure needs confirmation on revision. Historical approval and assignment snapshots are preserved.' : null,
                 'stateLabel' => AuditPlanWorkflow::LABELS[$plan['status']] ?? 'Unknown',
                 'canEdit' => $canPrepare && in_array($plan['status'], ['draft', 'returned'], true),
                 'canRevise' => $canPrepare && $plan['status'] === 'accepted',
@@ -30,7 +33,8 @@ class AuditPlanController extends Controller
         })->sortBy(fn ($row) => $row['plan']['status'] === 'submitted' ? 0 : 1)->values();
         $archives = $prepare ? app(QmsArchiveAccess::class)->documents($actor)->whereNull('auditPlan')->get()
             ->filter(fn ($archive) => $workflow->canPrepare($actor, $archive))
-            ->map(fn ($archive) => ['id' => (string) $archive->getKey(), 'title' => $archive->title ?: $archive->originalName])->values() : collect();
+            ->filter(fn ($archive) => $archive->ownershipVerified && filled($archive->documentReference ?: $archive->fileCode))
+            ->map(fn ($archive) => \App\Services\AuditPlanDocument::card($archive))->values() : collect();
         $reviewers = User::where('roleId', 1)->where('isActive', true);
         if (!$prepare) {
             $reviewers->whereIn('_id', app(QmsArchiveAccess::class)->ids($plans->flatMap(fn ($row) => $row['plan']['header']['reviewerIds'] ?? [])->all()));

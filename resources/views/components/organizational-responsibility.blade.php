@@ -2,7 +2,6 @@
 @php
     $responsibility = match ($user->archiveResponsibility) {
         'department_head' => 'Department Head',
-        'department_secretary' => 'Department Secretary',
         'college_dean' => 'College Dean',
         'college_secretary' => 'College Secretary',
         'cluster_administrator' => 'Cluster Administrator',

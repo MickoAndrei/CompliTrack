@@ -52,7 +52,8 @@ class AuditeeController extends Controller
             if ($request->filled('auditStatus') && $record['auditStatus'] !== $request->query('auditStatus')) { return false; }
             $status = $request->query('requestStatus');
             if ($status === 'requested' && !in_array($record['status'], ['requested', 'needs_information'], true)) { return false; }
-            if ($status === 'under_review' && $record['statusLabel'] !== 'Under Review') { return false; }
+            if ($status === 'under_review' && !($record['status'] === 'response_submitted'
+                && in_array($record['auditStatus'], ['submitted', 'accepted'], true))) { return false; }
             if ($status && !in_array($status, ['requested', 'under_review'], true) && $record['status'] !== $status) { return false; }
             return !$request->filled('search') || str_contains(mb_strtolower(implode(' ', [$record['title'], $record['description'], $record['auditCode'], $record['auditTitle'], $record['department'], $record['auditor']])), mb_strtolower(trim($request->query('search'))));
         })->values();
@@ -228,13 +229,13 @@ class AuditeeController extends Controller
             $scope = $this->scopes->checks($request->user());
             $summary = ['total' => (clone $scope)->count(),
                 'nonconformities' => (clone $scope)->where('result', 'non_compliant')->count(),
-                'openCars' => (clone $scope)->where('result', 'non_compliant')->whereIn('correctiveStatus', ['open', 'in_progress'])->count()];
+                'openCars' => (clone $scope)->where('result', 'non_compliant')->whereIn('correctiveStatus', \App\Support\CarStatus::storedValues(['open', 'in_progress', 'returned_for_revision']))->count()];
             $query = $this->scopes->checks($request->user());
             if ($request->filled('search')) { $query->where('checkCode', 'regex', '/'.preg_quote($request->query('search'), '/').'/i'); }
             if (in_array($request->query('result'), ['compliant', 'non_compliant'], true)) { $query->where('result', $request->query('result')); }
             if ($request->query('result') === 'observation') { $query->whereRaw(['_id' => null]); }
-            if ($request->boolean('actionable')) { $query->whereIn('correctiveStatus', ['open', 'in_progress']); }
-            if ($request->boolean('archived')) { $query->where('correctiveStatus', 'closed'); }
+            if ($request->boolean('actionable')) { $query->whereIn('correctiveStatus', \App\Support\CarStatus::storedValues(['open', 'in_progress', 'returned_for_revision'])); }
+            if ($request->boolean('archived')) { $query->whereIn('correctiveStatus', \App\Support\CarStatus::storedValues(['closed'])); }
             $checks = $query->orderBy('createdAt', 'desc')->paginate(20)->withQueryString();
             $published = $this->published($request->user());
             if ($request->boolean('actionable') || $request->boolean('archived')) { $published = collect(); }

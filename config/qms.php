@@ -41,7 +41,7 @@ return [
     ],
     'clusters' => ['cluster_a' => 'Cluster A (Claveria Group)', 'cluster_b' => 'Cluster B (Cagayan de Oro/Main Group)'],
     'clusterCampuses' => ['cluster_a' => ['Claveria', 'USTP Claveria Campus'], 'cluster_b' => ['Cagayan de Oro', 'USTP Cagayan de Oro Campus']],
-    'responsibilities' => ['department_head', 'department_secretary', 'college_dean', 'college_secretary', 'cluster_administrator', 'faculty_staff'],
+    'responsibilities' => ['department_head', 'college_dean', 'college_secretary', 'cluster_administrator', 'faculty_staff'],
     'categories' => [
         ['code' => '1.0', 'name' => 'Academic & Instruction Processes', 'scope' => 'academic_department', 'children' => ['Curriculum & Program Specifications', 'Syllabi & Table of Specifications', 'Instructional Materials', 'Student Assessment & Grades']],
         ['code' => '2.0', 'name' => 'Competency & Infrastructure', 'scope' => 'academic_department', 'children' => ['Faculty Profiles', 'Laboratory & Facilities Control']],

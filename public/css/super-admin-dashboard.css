@@ -1,4 +1,14 @@
 .sa-overview { display: grid; gap: 18px; color: #0f2345; }
+body[data-portal-role="0"] .department-confirm-dialog { display: flex; flex-direction: column; overflow: hidden; }
+body[data-portal-role="0"] .department-confirm-dialog > :is(header, footer) { flex-shrink: 0; }
+body[data-portal-role="0"] .department-confirm-dialog .um-dialog-body { min-height: 0; overflow-y: auto; }
+body[data-portal-role="0"] .department-confirm-dialog .um-close { display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; width: 36px; height: 36px; padding: 0; background: #fff; border: 1px solid #d9e2ee; border-radius: 8px; }
+body[data-portal-role="0"] .department-confirm-dialog .um-close svg { width: 20px; height: 20px; }
+body[data-portal-role="0"] .department-confirm-dialog > header { background: #00205b; border-bottom-color: #00205b; }
+body[data-portal-role="0"] .department-confirm-dialog > header h2 { color: #fff; }
+body[data-portal-role="0"] .department-confirm-dialog .um-dialog-body > p:first-child { color: #0f172a; font-weight: 700; overflow-wrap: anywhere; }
+body[data-portal-role="0"] .department-confirm-dialog.um-reactivate .um-primary { background: #15803d; border-color: #15803d; color: #fff; }
+body[data-portal-role="0"] .department-confirm-dialog.um-reactivate .um-primary:hover:not(:disabled) { background: #166534; border-color: #166534; }
 html:has(body.department-page), body.department-page { height: 100dvh; max-height: 100dvh; overflow: clip; overscroll-behavior: none; }
 body.department-page { position: fixed; inset: 0; width: 100%; }
 body.department-page > .app-container { height: 100dvh; min-height: 0; overflow: hidden; }
@@ -9,6 +19,27 @@ body[data-portal-role="0"] .view-content-container .department-dialog-open { ove
 body[data-portal-role="0"] .view-content-container .app-view-panel > .department-dialog-open > .department-modal-form { display: flex; flex-direction: column; overflow: hidden; max-height: calc(100dvh - 32px); }
 body[data-portal-role="0"] .department-modal-form > :is(.user-modal-header, .user-modal-footer) { flex-shrink: 0; }
 body[data-portal-role="0"] .department-modal-form > .user-modal-body { min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
+body[data-portal-role="0"] .department-modal-form { border: 0; border-radius: 16px; box-shadow: 0 20px 70px #00205b40; }
+body[data-portal-role="0"] .department-modal-form > .user-modal-header { padding: 24px 28px; background: #00205b; border-bottom-color: #00205b; }
+body[data-portal-role="0"] .department-modal-heading-icon { display: none; }
+body[data-portal-role="0"] .department-modal-form .user-modal-heading-copy > p { color: #e2e8f0; font-size: 10px; font-weight: 750; }
+body[data-portal-role="0"] .department-modal-form .user-modal-heading-copy h3 { margin: 4px 0; color: #fff; font-size: 22px; }
+body[data-portal-role="0"] .department-modal-form .user-modal-heading-copy > span { color: #e2e8f0; font-size: 13px; line-height: 1.6; }
+body[data-portal-role="0"] .department-modal-form .user-modal-close { border-color: #d9e2ee; border-radius: 8px; color: #00205b; }
+body[data-portal-role="0"] .department-modal-form .user-modal-close svg { width: 20px; height: 20px; }
+body[data-portal-role="0"] .department-modal-form > .user-modal-body { padding: 24px 28px; }
+body[data-portal-role="0"] .department-modal-form .user-modal-fields { grid-template-columns: minmax(0, 1fr); gap: 18px; }
+body[data-portal-role="0"] .department-modal-form .user-modal-fields > label { font-weight: 600; }
+body[data-portal-role="0"] .department-modal-form .user-modal-fields :is(input, select) { border-radius: 7px; color: #0f2345; }
+body[data-portal-role="0"] .department-modal-form .user-modal-fields :is(input[readonly], select:disabled) { background: #f1f5f9; color: #64748b; }
+body[data-portal-role="0"] .department-modal-form .user-modal-fields small { display: block; margin-top: 7px; color: #475569; font-size: 12px; font-weight: 400; line-height: 1.5; }
+body[data-portal-role="0"] .department-modal-form > .user-modal-footer { padding: 18px 28px; background: #fff; border-top-color: #e2e8f0; }
+body[data-portal-role="0"] .department-modal-form .user-modal-footer button { border-radius: 8px; font-size: 13px; font-weight: 650; }
+body[data-portal-role="0"] .department-modal-form :is(input, select, button):focus-visible { outline: 2px solid #ffc72c; outline-offset: 2px; }
+@media (max-width: 600px) {
+    body[data-portal-role="0"] .department-modal-form > :is(.user-modal-header, .user-modal-body, .user-modal-footer) { padding: 18px; }
+    body[data-portal-role="0"] .department-modal-form .user-modal-heading-copy h3 { font-size: 20px; }
+}
 .sa-page-heading, .sa-panel > header { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
 .sa-page-heading h2 { margin: 0; font-size: 20px; font-weight: 800; }
 .sa-overview p, .sa-panel p { color: #64748b; font-size: 12px; line-height: 1.6; }

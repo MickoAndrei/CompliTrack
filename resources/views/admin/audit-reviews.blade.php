@@ -9,7 +9,7 @@
     <div role="alert" class="atl-error">Unable to load audit reviews. <a href="{{ request()->fullUrl() }}">Retry</a></div>
     @else
     <div class="review-summary">
-        @foreach(['submitted' => 'Awaiting Review', 'returned' => 'Returned', 'accepted' => 'Reviewed'] as $state => $label)
+        @foreach(['submitted' => \App\Support\AuditStatus::label('submitted'), 'returned' => \App\Support\AuditStatus::label('returned'), 'accepted' => \App\Support\AuditStatus::label('accepted')] as $state => $label)
         <a href="{{ request()->fullUrlWithQuery(['status' => $state, 'page' => 1]) }}"><span>{{ $label }}</span><strong>{{ $counts[$state] }}</strong><small>{{ ['submitted' => 'Ready for your decision', 'returned' => 'With the assigned auditor', 'accepted' => 'Accepted audit results'][$state] }}</small></a>
         @endforeach
     </div>
@@ -20,7 +20,7 @@
             <label>Audit plan<select name="planId"><option value="">All plans</option>@foreach($plans as $plan)<option value="{{ $plan['id'] }}" @selected(request('planId') === $plan['id'])>{{ $plan['name'] }}</option>@endforeach</select></label>
             <label>Auditor<select name="auditorId"><option value="">All auditors</option>@foreach($people as $id => $person)<option value="{{ $id }}" @selected(request('auditorId') === $id)>{{ $person->fullName }}</option>@endforeach</select></label>
             <label>Department / office<select name="departmentId"><option value="">All units</option>@foreach($departments as $id => $name)<option value="{{ $id }}" @selected(request('departmentId') === $id)>{{ $name }}</option>@endforeach</select></label>
-            <label>Status<select name="status">@foreach(['submitted' => 'Awaiting Review', 'returned' => 'Returned', 'accepted' => 'Reviewed'] as $state => $label)<option value="{{ $state }}" @selected($status === $state)>{{ $label }}</option>@endforeach</select></label>
+            <label>Status<select name="status">@foreach(['submitted' => \App\Support\AuditStatus::label('submitted'), 'returned' => \App\Support\AuditStatus::label('returned'), 'accepted' => \App\Support\AuditStatus::label('accepted')] as $state => $label)<option value="{{ $state }}" @selected($status === $state)>{{ $label }}</option>@endforeach</select></label>
             <a href="/audits?view=reviews" class="atl-secondary" data-review-reset>Reset Filter</a>
         </form>
         <p data-review-filter-error role="alert" hidden class="atl-error review-sort"></p>
@@ -33,7 +33,7 @@
             <tr><td data-label="Audit"><strong>{{ $audit->title }}</strong><small>{{ $audit->auditCode }}</small><span>{{ $audit->departmentName }}</span></td>
                 <td data-label="Auditor">{{ $people[(string) $audit->auditorId]?->fullName ?? 'Account unavailable' }}</td>
                 <td data-label="Submitted"><time>{{ \App\Services\AtlWorkspace::date($submission['at']) }}</time><small class="{{ $submission['resubmitted'] ? 'review-revision' : '' }}">{{ $submission['resubmitted'] ? 'Resubmission' : ($submission['at'] ? 'First submission' : 'Submission history unavailable') }}</small></td>
-                <td data-label="Status"><span class="review-badge is-{{ $audit->status }}">{{ ['submitted' => 'Awaiting Review', 'returned' => 'Returned', 'accepted' => 'Reviewed'][$audit->status] }}</span></td>
+                <td data-label="Status"><span class="review-badge is-{{ $audit->status }}">{{ \App\Support\AuditStatus::label($audit->status) }}</span></td>
                 <td data-label="Checklist"><strong>{{ $progress['evaluated'] }}/{{ $progress['total'] }}</strong><small>evaluated</small></td>
                 <td><a class="atl-primary" href="/audits/{{ $audit->getKey() }}?review=1" data-atl-review aria-haspopup="dialog" aria-label="Review {{ $audit->auditCode }}">{{ $status === 'submitted' ? 'Review' : 'View review' }}</a></td></tr>
             @empty<tr><td colspan="6" class="review-empty">No audits match this queue. Adjust the filters or choose another category.</td></tr>@endforelse

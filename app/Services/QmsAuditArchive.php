@@ -33,11 +33,11 @@ class QmsAuditArchive
         $query = Audit::query();
         if (!$actor->isActive || !in_array((int) $actor->roleId, [0, 1, 2, 3], true)) { return $query->whereRaw(['_id' => null]); }
         $actorIds = [MongoId::parse((string) $actor->getKey()), (string) $actor->getKey()];
-        $positions = ['department_head', 'department_secretary', 'college_dean', 'college_secretary', 'cluster_administrator'];
+        $positions = ['department_head', 'college_dean', 'college_secretary', 'cluster_administrator'];
         if ((int) $actor->roleId === 1 && !in_array($actor->archiveResponsibility, $positions, true)) {
             $query->whereIn('reviewerId', $actorIds);
             $units = Department::where('isActive', true)->where('ownershipVerified', true);
-        } elseif (in_array($actor->archiveResponsibility, ['department_head', 'department_secretary'], true) && (int) $actor->roleId !== 2) {
+        } elseif (in_array($actor->archiveResponsibility, ['department_head'], true) && (int) $actor->roleId !== 2) {
             $unitIds = ($actor->archiveUnitIds ?? []) ?: [$actor->departmentId];
             $units = Department::where('isActive', true)->where('ownershipVerified', true)->whereIn('_id', $access->ids($unitIds));
         } else {

@@ -68,7 +68,7 @@ app(QmsArchiveMigration::class)->run(true);
 $unit = Department::where('departmentCode', 'CET-IT')->firstOrFail();
 $category = QmsCategory::where('unitType', 'academic_department')->firstOrFail();
 $users = [];
-foreach (['chair' => 'department_head', 'secretary' => 'department_secretary', 'reader' => 'faculty_staff'] as $name => $position) {
+foreach (['chair' => 'department_head', 'collaborator' => 'department_head', 'reader' => 'faculty_staff'] as $name => $position) {
     $users[$name] = (string) User::create(['fullName' => 'ONLYOFFICE isolated '.$name, 'email' => $name.'@onlyoffice.example.test',
         'password' => bcrypt(bin2hex(random_bytes(32))), 'roleId' => 3, 'isActive' => true, 'departmentId' => $unit->getKey(), 'archiveResponsibility' => $position])->getKey();
 }

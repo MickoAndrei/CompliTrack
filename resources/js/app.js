@@ -22,6 +22,7 @@ async function start() {
     const uses = name => !!document.querySelector(`[x-data*="${name}"]`);
     if (uses('auditeeHelp')) modules.push(import('./auditee-help'));
     if (uses('auditPlans') || uses('auditPlanPermissions')) modules.push(import('./audit-plans'));
+    if (uses('annualReport')) modules.push(import('./annual-report'));
     if (uses('auditWorkspace')) modules.push(import('./audit-workspace'));
     if (document.querySelector('[data-my-audits]')) modules.push(import('./my-assigned-audits'));
     if (uses('auditorOverview')) modules.push(import('./auditor-overview'));

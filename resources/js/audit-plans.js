@@ -1,3 +1,4 @@
+import { portalDate } from './portal-date';
 const errorMessage = error => Object.values(error.response?.data?.errors || {}).flat().join(' ') || error.response?.data?.message || 'Unable to save. Please retry.';
 
 document.addEventListener('alpine:init', () => {
@@ -27,7 +28,9 @@ document.addEventListener('alpine:init', () => {
     }));
     Alpine.data('auditPlans', () => ({
         data: { plans: [], archives: [], units: [], reviewers: [] }, loading: true, saving: false, error: '', notice: '',
-        editing: null, selected: '', remarks: {}, draft: {},
+        editing: null, selected: '', remarks: {}, draft: {}, showLegacy: false, date: portalDate,
+        get documentChoices() { return (this.data.archives || []).filter(row => row.eligible || this.showLegacy); },
+        get needsClassification() { return this.editing ? !this.editing.documentEligible : !(this.data.archives || []).find(row => row.id === this.selected)?.eligible; },
         init() { this.load(); },
         blank() { return { unitIds: [], reviewerIds: [], scope: '', criteria: '', scheduleStart: '', scheduleEnd: '', procedureReference: '', remarks: '' }; },
         async load() {
@@ -43,6 +46,10 @@ document.addEventListener('alpine:init', () => {
         },
         async save() {
             if (this.saving) return;
+            const procedure = String(this.draft.procedureReference || '').trim();
+            if (procedure.length < 5 || !/\p{L}/u.test(procedure) || ['none','na','notapplicable','nil','null','tbd','tobeconfirmed','unknown','pending','test','placeholder'].includes(procedure.toLowerCase().replace(/[^a-z0-9]/g,''))) {
+                this.error = 'Provide the applicable independence/conflict procedure code or meaningful reference. Placeholder-only values are not valid.'; return;
+            }
             this.saving = true; this.error = ''; this.notice = '';
             try {
                 await window.axios.post(`/api/v1/audit-plans/${this.selected}`, { ...this.draft, action: 'save', version: this.editing?.plan.version || 0 });

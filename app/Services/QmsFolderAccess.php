@@ -94,7 +94,7 @@ class QmsFolderAccess
             $key = 'qms.corrective.units.'.(string) $actor->getKey();
             if (!request()->attributes->has($key)) {
                 $ids = app(RoleScopeService::class)->checks($actor)->where('result', 'non_compliant')
-                    ->whereIn('correctiveStatus', ['open', 'in_progress'])->pluck('departmentId')->map(fn ($id) => (string) $id)->unique()->all();
+                    ->whereIn('correctiveStatus', \App\Support\CarStatus::storedValues(['open', 'in_progress', 'returned_for_revision']))->pluck('departmentId')->map(fn ($id) => (string) $id)->unique()->all();
                 request()->attributes->set($key, $ids);
             }
             $permissions['correctiveUpload'] = in_array((string) $unit->getKey(), request()->attributes->get($key), true);

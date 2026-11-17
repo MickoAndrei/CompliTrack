@@ -15,7 +15,7 @@
     </dialog>
     @endif
     @forelse($audit->evidenceRequests ?? [] as $entry)
-    <article class="workflow-request"><div class="aw-row"><h4>{{ $entry['description'] }}</h4><span class="aw-badge">{{ ucwords(str_replace('_', ' ', $entry['status'])) }}</span></div><p class="aw-muted">Recipient: {{ $name($entry['auditeeId']) }} · {{ $date($entry['createdAt'] ?? null) }}</p>
+    <article class="workflow-request" id="evidence-request-{{ $entry['id'] }}"><div class="aw-row"><h4>{{ $entry['description'] }}</h4><span class="aw-badge">{{ \App\Support\EvidenceRequestStatus::label($entry['status'], $audit->status) }}</span></div><p class="aw-muted">Recipient: {{ $name($entry['auditeeId']) }} · {{ $date($entry['createdAt'] ?? null) }}</p>
         @php($relatedIndex = collect($items)->search(fn ($item) => ($item['id'] ?? '') === ($entry['itemId'] ?? null)))
         @if($relatedIndex !== false)<button type="button" class="aw-button" @click="go('checklist', {{ $relatedIndex }})">Check item {{ $relatedIndex + 1 }} · {{ $items[$relatedIndex]['question'] }} →</button>@endif
         <p class="aw-muted">Auditee response: {{ count($entry['responses'] ?? []) ? count($entry['responses']).' response(s) received' : 'Awaiting response' }}</p>

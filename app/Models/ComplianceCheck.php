@@ -18,6 +18,11 @@ class ComplianceCheck extends Model
         'statusHistory', 'linkedArchiveIds', 'dueDate', 'closedAt', 'carLog',
     ];
 
+    public function getCorrectiveStatusAttribute($value)
+    {
+        return \App\Support\CarStatus::canonical($value);
+    }
+
     protected $casts = [
         'departmentId' => NullableObjectId::class,
         'auditorId' => NullableObjectId::class,

@@ -1,3 +1,4 @@
+import { portalDate } from './portal-date';
 export function formatArchiveBytes(value) {
     const bytes = Math.max(0, Number(value) || 0);
     const units = ['B', 'KB', 'MB', 'GB', 'TB'];
@@ -30,7 +31,7 @@ document.addEventListener('alpine:init', () => {
         trendX(index) { const count = this.data?.userGrowth?.length || 0; return count < 2 ? 300 : 12 + index * 576 / (count - 1); },
         trendY(value) { return 188 - Math.max(0, Number(value) || 0) / this.trendMax() * 176; },
         trendPoints() { return (this.data?.userGrowth || []).map((month, index) => `${this.trendX(index)},${this.trendY(month.count)}`).join(' '); },
-        date(value) { return value ? new Date(value).toLocaleString() : 'No recorded date'; },
+        date(value) { return value ? portalDate(value, {precise:true}) : 'No recorded date'; },
         status(value) { return ({ draft: 'Scheduled / draft', ready: 'In progress', submitted: 'Awaiting ATL review', returned: 'Returned for revision', accepted: 'Completed', open: 'Open', in_progress: 'In progress' })[value] || value || 'Unknown'; },
     }));
     window.Alpine.data('superAdminOrganization', () => ({

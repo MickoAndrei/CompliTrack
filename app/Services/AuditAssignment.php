@@ -78,6 +78,9 @@ class AuditAssignment
         $plan = $this->plans($request->user())->first(fn ($p) => (string) $p->getKey() === $data['planId']);
         if (!$plan) { $fail('planId', 'Select a plan with confirmed assignment authorization and scope.'); }
         $authorization = $plan->assignmentAuthorization;
+        if (!\App\Support\IndependenceProcedure::meaningful($authorization['procedureReference'] ?? null)) {
+            $fail('planId', 'The legacy approved plan has an incomplete independence procedure. Revise and obtain approval before new assignments. Existing assignments retain their snapshots.');
+        }
         $unit = $this->units()->first(fn ($u) => (string) $u->getKey() === $data['departmentId']);
         if (!$unit || !in_array($data['departmentId'], array_map('strval', $authorization['unitIds']), true)) {
             $fail('departmentId', 'This department or office is outside the authorized plan scope.');

@@ -2,7 +2,35 @@
 
 All notable changes to CompliTrack are documented here.
 
-## [Unreleased] - 2026-11-15
+## [Unreleased] - 2026-11-18
+
+### Added
+
+- Added annual IQA reports with year/plan filters, authorized CET department and Office of the Dean coverage, downloaded CSV exports, and printable reports. Checklist C/N/O, compliance denominators, outstanding evidence, CAR monitoring, and legacy records remain distinct.
+- Added controlled audit-plan document classification and meaningful independence-procedure validation while preserving approved legacy assignments and histories.
+- Added isolated route and browser regressions for evidence readiness, audit submission/revision/acceptance, configurable CAR authority, report contents, spreadsheet-formula protection, history timestamps, and folder keyboard accessibility.
+
+### Changed
+
+- Distinguished audit lifecycle, checklist readiness, evidence-response review, and CAR status labels across web and mobile views.
+- Standardized history timestamps in Asia/Manila with seconds and PHT/UTC+08:00 labels, preserving UTC storage, historical instants, and date-only deadlines.
+- Clarified independent Auditor and Department Head QMS scope without granting unassigned audit or unshared evidence access.
+- Documented walkthrough findings, fixes, validation results, fixture boundaries, and remaining institutional decisions in `docs/WALKTHROUGH_FIXES.md`.
+
+### Fixed
+
+- Removed timestamp-derived Awaiting Verification labels: evidence uploads and references no longer imply a CAR state transition or closure. Verification and closure still require configured permissions, assignment, and department authorization.
+- Blocked server-side audit submission while requests or their latest evidence responses remain unreviewed, retaining readiness and stale-version checks, editing locks, and original findings through ATL acceptance and CAR closure.
+- Corrected the Auditee result modal and related evidence/activity histories that bypassed the shared timezone formatter.
+- Removed application navigation and sidebar spacing from printed annual reports, retained the selected plan, and fitted all report columns.
+- Improved document/folder detail loading, retries, stale-response handling, authorized access choices, and responsive presentation. Corrected department-folder menu Escape handling and focus return; browser accessibility checks confirmed existing action names.
+
+### Validation
+
+- Backend: 225 tests, 3,805 assertions, zero failures; one opt-in performance benchmark skipped. Resolved the prior UserManagement scope-test disagreement against documented policy without changing production authorization.
+- JavaScript: 47 tests passed. Isolated Edge checks verified downloaded CSV contents, printed PDF output, auditee modal timestamps, and folder keyboard behavior across all four portal wrappers. Production build and Blade compilation passed.
+
+## [Unreleased] - 2026-11-16
 
 ### Added
 
@@ -10,6 +38,8 @@ All notable changes to CompliTrack are documented here.
 - Added explicit `cars.verify` and `cars.close` role permissions, managed through Super Admin with password confirmation and permission history. Existing roles receive no automatic grants.
 
 ### Changed
+
+- Removed the Department Secretary position from USTP user management, department listings, access rules, and development fixtures. Existing accounts migrate to Faculty / Staff while retaining their IDs, documents, and audit history.
 
 - Redesigned the Admin dashboard, Audit Reviews queue, and Corrective Action Monitoring with scoped metrics, filters, responsive tables, and detailed review dialogs.
 - Improved audit reviews with persisted submission dates, revision comparisons, evidence previews, and confirmation flows for accepting results or returning them for revision.

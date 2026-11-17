@@ -4,7 +4,7 @@ namespace Tests\Unit;
 
 use App\Models\Audit;
 use App\Services\AuditReviewQueue;
-use PHPUnit\Framework\TestCase;
+use Tests\TestCase;
 
 class AuditReviewSubmissionTest extends TestCase
 {

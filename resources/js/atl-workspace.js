@@ -1,3 +1,4 @@
+import { auditStatusLabel } from './audit-status';
 import { onDocumentReady } from './dom-ready';
 
 document.addEventListener('alpine:init', () => {
@@ -7,7 +8,7 @@ document.addEventListener('alpine:init', () => {
         get attentionPages() { return Math.max(1, Math.ceil((this.data?.attention.length || 0) / 5)); },
         get visibleAttention() { return (this.data?.attention || []).slice((this.attentionPage - 1) * 5, this.attentionPage * 5); },
         init() { this.load(); },
-        label(value) { return String(value || '').replaceAll('_', ' ').replace(/^./, letter => letter.toUpperCase()); },
+        label(value) { return auditStatusLabel(value); },
         async load(page = this.page) {
             if (this.requesting) return;
             this.requesting = true; this.loading = true; this.error = '';
