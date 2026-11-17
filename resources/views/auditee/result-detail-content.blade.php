@@ -37,7 +37,7 @@
             <div class="corrective-detail-grid">
             @include('auditee.car-timeline')
             @if($needsEvidence)
-            <section id="corrective-evidence" class="results-detail-block"><h3>Provide Corrective Evidence</h3><p>Provide a reference or arrange an original for inspection, or <a href="/auditee/documents?checkId={{ $check->getKey() }}">open Documents and upload an authorized file into a writable folder</a>. Submission does not change the result or close the CAR.</p>
+            <section id="corrective-evidence" class="results-detail-block"><h3>Provide Corrective Evidence</h3><p>Provide a reference or arrange an original for inspection, or <a href="/auditee/documents?checkId={{ $check->getKey() }}@if($check->departmentId)&amp;folder={{ $check->departmentId }}@endif">open Documents and upload an authorized file into the department folder</a>. Submission does not change the result or close the CAR.</p>
                 <div data-corrective-reference>@include('auditee.evidence-response-form', ['entry' => [], 'responseAction' => '/auditee/finding-details/'.$check->getKey().'/response', 'canDraft' => false])</div>
             </section>
             @endif

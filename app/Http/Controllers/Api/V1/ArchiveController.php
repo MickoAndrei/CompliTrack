@@ -337,6 +337,8 @@ class ArchiveController extends Controller
             $check = ComplianceCheck::findOrFail(MongoId::parse($data['checkId']));
             $this->authorizeCheckUpload($request->user(), $check);
             abort_unless((string) $check->departmentId === (string) $unit->getKey(), 422, 'The finding must belong to this folder department.');
+            $data['visibility'] = 'owner';
+            $data['accessUserIds'] = [];
         }
         $correctiveRootUpload = !$category && $check && $folderPermissions['view'];
         abort_unless($correctiveRootUpload || ((!$category || $category->userManaged || ($category->classification && $category->classification !== 'department')) ? $folderPermissions['upload'] : ($access->canCreate($request->user(), $unit) || $folderPermissions['upload'])), 403);

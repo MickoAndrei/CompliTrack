@@ -85,7 +85,7 @@ const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
                         const folder={...categories[0],_id:id(95),parentId:input.parentId,name:input.name,departmentId:input.unitId,userManaged:true,counts:{}};
                         if(input.folderPolicy)tree.repositoryFolders.push({...folder,folderPolicy:input.folderPolicy,permissions:folderPermissions});
                         else categories.push(folder);data={data:folder};
-                    } else if(config.url.endsWith('/upload')){const doc={...docs[2],_id:id(99),title:config.data.get('title'),recordType:config.data.get('recordType')};docs.push(doc);data={data:doc};}
+                    } else if(config.url === '/api/v1/compliance-checks'){data={data:[],meta:{lastPage:1}};} else if(config.url.endsWith('/upload')){const doc={...docs[2],_id:id(99),title:config.data.get('title'),recordType:config.data.get('recordType')};docs.push(doc);data={data:doc};}
                     else if(config.url.endsWith('/save'))data={message:'Save requested. Waiting for CompliTrack to store the revision.'};
                     else if(config.url.endsWith('/editor'))data={sessionId:'fixture-session',scriptUrl:'data:text/javascript,void%200',config:{documentType:'pdf',document:{fileType:'pdf'},editorConfig:{mode:'edit'}}};
                     else if(config.url.endsWith('/status'))data={currentId:id(50),savedVersions:[]};
@@ -455,12 +455,12 @@ const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
             assert.equal(await evaluate('document.documentElement.scrollWidth<=innerWidth'),true,'Plan hierarchy fits a narrow viewport');
             console.log(`PASS role ${role}: official plan hierarchy, path navigation, contextual preview URLs and stale evidence clearing`);
         }
-        for (const [folderId,allowed] of [['000000000000000000000100',true],['000000000000000000000999',false]]) {
+        for (const [folderId,allowed] of [['000000000000000000000100',true],['000000000000000000000010',true],['000000000000000000000999',false]]) {
             await send('Page.navigate',{url:pathToFileURL(path.join(fixtures,'explorer-1.html')).href+'?folder='+folderId});
             await waitFor('!!window.releaseTree');
             await evaluate('window.treeReleased=true;window.holdArchivePage=false;window.releaseTree()');
             await waitFor('!!window.Alpine && !Alpine.$data(document.querySelector(".qms-explorer")).initialLoading');
-            if(allowed) assert.equal(await evaluate('Alpine.$data(document.querySelector(".qms-explorer")).repositoryId'),folderId,'Direct links open authorized nested folders');
+            if(allowed) assert.equal(await evaluate('(()=>{const app=Alpine.$data(document.querySelector(".qms-explorer"));return app.repositoryId || app.unitId})()'),folderId,'Direct links open authorized nested or department folders');
             else assert.equal(await evaluate('Alpine.$data(document.querySelector(".qms-explorer")).error'),'This location is unavailable.','Unavailable direct links do not disclose folder existence');
             assert.equal(await evaluate('window.fixtureCalls.filter(c=>c.url==="/api/v1/documents").length'),allowed?1:0,'Direct links skip unrelated root listing');
         }

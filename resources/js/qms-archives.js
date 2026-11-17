@@ -335,9 +335,11 @@ document.addEventListener('alpine:init', () => {
             if (direct.has('folder')) {
                 const id = direct.get('folder');
                 const repository = (this.tree.repositoryFolders || []).find(folder => folder._id === id);
+                const rootUnit = this.tree.units.find(unit => unit._id === id);
                 const category = this.tree.categories.find(folder => folder._id === id && !folder.folderPolicy);
                 const unit = this.tree.units.find(unit => unit._id === (direct.get('unit') || category?.departmentId || category?.unitId));
                 if (repository) { this.currentView = 'my'; await this.openRepositoryFolder(repository); }
+                else if (rootUnit) await this.navigate(rootUnit.collegeId, rootUnit._id);
                 else if (category && unit) await this.navigate(unit.collegeId, unit._id, category._id);
                 else this.error = 'This location is unavailable.';
             } else await this.switchView(this.tree.preferredView || this.currentView);
@@ -506,7 +508,7 @@ document.addEventListener('alpine:init', () => {
                 return true;
             } catch (error) { this.error = this.message(error); return false; }
         },
-        uploadFile: null, uploadDragging: false, uploadDestination: null, uploadChecks: [], uploadChecksLoading: false, uploadRequestNumber: 0,
+        uploadFile: null, uploadDragging: false, uploadDestination: null, uploadChecks: [], uploadChecksLoading: false, uploadChecksError: '', uploadRequestNumber: 0,
         get folderUpload() { return [2, 3].includes(Number(document.body.dataset.portalRole)) && !this.previous; },
         selectUploadFile(file) {
             if (this.saving) return;
@@ -526,19 +528,30 @@ document.addEventListener('alpine:init', () => {
                 correctiveOnly: !this.currentFolderPermissions.upload,
                 name: [this.unit?.name, (this.repositoryFolder || this.category)?.name].filter(Boolean).join(' / ') };
             this.$refs.uploadForm.reset(); this.$refs.upload.showModal();
-            if (this.folderUpload) {
+            if (this.folderUpload) await this.loadUploadChecks(requestNumber);
+        },
+        async loadUploadChecks(requestNumber = this.uploadRequestNumber) {
                 this.uploadChecksLoading = true;
+                this.uploadChecksError = '';
                 try {
-                    const { data } = await window.axios.get('/api/v1/compliance-checks', {params:{result:'non_compliant', actionable:true, perPage:100}});
-                    if (requestNumber !== this.uploadRequestNumber) return;
+                    const checks = [];
+                    let page = 1, lastPage = 1;
+                    do {
+                        const { data } = await window.axios.get('/api/v1/compliance-checks', {params:{result:'non_compliant', actionable:true, perPage:100, page}, timeout:30000});
+                        if (requestNumber !== this.uploadRequestNumber) return;
+                        checks.push(...(data.data || []));
+                        lastPage = Number(data.meta?.lastPage) || 1;
+                        page += 1;
+                    } while (page <= lastPage);
                     const actorKey = Number(document.body.dataset.portalRole) === 2 ? 'auditorId' : 'auditeeId';
-                    this.uploadChecks = (data.data || []).filter(check => String(check.departmentId) === this.uploadDestination.unitId
+                    this.uploadChecks = checks.filter(check => String(check.departmentId) === this.uploadDestination.unitId
                         && String(check[actorKey]) === document.body.dataset.userId);
                     const requested = new URLSearchParams(location.search).get('checkId');
                     if (this.uploadChecks.some(check => check._id === requested)) this.form.checkId = requested;
-                } catch { /* File uploads remain available without an optional finding. */ }
+                } catch {
+                    if (requestNumber === this.uploadRequestNumber) this.uploadChecksError = 'Unable to load open findings. Retry to attach corrective evidence.';
+                }
                 finally { if (requestNumber === this.uploadRequestNumber) this.uploadChecksLoading = false; }
-            }
         },
         async save() {
             this.saving = true; this.error = ''; this.uploadProgress = 0;

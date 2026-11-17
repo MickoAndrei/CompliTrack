@@ -91,11 +91,13 @@ class QmsFolderAccess
         // Finding authorization permits corrective files at a visible department root only.
         // It does not grant general folder uploads or access to nested folders.
         if (!$folder && $view && in_array((int) $actor->roleId, [2, 3], true)) {
-            $field = (int) $actor->roleId === 2 ? 'auditorId' : 'auditeeId';
-            $permissions['correctiveUpload'] = app(RoleScopeService::class)->checks($actor)
-                ->whereIn($field, [MongoId::parse((string) $actor->getKey()), (string) $actor->getKey()])
-                ->whereIn('departmentId', [MongoId::parse((string) $unit->getKey()), (string) $unit->getKey()])
-                ->where('result', 'non_compliant')->whereIn('correctiveStatus', ['open', 'in_progress'])->exists();
+            $key = 'qms.corrective.units.'.(string) $actor->getKey();
+            if (!request()->attributes->has($key)) {
+                $ids = app(RoleScopeService::class)->checks($actor)->where('result', 'non_compliant')
+                    ->whereIn('correctiveStatus', ['open', 'in_progress'])->pluck('departmentId')->map(fn ($id) => (string) $id)->unique()->all();
+                request()->attributes->set($key, $ids);
+            }
+            $permissions['correctiveUpload'] = in_array((string) $unit->getKey(), request()->attributes->get($key), true);
         }
         return $permissions;
     }

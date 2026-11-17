@@ -3,6 +3,7 @@
         <header><div><p class="qms-eyebrow">Authorized archive record</p><h2 id="qms-file-upload-title">Upload files</h2></div><button type="button" class="qms-close" :disabled="saving" @click="$refs.upload.close()" aria-label="Close upload files">&times;</button></header>
         <div class="qms-dialog-body">
             <p class="qms-alert" role="alert" x-show="error" x-text="error"></p>
+            <p class="qms-alert" role="alert" x-show="uploadChecksError"><span x-text="uploadChecksError"></span> <button type="button" class="qms-button" :disabled="uploadChecksLoading" @click="loadUploadChecks()">Retry</button></p>
             <p class="qms-scope-note">Upload to <strong x-text="uploadDestination?.name"></strong></p>
             <div class="qms-form-grid">
                 <label class="qms-full">Document title<input x-model="form.title" required maxlength="255"></label>

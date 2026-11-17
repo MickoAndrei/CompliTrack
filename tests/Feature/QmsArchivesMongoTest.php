@@ -70,7 +70,13 @@ class QmsArchivesMongoTest extends TestCase
             $this->assertFalse($permissions['upload']);
             $this->assertTrue($permissions['correctiveUpload']);
             $rootPayload = array_replace($payload, ['categoryId' => '']);
-            $upload($rootPayload)->assertCreated();
+            $id = $upload(array_replace($rootPayload, ['visibility' => 'department', 'accessUserIds' => [(string) $stranger->getKey()]]))->assertCreated()->json('data._id');
+            $correctiveFile = ArchiveDocument::findOrFail(new ObjectId($id));
+            $this->assertSame('owner', $correctiveFile->visibility);
+            $this->assertSame([], $correctiveFile->accessUserIds);
+            $observer = $this->user($unit);
+            $this->actingAs($observer)->getJson('/api/v1/documents/'.$id)->assertNotFound();
+            $this->actingAs($ordinary);
             $upload(array_replace($rootPayload, ['checkId' => '']))->assertForbidden();
             $upload($payload)->assertForbidden();
             $check->forceFill(['correctiveStatus' => 'closed'])->save();
