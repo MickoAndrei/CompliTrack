@@ -512,6 +512,27 @@ const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
         assert.equal(await evaluate('window.oldNavigation.signal.aborted'),true,'Rapid navigation aborts the old request');
         assert.equal(await evaluate('Alpine.$data(document.querySelector(".qms-explorer")).error'),'','Cancellation does not show an API failure');
         console.log('PASS initial request counts, lazy ONLYOFFICE, direct link requests, tree retry and rapid navigation cancellation');
+        for (const role of [2,3]) {
+            await send('Page.navigate',{url:pathToFileURL(path.join(fixtures,'explorer-'+role+'.html')).href});
+            await waitFor('!!window.releaseTree');
+            await evaluate('window.treeReleased=true;window.holdArchivePage=false;window.releaseTree()');
+            await waitFor('!!window.Alpine && !Alpine.$data(document.querySelector(".qms-explorer")).initialLoading');
+            await evaluate('window.uploadApp=Alpine.$data(document.querySelector(".qms-explorer"));uploadApp.openRepositoryFolder(uploadApp.tree.repositoryFolders[1])');
+            await waitFor('!uploadApp.loading');
+            await evaluate('document.querySelector("[data-qms-upload]").click()');
+            await waitFor('document.querySelector("[x-ref=upload]").open && !uploadApp.uploadChecksLoading');
+            assert.equal(await evaluate('document.querySelector("#qms-file-upload-title").textContent'),'Upload files');
+            assert.equal(await evaluate('Array.from(document.querySelectorAll("[x-ref=uploadForm] select")).some(el=>el.getAttribute("x-model")==="form.categoryId")'),false,'Upload destination cannot be changed');
+            assert.equal(await evaluate('document.querySelector("[x-ref=upload]").getAttribute("aria-labelledby")'),'qms-file-upload-title');
+            await evaluate('uploadApp.selectUploadFile(new File(["%PDF-1.4 test"],"folder.pdf",{type:"application/pdf"}));uploadApp.form.copyAuthorized=true;window.savedFolderUpload=null;const adapter=axios.defaults.adapter;axios.defaults.adapter=async config=>{if(config.url.endsWith("/upload"))window.savedFolderUpload=Object.fromEntries(config.data.entries());return adapter(config)}');
+            await evaluate('document.querySelector("[x-ref=uploadForm]").requestSubmit()');
+            await waitFor('!!window.savedFolderUpload && !document.querySelector("[x-ref=upload]").open');
+            assert.equal(await evaluate('window.savedFolderUpload.categoryId'),'000000000000000000000101','File is saved into the open folder');
+            assert.equal(await evaluate('window.savedFolderUpload.recordType'),'file');
+            await evaluate('uploadApp.tree.repositoryFolders[1].permissions.upload=false;uploadApp.create()');
+            assert.equal(await evaluate('document.querySelector("[x-ref=upload]").open'),false,'Read-only folders cannot open upload');
+        }
+        console.log('PASS auditor and auditee folder upload popup, destination and read-only permissions');
         assert.equal(exceptions.length,0,JSON.stringify(exceptions));
         await send('Browser.close');
     } finally { clearTimeout(watchdog); ws?.close(); browser.kill(); }

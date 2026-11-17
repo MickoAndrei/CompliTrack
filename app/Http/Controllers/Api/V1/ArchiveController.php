@@ -316,7 +316,8 @@ class ArchiveController extends Controller
     private function storeQmsRecord(Request $request, ?ArchiveDocument $previous = null)
     {
         $data = $request->validate([
-            'unitId' => 'required|string|regex:/^[a-f0-9]{24}$/i', 'categoryId' => 'required|string|regex:/^[a-f0-9]{24}$/i',
+            'unitId' => 'required|string|regex:/^[a-f0-9]{24}$/i', 'categoryId' => 'nullable|string|regex:/^[a-f0-9]{24}$/i',
+            'checkId' => 'nullable|string|regex:/^[a-f0-9]{24}$/i',
             'title' => 'required|string|max:255', 'description' => 'nullable|string|max:3000',
             'recordType' => 'required|in:file,digital-reference,physical-original',
             'documentReference' => 'required_if:recordType,digital-reference|nullable|string|max:500',
@@ -326,17 +327,24 @@ class ArchiveController extends Controller
         ]);
         $access = app(\App\Services\QmsArchiveAccess::class);
         $unit = Department::findOrFail(MongoId::parse($data['unitId']));
-        $category = \App\Models\QmsCategory::where('_id', MongoId::parse($data['categoryId']))->where('isActive', true)
+        $category = !empty($data['categoryId']) ? \App\Models\QmsCategory::where('_id', MongoId::parse($data['categoryId']))->where('isActive', true)
             ->where('collegeId', MongoId::parse((string) $unit->collegeId))
-            ->where(fn ($q) => $q->where('unitType', $unit->unitType)->orWhere('folderPolicy', 'administration'))->firstOrFail();
+            ->where(fn ($q) => $q->where('unitType', $unit->unitType)->orWhere('folderPolicy', 'administration'))->firstOrFail() : null;
         $folderPermissions = app(\App\Services\QmsFolderAccess::class)->permissions($request->user(), $unit, $category);
-        abort_unless($category->userManaged || ($category->classification && $category->classification !== 'department') ? $folderPermissions['upload'] : ($access->canCreate($request->user(), $unit) || $folderPermissions['upload']), 403);
-        if ($category->userManaged || ($category->classification && $category->classification !== 'department')) {
+        abort_unless(!$category || $category->userManaged || ($category->classification && $category->classification !== 'department') ? $folderPermissions['upload'] : ($access->canCreate($request->user(), $unit) || $folderPermissions['upload']), 403);
+        if ($category && ($category->userManaged || ($category->classification && $category->classification !== 'department'))) {
             $allowed = app(\App\Services\QmsFolderAccess::class)->allowedVisibility($category);
             abort_unless(in_array($previous?->visibility ?: $data['visibility'], $allowed, true), 422, 'Document visibility cannot exceed its folder classification.');
         }
         if ($previous) {
             abort_unless((string) $previous->departmentId === (string) $unit->getKey() && ($previous->recordType ?: 'file') === $data['recordType'], 422);
+        }
+        $check = null;
+        if (!empty($data['checkId'])) {
+            abort_if($previous || $data['recordType'] !== 'file', 422, 'Corrective evidence must be a new file.');
+            $check = ComplianceCheck::findOrFail(MongoId::parse($data['checkId']));
+            $this->authorizeCheckUpload($request->user(), $check);
+            abort_unless((string) $check->departmentId === (string) $unit->getKey(), 422, 'The finding must belong to this folder department.');
         }
         $path = null;
         $fileData = [];
@@ -355,7 +363,7 @@ class ArchiveController extends Controller
         }
         $metadata = [
             'fileCode' => $code, 'title' => $data['title'], 'originalName' => $data['title'], 'description' => $data['description'] ?? null,
-            'departmentId' => $unit->getKey(), 'collegeId' => $unit->collegeId, 'categoryId' => $category->getKey(), 'ownershipVerified' => true,
+            'departmentId' => $unit->getKey(), 'collegeId' => $unit->collegeId, 'categoryId' => $category?->getKey(), 'ownershipVerified' => true,
             'uploadedByUserId' => $previous?->uploadedByUserId ?? $request->user()->getKey(), 'recordType' => $data['recordType'],
             'documentReference' => $previous?->documentReference ?? ($data['documentReference'] ?? null), 'physicalLocation' => $data['physicalLocation'] ?? null,
             'signatureRequired' => $data['recordType'] === 'physical-original', 'signatureStatus' => $data['recordType'] === 'physical-original' ? 'not_verified' : 'not_required',
@@ -365,7 +373,22 @@ class ArchiveController extends Controller
             'sharedAuditIds' => [], 'versionGroupId' => $previous ? ($previous->versionGroupId ?? $previous->getKey()) : new \MongoDB\BSON\ObjectId(),
             'versionNumber' => $previous ? ($previous->versionNumber ?: 1) + 1 : 1, 'previousVersionId' => $previous?->getKey(), 'qmsSchemaVersion' => 1,
         ];
-        try { $document = ArchiveDocument::create(array_merge($metadata, $fileData)); }
+        try {
+            $document = ArchiveDocument::create(array_merge($metadata, $fileData, $check ? ['referenceStandard' => $check->referenceStandard] : []));
+            if ($check) {
+                $linked = $check->getConnection()->getMongoDB()->selectCollection($check->getTable())->updateOne(
+                    ['_id' => MongoId::parse((string) $check->getKey()), 'result' => 'non_compliant', 'correctiveStatus' => ['$in' => ['open', 'in_progress']]],
+                    ['$addToSet' => ['linkedArchiveIds' => $document->getKey()]],
+                );
+                abort_unless($linked->getMatchedCount() === 1, 409, 'The finding is no longer open for corrective evidence.');
+                if ((int) $request->user()->roleId === 3) {
+                    Notification::create(['recipientUserId' => $check->auditorId, 'senderUserId' => $request->user()->getKey(),
+                        'type' => 'evidence_uploaded', 'title' => 'Evidence uploaded',
+                        'message' => "{$request->user()->fullName} uploaded evidence for {$check->checkCode}.",
+                        'relatedCheckId' => $check->getKey(), 'isRead' => false]);
+                }
+            }
+        }
         catch (Throwable $exception) {
             if ($path) { $this->deleteEncryptedFile($path); }
             if ((int) $exception->getCode() === 11000) { abort(409, 'This version already exists. Refresh before creating another version.'); }

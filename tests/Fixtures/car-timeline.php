@@ -32,7 +32,6 @@ $html = preg_replace('/<link[^>]+(?:fonts\.googleapis|fonts\.gstatic)[^>]*>/', '
 $html = str_replace('http://localhost', 'file:///'.str_replace('\\', '/', public_path()), $html);
 $html = str_replace('</body>', '<script type="module" src="'.$bundle.'"></script></body>', $html);
 file_put_contents($directory.'/dashboard.html', $html);
-file_put_contents($directory.'/upload.html', view('auditee.upload')->render());
 $previewArchives = collect(['preview.pdf', 'preview.png', 'preview.docx'])->map(function ($name, $index) {
     $archive = new App\Models\ArchiveDocument(['originalName' => $name]);
     $archive->setAttribute('_id', new MongoDB\BSON\ObjectId(sprintf('%024d', $index + 1)));

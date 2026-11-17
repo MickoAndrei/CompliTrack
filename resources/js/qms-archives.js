@@ -505,21 +505,48 @@ document.addEventListener('alpine:init', () => {
                 return true;
             } catch (error) { this.error = this.message(error); return false; }
         },
-        create(previous = null) {
+        uploadFile: null, uploadDragging: false, uploadDestination: null, uploadChecks: [], uploadChecksLoading: false,
+        get folderUpload() { return [2, 3].includes(Number(document.body.dataset.portalRole)) && !this.previous; },
+        selectUploadFile(file) {
+            if (this.saving) return;
+            this.uploadFile = file || null; this.uploadDragging = false;
+            if (file) this.form.title = file.name;
+        },
+        async create(previous = null) {
+            if (!previous && !this.currentFolderPermissions.upload) return;
             this.previous = previous; this.notice = ''; this.error = '';
             this.form = { unitId: previous?.departmentId || this.unitId || this.tree.units.find(unit => unit.canCreate)?._id || '',
                 categoryId: previous?.categoryId || this.categoryId || '', title: previous?.title || '', description: previous?.description || '',
                 recordType: previous?.recordType || 'file', documentReference: previous?.documentReference || '', physicalLocation: previous?.physicalLocation || '',
-                visibility: previous?.visibility || 'owner', downloadAllowed: previous?.downloadAllowed ?? true, copyAuthorized: false };
+                visibility: previous?.visibility || 'owner', downloadAllowed: previous?.downloadAllowed ?? true, copyAuthorized: false, checkId: '' };
+            this.uploadFile = null; this.uploadDragging = false; this.uploadChecks = [];
+            this.uploadDestination = { unitId: this.unitId, categoryId: this.categoryId,
+                name: [this.unit?.name, (this.repositoryFolder || this.category)?.name].filter(Boolean).join(' / ') };
             this.$refs.uploadForm.reset(); this.$refs.upload.showModal();
+            if (this.folderUpload) {
+                this.uploadChecksLoading = true;
+                try {
+                    const { data } = await window.axios.get('/api/v1/compliance-checks', {params:{result:'non_compliant', actionable:true, perPage:100}});
+                    const actorKey = Number(document.body.dataset.portalRole) === 2 ? 'auditorId' : 'auditeeId';
+                    this.uploadChecks = (data.data || []).filter(check => String(check.departmentId) === this.uploadDestination.unitId
+                        && String(check[actorKey]) === document.body.dataset.userId);
+                    const requested = new URLSearchParams(location.search).get('checkId');
+                    if (this.uploadChecks.some(check => check._id === requested)) this.form.checkId = requested;
+                } catch { /* File uploads remain available without an optional finding. */ }
+                finally { this.uploadChecksLoading = false; }
+            }
         },
         async save() {
             this.saving = true; this.error = ''; this.uploadProgress = 0;
             try {
+                if (this.folderUpload) {
+                    if (!this.uploadFile || !this.uploadDestination?.unitId) throw new Error('Open a writable folder and choose a file.');
+                    Object.assign(this.form, {unitId:this.uploadDestination.unitId, categoryId:this.uploadDestination.categoryId, recordType:'file'});
+                }
                 const data = new FormData();
                 Object.entries(this.form).forEach(([key, value]) => data.append(key, typeof value === 'boolean' ? (value ? '1' : '0') : value || ''));
                 data.append('purpose', 'qms');
-                const file = this.$refs.file.files[0]; if (file && this.form.recordType === 'file') data.append('file', file);
+                const file = this.folderUpload ? this.uploadFile : this.$refs.file.files[0]; if (file && this.form.recordType === 'file') data.append('file', file);
                 const url = this.previous ? `/api/v1/documents/${this.previous._id}/versions` : '/api/v1/documents/upload';
                 const result = await window.axios.post(url, data, { onUploadProgress: event => {
                     if (event.total) this.uploadProgress = Math.min(100, Math.round(event.loaded / event.total * 100));

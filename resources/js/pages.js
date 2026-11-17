@@ -1034,7 +1034,7 @@ document.addEventListener('alpine:init', () => {
                     ],
                     actions: [
                         ['My Findings', '/auditee/my-findings', 'clipboard-list'],
-                        ['Upload Evidence', '/auditee/upload', 'upload-cloud'],
+                        ['Upload files', '/auditee/documents', 'upload-cloud'],
                         ['My Archives', '/auditee/documents', 'archive'],
                         ['Notifications', '/auditee/notifications', 'bell'],
                     ],
@@ -1206,95 +1206,5 @@ document.addEventListener('alpine:init', () => {
         },
     }));
 
-    Alpine.data('evidenceUploadPage', () => ({
-        checks: [],
-        selectedCheckId: '',
-        file: null,
-        dragging: false,
-        get selectedReferenceStandard() {
-            return this.checks.find(check => check._id === this.selectedCheckId)?.referenceStandard || '';
-        },
-        selectFile(file) {
-            if (this.loading || this.saving) return;
-            this.file = file || null;
-            this.dragging = false;
-        },
-        handleDrop(event) {
-            this.dragging = false;
-            this.selectFile(event.dataTransfer?.files?.[0]);
-        },
-        clearFile() {
-            if (this.saving) return;
-            this.file = null;
-            this.$refs.fileInput.value = '';
-        },
-        formatFileSize(bytes) {
-            return bytes < 1024 * 1024 ? `${(bytes / 1024).toFixed(1)} KB` : `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-        },
-        cancelUpload() {
-            if (this.saving) return;
-            const dialog = this.$el.closest('dialog');
-            if (dialog) this.$dispatch('auditee-evidence-upload-cancel');
-            else window.location.assign(window.tabUrl('/auditee/dashboard'));
-        },
-        loading: true,
-        saving: false,
-        message: null,
-        error: null,
-        popupTimeout: null,
-        showPopup(type, text) {
-            window.clearTimeout(this.popupTimeout);
-            this.error = type === 'error' ? text : null;
-            this.message = type === 'success' ? text : null;
-            this.popupTimeout = window.setTimeout(() => {
-                this.error = null;
-                this.message = null;
-            }, 3000);
-        },
-        async init() {
-            try {
-                const { data } = await axios.get(apiPath('compliance-checks'), { params: { result: 'non_compliant', actionable: true, perPage: 100 } });
-                this.checks = (data.data || []).filter((check) => check.auditeeId === document.body.dataset.userId);
-                const requestedCheck = this.$el.dataset.checkId || new URLSearchParams(window.location.search).get('checkId');
-                if (this.checks.some((check) => check._id === requestedCheck)) this.selectedCheckId = requestedCheck;
-            } catch (error) {
-                this.error = responseMessage(error, 'Unable to load checks that can receive evidence.');
-            } finally {
-                this.loading = false;
-            }
-        },
-        async submit() {
-            if (!this.file || !this.selectedCheckId) {
-                this.showPopup('error', 'Choose a compliance check and a file before uploading.');
-                return;
-            }
-            const check = this.checks.find((item) => item._id === this.selectedCheckId);
-            if (!check) {
-                this.showPopup('error', 'The selected check is no longer available.');
-                return;
-            }
-            this.saving = true;
-            window.clearTimeout(this.popupTimeout);
-            this.error = null;
-            this.message = null;
-            const form = new FormData();
-            form.append('file', this.file);
-            form.append('checkId', check._id);
-            form.append('referenceStandard', check.referenceStandard);
-            try {
-                await axios.post(apiPath('documents/upload'), form);
-                this.showPopup('success', 'Evidence uploaded and encrypted successfully.');
-                this.file = null;
-                this.$refs.fileInput.value = '';
-                this.$dispatch('auditee-evidence-uploaded');
-            } catch (error) {
-                this.showPopup('error', responseMessage(error, 'Evidence could not be uploaded.'));
-            } finally {
-                this.saving = false;
-            }
-        },
-        destroy() {
-            window.clearTimeout(this.popupTimeout);
-        },
-    }));
+
 });

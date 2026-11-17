@@ -13,6 +13,40 @@ class QmsArchivesMongoTest extends TestCase
     use \Tests\Support\AuthorizesAuditPlan;
     private ?string $databaseName = null;
     private ?string $directory = null;
+    public function test_folder_file_uploads_link_only_authorized_findings_in_the_same_department(): void
+    {
+        $this->migrate();
+        $unit = $this->units()->first(); $other = $this->units()->last();
+        $owner = $this->user($unit, 'department_head');
+        $auditor = $this->user($unit, 'department_head', 2, ['assignedDepartmentIds' => [$unit->getKey()]]);
+        $check = ComplianceCheck::create(['checkCode' => 'FOLDER-CHECK', 'departmentId' => $unit->getKey(),
+            'auditeeId' => $owner->getKey(), 'auditorId' => $auditor->getKey(), 'result' => 'non_compliant',
+            'correctiveStatus' => 'open', 'referenceStandard' => 'ISO9001-9.2', 'linkedArchiveIds' => []]);
+        $folder = QmsCategory::create(['code' => 'FOLDER-TEST', 'name' => 'Current upload folder', 'collegeId' => $unit->collegeId,
+            'unitType' => $unit->unitType, 'isActive' => true, 'classification' => 'department']);
+        $payload = ['purpose' => 'qms', 'unitId' => (string) $unit->getKey(), 'categoryId' => (string) $folder->getKey(),
+            'title' => 'Folder evidence', 'recordType' => 'file', 'visibility' => 'owner', 'copyAuthorized' => true,
+            'checkId' => (string) $check->getKey()];
+        $upload = fn (array $data) => $this->post('/api/v1/documents/upload', $data + [
+            'file' => UploadedFile::fake()->createWithContent('evidence.pdf', "%PDF-1.4\nFolder evidence")], ['Accept' => 'application/json']);
+        foreach ([$owner, $auditor] as $actor) {
+            $this->actingAs($actor);
+            $id = $upload($payload)->assertCreated()->json('data._id');
+            $document = ArchiveDocument::findOrFail(new ObjectId($id));
+            $this->assertSame((string) $folder->getKey(), (string) $document->categoryId);
+            $this->assertContains($id, array_map('strval', $check->fresh()->linkedArchiveIds));
+            $this->assertSame('open', $check->fresh()->correctiveStatus);
+        }
+        $this->actingAs($owner);
+        $upload(array_replace($payload, ['categoryId' => '', 'checkId' => '']))->assertCreated();
+        $stranger = $this->user($unit, 'department_head');
+        $this->actingAs($stranger); $upload($payload)->assertForbidden();
+        $this->actingAs($owner);
+        $check->forceFill(['departmentId' => $other->getKey()])->save();
+        $upload($payload)->assertForbidden();
+        $check->forceFill(['departmentId' => $unit->getKey(), 'correctiveStatus' => 'closed'])->save();
+        $upload($payload)->assertForbidden();
+    }
     protected function setUp(): void
     {
         parent::setUp();

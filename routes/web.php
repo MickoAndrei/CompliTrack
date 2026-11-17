@@ -82,7 +82,7 @@ Route::middleware(['auth', \App\Http\Middleware\SystemAccess::class])->group(fun
         Route::post('/finding-details/{id}/response', [\App\Http\Controllers\Web\AuditeeController::class, 'correctiveResponse']);
         Route::get('/my-findings', [\App\Http\Controllers\Web\AuditeeController::class, 'results']);
         Route::get('/finding-details/{id}', [\App\Http\Controllers\Web\AuditeeController::class, 'finding']);
-        Route::view('/upload', 'auditee.upload');
+        Route::get('/upload', fn (\Illuminate\Http\Request $request) => redirect('/auditee/documents'.($request->filled('checkId') ? '?'.http_build_query($request->only('checkId')) : '')));
         Route::get('/documents', [\App\Http\Controllers\Web\AuditeeController::class, 'archives']);
         Route::view('/notifications', 'auditee.notifications');
         Route::view('/help', 'auditee.help');

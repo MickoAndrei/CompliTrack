@@ -36,7 +36,6 @@
             ['Dashboard', '/auditee/dashboard', 'layout-dashboard'],
             ['My Audit Results', '/auditee/my-findings', 'clipboard-list'],
             ['Evidence Requests', '/auditee/evidence-requests', 'clipboard-check'],
-            ['Provide Evidence', '/auditee/upload', 'upload-cloud'],
             ['Documents', '/auditee/documents', 'archive'],
             ['Notifications', '/auditee/notifications', 'bell'],
             ['Help & Standards', '/auditee/help', 'circle-help'],

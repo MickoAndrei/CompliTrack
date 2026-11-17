@@ -8,7 +8,7 @@
 @section('content')
 <div class="workflow-page evidence-page" data-evidence-page>
     @include('auditor.audit-feedback')
-    <nav class="evidence-tabs" aria-label="Evidence purpose"><a href="/auditee/evidence-requests" aria-current="page"><i data-lucide="clipboard-list" aria-hidden="true"></i>During Audit</a><a href="/auditee/upload"><i data-lucide="file-check-2" aria-hidden="true"></i>Corrective Evidence</a></nav>
+    <nav class="evidence-tabs" aria-label="Evidence purpose"><a href="/auditee/evidence-requests" aria-current="page"><i data-lucide="clipboard-list" aria-hidden="true"></i>During Audit</a><a href="/auditee/documents"><i data-lucide="file-check-2" aria-hidden="true"></i>Upload files</a></nav>
     <div class="evidence-summary" data-evidence-summary aria-label="Your request summary">
         @foreach([['Active Requests', 'active', 'files', 'All requests still in progress'], ['Awaiting Response', 'awaiting', 'clock-3', 'New requests and requests for more information'], ['Submitted', 'submitted', 'send', 'Submitted responses, including those under review'], ['Completed', 'completed', 'circle-check', 'Requests marked reviewed by your auditor']] as [$label, $key, $icon, $hint])
         <article class="evidence-summary-card"><span class="evidence-summary-icon"><i data-lucide="{{ $icon }}" aria-hidden="true"></i></span><div><p>{{ $label }}</p><strong>{{ $summary[$key] }}</strong><span class="sr-only">{{ $hint }}</span></div></article>

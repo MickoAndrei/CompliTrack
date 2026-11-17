@@ -35,12 +35,11 @@ const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
         const cycle = fs.readFileSync(path.join(fixtures, 'cycles.html'), 'utf8');
         const closed = fs.readFileSync(path.join(fixtures, 'closed.html'), 'utf8');
         const compliant = fs.readFileSync(path.join(fixtures, 'compliant.html'), 'utf8');
-        const upload = fs.readFileSync(path.join(fixtures, 'upload.html'), 'utf8');
         for (const width of [1440, 900, 390, 320]) {
             await send('Emulation.setDeviceMetricsOverride', { width, height: 950, deviceScaleFactor: 1, mobile: width < 600 });
             await send('Page.navigate', { url: pathToFileURL(path.join(fixtures, 'dashboard.html')).href });
             await waitFor('!!window.Alpine && !!document.querySelector("[data-result-modal-tab=corrective]")');
-            await evaluate(`window.originalUrl=location.href;window.detailHtml=${JSON.stringify(cycle)};window.uploadHtml=${JSON.stringify(upload)};window.fetch=async url=>({ok:true,redirected:false,text:async()=>String(url).includes('/auditee/upload')?window.uploadHtml:window.detailHtml});window.action=document.querySelector('[data-result-modal-tab=corrective]');window.action.click();`);
+            await evaluate(`window.originalUrl=location.href;window.detailHtml=${JSON.stringify(cycle)};window.fetch=async url=>({ok:true,redirected:false,text:async()=>window.detailHtml});window.action=document.querySelector('[data-result-modal-tab=corrective]');window.action.click();`);
             await waitFor(`!!document.querySelector('.car-timeline') && document.querySelector('[data-result-tab=corrective]').getAttribute('aria-selected')==='true'`);
             assert.equal(await evaluate(`!document.querySelector('[data-result-panel=corrective]').hidden&&document.querySelector('[data-result-panel=overview]').hidden&&location.href===window.originalUrl`), true);
             assert.equal(await evaluate(`document.querySelectorAll('.car-timeline-event[data-car-event=status]').length===5&&document.querySelectorAll('.car-timeline-event.is-current').length===1&&document.querySelector('.car-timeline-event.is-current').dataset.carStatus==='in_progress'`), true);
@@ -52,11 +51,7 @@ const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
                 const shot = await send('Page.captureScreenshot', { format: 'png', captureBeyondViewport: false });
                 fs.writeFileSync(path.join(fixtures, `timeline-${width}.png`), Buffer.from(shot.result.data, 'base64'));
             }
-            await evaluate(`window.originalHeading=document.querySelector('[data-result-modal-heading]');window.originalTimeline=document.querySelector('.car-timeline');window.originalTabs=document.querySelector('[data-result-modal-tabs]').firstElementChild;document.querySelector('[data-corrective-reference] textarea').value='Keep my reference draft';document.querySelector('#corrective-evidence a[href^="/auditee/upload"]').click()`);
-            await waitFor(`!!document.querySelector('[data-result-upload-slot] [data-evidence-upload]')`);
-            assert.equal(await evaluate(`document.querySelector('[data-result-modal-heading]')===window.originalHeading&&document.querySelector('.car-timeline')===window.originalTimeline&&document.querySelector('[data-result-modal-tabs]').firstElementChild===window.originalTabs&&!document.querySelector('[data-result-panel=corrective]').hidden&&!document.querySelector('#audit-result-modal').classList.contains('is-upload')`), true, 'Uploading preserves audit heading, tabs, timeline and corrective panel');
-            await evaluate(`document.querySelector('[data-result-upload-back]').click()`);
-            assert.equal(await evaluate(`document.querySelector('#audit-result-modal').open&&document.querySelector('[data-result-upload-slot]').hidden&&!document.querySelector('[data-corrective-reference]').hidden&&document.querySelector('[data-corrective-reference] textarea').value==='Keep my reference draft'`), true, 'Returning keeps the same popup and reference draft');
+            assert.equal(await evaluate(`document.querySelector('#corrective-evidence a').getAttribute('href')`), '/auditee/documents?checkId=2123456789abcdef01234567', 'Corrective uploads open the document browser');
             await evaluate(`document.querySelector('[data-result-modal-close]').click()`);
             await waitFor(`!document.querySelector('#audit-result-modal').open&&document.activeElement===window.action`);
             await evaluate(`window.detailHtml=${JSON.stringify(closed)};window.action.click()`);

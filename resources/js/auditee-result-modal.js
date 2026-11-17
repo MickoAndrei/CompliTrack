@@ -3,8 +3,6 @@ let detailUrl;
 let detailRequest;
 let scrollLocks = [];
 let modalSession = 0;
-let uploadUrl;
-let uploadRequest;
 let requestedTab = 'overview';
 
 function selectTab(root, key) {
@@ -22,7 +20,6 @@ function dialogElement() { return document.querySelector('#audit-result-modal');
 
 async function loadDetail(selectedTab = 'overview') {
     const dialog = dialogElement();
-    uploadRequest?.abort();
     detailRequest?.abort();
     const controller = new AbortController();
     detailRequest = controller;
@@ -56,57 +53,6 @@ async function loadDetail(selectedTab = 'overview') {
     }
 }
 
-async function loadUpload(url) {
-    const dialog = dialogElement();
-    const slot = dialog.querySelector('[data-result-upload-slot]');
-    if (!slot) return;
-    selectTab(dialog, 'corrective');
-    uploadUrl = url;
-    uploadRequest?.abort();
-    const controller = new AbortController();
-    uploadRequest = controller;
-    dialog.querySelector('[data-corrective-reference]').hidden = true;
-    slot.hidden = false;
-    slot.setAttribute('aria-busy', 'true');
-    slot.innerHTML = '<p role="status">Loading authorized file upload…</p>';
-    try {
-        const response = await fetch(url, { credentials: 'same-origin', signal: controller.signal,
-            headers: { Accept: 'text/html', 'X-Requested-With': 'XMLHttpRequest' } });
-        if (!response.ok || response.redirected) throw new Error('Upload form unavailable');
-        const page = new DOMParser().parseFromString(await response.text(), 'text/html');
-        const upload = page.querySelector('[data-evidence-upload]');
-        if (!upload) throw new Error('Upload form missing');
-        if (controller.signal.aborted || !dialog.open) return;
-        upload.dataset.checkId = new URL(url, window.location.href).searchParams.get('checkId') || '';
-        const back = document.createElement('button');
-        back.type = 'button';
-        back.className = 'workflow-secondary result-upload-back';
-        back.dataset.resultUploadBack = '';
-        back.textContent = 'Use a reference or original instead';
-        slot.replaceChildren(back, upload);
-        back.focus({ preventScroll: true });
-    } catch (error) {
-        if (error.name !== 'AbortError' && dialog.open) {
-            slot.innerHTML = '<div x-page-notice role="alert"><p>The upload form could not be loaded.</p><button type="button" class="workflow-secondary" data-result-upload-retry>Retry</button><button type="button" class="workflow-secondary" data-result-upload-back>Use a reference or original instead</button></div>';
-        }
-    } finally {
-        if (uploadRequest === controller) slot.setAttribute('aria-busy', 'false');
-    }
-}
-
-function hideUpload() {
-    uploadRequest?.abort();
-    const dialog = dialogElement();
-    const slot = dialog?.querySelector('[data-result-upload-slot]');
-    if (!slot) return;
-    slot.replaceChildren();
-    slot.hidden = true;
-    dialog.querySelector('[data-corrective-reference]').hidden = false;
-    dialog.querySelector('#corrective-evidence a[href^="/auditee/upload"]')?.focus({ preventScroll: true });
-}
-
-document.addEventListener('auditee-evidence-upload-cancel', hideUpload);
-
 function openDetail(control, tabOverride) {
     const dialog = dialogElement();
     originatingControl = control;
@@ -127,14 +73,6 @@ function openDetail(control, tabOverride) {
 }
 
 document.addEventListener('click', event => {
-    const upload = event.target.closest('#audit-result-modal a[href^="/auditee/upload"]');
-    if (upload && event.button === 0 && !event.ctrlKey && !event.metaKey && !event.shiftKey && !event.altKey) {
-        event.preventDefault();
-        loadUpload(upload.href);
-        return;
-    }
-    if (event.target.closest('[data-result-upload-back]')) hideUpload();
-    if (event.target.closest('[data-result-upload-retry]')) loadUpload(uploadUrl);
     const control = event.target.closest('[data-result-modal-open]');
     if (control && dialogElement() && event.button === 0 && !event.ctrlKey && !event.metaKey && !event.shiftKey && !event.altKey) {
         event.preventDefault();
@@ -145,14 +83,6 @@ document.addEventListener('click', event => {
     if (event.target.closest('[data-result-modal-retry]')) loadDetail(requestedTab);
     const tab = event.target.closest('[data-result-tab]');
     if (tab) selectTab(tab.closest('#audit-result-modal') || tab.closest('[data-result-detail]'), tab.dataset.resultTab);
-});
-
-document.addEventListener('auditee-evidence-uploaded', event => {
-    const dialog = dialogElement();
-    if (dialog?.open && dialog.contains(event.target)) {
-        dialog.querySelector('[data-result-modal-message]').textContent = 'Evidence uploaded and encrypted successfully.';
-        loadDetail('evidence');
-    }
 });
 
 document.addEventListener('keydown', event => {
@@ -181,7 +111,6 @@ if (dialog) {
     dialog.addEventListener('close', () => {
         if (dialog.open) return;
         document.querySelector('#evidence-preview-modal')?.close();
-        uploadRequest?.abort();
         modalSession += 1;
         detailRequest?.abort();
         scrollLocks.forEach(({ element, overflow }) => { element.style.overflow = overflow; });
