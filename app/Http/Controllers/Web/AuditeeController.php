@@ -57,7 +57,7 @@ class AuditeeController extends Controller
             if ($status && !in_array($status, ['requested', 'under_review'], true) && $record['status'] !== $status) { return false; }
             return !$request->filled('search') || str_contains(mb_strtolower(implode(' ', [$record['title'], $record['description'], $record['auditCode'], $record['auditTitle'], $record['department'], $record['auditor']])), mb_strtolower(trim($request->query('search'))));
         })->values();
-        $requests = new \Illuminate\Pagination\LengthAwarePaginator($filtered->forPage($request->integer('page', 1), 12)->values(), $filtered->count(), 12,
+        $requests = new \Illuminate\Pagination\LengthAwarePaginator($filtered->forPage($request->integer('page', 1), 4)->values(), $filtered->count(), 4,
             $request->integer('page', 1), ['path' => $request->url(), 'query' => $request->except(['page', 'auditId', 'requestId'])]);
         return view('auditee.evidence-requests', compact('requests', 'summary'));
     }

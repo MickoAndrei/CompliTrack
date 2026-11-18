@@ -108,11 +108,41 @@ class QmsRepositoryPolicy
 
     public function navigation(User $actor): array
     {
+        if ($actor->isActive && (int) $actor->roleId === 0) {
+            $units = $this->units()->get();
+            $college = $this->college();
+            $saved = QmsCategory::where('collegeId', $college ? \App\Support\MongoId::parse((string) $college->getKey()) : null)->where('isActive', true)->get()
+                ->map(fn ($folder) => ['_id' => (string) $folder->getKey(), 'name' => $folder->name,
+                    'parentId' => $folder->parentId ? (string) $folder->parentId : null,
+                    'collegeId' => (string) $folder->collegeId, 'departmentId' => null,
+                    'folderPolicy' => $folder->folderPolicy ?: 'administration',
+                    'auditAssignmentId' => $folder->auditAssignmentId ? (string) $folder->auditAssignmentId : null,
+                    'ownerName' => null, 'createdAt' => $folder->createdAt?->toIso8601String(),
+                    'updatedAt' => $folder->updatedAt?->toIso8601String()])->all();
+            return app(QmsCycleFolders::class)->navigation($saved, $units->pluck('departmentName')->all());
+        }
         // Virtual roots expose authorized descendants without returning confidential ancestors or siblings.
-        $folders = QmsCategory::whereNotNull('folderPolicy')->where('isActive', true)->get();
-        app(QmsRequestReferences::class)->remember($folders);
-        app(QmsRequestReferences::class)->prime(Audit::class, $folders->pluck('auditAssignmentId')->all());
-        $folders = $folders->filter(fn ($folder) => $this->permissions($actor, $folder)['view']);
+        $all = QmsCategory::whereNotNull('folderPolicy')->where('isActive', true)->get();
+        app(QmsRequestReferences::class)->remember($all);
+        app(QmsRequestReferences::class)->prime(Audit::class, $all->pluck('auditAssignmentId')->all());
+        $folders = $all->filter(fn ($folder) => $this->permissions($actor, $folder)['view']);
+        $authorized = $folders->map(fn ($folder) => (string) $folder->getKey())->all();
+        // Cycle ancestors are navigation paths only; siblings and their files remain private.
+        foreach ($folders->values() as $folder) {
+            $seen = [];
+            while ($folder->parentId && !in_array((string) $folder->parentId, $seen, true)) {
+                $seen[] = (string) $folder->parentId;
+                $parent = $all->first(fn ($candidate) => (string) $candidate->getKey() === (string) $folder->parentId);
+                if (!$parent || !$parent->cycleKey) { break; }
+                if (!$folders->contains(fn ($candidate) => (string) $candidate->getKey() === (string) $parent->getKey())) { $folders->push($parent); }
+                $folder = $parent;
+            }
+        }
+        if ($actor->isActive && in_array((int) $actor->roleId, [1, 2, 3], true)) {
+            foreach ($all->filter(fn ($folder) => $folder->cycleRoot && (string) $folder->collegeId === (string) $this->college()?->getKey()) as $root) {
+                if (!$folders->contains(fn ($folder) => (string) $folder->getKey() === (string) $root->getKey())) { $folders->push($root); }
+            }
+        }
         $visible = $folders->map(fn ($f) => (string) $f->getKey())->all();
         $navigation = $folders->map(fn ($f) => ['_id' => (string) $f->getKey(), 'name' => $f->name, 'folderPolicy' => $f->folderPolicy,
             'parentId' => in_array((string) $f->parentId, $visible, true) ? (string) $f->parentId : null,
@@ -120,7 +150,11 @@ class QmsRepositoryPolicy
             'collegeId' => (string) $f->collegeId, 'departmentId' => $f->departmentId ? (string) $f->departmentId : null,
             'auditAssignmentId' => $f->auditAssignmentId ? (string) $f->auditAssignmentId : null,
             'auditRelated' => app(QmsBrowser::class)->isAuditFolder($f),
-            'permissions' => $this->permissions($actor, $f),
+            'cycleRoot' => (bool) $f->cycleRoot, 'currentCycle' => (bool) $f->cycleRoot && $f->cycleKey === config('qms.currentAuditCycle'),
+            'workspaceArea' => (bool) $f->workspaceArea, 'workspaceRoot' => (bool) $f->workspaceRoot,
+            'auditorId' => $f->auditorId ? (string) $f->auditorId : null,
+            'navigationOnly' => !in_array((string) $f->getKey(), $authorized, true),
+            'permissions' => in_array((string) $f->getKey(), $authorized, true) ? $this->permissions($actor, $f) : ['view' => true],
             ...app(QmsBrowser::class)->folderMetadata($f, $actor)])->values()->all();
         $auditIds = app(QmsBrowser::class)->auditFolderIds($navigation);
         return array_map(fn ($folder) => [...$folder, 'auditRelated' => in_array($folder['_id'], $auditIds, true)], $navigation);

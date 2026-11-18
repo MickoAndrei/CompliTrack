@@ -208,3 +208,51 @@ html:has(.qms-explorer){height:100%;overflow:hidden;scrollbar-gutter:auto}body:h
 .qms-explorer .qms-main .qms-action-popover button{font-size:13px;line-height:1.4;color:#172b49}
 
 .qms-explorer .qms-documents:not(.is-list) .qms-file-name h4{display:block;white-space:nowrap;word-break:normal;overflow-wrap:normal;overflow:hidden;text-overflow:ellipsis}
+
+/* Collapse Files into a narrow rail while keeping the toggle available. */
+.qms-explorer .qms-sidebar-controls{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:0 0 14px;padding-left:10px;min-height:32px}
+.qms-explorer .qms-sidebar-controls .qms-nav-caption{display:block;margin:0}
+[data-portal-role] #main-content .qms-explorer .qms-sidebar-toggle{display:inline-flex;align-items:center;justify-content:center;flex:0 0 32px;width:32px;height:32px;min-height:0;padding:0;border:1px solid var(--qms-border);border-radius:7px;background:#fff;color:var(--qms-navy);cursor:pointer}
+.qms-explorer .qms-sidebar-toggle svg{display:block;flex:none;width:18px;height:18px}
+.qms-explorer .qms-sidebar-toggle:hover{background:#eef3f9}
+.qms-explorer .qms-sidebar-toggle:focus-visible{outline:2px solid #ba8a09;outline-offset:2px}
+.qms-explorer>.qms-workspace.is-sidebar-collapsed{grid-template-columns:52px minmax(0,1fr)}
+.qms-explorer .is-sidebar-collapsed>.qms-sidebar{padding:28px 10px}
+.qms-explorer .is-sidebar-collapsed>.qms-sidebar>:not(.qms-sidebar-controls),.qms-explorer .is-sidebar-collapsed .qms-sidebar-controls .qms-nav-caption{display:none}
+.qms-explorer .is-sidebar-collapsed .qms-sidebar-controls{padding:0;justify-content:center}
+@media(max-width:700px){
+  .qms-explorer>.qms-workspace.is-sidebar-collapsed{grid-template-columns:minmax(0,1fr)}
+  .qms-explorer .is-sidebar-collapsed>.qms-sidebar{padding:10px 12px}
+  .qms-explorer .is-sidebar-collapsed .qms-sidebar-controls{margin:0;justify-content:flex-end}
+}
+
+/* Column visibility follows the file pane, including sidebar size changes. */
+.qms-explorer .qms-main{container:qms-files / inline-size}
+.qms-explorer .qms-main .qms-folders{
+  --qms-folder-columns:minmax(0,1fr) 50px 28px;
+  --qms-folder-gap:8px;
+  --qms-owner-display:none;
+  --qms-date-display:none;
+  --qms-date-column:2;
+  --qms-size-column:2;
+}
+.qms-explorer .qms-main .qms-folders:not(.qms-folder-grid) :is(.qms-folder-row-heading,.qms-folder,.qms-skeleton-folder){grid-template-columns:var(--qms-folder-columns);column-gap:var(--qms-folder-gap)}
+.qms-explorer .qms-main .qms-folders:not(.qms-folder-grid) :is(.qms-folder-row-heading>span:nth-child(2),.qms-folder-row-owner,.qms-skeleton-folder-owner){display:var(--qms-owner-display)}
+.qms-explorer .qms-main .qms-folders:not(.qms-folder-grid) :is(.qms-folder-row-heading>span:nth-child(3),.qms-folder-row-date,.qms-skeleton-folder-date){display:var(--qms-date-display)}
+.qms-explorer .qms-main .qms-folders:not(.qms-folder-grid) :is(.qms-folder-row-date,.qms-skeleton-folder-date){grid-column:var(--qms-date-column)}
+.qms-explorer .qms-main .qms-folders:not(.qms-folder-grid) :is(.qms-folder-row-size,.qms-skeleton-folder-size){grid-column:var(--qms-size-column)}
+.qms-explorer .qms-main .qms-folders:not(.qms-folder-grid) .qms-skeleton-folder-menu{grid-column:-2}
+.qms-explorer .qms-main .qms-folder-grid{grid-template-columns:repeat(auto-fill,minmax(min(100%,320px),1fr))}
+.qms-explorer .qms-main .qms-list-head,.qms-explorer .qms-main .qms-documents.is-list .qms-document,.qms-explorer .qms-main .qms-skeleton-files.is-list :is(.qms-skeleton-list-head,.qms-skeleton-record){grid-template-columns:minmax(0,1fr) 60px 28px;gap:8px}
+.qms-explorer .qms-main :is(.qms-list-head>span:nth-child(2),.qms-list-head>span:nth-child(3),.qms-documents.is-list .qms-file-owner,.qms-documents.is-list .qms-file-date),.qms-explorer .qms-main .qms-skeleton-files.is-list :is(.qms-skeleton-list-head>span:nth-child(2),.qms-skeleton-list-head>span:nth-child(3),.qms-skeleton-owner,.qms-skeleton-date){display:none}
+.qms-explorer .qms-main .qms-folder-row-date{white-space:normal;overflow:visible;text-overflow:clip;overflow-wrap:anywhere}
+@container qms-files (min-width:540px){
+  .qms-explorer .qms-main .qms-folders{--qms-folder-columns:minmax(0,2fr) minmax(190px,1fr) 72px 28px;--qms-folder-gap:12px;--qms-date-display:block;--qms-size-column:3}
+  .qms-explorer .qms-main .qms-list-head,.qms-explorer .qms-main .qms-documents.is-list .qms-document,.qms-explorer .qms-main .qms-skeleton-files.is-list :is(.qms-skeleton-list-head,.qms-skeleton-record){grid-template-columns:minmax(0,2fr) minmax(0,1fr) 65px 28px;gap:12px}
+  .qms-explorer .qms-main :is(.qms-list-head>span:nth-child(2),.qms-documents.is-list .qms-file-owner),.qms-explorer .qms-main .qms-skeleton-files.is-list :is(.qms-skeleton-list-head>span:nth-child(2),.qms-skeleton-owner){display:block}
+}
+@container qms-files (min-width:760px){
+  .qms-explorer .qms-main .qms-folders{--qms-folder-columns:minmax(0,2.5fr) minmax(130px,1.2fr) minmax(190px,1fr) 65px 28px;--qms-folder-gap:16px;--qms-owner-display:block;--qms-date-column:3;--qms-size-column:4}
+  .qms-explorer .qms-main .qms-list-head,.qms-explorer .qms-main .qms-documents.is-list .qms-document,.qms-explorer .qms-main .qms-skeleton-files.is-list :is(.qms-skeleton-list-head,.qms-skeleton-record){grid-template-columns:minmax(0,2.2fr) minmax(0,1.3fr) minmax(190px,1.1fr) 75px 32px;gap:16px}
+  .qms-explorer .qms-main :is(.qms-list-head>span:nth-child(3),.qms-documents.is-list .qms-file-date),.qms-explorer .qms-main .qms-skeleton-files.is-list :is(.qms-skeleton-list-head>span:nth-child(3),.qms-skeleton-date){display:block}
+}

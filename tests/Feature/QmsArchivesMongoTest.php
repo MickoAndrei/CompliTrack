@@ -13,6 +13,88 @@ class QmsArchivesMongoTest extends TestCase
     use \Tests\Support\AuthorizesAuditPlan;
     private ?string $databaseName = null;
     private ?string $directory = null;
+    public function test_cycle_repository_exposes_only_authorized_paths_and_atl_can_open_all_cycle_files(): void
+    {
+        $this->migrate(); $unit = $this->units()->first(); $other = $this->units()->last();
+        $leader = $this->leader($unit);
+        $auditor = $this->user($unit, 'faculty_staff', 2, ['assignedDepartmentIds' => [$unit->getKey()]]);
+        $otherAuditor = $this->user($other, 'faculty_staff', 2, ['assignedDepartmentIds' => [$other->getKey()]]);
+        $audit = Audit::create(['departmentId' => $unit->getKey(), 'auditorId' => $auditor->getKey(), 'reviewerId' => $leader->getKey(), 'status' => 'draft']);
+        Audit::create(['departmentId' => $other->getKey(), 'auditorId' => $otherAuditor->getKey(), 'reviewerId' => $leader->getKey(), 'status' => 'draft']);
+        (require database_path('migrations/2026_11_16_190000_index_manual_qms_repository_folders.php'))->up();
+        $repository = app(\App\Services\QmsCycleRepository::class);
+        $this->assertGreaterThan(0, $repository->sync());
+        $this->assertSame(0, $repository->sync());
+        $this->actingAs($leader);
+        $all = collect($this->getJson('/api/v1/documents/tree')->assertOk()->json('repositoryFolders'));
+        $root = $all->firstWhere('cycleRoot', true);
+        $this->assertSame('Internal Quality Audit August 2026', $root['name']);
+        $this->assertTrue($all->every(fn ($folder) => !$folder['navigationOnly']));
+        $ownNotes = $all->first(fn ($folder) => $folder['name'] === 'Working Notes' && ($folder['auditAssignmentId'] ?? '') === (string) $audit->getKey());
+        $private = $this->document($unit, $auditor, ['categoryId' => new ObjectId($ownNotes['_id']), 'visibility' => 'restricted']);
+        $this->getJson('/api/v1/documents?categoryId='.$ownNotes['_id'])->assertOk()->assertJsonPath('data.0._id', (string) $private->getKey());
+        $this->getJson('/api/v1/documents/'.$private->getKey())->assertOk();
+        $uploaded = $this->post('/api/v1/documents/upload', ['purpose' => 'qms', 'unitId' => (string) $unit->getKey(),
+            'categoryId' => $ownNotes['_id'], 'title' => 'ATL workspace file', 'recordType' => 'file', 'visibility' => 'restricted',
+            'copyAuthorized' => true, 'file' => UploadedFile::fake()->createWithContent('workspace.pdf', "%PDF-1.4\nWorkspace file")], ['Accept' => 'application/json'])
+            ->assertCreated()->json('data._id');
+        $this->get('/api/v1/documents/'.$uploaded.'/download')->assertOk()->assertContent("%PDF-1.4\nWorkspace file");
+        $this->actingAs($auditor);
+        $visible = collect($this->getJson('/api/v1/documents/tree')->assertOk()->json('repositoryFolders'));
+        $this->assertNotNull($visible->firstWhere('_id', $root['_id']));
+        $this->assertTrue($visible->firstWhere('_id', $root['_id'])['navigationOnly']);
+        $this->assertNotNull($visible->firstWhere('workspaceRoot', true));
+        $this->getJson('/api/v1/documents/'.$uploaded)->assertOk();
+        $this->assertFalse($visible->contains(fn ($folder) => ($folder['auditorId'] ?? null) === (string) $otherAuditor->getKey()));
+        $this->getJson('/api/v1/documents?categoryId='.$root['_id'])->assertOk()->assertJsonPath('meta.total', 0);
+        $this->getJson('/api/v1/documents?view=assigned&categoryId='.$ownNotes['_id'])->assertOk()->assertJsonCount(2, 'data')->assertJsonFragment(['_id' => (string) $private->getKey()]);
+        $auditor->update(['assignedDepartmentIds' => []]);
+        $this->actingAs($auditor->fresh())->getJson('/api/v1/documents/'.$private->getKey())->assertNotFound();
+    }
+
+    public function test_recent_contains_five_last_opened_files_for_the_current_user_and_rechecks_access(): void
+    {
+        $this->migrate(); $unit = $this->units()->first();
+        $reader = $this->user($unit); $other = $this->user($unit);
+        $this->actingAs($reader)->getJson('/api/v1/documents?view=recent')->assertOk()->assertJsonCount(0, 'data');
+        $documents = [];
+        for ($index = 0; $index < 7; $index++) {
+            $document = $this->document($unit, $other, ['title' => 'Opened '.$index]);
+            $documents[] = $document;
+            (new \App\Models\AuditLog())->forceFill(['userId' => $reader->getKey(), 'entityType' => 'archive_document',
+                'entityId' => $document->getKey(), 'action' => 'Opened ONLYOFFICE read-only view', 'outcome' => 'success',
+                'createdAt' => now()->subMinutes(10 - $index)])->save();
+        }
+        // A recent upload and someone else's open must never enter this user's history.
+        $unopened = $this->document($unit, $reader, ['title' => 'Never opened']);
+        $this->getJson('/api/v1/documents/'.$unopened->getKey())->assertOk();
+        $response = $this->getJson('/api/v1/documents?view=recent&page=3&perPage=100')->assertOk()
+            ->assertJsonCount(5, 'data')->assertJsonPath('meta.lastPage', 1)->assertJsonPath('meta.currentPage', 1);
+        $this->assertSame(['Opened 6','Opened 5','Opened 4','Opened 3','Opened 2'], array_column($response->json('data'), 'title'));
+        $this->actingAs($other)->getJson('/api/v1/documents?view=recent')->assertOk()->assertJsonCount(0, 'data');
+        $documents[6]->update(['visibility' => 'restricted']);
+        $this->actingAs($reader)->getJson('/api/v1/documents?view=recent')->assertOk()->assertJsonCount(5, 'data')->assertJsonPath('data.0.title', 'Opened 5');
+    }
+
+    public function test_super_admin_browses_current_and_past_audit_cycle_folders_without_files(): void
+    {
+        $this->migrate();
+        $unit = $this->units()->first();
+        $super = $this->user($unit, 'faculty_staff', 0);
+        $past = QmsCategory::create(['collegeId' => $unit->collegeId, 'name' => 'Internal Quality Audit August 2025',
+            'code' => 'PAST-CYCLE', 'folderPolicy' => 'administration', 'parentId' => null, 'isActive' => true]);
+        QmsCategory::create(['collegeId' => $unit->collegeId, 'code' => 'PAST-CAMPUS', 'name' => 'Past campus', 'folderPolicy' => 'administration',
+            'parentId' => $past->getKey(), 'isActive' => true]);
+        $response = $this->actingAs($super)->getJson('/api/v1/documents/tree')->assertOk()->assertJsonPath('canViewDocuments', false);
+        $folders = collect($response->json('repositoryFolders'));
+        $roots = $folders->filter(fn ($folder) => !$folder['parentId']);
+        $this->assertCount(2, $roots);
+        $this->assertSame(['Internal Quality Audit August 2026'], $roots->where('currentCycle', true)->pluck('name')->values()->all());
+        $this->assertSame((string) $past->getKey(), $folders->firstWhere('name', 'Past campus')['parentId']);
+        foreach ($folders as $folder) { $this->assertFalse($folder['permissions']['upload'] ?? false); }
+        $this->getJson('/api/v1/documents?view=cycles')->assertOk()->assertJsonPath('meta.total', 0);
+    }
+
     public function test_folder_file_uploads_link_only_authorized_findings_in_the_same_department(): void
     {
         $this->migrate();
@@ -121,7 +203,7 @@ class QmsArchivesMongoTest extends TestCase
         $old->forceFill(['createdAt' => now()->subDays(60), 'updatedAt' => now()->subDays(60)])->save();
         $count = ArchiveDocument::count();
         $this->actingAs($reader)->getJson('/api/v1/documents?view=shared')->assertOk()->assertJsonPath('meta.total', 1)->assertJsonPath('data.0._id', (string) $shared->getKey())->assertHeader('Cache-Control', 'no-store, private');
-        $this->getJson('/api/v1/documents?view=recent')->assertOk()->assertJsonPath('meta.total', 2);
+        $this->getJson('/api/v1/documents?view=recent')->assertOk()->assertJsonPath('meta.total', 0);
         $this->getJson('/api/v1/documents?sort=name')->assertOk()->assertJsonPath('data.0.title', 'Alpha shared');
         $this->getJson('/api/v1/documents?view=starred')->assertJsonPath('meta.total', 0);
         $this->patchJson('/api/v1/documents/'.$shared->getKey().'/star', ['starred' => true])->assertOk();

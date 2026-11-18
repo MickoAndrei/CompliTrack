@@ -45,6 +45,7 @@ class ArchiveController extends Controller
         $query = app(\App\Services\QmsAuditArchive::class)->applyContext($this->scopes->archives($request->user()), $request->user(), $request);
         $actorIds = [MongoId::parse((string) $request->user()->getKey()), (string) $request->user()->getKey()];
         $browser = app(\App\Services\QmsBrowser::class);
+        $recentIds = $request->query('view') === 'recent' ? app(\App\Services\QmsRecentDocuments::class)->ids($request->user()) : [];
         if ($request->query('view') === 'department') {
             $own = $browser->departmentUnits($request->user())->get(['_id'])->map(fn ($u) => $u->getKey())->all();
             $query->whereIn('departmentId', array_merge(app(\App\Services\QmsArchiveAccess::class)->ids($own), array_map('strval', $own)));
@@ -53,7 +54,7 @@ class ArchiveController extends Controller
             $folders = app(\App\Services\QmsRepositoryPolicy::class)->navigation($request->user());
             $assignments = $browser->assignments($request->user())->map(fn ($a) => (string) $a->getKey())->all();
             $folderIds = $request->query('view') === 'assigned'
-                ? array_column(array_filter($folders, fn ($f) => in_array($f['auditAssignmentId'], $assignments, true) && in_array($f['folderPolicy'], ['evidence', 'notes'], true)), '_id')
+                ? array_column(array_filter($folders, fn ($f) => in_array($f['auditAssignmentId'] ?? null, $assignments, true) && in_array($f['folderPolicy'], ['evidence', 'notes'], true)), '_id')
                 : $browser->auditFolderIds($folders);
             $query->where(function ($q) use ($folderIds, $request) {
                 $q->whereIn('categoryId', app(\App\Services\QmsArchiveAccess::class)->ids($folderIds));
@@ -70,8 +71,7 @@ class ArchiveController extends Controller
             $groups = app(\App\Services\QmsArchiveAccess::class)->ids($browser->starredGroups($request->user()));
             $query->where(fn ($q) => $q->whereIn('_id', $groups)->orWhereIn('versionGroupId', array_merge($groups, array_map('strval', $groups))));
         } elseif ($request->query('view') === 'recent') {
-            $query->where(fn ($q) => $q->where('updatedAt', '>=', now()->utc()->subDays(30))
-                ->orWhere(fn ($q) => $q->whereNull('updatedAt')->where('createdAt', '>=', now()->utc()->subDays(30))));
+            $query->whereIn('_id', app(\App\Services\QmsArchiveAccess::class)->ids($recentIds));
         } elseif ($request->query('view') === 'audit' && !$request->filled('planId') && !$request->filled('auditId')) {
             if ((int) $request->user()->roleId !== 2) {
                 $query->whereRaw(['$or' => [
@@ -88,7 +88,14 @@ class ArchiveController extends Controller
         } elseif ($request->query('scope') === 'current' && in_array($request->query('view'), ['my', 'department', 'cycles', 'assigned'], true)) {
             $query->whereNull('categoryId');
         }
-        if ($request->query('view') !== 'audit') { $query = $browser->latest($query); }
+        if ($request->filled('categoryId')) {
+            $category = app(\App\Services\QmsRequestReferences::class)->find(\App\Models\QmsCategory::class, $request->query('categoryId'));
+            if ($category?->cycleKey) {
+                $folder = collect($folders ?? app(\App\Services\QmsRepositoryPolicy::class)->navigation($request->user()))->firstWhere('_id', $request->query('categoryId'));
+                if (!$folder || ($folder['navigationOnly'] ?? false)) { $query->whereRaw(['_id' => null]); }
+            }
+        }
+        if (!in_array($request->query('view'), ['audit', 'recent'], true)) { $query = $browser->latest($query); }
         if ($request->filled('recordType')) {
             if ($request->query('recordType') === 'file') { $query->where(fn ($q) => $q->where('recordType', 'file')->orWhereNull('recordType')); }
             else { $query->where('recordType', $request->query('recordType')); }
@@ -120,8 +127,14 @@ class ArchiveController extends Controller
         }
 
         $sort = $request->query('sort', 'newest');
-        $page = $query->orderBy($sort === 'name' ? 'title' : ($sort === 'modified' ? 'updatedAt' : 'createdAt'), in_array($sort, ['newest', 'modified'], true) ? 'desc' : 'asc')->orderBy('_id')
-            ->paginate(min(max((int) $request->query('perPage', 20), 1), 100));
+        if ($request->query('view') === 'recent') {
+            $rank = array_flip($recentIds);
+            $recent = $query->get()->sortBy(fn ($document) => $rank[(string) $document->getKey()])->unique(fn ($document) => (string) ($document->versionGroupId ?: $document->getKey()))->take(5)->values();
+            $page = new \Illuminate\Pagination\LengthAwarePaginator($recent, $recent->count(), 5, 1);
+        } else {
+            $page = $query->orderBy($sort === 'name' ? 'title' : ($sort === 'modified' ? 'updatedAt' : 'createdAt'), in_array($sort, ['newest', 'modified'], true) ? 'desc' : 'asc')->orderBy('_id')
+                ->paginate(min(max((int) $request->query('perPage', 20), 1), 100));
+        }
 
         $rows = collect($page->items());
         $references = app(\App\Services\QmsRequestReferences::class);

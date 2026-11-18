@@ -1,61 +1,70 @@
 import 'package:dio/dio.dart';
-import '../../core/constants/api_constants.dart';
 import '../../core/network/api_client.dart';
+import '../../core/network/api_response.dart';
 
 class SystemHealthStatus {
-  final bool apiAvailable;
-  final bool databaseAvailable;
+  static const serviceNames = [
+    'Laravel',
+    'Node.js Service',
+    'MongoDB Cluster',
+    'FCM Push Service'
+  ];
+  final Map<String, String> components;
+  final DateTime? checkedAt;
+  final String? error;
 
   const SystemHealthStatus({
-    required this.apiAvailable,
-    required this.databaseAvailable,
+    required this.components,
+    this.checkedAt,
+    this.error,
   });
+
+  factory SystemHealthStatus.fromJson(Map<String, dynamic> json) {
+    final rows = json['components'];
+    final checkedAt = DateTime.tryParse('${json['checkedAt']}');
+    if (rows is! List || checkedAt == null) {
+      throw const FormatException('Invalid system health response.');
+    }
+    final components = {for (final name in serviceNames) name: 'Unknown'};
+    for (final row in rows) {
+      if (row is Map && components.containsKey(row['name'])) {
+        final status = row['status'];
+        if (const [
+          'Operational',
+          'Unavailable',
+          'Configured',
+          'Not Configured',
+          'Unknown'
+        ].contains(status)) {
+          components[row['name'] as String] = status as String;
+        }
+      }
+    }
+    return SystemHealthStatus(components: components, checkedAt: checkedAt);
+  }
 }
 
 class SystemHealthRepository {
+  final Dio _dio;
+  SystemHealthRepository({Dio? dio}) : _dio = dio ?? ApiClient().dio;
+
   Future<SystemHealthStatus> check() async {
-    final dio = Dio(BaseOptions(
-      connectTimeout: const Duration(seconds: 4),
-      receiveTimeout: const Duration(seconds: 4),
-      sendTimeout: const Duration(seconds: 4),
-      validateStatus: (status) => status != null && status < 600,
-    ));
-
-    var apiAvailable = false;
-    var databaseAvailable = false;
-
     try {
-      final response = await dio.get('${ApiConstants.baseUrl}/up');
-      apiAvailable = response.statusCode != null &&
-          response.statusCode! >= 200 &&
-          response.statusCode! < 300;
-    } on DioException {
-      apiAvailable = false;
-    } catch (_) {
-      apiAvailable = false;
-    }
-
-    try {
-      final response = await ApiClient().dio.get(
-        '/api/v1/system/health',
+      final response = await _dio.get(
+        '/api/v1/system/dashboard/health',
         options: Options(
-          connectTimeout: const Duration(seconds: 4),
-          receiveTimeout: const Duration(seconds: 4),
-          sendTimeout: const Duration(seconds: 4),
+          receiveTimeout: const Duration(seconds: 10),
+          sendTimeout: const Duration(seconds: 10),
         ),
       );
-      final body = response.data;
-      if (body is Map) databaseAvailable = body['database'] == 'ok';
-    } on DioException {
-      databaseAvailable = false;
+      return SystemHealthStatus.fromJson(ApiResponse.object(response.data));
     } catch (_) {
-      databaseAvailable = false;
+      return SystemHealthStatus(
+        components: {
+          for (final name in SystemHealthStatus.serviceNames) name: 'Unknown'
+        },
+        error: 'Unable to check system health. Try again.',
+      );
     }
-
-    dio.close(force: true);
-    return SystemHealthStatus(
-      apiAvailable: apiAvailable,
-      databaseAvailable: databaseAvailable,
-    );
   }
 }

@@ -204,7 +204,12 @@
 /* Auditee dashboard only: compact cards within the existing portal shell. */
 [data-portal-role="3"] .auditee-dashboard { gap:12px; color:#051b44; }
 [data-portal-role="3"] .auditee-dashboard .auditor-summary-grid { grid-template-columns:repeat(4,minmax(0,1fr)); margin:0; gap:10px; }
-[data-portal-role="3"] .auditee-dashboard .auditor-summary-card { text-decoration:none; color:inherit; }
+[data-portal-role="3"] .auditee-metric-card { min-width:0; gap:14px; padding:20px 22px; border:1px solid #edf2f7; border-radius:14px; background:#fff; box-shadow:var(--shadow-card); cursor:default; }
+[data-portal-role="3"] .auditee-metric-card .metric-info { min-width:0; }
+[data-portal-role="3"] .auditee-metric-card .metric-label { overflow-wrap:anywhere; }
+[data-portal-role="3"] .auditee-metric-card .metric-number { display:block; overflow-wrap:anywhere; }
+[data-portal-role="3"] .auditee-metric-card .metric-icon-box.blue { background:#eff6ff; color:#2563eb; }
+[data-portal-role="3"] .auditee-metric-card .metric-icon-box.green { background:#f0fdf4; color:#15803d; }
 [data-portal-role="3"] #main-content .auditee-dashboard .auditor-summary-card p { color:#526078; line-height:1.5; }
 [data-portal-role="3"] .auditee-dashboard .workflow-card { padding:12px 16px; }
 [data-portal-role="3"] .auditee-dashboard .workflow-grid { gap:12px; align-items:stretch; }
@@ -277,7 +282,7 @@
 [data-portal-role="3"] .auditee-results .results-next-action { background:#fffbeb; padding:12px; border-radius:8px; margin:12px 0; }
 [data-portal-role="3"] .auditee-results #corrective-evidence { scroll-margin-top:20px; }
 @media(max-width:767px) {
-  [data-portal-role="3"] .auditee-results .results-summary { grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px; }
+  [data-portal-role="3"] .auditee-results .results-summary { grid-template-columns:1fr; gap:8px; }
   [data-portal-role="3"] .auditee-results .auditor-summary-card { padding:10px; }
   [data-portal-role="3"] .auditee-results .auditor-summary-card svg { display:none; }
   [data-portal-role="3"] .auditee-results .results-search { flex:auto; }
@@ -337,15 +342,18 @@
   [data-portal-role="3"] #auditee-results-card [data-results-loading] td { width:100%; }
 }
 /* One shared result view, presented either in-page or in a native modal. */
-[data-portal-role="3"] .audit-result-modal { width:84vw; max-width:1200px; height:90dvh; max-height:90dvh; margin:auto; padding:0; border:1px solid #dfe6f1; border-radius:14px; background:#fff; color:#051b44; overflow:hidden; box-shadow:0 24px 80px #051b4450; }
-[data-portal-role="3"] .audit-result-modal::backdrop { background:#051b448f; }
+[data-portal-role="3"] .audit-result-modal { width:min(900px,calc(100vw - 32px)); height:90dvh; max-height:calc(100dvh - 32px); margin:auto; padding:0; border:0; border-radius:16px; background:#fff; color:#051b44; overflow:hidden; box-shadow:0 20px 70px #00205b40; }
+[data-portal-role="3"] .audit-result-modal::backdrop { background:#061531a6; }
 [data-portal-role="3"] .audit-result-modal-layout { display:flex; flex-direction:column; height:100%; max-height:90dvh; }
-[data-portal-role="3"] .audit-result-modal-header { display:flex; justify-content:space-between; align-items:flex-start; gap:16px; padding:18px 22px; border-bottom:1px solid #e2e8f0; flex-shrink:0; }
+[data-portal-role="3"] .audit-result-modal-header { display:flex; justify-content:space-between; align-items:flex-start; gap:16px; padding:24px 28px; background:#00205b; border-bottom:1px solid #00205b; flex-shrink:0; }
 [data-portal-role="3"] .audit-result-modal-header > div { min-width:0; }
 [data-portal-role="3"] .audit-result-modal-header p { margin:4px 0; }
-[data-portal-role="3"] #main-content .audit-result-modal .result-modal-close { width:40px; height:40px; padding:0; flex-shrink:0; font-size:27px; line-height:1; border:0; border-radius:8px; background:#f1f5f9; color:#051b44; cursor:pointer; }
-[data-portal-role="3"] .audit-result-modal-body { flex:1; overflow-y:auto; min-height:0; padding:0 22px 20px; overscroll-behavior:contain; }
-[data-portal-role="3"] .audit-result-modal-footer { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:12px 22px; border-top:1px solid #e2e8f0; background:#f8fafc; flex-shrink:0; }
+[data-portal-role="3"] #main-content .audit-result-modal .audit-result-modal-header .result-modal-close { display:inline-flex; align-items:center; justify-content:center; width:36px; height:36px; padding:0; flex-shrink:0; line-height:1; border:1px solid #d9e2ee; border-radius:8px; background:#fff; color:#00205b; cursor:pointer; }
+[data-portal-role="3"] .result-modal-close svg { display:block; width:20px; height:20px; flex-shrink:0; }
+[data-portal-role="3"] #main-content .audit-result-modal .result-modal-close:hover { background:#eef2f7; border-color:#94a3b8; }
+[data-portal-role="3"] .audit-result-modal-body { flex:1; overflow-y:auto; min-height:0; padding:0 28px 24px; overscroll-behavior:contain; scrollbar-gutter:stable; }
+[data-portal-role="3"] .audit-result-modal-footer { display:flex; align-items:center; justify-content:space-between; gap:16px; padding:18px 28px; border-top:1px solid #e2e8f0; background:#fff; flex-shrink:0; }
+[data-portal-role="3"] .audit-result-modal-footer button { flex-shrink:0; min-height:40px; border:1px solid #cbd5e1; border-radius:8px; background:#fff; color:#00205b; }
 [data-portal-role="3"] .audit-result-modal-footer p { font-size:13px; margin:0; overflow-wrap:anywhere; }
 [data-portal-role="3"] .result-detail { min-width:0; overflow-wrap:anywhere; }
 [data-portal-role="3"] .result-detail-header { padding-bottom:12px; }
@@ -359,11 +367,11 @@
 [data-portal-role="3"] .audit-result-modal :focus-visible { outline:3px solid #fab217; outline-offset:2px; }
 html:has(#audit-result-modal[open]) { scrollbar-gutter:stable; }
 @media(max-width:767px) {
-  [data-portal-role="3"] .audit-result-modal { width:calc(100vw - 20px); height:94dvh; max-height:94dvh; }
+  [data-portal-role="3"] .audit-result-modal { width:calc(100vw - 20px); height:94dvh; max-height:94dvh; border-radius:12px; }
   [data-portal-role="3"] .audit-result-modal-layout { max-height:94dvh; }
-  [data-portal-role="3"] .audit-result-modal-header { padding:12px 14px; }
-  [data-portal-role="3"] .audit-result-modal-body { padding:0 14px 14px; }
-  [data-portal-role="3"] .audit-result-modal-footer { padding:10px 14px; }
+  [data-portal-role="3"] .audit-result-modal-header { padding:14px 16px; }
+  [data-portal-role="3"] .audit-result-modal-body { padding:0 16px 20px; }
+  [data-portal-role="3"] .audit-result-modal-footer { padding:14px 16px; }
   [data-portal-role="3"] #main-content .result-detail-tabs button { padding:8px; font-size:12px; }
 }
 
@@ -373,8 +381,11 @@ html:has(#audit-result-modal[open]) { scrollbar-gutter:stable; }
 [data-portal-role="3"] .auditee-results .result-detail-review-date { font-size:12px; color:#6b7280; }
 [data-portal-role="3"] .auditee-results .result-detail-car-badge[data-status="open"] { color:#9a3412; background:#ffeddc; }
 [data-portal-role="3"] .auditee-results .result-detail-badges { margin-top:8px; }
-[data-portal-role="3"] .audit-result-modal-tabs { flex-shrink:0; padding:0 22px; background:#fff; }
-@media(max-width:767px) { [data-portal-role="3"] .audit-result-modal-tabs { padding:0 14px; } }
+[data-portal-role="3"] #main-content .audit-result-modal .audit-result-modal-header h2 { margin:4px 0; font-size:22px; font-weight:800; line-height:1.4; color:#fff; overflow-wrap:anywhere; }
+[data-portal-role="3"] #main-content .audit-result-modal .audit-result-modal-header :is(.result-detail-eyebrow,.result-detail-reference,.result-detail-review-date) { color:#e2e8f0; }
+[data-portal-role="3"] #main-content .audit-result-modal .audit-result-modal-header .result-detail-eyebrow { font-size:10px; font-weight:750; letter-spacing:.12em; }
+[data-portal-role="3"] .audit-result-modal-tabs { flex-shrink:0; padding:0 28px; background:#fff; }
+@media(max-width:767px) { [data-portal-role="3"] .audit-result-modal-tabs { padding:0 16px; } }
 
 /* Shared hierarchy for Overview, Evidence Reviewed, and Corrective Action. */
 [data-portal-role="3"] #main-content .auditee-results [data-result-panel] { font-size:14px; line-height:1.65; padding-top:18px; }

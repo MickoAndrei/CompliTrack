@@ -17,10 +17,9 @@
         ->sortByDesc('at')->take(5);
 @endphp
 <div class="workflow-page auditee-dashboard">
-    @include('auditee.organizational-oversight')
     <div class="auditor-summary-grid">
-        @foreach([['Audit Results', $published->count(), 'clipboard-check', '/auditee/my-findings', 'Shared accepted checklist decisions'], ['Open CARs', $openCars->count(), 'triangle-alert', '/auditee/my-findings?actionable=1', 'Legacy checks requiring follow-up'], ['Pending Evidence', $pendingRequests->count(), 'files', '/auditee/evidence-requests', 'Requests awaiting your response'], ['Closed CARs', $closedCars->count(), 'check-check', '/auditee/my-findings?archived=1', 'Closed legacy corrective actions']] as [$label, $count, $icon, $url, $hint])
-        <a class="auditor-summary-card" href="{{ $url }}"><div><h3>{{ $label }}</h3><i data-lucide="{{ $icon }}" @class(['auditor-red' => $label === 'Open CARs', 'auditor-green' => $label === 'Closed CARs']) aria-hidden="true"></i></div><strong>{{ $count }}</strong><p class="sr-only">{{ $hint }}</p>@if($label === 'Audit Results')<p class="sr-only">{{ $checks->count() }} legacy checks reported separately</p>@endif</a>
+        @foreach([['Audit Results', $published->count(), 'clipboard-check', 'blue', 'Shared accepted checklist decisions'], ['Open CARs', $openCars->count(), 'triangle-alert', 'danger', 'Legacy checks requiring follow-up'], ['Pending Evidence', $pendingRequests->count(), 'files', 'purple', 'Requests awaiting your response'], ['Closed CARs', $closedCars->count(), 'check-check', 'green', 'Closed legacy corrective actions']] as [$label, $count, $icon, $color, $hint])
+        <article class="auditee-metric-card metric-stat-card" title="{{ $hint }}"><div class="metric-info"><span class="metric-label">{{ $label }}</span><strong class="metric-number color-dark">{{ $count }}</strong><p class="sr-only">{{ $hint }}</p>@if($label === 'Audit Results')<p class="sr-only">{{ $checks->count() }} legacy checks reported separately</p>@endif</div><div class="metric-icon-box {{ $color }}"><i data-lucide="{{ $icon }}" aria-hidden="true"></i></div></article>
         @endforeach
     </div>
     <section class="workflow-card" aria-labelledby="next-actions-title">

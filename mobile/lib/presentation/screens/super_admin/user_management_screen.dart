@@ -28,6 +28,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
   UserModel? _editingUser;
   bool _isCreatingUser = false;
   List<DepartmentModel> _editDepartments = [];
+  Map<String, dynamic>? _userOptions;
 
   @override
   void initState() {
@@ -73,11 +74,16 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
     try {
       final departments =
           await DepartmentRepository().getDepartments(campus: 'Claveria');
+      Map<String, dynamic>? options;
+      try {
+        options = await _userRepository.getOptions();
+      } catch (_) {}
       if (!mounted) return;
       setState(() {
         _editingUser = user;
         _isCreatingUser = false;
         _editDepartments = departments;
+        _userOptions = options;
       });
     } catch (_) {
       if (!mounted) return;
@@ -85,6 +91,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
         _editingUser = user;
         _isCreatingUser = false;
         _editDepartments = [];
+        _userOptions = null;
       });
     }
   }
@@ -93,11 +100,16 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
     try {
       final departments =
           await DepartmentRepository().getDepartments(campus: 'Claveria');
+      Map<String, dynamic>? options;
+      try {
+        options = await _userRepository.getOptions();
+      } catch (_) {}
       if (!mounted) return;
       setState(() {
         _editingUser = null;
         _isCreatingUser = true;
         _editDepartments = departments;
+        _userOptions = options;
       });
     } catch (_) {
       if (!mounted) return;
@@ -105,6 +117,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
         _editingUser = null;
         _isCreatingUser = true;
         _editDepartments = [];
+        _userOptions = null;
       });
     }
   }
@@ -233,12 +246,14 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                         child: TextField(
                           controller: _searchController,
                           onChanged: (_) => _loadUsers(),
+                          textAlignVertical: TextAlignVertical.center,
                           style: const TextStyle(
                             fontFamily: 'Inter',
                             fontSize: 14,
                             color: Color(0xFF0F172A),
                           ),
                           decoration: const InputDecoration(
+                            isDense: true,
                             hintText: 'Search users...',
                             hintStyle: TextStyle(
                               fontFamily: 'Inter',
@@ -250,8 +265,16 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                               color: Color(0xFF94A3B8),
                               size: 20,
                             ),
+                            prefixIconConstraints: BoxConstraints.tightFor(
+                              width: 44,
+                              height: 42,
+                            ),
                             border: InputBorder.none,
-                            contentPadding: EdgeInsets.symmetric(vertical: 10),
+                            enabledBorder: InputBorder.none,
+                            focusedBorder: InputBorder.none,
+                            disabledBorder: InputBorder.none,
+                            filled: false,
+                            contentPadding: EdgeInsets.only(right: 12),
                           ),
                         ),
                       ),
@@ -433,6 +456,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
           : SuperAdminUserEditForm(
               user: _editingUser,
               departments: _editDepartments,
+              options: _userOptions,
               onCancel: () => setState(() {
                 _editingUser = null;
                 _isCreatingUser = false;

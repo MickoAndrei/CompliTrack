@@ -6,7 +6,7 @@ document.addEventListener('alpine:init', () => {
     window.Alpine.data('qmsArchives', () => ({
         tree: { colleges: [], units: [], categories: [] }, documents: [], meta: {}, loading: true, saving: false,
         collegeId: '', unitId: '', categoryId: '', search: '', recordType: '', page: 1, error: '', notice: '',
-        detail: null, versions: [], activity: [], form: {}, previous: null, accessOptions: { accounts: [], audits: [] }, auditId: '', navExpanded: false,
+        detail: null, versions: [], activity: [], form: {}, previous: null, accessOptions: { accounts: [], audits: [] }, auditId: '', navExpanded: false, sidebarCollapsed: false,
         organization: null, selectedUser: '', responsibility: 'faculty_staff', cluster: '', scopeUnits: [], scopeColleges: [],
         detailNumber: 0, detailLoading: false, detailError: '', detailTarget: null, folderDetailLoading: false, folderDetailError: '', folderDetailTarget: null, folderDetailNumber: 0, requestNumber: 0, initialLoading: true, loadingFiles: false, loadedLocationKey: '', treeReady: false, navigationRequest: null,
         navigationHistory: [{ college: '', unit: '', category: '' }], navigationIndex: 0,
@@ -16,11 +16,11 @@ document.addEventListener('alpine:init', () => {
         archivePath: {}, archiveFolders: [], archiveBreadcrumbs: [], archiveLeaf: false, archiveNotice: '',
         repositoryId: '', folderPolicy: 'department', folderUnitId: '', folderAssignmentId: '',
         get repositoryMode() { return !!this.repositoryId || ['cycles', 'assigned'].includes(this.currentView) || (this.currentView === 'my' && !this.unitId && !this.collegeId); },
-        get showDocumentContents() { return this.currentView !== 'my' || !!(this.unitId || this.categoryId || this.repositoryId); },
+        get showDocumentContents() { return !this.repositoryFolder?.navigationOnly && (this.currentView !== 'my' || !!(this.unitId || this.categoryId || this.repositoryId)); },
         get showRepositoryFolders() { return this.repositoryMode || this.currentView === 'starred' || (['my','department'].includes(this.currentView) && this.unitId && !this.categoryId && this.repositoryChildren.length > 0); },
         folderSortDescending: false,
         folderPage: 1, foldersPerPage: 12,
-        get paginatingDriveFolders() { return this.currentView === 'my' && !this.repositoryId && !this.unitId && !this.categoryId; },
+        get paginatingDriveFolders() { return this.tree.canViewDocuments !== false && this.currentView === 'my' && !this.repositoryId && !this.unitId && !this.categoryId; },
         get driveFolderRows() {
             return [
                 ...(this.showRepositoryFolders ? this.sortFolderRows(this.repositoryChildren).map(folder => ({kind:'repository', folder})) : []),
@@ -59,16 +59,27 @@ document.addEventListener('alpine:init', () => {
         get repositoryFolder() { return (this.tree.repositoryFolders || []).find(f => f._id === this.repositoryId); },
         get repositoryChildren() {
             let folders = this.tree.repositoryFolders || [];
+            if (!this.repositoryId && ['my','cycles'].includes(this.currentView) && folders.some(folder => folder.cycleRoot)) {
+                return folders.filter(folder => folder.cycleRoot && (this.currentView !== 'my' || folder.currentCycle)
+                    && (!this.search || folder.name.toLowerCase().includes(this.search.toLowerCase())));
+            }
+            if (this.tree.canViewDocuments === false && !this.repositoryId) {
+                return folders.filter(folder => !folder.parentId && (this.currentView !== 'my' || folder.currentCycle)
+                    && (!this.search || folder.name.toLowerCase().includes(this.search.toLowerCase())));
+            }
             if (['my','department'].includes(this.currentView) && this.unitId && !this.repositoryId) {
                 if (this.categoryId) return [];
                 folders = folders.filter(f => f.folderPolicy === 'department' && f.departmentId === this.unitId);
             }
             if (this.currentView === 'cycles') folders = folders.filter(f => f.auditRelated);
-            if (this.currentView === 'assigned') folders = folders.filter(f => ['evidence','notes'].includes(f.folderPolicy) && (this.tree.assignedAudits || []).some(a => a._id === f.auditAssignmentId));
+            if (this.currentView === 'assigned') folders = folders.filter(f => (f.workspaceArea && (f.workspaceRoot || f.auditorId === this.tree.actorId)) || (['evidence','notes'].includes(f.folderPolicy) && (this.tree.assignedAudits || []).some(a => a._id === f.auditAssignmentId)));
             if (this.currentView === 'starred') return folders.filter(f => f.isStarred && (!this.search || f.name.toLowerCase().includes(this.search.toLowerCase())));
             const visibleIds = new Set(folders.map(f => f._id));
             return folders.filter(f => (this.repositoryId ? f.parentId === this.repositoryId : !f.parentId || !visibleIds.has(f.parentId))
                 && (!this.search || f.name.toLowerCase().includes(this.search.toLowerCase())));
+        },
+        get sidebarRepositoryFolders() {
+            return this.tree.canViewDocuments === false ? this.repositoryChildren : (this.tree.repositoryFolders || []);
         },
         get folderPolicies() {
             const options = this.tree.folderOptions || {};
@@ -124,7 +135,7 @@ document.addEventListener('alpine:init', () => {
             if (this.currentView === 'starred') return 'No starred files or folders yet.';
             if (this.currentView === 'assigned') return !(this.tree.assignedAudits || []).length ? 'No assigned audits yet.' : 'No folders have been created for your assigned audits.';
             if (this.currentView === 'cycles') return 'No audit records available.';
-            if (this.currentView === 'recent') return 'No recent documents.';
+            if (this.currentView === 'recent') return 'No recently opened files yet.';
             return 'This folder is empty.';
         },
         openBrowseFolder(folder) {
@@ -391,6 +402,17 @@ document.addEventListener('alpine:init', () => {
             this.loadingFiles = !this.hasVisibleFolders || (locationKey === this.loadedLocationKey && this.documents.length > 0);
             this.loading = true; this.error = '';
             try {
+                if (this.tree.canViewDocuments === false) {
+                    this.documents = []; this.meta = {total:0,lastPage:1,currentPage:1}; this.page = 1;
+                    this.loadedLocationKey = locationKey;
+                    return;
+                }
+                if (this.repositoryFolder?.navigationOnly || (!this.repositoryId && ['my','cycles','assigned'].includes(this.currentView)
+                    && !this.unitId && (this.tree.repositoryFolders || []).some(folder => folder.cycleRoot))) {
+                    this.documents = []; this.meta = {total:0,lastPage:1,currentPage:1}; this.page = 1;
+                    this.loadedLocationKey = locationKey;
+                    return;
+                }
                 if (this.currentView === 'audit') {
                     const {data} = await window.axios.get('/api/v1/documents/audit-folders', {params:this.archivePath, signal:controller.signal, timeout:30000});
                     if (number !== this.requestNumber) return;
@@ -401,7 +423,7 @@ document.addEventListener('alpine:init', () => {
                         return;
                     }
                 }
-                const params = { page, perPage: 12, search: this.search || undefined, unitId: this.unitId || undefined,
+                const params = { page: this.currentView === 'recent' ? 1 : page, perPage: this.currentView === 'recent' ? 5 : 12, search: this.search || undefined, unitId: this.unitId || undefined,
                     categoryId: this.categoryId || undefined, recordType: this.recordType || undefined, collegeId: this.collegeId || undefined,
                     view: this.currentView, sort: this.sort, scope:['my','department','cycles','assigned'].includes(this.currentView) ? 'current' : 'authorized', ...(this.currentView === 'audit' ? this.archivePath : {}) };
                 const response = await window.axios.get('/api/v1/documents', { params, signal:controller.signal, timeout:30000 });
@@ -447,11 +469,12 @@ document.addEventListener('alpine:init', () => {
             return trail.concat(this.categoryTrail.map(crumb => ({ key: 'category:' + crumb._id, name: crumb.name, college: this.collegeId, unit: this.unitId, category: crumb._id })));
         },
         get visibleBreadcrumbs() { return this.compactPath ? this.breadcrumbs.slice(-1) : this.breadcrumbs; },
-        get folders() { return this.tree.units.filter(unit => (!this.collegeId || unit.collegeId === this.collegeId)
+        get folders() { return this.tree.canViewDocuments === false ? [] : this.tree.units.filter(unit => (!this.collegeId || unit.collegeId === this.collegeId)
             && (this.currentView !== 'department' || (this.tree.departmentUnitIds || [this.tree.homeUnitId]).includes(unit._id))
             && (this.currentView !== 'starred' || unit.isStarred)
             && (!this.search || unit.name.toLowerCase().includes(this.search.toLowerCase()))); },
         get categories() {
+            if (this.tree.canViewDocuments === false) return [];
             if (this.currentView === 'starred') return this.tree.categories.filter(f => f.isStarred && !f.folderPolicy && (!this.search || f.name.toLowerCase().includes(this.search.toLowerCase())));
             if (!this.unit || this.repositoryId) return [];
             return this.tree.categories.filter(category => category.collegeId === this.unit.collegeId && category.unitType === this.unit.unitType

@@ -13,6 +13,16 @@ class UserModel {
   final String officeName;
   final bool isActive;
   final DateTime? createdAt;
+  final List<String> assignedDepartmentIds;
+  final String? archiveResponsibility;
+  final List<String> archiveUnitIds;
+  final List<String> archiveCollegeIds;
+  final String? archiveCluster;
+  final String? clusterName;
+  final List<String> organizationalUnits;
+  final List<String> organizationalColleges;
+  final bool isAuditTeamLeader;
+  final bool canDeactivate;
 
   const UserModel({
     required this.id,
@@ -26,6 +36,16 @@ class UserModel {
     required this.officeName,
     required this.isActive,
     this.createdAt,
+    this.assignedDepartmentIds = const [],
+    this.archiveResponsibility,
+    this.archiveUnitIds = const [],
+    this.archiveCollegeIds = const [],
+    this.archiveCluster,
+    this.clusterName,
+    this.organizationalUnits = const [],
+    this.organizationalColleges = const [],
+    this.isAuditTeamLeader = false,
+    this.canDeactivate = true,
   });
 
   factory UserModel.fromJson(Map<String, dynamic> json) {
@@ -44,6 +64,31 @@ class UserModel {
       createdAt: json['createdAt'] == null
           ? null
           : ModelJson.requiredDateTime(json, 'createdAt'),
+      assignedDepartmentIds: (json['assignedDepartmentIds'] as List<dynamic>?)
+              ?.map((e) => e.toString())
+              .toList() ??
+          const [],
+      archiveResponsibility: ModelJson.optionalString(json, 'archiveResponsibility'),
+      archiveUnitIds: (json['archiveUnitIds'] as List<dynamic>?)
+              ?.map((e) => e.toString())
+              .toList() ??
+          const [],
+      archiveCollegeIds: (json['archiveCollegeIds'] as List<dynamic>?)
+              ?.map((e) => e.toString())
+              .toList() ??
+          const [],
+      archiveCluster: ModelJson.optionalString(json, 'archiveCluster'),
+      clusterName: ModelJson.optionalString(json, 'clusterName'),
+      organizationalUnits: (json['organizationalUnits'] as List<dynamic>?)
+              ?.map((e) => e.toString())
+              .toList() ??
+          const [],
+      organizationalColleges: (json['organizationalColleges'] as List<dynamic>?)
+              ?.map((e) => e.toString())
+              .toList() ??
+          const [],
+      isAuditTeamLeader: ModelJson.optionalBool(json, 'isAuditTeamLeader') ?? false,
+      canDeactivate: ModelJson.optionalBool(json, 'canDeactivate') ?? true,
     );
   }
 
@@ -60,6 +105,16 @@ class UserModel {
       'officeName': officeName,
       'isActive': isActive,
       if (createdAt != null) 'createdAt': createdAt!.toIso8601String(),
+      'assignedDepartmentIds': assignedDepartmentIds,
+      if (archiveResponsibility != null) 'archiveResponsibility': archiveResponsibility,
+      'archiveUnitIds': archiveUnitIds,
+      'archiveCollegeIds': archiveCollegeIds,
+      if (archiveCluster != null) 'archiveCluster': archiveCluster,
+      if (clusterName != null) 'clusterName': clusterName,
+      'organizationalUnits': organizationalUnits,
+      'organizationalColleges': organizationalColleges,
+      'isAuditTeamLeader': isAuditTeamLeader,
+      'canDeactivate': canDeactivate,
     };
   }
 }

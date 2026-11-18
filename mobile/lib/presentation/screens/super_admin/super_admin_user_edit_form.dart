@@ -12,12 +12,14 @@ class SuperAdminUserEditForm extends StatefulWidget {
     super.key,
     required this.user,
     required this.departments,
+    this.options,
     required this.onCancel,
     required this.onSaved,
   });
 
   final UserModel? user;
   final List<DepartmentModel> departments;
+  final Map<String, dynamic>? options;
   final VoidCallback onCancel;
   final VoidCallback onSaved;
 
@@ -30,12 +32,25 @@ class _SuperAdminUserEditFormState extends State<SuperAdminUserEditForm> {
   final _stackKey = GlobalKey();
   final _roleFieldKey = GlobalKey();
   final _departmentFieldKey = GlobalKey();
+  final _responsibilityFieldKey = GlobalKey();
+  final _clusterFieldKey = GlobalKey();
+  final _collegeFieldKey = GlobalKey();
+  final _auditUnitFieldKey = GlobalKey();
+
   late final TextEditingController _nameController;
   late final TextEditingController _emailController;
   late final TextEditingController _officeController;
+  late final TextEditingController _passwordController;
+
   late int _selectedRole;
   String? _selectedDepartment;
-  late final TextEditingController _passwordController;
+  late bool _isActive;
+  String? _archiveResponsibility;
+  String? _archiveCluster;
+  late List<String> _archiveCollegeIds;
+  late List<String> _archiveUnitIds;
+  late List<String> _assignedDepartmentIds;
+
   bool _isSaving = false;
   String? _formError;
   List<_EditOption>? _openOptions;
@@ -52,11 +67,17 @@ class _SuperAdminUserEditFormState extends State<SuperAdminUserEditForm> {
     _emailController = TextEditingController(text: widget.user?.email);
     _officeController = TextEditingController(text: widget.user?.officeName);
     _passwordController = TextEditingController(text: _generatePassword());
-    _selectedRole = widget.user?.roleId ?? 0;
+    _selectedRole = widget.user?.roleId ?? 3;
     _selectedDepartment = widget.user?.departmentId ??
         (widget.user == null && widget.departments.isNotEmpty
             ? widget.departments.first.id
             : null);
+    _isActive = widget.user?.isActive ?? true;
+    _archiveResponsibility = widget.user?.archiveResponsibility;
+    _archiveCluster = widget.user?.archiveCluster;
+    _archiveCollegeIds = List.from(widget.user?.archiveCollegeIds ?? []);
+    _archiveUnitIds = List.from(widget.user?.archiveUnitIds ?? []);
+    _assignedDepartmentIds = List.from(widget.user?.assignedDepartmentIds ?? []);
   }
 
   @override
@@ -68,13 +89,152 @@ class _SuperAdminUserEditFormState extends State<SuperAdminUserEditForm> {
     super.dispose();
   }
 
+  bool get _collegeResponsibility => [
+        'college_dean',
+        'college_secretary',
+        'cluster_administrator'
+      ].contains(_archiveResponsibility);
+
+  bool get _clusterPosition => _archiveResponsibility == 'cluster_administrator';
+
+  String _roleName(int roleId) => switch (roleId) {
+        0 => 'Super Admin',
+        1 => 'Admin',
+        2 => 'Auditor',
+        3 => 'Auditee',
+        _ => 'Unknown role',
+      };
+
+  String _responsibilityName(String? value) => switch (value) {
+        'department_head' => 'Department Head',
+        'college_dean' => 'College Dean',
+        'college_secretary' => 'College Secretary',
+        'cluster_administrator' => 'Cluster Administrator',
+        'faculty_staff' => 'Faculty / Staff',
+        _ => 'Not assigned',
+      };
+
+  List<_EditOption> get _roleOptions {
+    final roles = widget.user?.roleId == 0 ? [0] : [0, 1, 2, 3];
+    return [
+      for (final role in roles)
+        _EditOption(value: role, label: '$role - ${_roleName(role)}'),
+    ];
+  }
+
+  List<_EditOption> get _responsibilityOptions {
+    final list = widget.options?['responsibilities'] as List<dynamic>? ??
+        [
+          'department_head',
+          'college_dean',
+          'college_secretary',
+          'cluster_administrator',
+          'faculty_staff'
+        ];
+    return [
+      const _EditOption(value: '', label: 'Not assigned'),
+      for (final resp in list)
+        _EditOption(
+            value: resp.toString(), label: _responsibilityName(resp.toString())),
+    ];
+  }
+
+  List<_EditOption> get _clusterOptions {
+    final clusters = widget.options?['clusters'] as List<dynamic>? ?? [];
+    return [
+      const _EditOption(value: '', label: 'Choose a cluster'),
+      for (final cluster in clusters)
+        _EditOption(
+          value: cluster['id']?.toString() ?? '',
+          label: cluster['name']?.toString() ?? '',
+        ),
+    ];
+  }
+
+  List<_EditOption> get _collegeOptions {
+    final colleges = widget.options?['colleges'] as List<dynamic>? ?? [];
+    return [
+      const _EditOption(value: '', label: 'Choose a college'),
+      for (final college in colleges)
+        _EditOption(
+          value: college['_id']?.toString() ?? '',
+          label: college['name']?.toString() ?? '',
+        ),
+    ];
+  }
+
+  List<_EditOption> get _departmentOptions => [
+        const _EditOption(value: '', label: 'Choose a department / office'),
+        for (final department in widget.departments)
+          _EditOption(
+            value: department.id,
+            label: _departmentLabel(department),
+          ),
+      ];
+
+  List<_EditOption> get _auditDepartmentOptions {
+    final optDepartments =
+        widget.options?['departments'] as List<dynamic>? ?? [];
+    return [
+      const _EditOption(value: '', label: 'Select a department/office'),
+      for (final dept in optDepartments)
+        if (dept['auditEligible'] == true || dept['authorizedCet'] == true)
+          _EditOption(
+            value: dept['_id']?.toString() ?? '',
+            label: dept['name']?.toString() ?? '',
+          ),
+    ];
+  }
+
+  String _departmentLabel(DepartmentModel department) =>
+      department.collegeName == 'CET'
+          ? 'CET - ${department.departmentName}'
+          : department.departmentName;
+
+  String? get _selectedDepartmentName {
+    for (final department in widget.departments) {
+      if (department.id == _selectedDepartment) {
+        return _departmentLabel(department);
+      }
+    }
+    return _selectedDepartment;
+  }
+
+  String? get _selectedClusterName {
+    if (_archiveCluster == null || _archiveCluster!.isEmpty) return null;
+    final clusters = widget.options?['clusters'] as List<dynamic>? ?? [];
+    for (final cluster in clusters) {
+      if (cluster['id']?.toString() == _archiveCluster) {
+        return cluster['name']?.toString();
+      }
+    }
+    return _archiveCluster;
+  }
+
+  String? get _selectedCollegeName {
+    if (_archiveCollegeIds.isEmpty) return null;
+    final colleges = widget.options?['colleges'] as List<dynamic>? ?? [];
+    for (final college in colleges) {
+      if (college['_id']?.toString() == _archiveCollegeIds.first) {
+        return college['name']?.toString();
+      }
+    }
+    return _archiveCollegeIds.first;
+  }
+
+  String _generatePassword() {
+    const characters =
+        'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+    final random = math.Random.secure();
+    final suffix = List.generate(
+      8,
+      (_) => characters[random.nextInt(characters.length)],
+    ).join();
+    return 'uSTp_Cl@v_${DateTime.now().year}_$suffix';
+  }
+
   Future<void> _save() async {
     if (!(_formKey.currentState?.validate() ?? false)) return;
-    if (!widget.departments
-        .any((department) => department.id == _selectedDepartment)) {
-      setState(() => _formError = 'Choose a department.');
-      return;
-    }
 
     setState(() {
       _isSaving = true;
@@ -86,8 +246,14 @@ class _SuperAdminUserEditFormState extends State<SuperAdminUserEditForm> {
           fullName: _nameController.text.trim(),
           email: _emailController.text.trim(),
           roleId: _selectedRole,
-          departmentId: _selectedDepartment!,
+          departmentId: _selectedDepartment,
           officeName: _officeController.text.trim(),
+          isActive: _isActive,
+          assignedDepartmentIds: _assignedDepartmentIds,
+          archiveResponsibility: _archiveResponsibility,
+          archiveUnitIds: _archiveUnitIds,
+          archiveCollegeIds: _archiveCollegeIds,
+          archiveCluster: _archiveCluster,
         );
       } else {
         await UserRepository().updateUser(
@@ -97,6 +263,12 @@ class _SuperAdminUserEditFormState extends State<SuperAdminUserEditForm> {
           roleId: _selectedRole,
           departmentId: _selectedDepartment,
           officeName: _officeController.text.trim(),
+          isActive: _isActive,
+          assignedDepartmentIds: _assignedDepartmentIds,
+          archiveResponsibility: _archiveResponsibility,
+          archiveUnitIds: _archiveUnitIds,
+          archiveCollegeIds: _archiveCollegeIds,
+          archiveCluster: _archiveCluster,
         );
       }
       if (mounted) widget.onSaved();
@@ -121,13 +293,13 @@ class _SuperAdminUserEditFormState extends State<SuperAdminUserEditForm> {
     final anchor = stackBox.globalToLocal(
       anchorBox.localToGlobal(Offset.zero),
     );
-    final height = math.min(options.length * 28.0, 240.0);
+    final height = math.min(options.length * 32.0, 240.0);
     final selectedIndex = options.indexWhere(
       (option) => option.value == selectedValue,
     );
     final selectedRow = selectedIndex < 0 ? 0 : selectedIndex;
     final top =
-        (anchor.dy + anchorBox.size.height / 2 - (selectedRow * 28.0 + 14.0))
+        (anchor.dy + anchorBox.size.height / 2 - (selectedRow * 32.0 + 16.0))
             .clamp(8.0, math.max(8.0, stackBox.size.height - height - 8.0))
             .toDouble();
     final width = math.min(maxWidth, stackBox.size.width - 32.0);
@@ -143,68 +315,6 @@ class _SuperAdminUserEditFormState extends State<SuperAdminUserEditForm> {
       _menuWidth = width;
       _menuHeight = height;
     });
-  }
-
-  void _showDepartments() {
-    final options = _departmentOptions;
-    if (options.isEmpty) {
-      setState(() => _formError = 'No departments are available.');
-      return;
-    }
-    _showOptions(
-      options: options,
-      selectedValue: _selectedDepartment ?? options.first.value,
-      anchorKey: _departmentFieldKey,
-    );
-  }
-
-  String _roleName(int roleId) => switch (roleId) {
-        0 => 'Super Admin',
-        1 => 'Admin',
-        2 => 'Auditor',
-        3 => 'Auditee',
-        _ => 'Unknown role',
-      };
-
-  List<_EditOption> get _roleOptions {
-    final roles = widget.user?.roleId == 0 ? [0] : [0, 1, 2, 3];
-    return [
-      for (final role in roles)
-        _EditOption(value: role, label: '$role - ${_roleName(role)}'),
-    ];
-  }
-
-  List<_EditOption> get _departmentOptions => [
-        for (final department in widget.departments)
-          _EditOption(
-            value: department.id,
-            label: _departmentLabel(department),
-          ),
-      ];
-
-  String _generatePassword() {
-    const characters =
-        'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-    final random = math.Random.secure();
-    final suffix = List.generate(
-      8,
-      (_) => characters[random.nextInt(characters.length)],
-    ).join();
-    return 'uSTp_Cl@v_${DateTime.now().year}_$suffix';
-  }
-
-  String _departmentLabel(DepartmentModel department) =>
-      department.collegeName == 'CET'
-          ? 'CET - ${department.departmentName}'
-          : department.departmentName;
-
-  String? get _selectedDepartmentName {
-    for (final department in widget.departments) {
-      if (department.id == _selectedDepartment) {
-        return _departmentLabel(department);
-      }
-    }
-    return null;
   }
 
   @override
@@ -227,7 +337,7 @@ class _SuperAdminUserEditFormState extends State<SuperAdminUserEditForm> {
                         widget.user == null
                             ? 'Create New Account'
                             : 'Edit User',
-                        style: TextStyle(
+                        style: const TextStyle(
                           color: AppColors.ustpDark,
                           fontFamily: 'Poppins',
                           fontWeight: FontWeight.bold,
@@ -261,6 +371,16 @@ class _SuperAdminUserEditFormState extends State<SuperAdminUserEditForm> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
+                          // Account Information
+                          const Text(
+                            'Account Information',
+                            style: TextStyle(
+                              color: AppColors.ustpNavy,
+                              fontSize: 14,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(height: 10),
                           _EditTextField(
                             controller: _nameController,
                             label: 'Full Name',
@@ -281,26 +401,206 @@ class _SuperAdminUserEditFormState extends State<SuperAdminUserEditForm> {
                               return null;
                             },
                           ),
-                          const SizedBox(height: 14),
+                          if (widget.user?.userCode != null) ...[
+                            const SizedBox(height: 8),
+                            Text(
+                              'User code: ${widget.user!.userCode}',
+                              style: const TextStyle(
+                                color: AppColors.ustpMuted,
+                                fontSize: 12,
+                              ),
+                            ),
+                          ],
+                          const SizedBox(height: 20),
+
+                          // Organizational Assignment
+                          const Text(
+                            'Organizational Assignment',
+                            style: TextStyle(
+                              color: AppColors.ustpNavy,
+                              fontSize: 14,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(height: 10),
                           _EditSelectionField(
-                            key: _roleFieldKey,
-                            label: 'Role',
-                            value: _roleName(_selectedRole),
+                            key: _responsibilityFieldKey,
+                            label: 'Position',
+                            value: _responsibilityName(_archiveResponsibility),
                             onTap: () => _showOptions(
-                              options: _roleOptions,
-                              selectedValue: _selectedRole,
-                              anchorKey: _roleFieldKey,
-                              maxWidth: 220,
+                              options: _responsibilityOptions,
+                              selectedValue: _archiveResponsibility ?? '',
+                              anchorKey: _responsibilityFieldKey,
+                              maxWidth: 280,
                             ),
                           ),
                           const SizedBox(height: 14),
+                          if (_clusterPosition) ...[
+                            _EditSelectionField(
+                              key: _clusterFieldKey,
+                              label: 'Cluster',
+                              value: _selectedClusterName,
+                              placeholder: 'Choose a cluster',
+                              onTap: () => _showOptions(
+                                options: _clusterOptions,
+                                selectedValue: _archiveCluster ?? '',
+                                anchorKey: _clusterFieldKey,
+                                maxWidth: 280,
+                              ),
+                            ),
+                            const SizedBox(height: 14),
+                          ],
+                          if (_collegeResponsibility && !_clusterPosition) ...[
+                            _EditSelectionField(
+                              key: _collegeFieldKey,
+                              label: 'College',
+                              value: _selectedCollegeName,
+                              placeholder: 'Choose a college',
+                              onTap: () => _showOptions(
+                                options: _collegeOptions,
+                                selectedValue: _archiveCollegeIds.isNotEmpty
+                                    ? _archiveCollegeIds.first
+                                    : '',
+                                anchorKey: _collegeFieldKey,
+                                maxWidth: 280,
+                              ),
+                            ),
+                            const SizedBox(height: 14),
+                          ],
                           _EditSelectionField(
                             key: _departmentFieldKey,
-                            label: 'Department',
+                            label: widget.user == null || _selectedRole == 2
+                                ? 'Home Department / Office'
+                                : 'Department / Office',
                             value: _selectedDepartmentName,
-                            placeholder: 'Select Department',
-                            onTap: _showDepartments,
+                            placeholder: 'Choose a department / office',
+                            onTap: () => _showOptions(
+                              options: _departmentOptions,
+                              selectedValue: _selectedDepartment ?? '',
+                              anchorKey: _departmentFieldKey,
+                              maxWidth: 280,
+                            ),
                           ),
+                          const SizedBox(height: 20),
+
+                          // Security and Permissions
+                          const Text(
+                            'Security and Permissions',
+                            style: TextStyle(
+                              color: AppColors.ustpNavy,
+                              fontSize: 14,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(height: 10),
+                          _EditSelectionField(
+                            key: _roleFieldKey,
+                            label: 'Primary Account Role',
+                            value: _roleName(_selectedRole),
+                            onTap: () {
+                              if (widget.user?.roleId == 0 ||
+                                  (widget.user?.isAuditTeamLeader ?? false)) {
+                                return; // Locked
+                              }
+                              _showOptions(
+                                options: _roleOptions,
+                                selectedValue: _selectedRole,
+                                anchorKey: _roleFieldKey,
+                                maxWidth: 220,
+                              );
+                            },
+                          ),
+                          const SizedBox(height: 14),
+                          Row(
+                            children: [
+                              Checkbox(
+                                value: _isActive,
+                                onChanged: (widget.user?.roleId == 0 ||
+                                        !(widget.user?.canDeactivate ?? true))
+                                    ? null
+                                    : (val) {
+                                        if (val != null) {
+                                          setState(() => _isActive = val);
+                                        }
+                                      },
+                              ),
+                              const Text(
+                                'Account is active',
+                                style: TextStyle(
+                                  color: AppColors.ustpDark,
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ],
+                          ),
+                          if (_selectedRole == 2) ...[
+                            const SizedBox(height: 14),
+                            const Text(
+                              'Eligible Audit Departments / Offices',
+                              style: TextStyle(
+                                color: AppColors.ustpDark,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            const SizedBox(height: 6),
+                            _EditSelectionField(
+                              key: _auditUnitFieldKey,
+                              label: '',
+                              value: 'Select department/office to assign',
+                              onTap: () => _showOptions(
+                                options: _auditDepartmentOptions,
+                                selectedValue: '',
+                                anchorKey: _auditUnitFieldKey,
+                                maxWidth: 280,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Wrap(
+                              spacing: 6,
+                              runSpacing: 6,
+                              children: [
+                                for (final id in _assignedDepartmentIds)
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 10, vertical: 6),
+                                    decoration: BoxDecoration(
+                                      color: AppColors.ustpLight,
+                                      borderRadius: BorderRadius.circular(16),
+                                      border: Border.all(
+                                          color: const Color(0xFFDCE4EF)),
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Text(
+                                          _getDepartmentName(id),
+                                          style: const TextStyle(
+                                            color: AppColors.ustpDark,
+                                            fontSize: 12,
+                                          ),
+                                        ),
+                                        const SizedBox(width: 6),
+                                        GestureDetector(
+                                          onTap: () {
+                                            setState(() {
+                                              _assignedDepartmentIds.removeWhere(
+                                                  (val) => val == id);
+                                            });
+                                          },
+                                          child: const Icon(
+                                            Icons.close,
+                                            size: 14,
+                                            color: AppColors.ustpMuted,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                              ],
+                            ),
+                          ],
                           const SizedBox(height: 14),
                           _EditTextField(
                             controller: _officeController,
@@ -340,16 +640,17 @@ class _SuperAdminUserEditFormState extends State<SuperAdminUserEditForm> {
                               ),
                             ),
                           ],
-                          if (_formError != null) ...[
-                            const SizedBox(height: 12),
-                            Text(
-                              _formError!,
-                              style: const TextStyle(
-                                color: AppColors.error,
-                                fontSize: 12,
+                          if (_formError != null)
+                            Padding(
+                              padding: const EdgeInsets.only(top: 12),
+                              child: Text(
+                                _formError!,
+                                style: const TextStyle(
+                                  color: AppColors.error,
+                                  fontSize: 12,
+                                ),
                               ),
                             ),
-                          ],
                         ],
                       ),
                     ),
@@ -389,9 +690,7 @@ class _SuperAdminUserEditFormState extends State<SuperAdminUserEditForm> {
                       ),
                       child: Text(
                         _isSaving
-                            ? (widget.user == null
-                                ? 'Creating...'
-                                : 'Saving...')
+                            ? 'Saving...'
                             : (widget.user == null
                                 ? 'Create Account'
                                 : 'Save Changes'),
@@ -438,7 +737,41 @@ class _SuperAdminUserEditFormState extends State<SuperAdminUserEditForm> {
                               return InkWell(
                                 onTap: () {
                                   setState(() {
-                                    if (option.value is int) {
+                                    if (_openOptions == _responsibilityOptions) {
+                                      _archiveResponsibility =
+                                          option.value.toString().isEmpty
+                                              ? null
+                                              : option.value.toString();
+                                      _archiveUnitIds = [];
+                                      _archiveCollegeIds = [];
+                                      _archiveCluster = null;
+                                    } else if (_openOptions == _clusterOptions) {
+                                      _archiveCluster =
+                                          option.value.toString().isEmpty
+                                              ? null
+                                              : option.value.toString();
+                                    } else if (_openOptions == _collegeOptions) {
+                                      if (option.value.toString().isNotEmpty) {
+                                        _archiveCollegeIds = [
+                                          option.value.toString()
+                                        ];
+                                      } else {
+                                        _archiveCollegeIds = [];
+                                      }
+                                    } else if (_openOptions ==
+                                        _departmentOptions) {
+                                      _selectedDepartment =
+                                          option.value.toString().isEmpty
+                                              ? null
+                                              : option.value.toString();
+                                    } else if (_openOptions ==
+                                        _auditDepartmentOptions) {
+                                      final val = option.value.toString();
+                                      if (val.isNotEmpty &&
+                                          !_assignedDepartmentIds.contains(val)) {
+                                        _assignedDepartmentIds.add(val);
+                                      }
+                                    } else if (option.value is int) {
                                       _selectedRole = option.value as int;
                                     } else {
                                       _selectedDepartment =
@@ -450,13 +783,13 @@ class _SuperAdminUserEditFormState extends State<SuperAdminUserEditForm> {
                                 },
                                 child: Container(
                                   constraints:
-                                      const BoxConstraints(minHeight: 27),
+                                      const BoxConstraints(minHeight: 32),
                                   color: selected
                                       ? const Color(0xFF98AAB8)
                                       : AppColors.ustpWhite,
                                   padding: const EdgeInsets.symmetric(
-                                    horizontal: 6,
-                                    vertical: 3,
+                                    horizontal: 8,
+                                    vertical: 6,
                                   ),
                                   alignment: Alignment.centerLeft,
                                   child: Text(
@@ -481,6 +814,20 @@ class _SuperAdminUserEditFormState extends State<SuperAdminUserEditForm> {
         ],
       ),
     );
+  }
+
+  String _getDepartmentName(String id) {
+    for (final dept in widget.departments) {
+      if (dept.id == id) return _departmentLabel(dept);
+    }
+    final optDepartments =
+        widget.options?['departments'] as List<dynamic>? ?? [];
+    for (final dept in optDepartments) {
+      if (dept['_id']?.toString() == id) {
+        return dept['name']?.toString() ?? id;
+      }
+    }
+    return id;
   }
 
   String? _requiredValidator(String? value) =>
@@ -553,8 +900,10 @@ class _EditSelectionField extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _EditFieldLabel(label),
-        const SizedBox(height: 6),
+        if (label.isNotEmpty) ...[
+          _EditFieldLabel(label),
+          const SizedBox(height: 6),
+        ],
         Material(
           color: AppColors.ustpWhite,
           borderRadius: BorderRadius.circular(8),
@@ -577,7 +926,7 @@ class _EditSelectionField extends StatelessWidget {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
-                        color: value == null
+                        color: value == null || value!.isEmpty
                             ? AppColors.ustpMuted
                             : AppColors.ustpDark,
                         fontSize: 13,

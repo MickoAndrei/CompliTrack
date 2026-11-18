@@ -519,8 +519,12 @@ class AuditWorkflowMongoTest extends TestCase
             'auditeeId' => (string) $person->getKey(), 'description' => 'Request '.$i, 'status' => 'requested',
             'referenceStandard' => 'ISO9001-9.2', 'responses' => [], 'allowUpload' => false])->all();
         $audit->update(['evidenceRequests' => $entries]);
-        $this->actingAs($person)->get('/auditee/evidence-requests?page=2')->assertOk()
-            ->assertViewHas('requests', fn ($requests) => $requests->total() === 13 && $requests->count() === 1);
+        $this->actingAs($person)->get('/auditee/evidence-requests')->assertOk()
+            ->assertViewHas('requests', fn ($requests) => $requests->total() === 13 && $requests->count() === 4 && $requests->perPage() === 4 && $requests->lastPage() === 4);
+        $this->get('/auditee/evidence-requests?page=2')->assertOk()
+            ->assertViewHas('requests', fn ($requests) => $requests->count() === 4 && $requests->firstItem() === 5);
+        $this->get('/auditee/evidence-requests?page=4')->assertOk()
+            ->assertViewHas('requests', fn ($requests) => $requests->count() === 1 && $requests->firstItem() === 13);
         $url = '/auditee/evidence-requests/'.$audit->getKey().'/'.$entries[0]['id'];
         $data = ['version' => $audit->version, 'submissionKey' => (string) \Illuminate\Support\Str::uuid(),
             'method' => 'digital-reference', 'notes' => 'Permitted response', 'action' => 'draft'];

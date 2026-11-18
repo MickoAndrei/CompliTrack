@@ -70,6 +70,7 @@ class QmsArchiveController extends Controller
             return $counts;
         };
         return response()->json([
+            'actorId' => (string) $request->user()->getKey(),
             'repositoryFolders' => app(\App\Services\QmsRepositoryPolicy::class)->navigation($request->user()),
             'folderOptions' => app(\App\Services\QmsRepositoryPolicy::class)->options($request->user()),
             'homeUnitId' => (string) (($request->user()->archiveResponsibility === 'department_head' ? (($request->user()->archiveUnitIds ?? [])[0] ?? null) : null) ?: $request->user()->departmentId),

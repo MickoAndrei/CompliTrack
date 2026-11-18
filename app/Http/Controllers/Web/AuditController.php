@@ -152,6 +152,7 @@ class AuditController extends Controller
             }
             throw $exception;
         }
+        app(\App\Services\QmsCycleRepository::class)->sync();
         $this->logs->record($request, 'Assigned audit', 'audit', $audit->getKey());
         app(\App\Services\NotificationDispatchService::class)->persist($audit->auditorId,
             'audit:'.$audit->getKey().':assigned', 'audit_assigned', 'Audit assigned',
@@ -178,6 +179,7 @@ class AuditController extends Controller
         $updated = $this->query($request)->where('_id', $audit->getKey())->where('version', (int) $audit->version)
             ->where('status', $audit->status)->update($data + ['history' => $history, 'version' => (int) $audit->version + 1]);
         abort_unless($updated === 1, 409, 'This audit changed. Refresh before saving again.');
+        app(\App\Services\QmsCycleRepository::class)->sync();
         $this->logs->record($request, 'Changed audit assignment', 'audit', $audit->getKey());
         foreach (array_unique([(string) $audit->auditorId, (string) $data['auditorId']]) as $recipient) {
             app(\App\Services\NotificationDispatchService::class)->persist($recipient,

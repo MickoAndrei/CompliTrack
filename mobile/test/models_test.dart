@@ -51,6 +51,22 @@ void main() {
   });
 
   group('SuperAdminDashboardModel', () {
+    test('shows small database usage from exact bytes including indexes', () {
+      final metrics = SuperAdminDashboardModel.fromJson({
+        'totalUsers': 10,
+        'totalDepts': 2,
+        'storageUsedGb': 0,
+        'databaseStats': {
+          'storageSizeBytes': 1048576,
+          'indexSizeBytes': 524288,
+        },
+        'activeAudits': 4,
+      });
+
+      expect(metrics.storageUsedLabel, '1.50 MB');
+      expect(metrics.storageUsedGb, 1.5 / 1024);
+    });
+
     test('parses storage usage returned as a numeric string', () {
       final metrics = SuperAdminDashboardModel.fromJson({
         'totalUsers': 10,
@@ -71,6 +87,7 @@ void main() {
       });
 
       expect(metrics.storageUsedGb, 3.42);
+      expect(metrics.storageUsedLabel, '3.42 GB');
       expect(metrics.userGrowth, isEmpty);
       expect(metrics.deptCompliance.single.compliancePercentage, 66);
     });
@@ -87,6 +104,20 @@ void main() {
         }),
         throwsFormatException,
       );
+    });
+
+    test('rejects non-finite and negative storage usage', () {
+      for (final value in [double.nan, double.infinity, -1]) {
+        expect(
+          () => SuperAdminDashboardModel.fromJson({
+            'totalUsers': 10,
+            'totalDepts': 2,
+            'storageUsedGb': value,
+            'activeAudits': 4,
+          }),
+          throwsFormatException,
+        );
+      }
     });
   });
 }

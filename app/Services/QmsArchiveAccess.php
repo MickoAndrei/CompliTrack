@@ -87,7 +87,7 @@ class QmsArchiveAccess
             $branches = [['_id' => ['$in' => $archiveIds]], ['sharedAuditIds' => ['$in' => array_merge($auditIds, array_map('strval', $auditIds))]]];
             $ownIds = [new ObjectId((string) $actor->getKey()), (string) $actor->getKey()];
             $notes = \App\Models\QmsCategory::where('folderPolicy', 'notes')->get()->filter(fn ($f) => app(QmsRepositoryPolicy::class)->permissions($actor, $f)['view'])->pluck('_id')->all();
-            $branches[] = ['categoryId' => ['$in' => $this->ids($notes)], 'uploadedByUserId' => ['$in' => $ownIds]];
+            $branches[] = ['categoryId' => ['$in' => $this->ids($notes)]];
             if ($actor->archiveResponsibility === 'department_head') {
                 $ownUnits = $this->ids(($actor->archiveUnitIds ?? []) ?: [$actor->departmentId]);
                 $branches[] = ['$and' => [['departmentId' => ['$in' => array_merge($ownUnits, array_map('strval', $ownUnits))]], ['$or' => [

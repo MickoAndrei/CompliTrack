@@ -1,6 +1,6 @@
     <dialog id="audit-result-modal" class="audit-result-modal auditee-results" aria-labelledby="audit-result-modal-title">
         <div class="audit-result-modal-layout">
-            <header class="audit-result-modal-header"><div data-result-modal-heading><h2 id="audit-result-modal-title">Audit Result Details</h2></div><button type="button" data-result-modal-close aria-label="Close audit result details" class="result-modal-close">&times;</button></header>
+            <header class="audit-result-modal-header"><div data-result-modal-heading><h2 id="audit-result-modal-title">Audit Result Details</h2></div><button type="button" data-result-modal-close aria-label="Close audit result details" class="result-modal-close"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg></button></header>
             <div class="audit-result-modal-tabs" data-result-modal-tabs></div>
             <div class="audit-result-modal-body" data-result-modal-body tabindex="-1"></div>
             <footer class="audit-result-modal-footer"><p x-page-notice data-result-modal-message role="status"></p><button type="button" data-result-modal-close class="workflow-secondary">Close</button></footer>

@@ -9,8 +9,8 @@
         <x-alert-banner>Audit results could not be loaded. Please try again. <a href="{{ request()->fullUrl() }}">Retry loading results</a></x-alert-banner>
     @endif
     <div class="auditor-summary-grid results-summary">
-        @foreach([['Total Results', 'total', 'clipboard-check'], ['Nonconformities', 'nonconformities', 'circle-alert'], ['Open CARs', 'openCars', 'triangle-alert']] as [$label, $key, $icon])
-        <article class="auditor-summary-card"><div><h3>{{ $label }}</h3><i data-lucide="{{ $icon }}" class="results-icon-{{ $key }}" aria-hidden="true"></i></div><strong>{{ $summary[$key] ?? '—' }}</strong></article>
+        @foreach([['Total Results', 'total', 'clipboard-check', 'blue'], ['Nonconformities', 'nonconformities', 'circle-alert', 'danger'], ['Open CARs', 'openCars', 'triangle-alert', 'danger']] as [$label, $key, $icon, $color])
+        <article class="auditee-metric-card metric-stat-card"><div class="metric-info"><span class="metric-label">{{ $label }}</span><strong class="metric-number color-dark">{{ $summary[$key] ?? '—' }}</strong></div><div class="metric-icon-box {{ $color }}"><i data-lucide="{{ $icon }}" aria-hidden="true"></i></div></article>
         @endforeach
     </div>
     @unless($loadError ?? false)

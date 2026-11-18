@@ -24,6 +24,15 @@ class ModelJson {
     throw FormatException('Missing or invalid "$key" field.');
   }
 
+  static bool? optionalBool(Map<String, dynamic> json, String key) {
+    final value = json[key];
+    if (value == null) return null;
+    if (value is bool) return value;
+    if (value is int) return value != 0;
+    if (value is String) return value.toLowerCase() == 'true' || value == '1';
+    return null;
+  }
+
   static DateTime requiredDateTime(Map<String, dynamic> json, String key) {
     final value = json[key];
     if (value is DateTime) return value.toUtc();
