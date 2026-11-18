@@ -267,17 +267,21 @@ class AppRouter {
             StatefulShellBranch(
               routes: [
                 GoRoute(
-                  path: '/auditor/profile',
-                  builder: (context, state) => const ProfileScreen(),
-                  routes: [
-                    GoRoute(
-                      path: 'notifications',
-                      builder: (context, state) =>
-                          const AuditorNotificationsScreen(),
-                    ),
-                  ],
+                  path: '/auditor/help',
+                  builder: (context, state) =>
+                      const HelpReferenceScreen(forAuditor: true),
                 ),
               ],
+            ),
+          ],
+        ),
+        GoRoute(
+          path: '/auditor/profile',
+          builder: (context, state) => const ProfileScreen(),
+          routes: [
+            GoRoute(
+              path: 'notifications',
+              builder: (context, state) => const AuditorNotificationsScreen(),
             ),
           ],
         ),

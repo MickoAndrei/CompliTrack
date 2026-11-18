@@ -2,6 +2,7 @@ class ModelJson {
   static String requiredString(Map<String, dynamic> json, String key, {String? alias}) {
     final value = json[key] ?? (alias == null ? null : json[alias]);
     if (value is String) return value;
+    if (value != null) return value.toString();
     throw FormatException('Missing or invalid "$key" field.');
   }
 
@@ -9,7 +10,7 @@ class ModelJson {
     final value = json[key];
     if (value == null) return null;
     if (value is String) return value;
-    throw FormatException('Invalid "$key" field.');
+    return value.toString();
   }
 
   static int requiredInt(Map<String, dynamic> json, String key) {

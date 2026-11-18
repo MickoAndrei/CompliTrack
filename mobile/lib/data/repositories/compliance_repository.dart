@@ -8,6 +8,31 @@ class ComplianceRepository {
 
   final Dio _dio;
 
+  Future<Map<String, dynamic>> getCorrectiveActions({
+    int page = 1,
+    String search = '',
+    String departmentId = '',
+    String status = '',
+  }) async {
+    final response =
+        await _dio.get('/api/v1/compliance-checks', queryParameters: {
+      'correctiveActions': 1,
+      'page': page,
+      'perPage': 10,
+      'search': search,
+      'departmentId': departmentId,
+      'status': status,
+    });
+    final body = Map<String, dynamic>.from(response.data as Map);
+    ApiResponse.list(body);
+    if (body['summary'] is! Map ||
+        body['meta'] is! Map ||
+        body['departments'] is! List) {
+      throw const FormatException('Invalid corrective action response.');
+    }
+    return body;
+  }
+
   Future<List<ComplianceCheckModel>> getChecks({
     String? correctiveStatus,
     int perPage = 20,

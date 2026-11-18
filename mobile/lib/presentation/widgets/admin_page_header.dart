@@ -2,11 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
-import '../../../core/constants/app_icons.dart';
 import '../providers/auth_provider.dart';
 import '../screens/admin/admin_notifications_screen.dart';
 import 'ustp_app_bar.dart';
 import 'ustp_logo.dart';
+import 'current_user_avatar.dart';
 
 class AdminPageHeader extends StatelessWidget {
   const AdminPageHeader({
@@ -23,7 +23,6 @@ class AdminPageHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final auth = context.watch<AuthProvider>();
-    final userName = auth.currentUser?.fullName;
     return Container(
       color: AppColors.ustpNavy,
       child: SafeArea(
@@ -56,20 +55,10 @@ class AdminPageHeader extends StatelessWidget {
                           };
                           context.go(route);
                         },
-                    child: CircleAvatar(
-                      radius: 17,
-                      backgroundColor: AppColors.ustpWhite,
-                      child: userName == null || userName.isEmpty
-                          ? const Icon(AppIcons.user,
-                              color: AppColors.ustpNavy, size: 18)
-                          : Text(
-                              _initials(userName),
-                              style: const TextStyle(
-                                color: AppColors.ustpNavy,
-                                fontSize: 11,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
+                    child: CurrentUserAvatar(
+                      key: ValueKey(auth.currentUser?.id),
+                      radius: 16,
+                      avatarVersion: auth.avatarVersion,
                     ),
                   ),
                 ],
@@ -100,12 +89,5 @@ class AdminPageHeader extends StatelessWidget {
         ),
       ),
     );
-  }
-
-  String _initials(String name) {
-    final parts = name.trim().split(RegExp(r'\s+'));
-    if (parts.length == 1) return parts.first.characters.first.toUpperCase();
-    return '${parts.first.characters.first}${parts.last.characters.first}'
-        .toUpperCase();
   }
 }

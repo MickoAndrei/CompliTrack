@@ -1,3 +1,7 @@
+import 'dart:io';
+
+import 'package:cunning_document_scanner/cunning_document_scanner.dart';
+import 'package:cross_file/cross_file.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
@@ -62,6 +66,7 @@ class _UploadEvidenceScreenState extends State<UploadEvidenceScreen> {
   PlatformFile? _selectedFile;
   String? _errorMessage;
   bool _isPickingFile = false;
+  bool _isScanningDocument = false;
   bool _isUploading = false;
   double? _uploadProgress;
   String? _selectedCheckId;
@@ -111,6 +116,74 @@ class _UploadEvidenceScreenState extends State<UploadEvidenceScreen> {
         _isPickingFile = false;
         _errorMessage = error.message ?? 'Unable to open the file picker.';
       });
+    }
+  }
+
+  Future<void> _scanDocument() async {
+    setState(() {
+      _isScanningDocument = true;
+      _errorMessage = null;
+    });
+    try {
+      final result = await CunningDocumentScanner.scanDocuments(
+        noOfPages: 100,
+        output: ScanOutput.pdf,
+      );
+      if (result == null || !mounted) return;
+      final pdfPath = result.pdf;
+      if (pdfPath == null) {
+        setState(() => _errorMessage = 'The scanner did not return a PDF.');
+        return;
+      }
+
+      final scannedFile = File(pdfPath);
+      final fileSize = await scannedFile.length();
+      final validationError = FileValidator.validate(
+        extension: 'pdf',
+        sizeInBytes: fileSize,
+      );
+      if (validationError != null) {
+        if (mounted) setState(() => _errorMessage = validationError);
+        return;
+      }
+
+      final bytes = await scannedFile.readAsBytes();
+      if (!mounted) return;
+      setState(() {
+        _selectedFile = _ScannedPlatformFile(
+          name: scannedFile.uri.pathSegments.last,
+          bytes: bytes,
+        );
+        _errorMessage = result.discardedPages > 0
+            ? '${result.discardedPages} page(s) were not included; the scanner limit is 100 pages.'
+            : null;
+      });
+    } on CunningDocumentScannerException catch (error) {
+      if (mounted) {
+        setState(() {
+          _errorMessage = error.code == 'permission_denied'
+              ? 'Allow camera access to scan a document.'
+              : 'Could not scan document: ${error.message}';
+        });
+      }
+    } on FileSystemException catch (error) {
+      if (mounted) {
+        setState(
+          () => _errorMessage = 'Could not read scanned document: ${error.message}',
+        );
+      }
+    } finally {
+      try {
+        await CunningDocumentScanner.cleanCache();
+      } on CunningDocumentScannerException catch (error) {
+        if (mounted && _errorMessage == null) {
+          setState(
+            () => _errorMessage =
+                'Could not clear temporary scan files: ${error.message}',
+          );
+        }
+      }
+      if (mounted) setState(() => _isScanningDocument = false);
     }
   }
 
@@ -224,14 +297,23 @@ class _UploadEvidenceScreenState extends State<UploadEvidenceScreen> {
                   final checks = snapshot.data!;
                   return DropdownButtonFormField<String>(
                     initialValue: _selectedCheckId,
+                    isExpanded: true,
                     decoration: const InputDecoration(
                       hintText: 'Select a non-compliant check',
                       border: OutlineInputBorder(),
                     ),
-                    items: checks.map((check) => DropdownMenuItem(
-                      value: check.id,
-                      child: Text('${check.checkCode} — ${check.referenceStandard}'),
-                    )).toList(),
+                    items: checks
+                        .map(
+                          (check) => DropdownMenuItem(
+                            value: check.id,
+                            child: Text(
+                              '${check.checkCode} — ${check.referenceStandard}',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        )
+                        .toList(),
                     onChanged: _isUploading
                         ? null
                         : (value) => setState(() => _selectedCheckId = value),
@@ -259,7 +341,9 @@ class _UploadEvidenceScreenState extends State<UploadEvidenceScreen> {
             ),
             const SizedBox(height: 10),
             InkWell(
-              onTap: _isPickingFile || _isUploading ? null : _pickFile,
+              onTap: _isPickingFile || _isScanningDocument || _isUploading
+                  ? null
+                  : _pickFile,
               borderRadius: BorderRadius.circular(8),
               child: Container(
                 height: 76,
@@ -312,6 +396,32 @@ class _UploadEvidenceScreenState extends State<UploadEvidenceScreen> {
                       ),
                     ),
                   ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 8),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: _isPickingFile || _isScanningDocument || _isUploading
+                    ? null
+                    : _scanDocument,
+                icon: _isScanningDocument
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.document_scanner_outlined, size: 18),
+                label: Text(
+                  _isScanningDocument ? 'Opening scanner...' : 'Scan document',
+                ),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: AppColors.ustpNavy,
+                  minimumSize: const Size.fromHeight(40),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
                 ),
               ),
             ),
@@ -375,7 +485,11 @@ class _UploadEvidenceScreenState extends State<UploadEvidenceScreen> {
                 ),
                 const SizedBox(width: 7),
                 ElevatedButton(
-                  onPressed: _isUploading ? null : _startUpload,
+                  onPressed: _isUploading ||
+                          _isScanningDocument ||
+                          _isPickingFile
+                      ? null
+                      : _startUpload,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.ustpGold,
                     foregroundColor: AppColors.ustpDark,
@@ -446,4 +560,38 @@ class _ReadOnlyValue extends StatelessWidget {
       ),
     );
   }
+}
+
+base class _ScannedPlatformFile extends PlatformFile {
+  _ScannedPlatformFile({required String name, required Uint8List bytes})
+      : name = name,
+        _bytes = bytes,
+        uri = Uri.parse('memory://scanned/${Uri.encodeComponent(name)}');
+
+  @override
+  final String name;
+
+  final Uint8List _bytes;
+
+  @override
+  final Uri uri;
+
+  @override
+  XFile get xFile => XFile.fromData(
+        _bytes,
+        name: name,
+        mimeType: 'application/pdf',
+      );
+
+  @override
+  int? lengthSync() => _bytes.length;
+
+  @override
+  Future<int?> length() async => _bytes.length;
+
+  @override
+  Future<Uint8List> readAsBytes() async => _bytes;
+
+  @override
+  Stream<Uint8List> readAsByteStream() => Stream<Uint8List>.value(_bytes);
 }

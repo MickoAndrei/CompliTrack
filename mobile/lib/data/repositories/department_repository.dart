@@ -9,15 +9,23 @@ class DepartmentRepository {
   DepartmentRepository({Dio? dio}) : _dio = dio ?? ApiClient().dio;
 
   Future<List<DepartmentModel>> getDepartments({String? campus}) async {
-    final response = await _dio.get(
-      '/api/v1/departments',
-      queryParameters: {
-        if (campus != null && campus.isNotEmpty) 'campusName': campus,
-      },
-    );
-    return ApiResponse.list(response.data)
-        .map(DepartmentModel.fromJson)
-        .toList();
+    final departments = <DepartmentModel>[];
+    var page = 1;
+    while (true) {
+      final response = await _dio.get(
+        '/api/v1/departments',
+        queryParameters: {
+          'page': page,
+          'perPage': 100,
+          if (campus != null && campus.isNotEmpty) 'campusName': campus,
+        },
+      );
+      departments.addAll(ApiResponse.list(response.data).map(DepartmentModel.fromJson));
+      final meta = response.data['meta'];
+      final lastPage = meta is Map ? int.tryParse('${meta['lastPage']}') ?? 1 : 1;
+      if (page >= lastPage) return departments;
+      page++;
+    }
   }
 
   Future<bool> deleteDepartment(String id) async {
