@@ -4,7 +4,9 @@ namespace App\Providers;
 
 use App\Mail\PhpMailerTransport;
 use App\Models\PersonalAccessToken;
+use App\Services\DatabaseSwitchPermission;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\ServiceProvider;
 use Laravel\Sanctum\Sanctum;
@@ -33,5 +35,9 @@ class AppServiceProvider extends ServiceProvider
         });
         Sanctum::usePersonalAccessTokenModel(PersonalAccessToken::class);
         Mail::extend('phpmailer', fn (array $config) => new PhpMailerTransport($config));
+        Gate::define(
+            DatabaseSwitchPermission::ABILITY,
+            fn ($user) => app(DatabaseSwitchPermission::class)->allows($user),
+        );
     }
 }

@@ -85,7 +85,7 @@ CompliTrack is built on modern open-source web and mobile technologies:
 | **Backend API** | [Laravel 12](https://laravel.com) (PHP 8.2+) | RESTful API, business logic, role middleware, and file encryption |
 | **Realtime Service** | Node.js 20+ (Express + Socket.io) | Live event notifications, status updates, and dashboard refreshes |
 | **Mobile App** | [Flutter 3.24+](https://flutter.dev) (Dart 3.5+) | Cross-platform mobile client for Android and iOS |
-| **Database** | [MongoDB 7.0](https://www.mongodb.com) (`mongodb/laravel-mongodb`) | CompliTrack application data; SQLite for Laravel framework tables |
+| **Database** | [MongoDB 7.0](https://www.mongodb.com) (`mongodb/laravel-mongodb`) | Application data, sessions, cache, and queued jobs |
 | **Authentication** | Laravel Sanctum / JWT (`tymon/jwt-auth`) | Sanctum session cookies (Web) and JWT bearer tokens (Mobile) |
 | **Storage** | Local Encrypted Disk / MinIO | AES-256-GCM encrypted local storage; optional S3-compatible cloud storage |
 | **Notification Engine** | MongoDB + Socket.IO | Persisted notification records polled by Node.js; HTTP polling web fallback |
@@ -94,9 +94,7 @@ CompliTrack is built on modern open-source web and mobile technologies:
 
 ### Database Architecture & Specifications
 
-CompliTrack employs a dual-database architecture:
-- **MongoDB 7.0:** Stores all application domains, including users, roles, departments, archive documents, compliance checks, notifications, and audit logs. Configured via `MONGODB_URI` and `MONGODB_DATABASE`.
-- **SQLite:** Dedicated to Laravel framework internal tables (sessions, cache, jobs, relational migrations) at `database/database.sqlite`. Setting `DB_CONNECTION=sqlite` does **not** store application records in SQLite.
+CompliTrack stores application data and framework sessions, cache, and queued jobs in MongoDB under the current deployment configuration. The active application database can use the configured local or remote target through `MONGODB_ACTIVE_ENVIRONMENT`; the legacy `MONGODB_URI` and `MONGODB_DATABASE` remain supported. The Super Admin database control performs an audited switch only on the managed local Windows startup workflow; it does not migrate or synchronize data. See [MongoDB Database Switch](docs/DATABASE_SWITCH_MAINTENANCE.md).
 
 #### Specialized Documentation & Specifications
 
@@ -313,12 +311,18 @@ CompliTrack is configured primarily through the root `.env` file. Essential conf
 APP_NAME=CompliTrack
 APP_URL=http://localhost:8000
 
-# Laravel framework support tables (SQLite database)
-DB_CONNECTION=sqlite
+# CompliTrack application and framework persistence
+DB_CONNECTION=mongodb
 
 # CompliTrack application data (MongoDB 7.0 replica set)
 MONGODB_URI=mongodb://localhost:27017/?replicaSet=rs0&directConnection=true
 MONGODB_DATABASE=complitrack
+
+# Optional switch-request targets; keep the legacy active settings until a supervised cutover.
+MONGODB_LOCAL_URI=mongodb://localhost:27017/?replicaSet=rs0&directConnection=true
+MONGODB_LOCAL_DATABASE=complitrack
+MONGODB_REMOTE_URI=
+MONGODB_REMOTE_DATABASE=
 
 # Initial Super Admin account provisioning
 SUPER_ADMIN_EMAIL=admin@example.edu
@@ -481,11 +485,10 @@ CompliTrack/
 ├── app/                        # Laravel application logic
 │   ├── Http/Controllers/       # API and web controllers
 │   ├── Http/Middleware/        # Role authorization and request middleware
-│   ├── Models/                 # Eloquent MongoDB and SQLite models
+│   ├── Models/                 # Eloquent MongoDB models
 │   └── Services/               # Business logic, encryption, and audit services
 ├── config/                     # Framework and package configuration files
 ├── database/                   # Migrations, model factories, seeders, and MongoDB init scripts
-│   ├── database.sqlite         # SQLite database file for Laravel framework tables
 │   └── mongodb/init.js         # MongoDB replica set and index initialization scripts
 ├── docs/                       # Architecture specifications, performance benchmarks, and QMS guides
 ├── mobile/                     # Flutter cross-platform mobile application codebase

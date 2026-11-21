@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
 use App\Services\ArchiveKeyRotationService;
+use App\Services\DatabaseSwitchService;
 use App\Services\SystemBackupService;
 use App\Services\SystemOperationLock;
 use App\Services\SystemSettingsService;
@@ -14,9 +15,36 @@ use Illuminate\Validation\ValidationException;
 
 class SettingsController extends Controller
 {
-    public function show(SystemSettingsService $settings)
+    public function show(SystemSettingsService $settings, DatabaseSwitchService $databaseSwitch)
     {
-        return response()->json($settings->publicState())->header('Cache-Control', 'no-store');
+        return response()->json([
+            ...$settings->publicState(),
+            'databaseSwitch' => $databaseSwitch->status(),
+        ])->header('Cache-Control', 'no-store');
+    }
+
+    public function requestDatabaseSwitch(Request $request, DatabaseSwitchService $databaseSwitch)
+    {
+        $data = $request->validate([
+            'target' => ['required', 'string', 'in:local,remote'],
+            'confirmation' => ['sometimes', 'nullable', 'string', 'max:32'],
+        ]);
+        $result = $databaseSwitch->request($data['target'], $data['confirmation'] ?? '', $request->user());
+        try {
+            $databaseSwitch->launchAutomaticSwitch($result['requestId']);
+        } catch (\RuntimeException $exception) {
+            $databaseSwitch->cancelUndispatched($result['requestId']);
+            report($exception);
+
+            return response()->json([
+                'message' => 'The automatic switch worker could not start. The active database was not changed.',
+            ], 503)->header('Cache-Control', 'no-store');
+        }
+
+        return response()->json([
+            'message' => 'The database switch started. Services will restart and all users will need to sign in again. No migrations, seeders, or data synchronization will run.',
+            'request' => $result,
+        ], 202)->header('Cache-Control', 'no-store');
     }
 
     public function update(Request $request, SystemSettingsService $settings)

@@ -44,7 +44,7 @@ class WalkthroughRulesTest extends TestCase
 
     public function test_manila_timestamps_cross_midnight_but_date_only_values_do_not_shift(): void
     {
-        $this->assertSame('Jan 1, 2027 7:59:59 AM PHT (UTC+08:00)', PortalDate::format('2026-12-31T23:59:59Z'));
+        $this->assertSame('Jan 1, 2027 7:59:59 AM PST (UTC+08:00)', PortalDate::format('2026-12-31T23:59:59Z'));
         $this->assertSame('Dec 31, 2026', PortalDate::format('2026-12-31'));
         $this->assertSame('Not recorded', PortalDate::format('invalid'));
     }

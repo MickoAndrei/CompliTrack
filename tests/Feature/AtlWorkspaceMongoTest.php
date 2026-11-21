@@ -136,7 +136,9 @@ class AtlWorkspaceMongoTest extends TestCase
         $detail = $this->actingAs($this->admin)->get('/audits/'.$audit->getKey().'?review=1')->assertOk()
             ->assertSee('Question C')->assertSee('Question N')->assertSee('Question O')->assertSee('Auditor factual remarks')
             ->assertSee('Recorded finding')->assertSee('Original reviewed')->assertSee('Submission and Review History')
-            ->assertSee('Authorized file')->assertDontSee('SECRET DENIED TITLE')->assertSee('Accept Results');
+            ->assertSee('atl-review-layout')->assertSee('role="tablist"', false)->assertSee('role="tabpanel"', false)
+            ->assertSee('Review Summary')->assertSee('Checklist progress')->assertSee('Linked CARs')->assertSee('ATL Review Decision')
+            ->assertSee('Authorized file')->assertDontSee('Preview')->assertDontSee('SECRET DENIED TITLE')->assertSee('Accept Results');
         if (getenv('WRITE_REVIEW_UI_FIXTURES') === '1') {
             $directory = storage_path('framework/testing/audit-reviews'); File::ensureDirectoryExists($directory);
             File::put($directory.'/review.html', $detail->getContent());

@@ -3,7 +3,7 @@
 namespace App\Http\Controllers\Web;
 
 use App\Http\Controllers\Controller;
-use App\Models\{Audit, Department, Notification, User};
+use App\Models\{Audit, ComplianceCheck, Department, Notification, User};
 use App\Services\{AuditChecklist, AuditLogService, CounterService, RoleScopeService};
 use App\Support\MongoId;
 use Illuminate\Http\Request;
@@ -196,6 +196,8 @@ class AuditController extends Controller
         $progress = AuditChecklist::progress($audit->items ?? []);
         if ($request->boolean('review')) {
             abort_unless((int) $request->user()->roleId === 1, 403);
+            $linkedCars = ComplianceCheck::whereIn('sourceAuditId', [$audit->getKey(), (string) $audit->getKey()])
+                ->where('result', 'non_compliant')->count();
             $ids = $audit->planArchiveIds ?? [];
             if ($audit->planId) { $ids[] = (string) $audit->planId; }
             foreach ($audit->items ?? [] as $item) { foreach ($item['evidence'] ?? [] as $e) { if (!empty($e['archiveId'])) { $ids[] = $e['archiveId']; } } }
@@ -205,7 +207,7 @@ class AuditController extends Controller
             $people = User::whereIn('_id', $actorIds)->get(['fullName'])->keyBy(fn ($u) => (string) $u->getKey());
             $previous = collect($audit->history ?? [])->where('action', 'return')->last();
             $revisionBaseline = isset($previous['previousItems']) ? collect($previous['previousItems'])->keyBy('id') : null;
-            return response()->view('admin.audit-review', compact('audit', 'progress', 'attachments', 'people', 'revisionBaseline'))->header('Cache-Control', 'no-store');
+            return response()->view('admin.audit-review', compact('audit', 'progress', 'linkedCars', 'attachments', 'people', 'revisionBaseline'))->header('Cache-Control', 'no-store');
         }
         $readiness = AuditChecklist::readiness($audit->items ?? [], $audit->evidenceRequests ?? []);
         $peopleIds = [(string) $audit->auditorId, (string) $audit->reviewerId];

@@ -41,9 +41,11 @@ class _UstpAppBarState extends State<UstpAppBar> {
       child: SafeArea(
         child: Row(
           children: [
-            const UstpLogo(
+            UstpLogo(
               fontSize: 16,
-              subtitle: 'CLAVERIA CAMPUS / MOBILE',
+              subtitle: widget.title != 'CompliTrack'
+                  ? widget.title
+                  : 'CLAVERIA CAMPUS / MOBILE',
             ),
             const Spacer(),
             UstpNotificationButton(

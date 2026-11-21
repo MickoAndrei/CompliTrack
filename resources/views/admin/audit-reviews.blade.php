@@ -8,9 +8,13 @@
     @if($loadError ?? false)
     <div role="alert" class="atl-error">Unable to load audit reviews. <a href="{{ request()->fullUrl() }}">Retry</a></div>
     @else
-    <div class="review-summary">
-        @foreach(['submitted' => \App\Support\AuditStatus::label('submitted'), 'returned' => \App\Support\AuditStatus::label('returned'), 'accepted' => \App\Support\AuditStatus::label('accepted')] as $state => $label)
-        <a href="{{ request()->fullUrlWithQuery(['status' => $state, 'page' => 1]) }}"><span>{{ $label }}</span><strong>{{ $counts[$state] }}</strong><small>{{ ['submitted' => 'Ready for your decision', 'returned' => 'With the assigned auditor', 'accepted' => 'Accepted audit results'][$state] }}</small></a>
+    <div class="review-summary stats-grid">
+        @foreach([
+            'submitted' => [\App\Support\AuditStatus::label('submitted'), 'Ready for your decision', 'clipboard-check', 'blue'],
+            'returned' => [\App\Support\AuditStatus::label('returned'), 'With the assigned auditor', 'rotate-ccw', 'amber'],
+            'accepted' => [\App\Support\AuditStatus::label('accepted'), 'Accepted audit results', 'check-check', 'green'],
+        ] as $state => [$label, $description, $icon, $color])
+        <a class="stat-card" href="{{ request()->fullUrlWithQuery(['status' => $state, 'page' => 1]) }}"><div class="admin-stat-info"><span class="admin-stat-label">{{ $label }}</span><strong class="admin-stat-number">{{ $counts[$state] }}</strong><small>{{ $description }}</small></div><span class="stat-icon {{ $color }}"><i data-lucide="{{ $icon }}" aria-hidden="true"></i></span></a>
         @endforeach
     </div>
     <div class="review-panel">

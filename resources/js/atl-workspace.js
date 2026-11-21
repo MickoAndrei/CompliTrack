@@ -83,24 +83,41 @@ onDocumentReady(() => {
     const body = dialog.querySelector('[data-atl-review-body]');
     const feedback = dialog.querySelector('[data-atl-review-feedback]');
     const close = dialog.querySelector('[data-atl-review-close]');
+    const title = dialog.querySelector('#atl-review-title');
+    const headerMeta = dialog.querySelector('[data-atl-review-header-meta]');
     const confirmation = document.querySelector('#atl-review-confirm');
-    const preview = document.querySelector('#atl-review-preview');
-    preview.querySelector('button').addEventListener('click', () => preview.close());
-    preview.addEventListener('close', async () => {
-        const { closeDocumentEditor } = await import('./document-editor');
-        closeDocumentEditor(preview.querySelector('[data-preview-body]'));
+    const syncHeading = () => {
+        title.textContent = body.querySelector('[data-review-dialog-title]')?.textContent.trim() || 'Audit Results Review';
+        headerMeta.textContent = body.querySelector('[data-review-dialog-meta]')?.textContent.trim() || '';
+    };
+    const selectReviewTab = (selected, focus = false) => {
+        const tabs = [...dialog.querySelectorAll('.atl-review-tabs [role="tab"]')];
+        const panelId = selected.getAttribute('aria-controls');
+        if (!body.querySelector(`#${panelId}`)) return;
+        tabs.forEach(tab => {
+            const active = tab === selected;
+            tab.setAttribute('aria-selected', String(active));
+            tab.tabIndex = active ? 0 : -1;
+        });
+        body.querySelectorAll('[role="tabpanel"]').forEach(panel => { panel.hidden = panel.id !== panelId; });
+        if (focus) selected.focus();
+    };
+    dialog.addEventListener('click', event => {
+        const tab = event.target.closest('.atl-review-tabs [role="tab"]');
+        if (tab) selectReviewTab(tab);
     });
-    dialog.addEventListener('click', async event => {
-        const button = event.target.closest('[data-review-preview]');
-        if (!button) return;
-        button.disabled = true;
-        try {
-            const { data } = await window.axios.post(`/api/v1/documents/${button.dataset.reviewPreview}/editor`, { mode: 'view' });
-            const { openDocumentEditor } = await import('./document-editor');
-            preview.showModal();
-            await openDocumentEditor(preview.querySelector('[data-preview-body]'), data, message => { preview.querySelector('[role=status]').textContent = message; });
-        } catch (error) { notice(error.response?.data?.message || error.message || 'Preview unavailable.', true); }
-        finally { button.disabled = false; }
+    dialog.addEventListener('keydown', event => {
+        const tab = event.target.closest('.atl-review-tabs [role="tab"]');
+        if (!tab) return;
+        const tabs = [...dialog.querySelectorAll('.atl-review-tabs [role="tab"]')];
+        let index = tabs.indexOf(tab);
+        if (event.key === 'ArrowRight') index = (index + 1) % tabs.length;
+        else if (event.key === 'ArrowLeft') index = (index - 1 + tabs.length) % tabs.length;
+        else if (event.key === 'Home') index = 0;
+        else if (event.key === 'End') index = tabs.length - 1;
+        else return;
+        event.preventDefault();
+        selectReviewTab(tabs[index], true);
     });
     let opener, currentUrl, controller, saving = false, confirming = false, changed = false;
     const notice = (message, error = false) => {
@@ -118,6 +135,7 @@ onDocumentReady(() => {
             const html = await response.text();
             if (!dialog.open || request.signal.aborted) return;
             body.innerHTML = html;
+            syncHeading();
         } catch (error) {
             if (error.name !== 'AbortError') { body.textContent = ''; notice(error.message || 'Unable to load the audit. Please retry.', true); }
         } finally { if (controller === request) body.setAttribute('aria-busy', 'false'); }
@@ -134,6 +152,7 @@ onDocumentReady(() => {
     dialog.addEventListener('cancel', event => { if (saving) event.preventDefault(); });
     dialog.addEventListener('close', () => {
         controller?.abort(); body.textContent = ''; notice('');
+        syncHeading();
         const focusTarget = opener?.isConnected ? opener : [...document.querySelectorAll('a[data-atl-review]')].find(link => link.href === currentUrl);
         focusTarget?.focus();
         if (changed && location.pathname === '/audits') window.location.reload();

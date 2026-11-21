@@ -13,7 +13,7 @@ All notable changes to CompliTrack are documented here.
 ### Changed
 
 - Distinguished audit lifecycle, checklist readiness, evidence-response review, and CAR status labels across web and mobile views.
-- Standardized history timestamps in Asia/Manila with seconds and PHT/UTC+08:00 labels, preserving UTC storage, historical instants, and date-only deadlines.
+- Standardized history timestamps in Asia/Manila with seconds and PST/UTC+08:00 labels, preserving UTC storage, historical instants, and date-only deadlines.
 - Clarified independent Auditor and Department Head QMS scope without granting unassigned audit or unshared evidence access.
 - Documented walkthrough findings, fixes, validation results, fixture boundaries, and remaining institutional decisions in `docs/WALKTHROUGH_FIXES.md`.
 

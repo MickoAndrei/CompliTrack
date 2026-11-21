@@ -206,7 +206,7 @@ class _AdminUserManagementScreenState extends State<AdminUserManagementScreen> {
   }
 }
 
-class _UserCard extends StatelessWidget {
+class _UserCard extends StatefulWidget {
   const _UserCard({
     required this.user,
   });
@@ -214,74 +214,181 @@ class _UserCard extends StatelessWidget {
   final UserModel user;
 
   @override
+  State<_UserCard> createState() => _UserCardState();
+}
+
+class _UserCardState extends State<_UserCard> {
+  bool _isExpanded = false;
+
+  @override
   Widget build(BuildContext context) {
-    final active = user.isActive;
-    return Container(
+    final active = widget.user.isActive;
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 250),
+      curve: Curves.easeInOut,
       margin: const EdgeInsets.only(bottom: 8),
-      padding: const EdgeInsets.fromLTRB(11, 10, 11, 8),
       decoration: BoxDecoration(
         color: AppColors.ustpWhite,
-        border: Border.all(color: const Color(0xFFE5EAF1)),
+        border: Border.all(
+          color: _isExpanded
+              ? AppColors.ustpNavy.withValues(alpha: 0.3)
+              : const Color(0xFFE5EAF1),
+        ),
         borderRadius: BorderRadius.circular(11),
+        boxShadow: _isExpanded
+            ? [
+                BoxShadow(
+                  color: AppColors.ustpNavy.withValues(alpha: 0.06),
+                  blurRadius: 8,
+                  offset: const Offset(0, 3),
+                ),
+              ]
+            : [],
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  user.userCode,
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(11),
+        child: InkWell(
+          onTap: () => setState(() => _isExpanded = !_isExpanded),
+          borderRadius: BorderRadius.circular(11),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(11, 10, 11, 10),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        widget.user.userCode,
+                        style: const TextStyle(
+                          color: AppColors.ustpNavy,
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                    _Badge(
+                      label: active ? 'Active' : 'Inactive',
+                      color: active ? AppColors.success : AppColors.ustpMuted,
+                    ),
+                    const SizedBox(width: 6),
+                    Icon(
+                      _isExpanded
+                          ? Icons.keyboard_arrow_up_rounded
+                          : Icons.keyboard_arrow_down_rounded,
+                      size: 18,
+                      color: AppColors.ustpMuted,
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  widget.user.fullName,
                   style: const TextStyle(
-                    color: AppColors.ustpNavy,
-                    fontSize: 10,
-                    fontWeight: FontWeight.bold,
+                    color: AppColors.ustpDark,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
-              ),
-              _Badge(
-                label: active ? 'Active' : 'Inactive',
-                color: active ? AppColors.success : AppColors.ustpMuted,
-              ),
-            ],
-          ),
-          const SizedBox(height: 6),
-          Text(
-            user.fullName,
-            style: const TextStyle(
-              color: AppColors.ustpDark,
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
+                const SizedBox(height: 2),
+                Text(
+                  widget.user.email,
+                  style: const TextStyle(
+                      color: AppColors.ustpMuted, fontSize: 10),
+                ),
+                const SizedBox(height: 6),
+                Row(
+                  children: [
+                    _RoleBadge(
+                        label: _roleName(widget.user.roleId),
+                        roleId: widget.user.roleId),
+                    const SizedBox(width: 7),
+                    const Icon(Icons.circle,
+                        size: 3, color: AppColors.ustpMuted),
+                    const SizedBox(width: 7),
+                    Expanded(
+                      child: Text(
+                        widget.user.departmentName ??
+                            (widget.user.officeName.isNotEmpty
+                                ? widget.user.officeName
+                                : 'Department assigned'),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                            color: AppColors.ustpMuted, fontSize: 10),
+                      ),
+                    ),
+                  ],
+                ),
+                AnimatedCrossFade(
+                  firstChild: const SizedBox.shrink(),
+                  secondChild: Padding(
+                    padding: const EdgeInsets.only(top: 10),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Divider(
+                            height: 1,
+                            thickness: 1,
+                            color: Color(0xFFF1F5F9)),
+                        const SizedBox(height: 8),
+                        _DetailRow(
+                            label: 'Role Level',
+                            value:
+                                '${widget.user.roleId} - ${_roleName(widget.user.roleId)}'),
+                        const SizedBox(height: 4),
+                        _DetailRow(
+                            label: 'Office / Unit',
+                            value: widget.user.officeName.isNotEmpty
+                                ? widget.user.officeName
+                                : 'Not specified'),
+                        const SizedBox(height: 4),
+                        _DetailRow(
+                            label: 'Account Status',
+                            value: active
+                                ? 'Active & Authorized'
+                                : 'Inactive'),
+                        const SizedBox(height: 4),
+                        _DetailRow(
+                            label: 'Management Scope',
+                            value: 'CET Department Assignment'),
+                      ],
+                    ),
+                  ),
+                  crossFadeState: _isExpanded
+                      ? CrossFadeState.showSecond
+                      : CrossFadeState.showFirst,
+                  duration: const Duration(milliseconds: 200),
+                ),
+              ],
             ),
           ),
-          const SizedBox(height: 2),
-          Text(
-            user.email,
-            style: const TextStyle(color: AppColors.ustpMuted, fontSize: 10),
-          ),
-          const SizedBox(height: 6),
-          Row(
-            children: [
-              _RoleBadge(label: _roleName(user.roleId), roleId: user.roleId),
-              const SizedBox(width: 7),
-              const Icon(Icons.circle, size: 3, color: AppColors.ustpMuted),
-              const SizedBox(width: 7),
-              Expanded(
-                child: Text(
-                  user.departmentName ??
-                      (user.officeName.isNotEmpty
-                          ? user.officeName
-                          : 'Department assigned'),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style:
-                      const TextStyle(color: AppColors.ustpMuted, fontSize: 10),
-                ),
-              ),
-            ],
-          ),
-        ],
+        ),
       ),
+    );
+  }
+}
+
+class _DetailRow extends StatelessWidget {
+  const _DetailRow({required this.label, required this.value});
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(label,
+            style: const TextStyle(
+                color: AppColors.ustpMuted, fontSize: 9.5)),
+        Text(value,
+            style: const TextStyle(
+                color: AppColors.ustpDark,
+                fontSize: 9.5,
+                fontWeight: FontWeight.w500)),
+      ],
     );
   }
 }

@@ -6,13 +6,14 @@ const { serveBuildAsset } = require('./staticAssets');
 // One local upstream for ngrok; the existing services keep their own ports.
 function createDevProxy({
   appTarget = 'http://127.0.0.1:8001',
-  realtimeTarget = 'http://127.0.0.1:4001',
+  realtimeTarget = 'http://127.0.0.1:4000',
   documentTarget = 'http://127.0.0.1:8082',
   staticAssetRoot = path.resolve(__dirname, '../../public/build/assets'),
   fontAssetRoot = path.resolve(__dirname, '../../public/fonts'),
 } = {}) {
   const proxy = httpProxy.createProxyServer({ proxyTimeout: 30000 });
   proxy.on('error', (_error, _request, response) => {
+    console.error('Proxy error:', _error);
     if (typeof response.writeHead === 'function') {
       if (!response.headersSent) {
         response.writeHead(502, { 'Content-Type': 'application/json' });

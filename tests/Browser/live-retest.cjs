@@ -69,9 +69,9 @@ const server=http.createServer((req,res)=>{
             await wait('document.querySelector("#audit-result-modal")?.open && document.querySelector("#audit-result-modal [data-result-detail]")');
             await evaluate('document.querySelector("#audit-result-modal [data-result-tab=corrective]").click()');
             const times=await evaluate(`[...document.querySelectorAll('#audit-result-modal .car-timeline time')].map(t=>({text:t.textContent,at:t.dateTime}))`);
-            assert.ok(times.length>=2);for(const time of times){assert.match(time.text,/Nov 4, 2026 1:42:20 PM PHT \(UTC\+08:00\)/);assert.equal(new Date(time.at).toISOString(),'2026-11-04T05:42:20.123Z');}
+            assert.ok(times.length>=2);for(const time of times){assert.match(time.text,/Nov 4, 2026 1:42:20 PM PST \(UTC\+08:00\)/);assert.equal(new Date(time.at).toISOString(),'2026-11-04T05:42:20.123Z');}
             assert.match(await evaluate('document.querySelector("#audit-result-modal [data-result-panel=corrective]").innerText'),/Deadline: Nov 5, 2026/);
-            await evaluate('document.querySelector("#audit-result-modal [data-result-tab=evidence]").click()');assert.match(await evaluate('document.querySelector("#audit-result-modal [data-result-panel=evidence]").innerText'),/1:42:20 PM PHT/);
+            await evaluate('document.querySelector("#audit-result-modal [data-result-tab=evidence]").click()');assert.match(await evaluate('document.querySelector("#audit-result-modal [data-result-panel=evidence]").innerText'),/1:42:20 PM PST/);
             console.log(`PASS ${width}px actual auditee modal/standalone redirect fragment: Manila seconds, exact instant, unchanged deadline/evidence history`);
         }
         assert.deepEqual(errors,[]);await send('Browser.close');

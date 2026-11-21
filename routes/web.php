@@ -49,7 +49,9 @@ Route::middleware(['auth', \App\Http\Middleware\SystemAccess::class])->group(fun
         Route::view('/documents', 'super-admin.archives');
         Route::view('/logs', 'super-admin.logs');
         Route::view('/notifications', 'super-admin.notifications');
-        Route::view('/settings', 'super-admin.settings');
+        Route::view('/settings', 'super-admin.settings')->middleware('can:database.switch');
+        Route::post('/system/database-switch', [\App\Http\Controllers\Api\V1\SettingsController::class, 'requestDatabaseSwitch'])
+            ->middleware(['can:database.switch', 'throttle:2,1']);
     });
     Route::middleware('role:1')->prefix('admin')->group(function () {
         Route::view('/help', 'help.index');

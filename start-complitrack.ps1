@@ -1,4 +1,9 @@
-param([switch]$DisableOpcache)
+param(
+    [switch]$DisableOpcache,
+    [switch]$SkipMongoBootstrap,
+    [switch]$SkipLogout,
+    [switch]$SkipFrontendBuild
+)
 $ErrorActionPreference = "Stop"
 
 $repoRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
@@ -52,20 +57,32 @@ function Ensure-MongoRunning {
     $envPath = Join-Path $repoRoot ".env"
     $script:MongoEnvValues = @{}
     foreach ($line in Get-Content $envPath) {
-        if ($line -match '^\s*(MONGODB_URI|MONGODB_DATABASE)\s*=\s*(.*?)\s*$') {
+        if ($line -match '^\s*(MONGODB_URI|MONGODB_DATABASE|MONGODB_ACTIVE_ENVIRONMENT|MONGODB_LOCAL_URI|MONGODB_LOCAL_DATABASE|MONGODB_REMOTE_URI|MONGODB_REMOTE_DATABASE)\s*=\s*(.*?)\s*$') {
             $value = $Matches[2].Trim().Trim('"').Trim("'")
             $script:MongoEnvValues[$Matches[1]] = $value
         }
     }
 
-    if ([string]::IsNullOrWhiteSpace($script:MongoEnvValues['MONGODB_URI'])) {
-        throw "MONGODB_URI is missing or empty in .env."
-    }
-    if ([string]::IsNullOrWhiteSpace($script:MongoEnvValues['MONGODB_DATABASE'])) {
-        throw "MONGODB_DATABASE is missing or empty in .env."
+    $activeEnvironment = $script:MongoEnvValues['MONGODB_ACTIVE_ENVIRONMENT']
+    if ($activeEnvironment -in @('local', 'remote')) {
+        $prefix = 'MONGODB_{0}_' -f $activeEnvironment.ToUpperInvariant()
+        $script:ActiveMongoUri = $script:MongoEnvValues[$prefix + 'URI']
+        $script:ActiveMongoDatabase = $script:MongoEnvValues[$prefix + 'DATABASE']
+    } elseif ([string]::IsNullOrWhiteSpace($activeEnvironment)) {
+        $script:ActiveMongoUri = $script:MongoEnvValues['MONGODB_URI']
+        $script:ActiveMongoDatabase = $script:MongoEnvValues['MONGODB_DATABASE']
+    } else {
+        throw "MONGODB_ACTIVE_ENVIRONMENT must be local or remote when set."
     }
 
-    Write-Host "MongoDB target from .env: database '$($script:MongoEnvValues['MONGODB_DATABASE'])'."
+    if ([string]::IsNullOrWhiteSpace($script:ActiveMongoUri)) {
+        throw "The active MongoDB URI is missing or empty in .env."
+    }
+    if ([string]::IsNullOrWhiteSpace($script:ActiveMongoDatabase)) {
+        throw "The active MongoDB database is missing or empty in .env."
+    }
+
+    Write-Host "MongoDB target from .env: database '$($script:ActiveMongoDatabase)'."
     Write-Host "Laravel will verify connectivity against the configured MongoDB URI before startup."
 }
 
@@ -209,40 +226,46 @@ if ($LASTEXITCODE -ne 0) {
     throw "MongoDB connectivity check failed. Resolve the connection issue above and run start-complitrack.ps1 again. Migrations, seeding, and account logout were not attempted."
 }
 
-# Remember completion per MongoDB target without storing the credential-bearing URI.
-$mongoTargetHashInput = "{0}|{1}" -f $script:MongoEnvValues['MONGODB_URI'], $script:MongoEnvValues['MONGODB_DATABASE']
-$sha256 = [System.Security.Cryptography.SHA256]::Create()
-try {
-    $mongoTargetHash = [BitConverter]::ToString($sha256.ComputeHash([Text.Encoding]::UTF8.GetBytes($mongoTargetHashInput))).Replace('-', '')
-} finally {
-    $sha256.Dispose()
-}
-$bootstrapMarker = Join-Path $repoRoot "storage\app\mongo-bootstrap-$mongoTargetHash.done"
-
-if (Test-Path $bootstrapMarker) {
-    Write-Host "MongoDB migrations and seeding already completed for this .env database target; skipping."
+if ($SkipMongoBootstrap) {
+    Write-Host "MongoDB migrations and seeding explicitly skipped for this controlled restart."
 } else {
-    Write-Host "Running Laravel migrations against the configured MongoDB database..."
-    php artisan migrate --force
-    if ($LASTEXITCODE -ne 0) { throw "MongoDB migrations failed. Check MONGODB_URI and MONGODB_DATABASE in .env." }
+    # Remember completion per active target without storing the credential-bearing URI.
+    $mongoTargetHashInput = "{0}|{1}" -f $script:ActiveMongoUri, $script:ActiveMongoDatabase
+    $sha256 = [System.Security.Cryptography.SHA256]::Create()
+    try {
+        $mongoTargetHash = [BitConverter]::ToString($sha256.ComputeHash([Text.Encoding]::UTF8.GetBytes($mongoTargetHashInput))).Replace('-', '')
+    } finally {
+        $sha256.Dispose()
+    }
+    $bootstrapMarker = Join-Path $repoRoot "storage\app\mongo-bootstrap-$mongoTargetHash.done"
 
-    Write-Host "Seeding the configured MongoDB database..."
-    php artisan db:seed --force
-    if ($LASTEXITCODE -ne 0) { throw "MongoDB seeding failed. Check MONGODB_URI and MONGODB_DATABASE in .env." }
+    if (Test-Path $bootstrapMarker) {
+        Write-Host "MongoDB migrations and seeding already completed for this .env database target; skipping."
+    } else {
+        Write-Host "Running Laravel migrations against the configured MongoDB database..."
+        php artisan migrate --force
+        if ($LASTEXITCODE -ne 0) { throw "MongoDB migrations failed. Check the active MongoDB configuration in .env." }
 
-    $markerDirectory = Split-Path -Parent $bootstrapMarker
-    New-Item -ItemType Directory -Force -Path $markerDirectory | Out-Null
-    Set-Content -Path $bootstrapMarker -Value "Completed $(Get-Date -Format o)"
-    Write-Host "  [OK] MongoDB migrations and seeding complete; future starts will skip them for this database target."
+        Write-Host "Seeding the configured MongoDB database..."
+        php artisan db:seed --force
+        if ($LASTEXITCODE -ne 0) { throw "MongoDB seeding failed. Check the active MongoDB configuration in .env." }
+
+        $markerDirectory = Split-Path -Parent $bootstrapMarker
+        New-Item -ItemType Directory -Force -Path $markerDirectory | Out-Null
+        Set-Content -Path $bootstrapMarker -Value "Completed $(Get-Date -Format o)"
+        Write-Host "  [OK] MongoDB migrations and seeding complete; future starts will skip them for this database target."
+    }
 }
 
 if (Test-PortInUse $appPort) {
     Write-Host "Laravel already running on port $appPort"
 } else {
     Stop-PidFile $laravelPidFile
-    Write-Host "Logging out existing accounts before Laravel starts..."
-    php artisan complitrack:logout-all
-    if ($LASTEXITCODE -ne 0) { throw "Could not clear login sessions; Laravel was not started." }
+    if (-not $SkipLogout) {
+        Write-Host "Logging out existing accounts before Laravel starts..."
+        php artisan complitrack:logout-all
+        if ($LASTEXITCODE -ne 0) { throw "Could not clear login sessions; Laravel was not started." }
+    }
     Write-Host "Starting Laravel on port $appPort..."
     $p = Start-CompliTrackPhpServer -RepoRoot $repoRoot -Port $appPort -ServerHost '0.0.0.0' -EnableOpcache (-not $DisableOpcache)
     $p.Id | Set-Content $laravelPidFile
@@ -275,10 +298,12 @@ if (-not $schedulerRunning) {
     $schedulerProcess.Id | Set-Content -LiteralPath $schedulerPidFile
 }
 
-Write-Host "Building frontend..."
-$buildArgs = "/d /s /c `"`"$npmCommand`" run build > `"$logDir\frontend-build.log`" 2>&1`""
-& $env:ComSpec $buildArgs | Out-Null
-Write-Host "  [OK] Frontend build complete"
+if (-not $SkipFrontendBuild) {
+    Write-Host "Building frontend..."
+    $buildArgs = "/d /s /c `"`"$npmCommand`" run build > `"$logDir\frontend-build.log`" 2>&1`""
+    & $env:ComSpec $buildArgs | Out-Null
+    Write-Host "  [OK] Frontend build complete"
+}
 
 $hotFile = Join-Path $repoRoot "public\hot"
 if (Test-Path $hotFile) {

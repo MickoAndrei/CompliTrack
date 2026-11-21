@@ -48,10 +48,12 @@ const delay = ms => new Promise(r => setTimeout(r, ms));
         for (const width of [1440, 1024, 768, 390, 320]) {
             await send('Emulation.setDeviceMetricsOverride', { width, height: 1000, deviceScaleFactor: 1, mobile: width < 600 });
             await send('Page.navigate', { url: 'http://127.0.0.1:9374/' });
-            await wait('document.querySelectorAll(".car-table tbody tr").length === 2');
+            await wait('document.querySelectorAll(".um-table tbody tr").length === 2');
             assert.equal(await evaluate('document.querySelectorAll(".car-metrics article").length'), 5);
             assert.equal(await evaluate('document.querySelectorAll(".car-metric-icon").length'), 5);
             assert.equal(await evaluate('!!document.querySelector(".car-panel .car-export svg")'), true);
+            assert.equal(await evaluate('document.querySelectorAll(".car-register > .car-panel").length'), 1, 'Register and results share one card');
+            assert.equal(await evaluate(`getComputedStyle(document.querySelector('.um-table th')).backgroundColor`), 'rgb(248, 250, 252)', 'Register table uses Super Admin user-table styling');
             assert.equal(await evaluate('document.querySelector(".car-toolbar")'), null);
             assert.equal(await evaluate('document.querySelector(".car-reset").textContent'), 'Reset Filter');
             assert.equal(await evaluate('document.querySelector(".car-pagination > p").textContent'), '2 records');

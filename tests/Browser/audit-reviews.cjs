@@ -41,6 +41,18 @@ try{
   await evaluate('window.openerLink=document.querySelector("[data-atl-review]");window.openerLink.click()');
   await wait('!!document.querySelector("[data-atl-review-form]")');
   assert.equal(await evaluate('document.querySelector("[data-atl-review-body]").getAttribute("aria-busy")'),'false');
+  assert.ok(await evaluate('document.querySelector(".atl-review-sidebar") && document.querySelector("[aria-label=\\"Checklist progress\\"]")'));
+  assert.equal(await evaluate('getComputedStyle(document.querySelector(".atl-review-layout")).gridTemplateColumns.split(" ").length'),width<=760?1:2);
+  assert.ok((await evaluate('document.querySelector("#atl-review-title").textContent')).includes('Audit Results Review'));
+  const tabPosition = await evaluate('document.querySelector(".atl-review-tabs").getBoundingClientRect().top');
+  const hashBeforeTabSwitch = await evaluate('location.hash');
+  await evaluate('document.querySelector("#review-tab-evidence").click()');
+  assert.equal(await evaluate('document.querySelector("#review-evidence").hidden'),false);
+  assert.equal(await evaluate('document.querySelector("#review-checklist").hidden'),true);
+  assert.equal(await evaluate('document.querySelector(".atl-review-tabs").getBoundingClientRect().top'),tabPosition);
+  assert.equal(await evaluate('location.hash'),hashBeforeTabSwitch);
+  await evaluate('document.querySelector("#review-tab-checklist").click()');
+  assert.equal(await evaluate('document.querySelector("#review-checklist").hidden'),false);
   assert.ok(await evaluate('(()=>{const r=document.querySelector("#atl-review-dialog").getBoundingClientRect();return r.left>=0&&r.right<=innerWidth&&r.bottom<=innerHeight})()'));
   if(width===1440) assert.ok(await evaluate('document.querySelector("#atl-review-dialog").getBoundingClientRect().width/innerWidth>=.8'));
   await evaluate('document.querySelector("button[value=return]").click()');assert.equal(await evaluate('document.querySelector("#atl-review-confirm").open'),false);

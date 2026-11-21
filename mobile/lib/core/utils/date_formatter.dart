@@ -10,5 +10,5 @@ String formatPortalDate(Object? value) {
     return DateFormat('MMM d, yyyy').format(date);
   }
   final manila = date.toUtc().add(const Duration(hours: 8));
-  return '${DateFormat('MMM d, yyyy h:mm:ss a').format(manila)} PHT (UTC+08:00)';
+  return '${DateFormat('MMM d, yyyy h:mm:ss a').format(manila)} PST (UTC+08:00)';
 }

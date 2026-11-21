@@ -1,5 +1,6 @@
 @extends('layouts.app')
 @section('title', 'Super Admin Dashboard')
+@section('body-class', 'super-admin-dashboard-page')
 @section('heading', 'Compliance Overview')
 @section('subtitle', 'CET oversight, organizational records & system health')
 @push('styles')

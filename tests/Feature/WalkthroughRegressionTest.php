@@ -55,7 +55,7 @@ class WalkthroughRegressionTest extends TestCase
         $before = $car->fresh()->getRawOriginal();
         $url = '/auditee/finding-details/'.$car->getKey();
         $fragment = $this->actingAs($this->auditee)->get($url, ['X-Requested-With' => 'XMLHttpRequest'])->assertOk()
-            ->assertSee('Nov 4, 2026 1:42:20 PM PHT (UTC+08:00)')->assertSee('2026-11-04T05:42:20.123000Z')->assertSee('Deadline: Nov 5, 2026')
+            ->assertSee('Nov 4, 2026 1:42:20 PM PST (UTC+08:00)')->assertSee('2026-11-04T05:42:20.123000Z')->assertSee('Deadline: Nov 5, 2026')
             ->assertDontSee('5:42:20 AM')->assertDontSee('UTC</time>', false);
         $standalone = $this->get($url)->assertRedirect('/auditee/my-findings?detail='.$car->getKey());
         $index = $this->get('/auditee/my-findings?detail='.$car->getKey())->assertOk()->assertSee('data-result-modal-open', false);
@@ -69,7 +69,7 @@ class WalkthroughRegressionTest extends TestCase
                     'review' => ['feedback' => 'Historical review', 'at' => $instant]]]]]]);
         $history = $this->get('/auditee/evidence-requests?auditId='.$audit->getKey().'&requestId='.$requestId,
             ['X-Requested-With' => 'XMLHttpRequest'])->assertOk()->assertSee('Nov 5, 2026')->assertDontSee($instant);
-        $this->assertSame(2, substr_count($history->getContent(), 'Nov 4, 2026 1:42:20 PM PHT (UTC+08:00)'));
+        $this->assertSame(2, substr_count($history->getContent(), 'Nov 4, 2026 1:42:20 PM PST (UTC+08:00)'));
         if (getenv('WRITE_RETEST_FIXTURES') === '1') {
             $dir = storage_path('framework/testing/live-retest'); \Illuminate\Support\Facades\File::ensureDirectoryExists($dir);
             file_put_contents($dir.'/auditee-fragment.html', $fragment->getContent());

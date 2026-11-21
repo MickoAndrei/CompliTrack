@@ -34,17 +34,4 @@ document.addEventListener('alpine:init', () => {
         date(value) { return value ? portalDate(value, {precise:true}) : 'No recorded date'; },
         status(value) { return ({ draft: 'Scheduled / draft', ready: 'In progress', submitted: 'Awaiting ATL review', returned: 'Returned for revision', accepted: 'Completed', open: 'Open', in_progress: 'In progress' })[value] || value || 'Unknown'; },
     }));
-    window.Alpine.data('superAdminOrganization', () => ({
-        loading: true, error: '', tree: { units: [], colleges: [] }, users: [],
-        async init() {
-            try {
-                const [tree, organization] = await Promise.all([window.axios.get('/api/v1/documents/tree'), window.axios.get('/api/v1/directory/organization')]);
-                this.tree = tree.data; this.users = organization.data.users;
-            } catch { this.error = 'Positions could not be loaded.'; }
-            finally { this.loading = false; }
-        },
-        names(responsibility, id, college = false) {
-            return this.users.filter(user => user.responsibility === responsibility && (college ? user.collegeIds : (user.unitIds.length ? user.unitIds : [user.departmentId])).includes(id)).map(user => user.name).join(', ') || 'Not assigned';
-        },
-    }));
 });

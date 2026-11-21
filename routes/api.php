@@ -103,7 +103,7 @@ Route::prefix('v1')->group(function () {
 
         // Super Admin only
         Route::middleware('role:0')->group(function () {
-            Route::get('/settings', [\App\Http\Controllers\Api\V1\SettingsController::class, 'show']);
+            Route::get('/settings', [\App\Http\Controllers\Api\V1\SettingsController::class, 'show'])->middleware('can:database.switch');
             Route::patch('/settings', [\App\Http\Controllers\Api\V1\SettingsController::class, 'update']);
             Route::post('/settings/backup', [\App\Http\Controllers\Api\V1\SettingsController::class, 'backup']);
             Route::post('/settings/rotate-key', [\App\Http\Controllers\Api\V1\SettingsController::class, 'rotate'])->middleware('throttle:5,1');

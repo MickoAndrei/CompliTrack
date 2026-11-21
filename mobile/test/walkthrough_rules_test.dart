@@ -10,7 +10,7 @@ void main() {
     expect(canonicalCarStatus('closed_pending'), 'closed_pending');
   });
   test('Manila instant formatting preserves calendar-only dates', () {
-    expect(formatPortalDate('2026-12-31T23:59:59Z'), 'Jan 1, 2027 7:59:59 AM PHT (UTC+08:00)');
+    expect(formatPortalDate('2026-12-31T23:59:59Z'), 'Jan 1, 2027 7:59:59 AM PST (UTC+08:00)');
     expect(formatPortalDate('2026-12-31'), 'Dec 31, 2026');
   });
 }
