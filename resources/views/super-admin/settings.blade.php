@@ -110,20 +110,6 @@
             </div>
         </form>
     </dialog>
-    <dialog x-ref="databaseSwitchDialog" class="settings-dialog" aria-labelledby="database-switch-confirm-title" @cancel="if (busy) $event.preventDefault(); else databaseConfirmation = ''">
-        <form @submit.prevent="confirmDatabaseSwitch()">
-            <h2 id="database-switch-confirm-title">Switch database environment?</h2>
-            <p>The target will be health-checked before the local services stop. After switching, CompliTrack will verify the database, restart its services, and sign out all users. If verification fails, the previous target will be restored. No data will be copied, migrated, or seeded.</p>
-            <label for="database-switch-confirmation">Type <span x-text="databaseConfirmationPhrase()"></span> to confirm</label>
-            <input id="database-switch-confirmation" x-ref="databaseSwitchConfirmation" type="text" autocomplete="off"
-                x-model="databaseConfirmation" :disabled="busy" required>
-            <div class="settings-card-footer">
-                <button type="button" class="settings-button settings-button-outline" :disabled="busy" @click="closeDatabaseSwitch()">Cancel</button>
-                <button type="submit" class="settings-button settings-button-gold"
-                    :disabled="busy || databaseConfirmation !== databaseConfirmationPhrase()"
-                    x-text="busy ? 'Starting switch...' : 'Confirm and Switch'"></button>
-            </div>
-        </form>
-    </dialog>
+    <x-database-switch-dialog />
 </section>
 @endsection

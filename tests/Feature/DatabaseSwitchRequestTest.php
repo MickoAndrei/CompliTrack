@@ -334,6 +334,16 @@ class DatabaseSwitchRequestTest extends TestCase
             ->assertSee('data-database-switch-button');
         $this->assertSame(1, substr_count($page->getContent(), 'data-database-switch-button'));
         $this->assertStringNotContainsString('mongodb://', $page->getContent());
+        $dashboard = $this->get('/super-admin/dashboard')->assertOk()
+            ->assertSee('Database Overview')
+            ->assertSee('x-data="databaseSwitchControl"', false)
+            ->assertSee('data-database-switch-button')
+            ->assertSee('Switch database environment?')
+            ->assertSee('databaseSwitchProgress')
+            ->assertSee('role="progressbar"', false)
+            ->assertSee('css/database-switch.css');
+        $this->assertSame(1, substr_count($dashboard->getContent(), 'data-database-switch-button'));
+        $this->assertStringNotContainsString('mongodb://', $dashboard->getContent());
     }
 
     public function test_superadmin_can_request_through_the_server_authorized_endpoint(): void
@@ -346,12 +356,14 @@ class DatabaseSwitchRequestTest extends TestCase
             ->with('remote', 'SWITCH TO REMOTE', $admin)
             ->andReturn(['requestId' => 'request-id', 'outcome' => 'automatic_switch_queued']);
         $switch->shouldReceive('launchAutomaticSwitch')->once()->with('request-id');
+        $switch->shouldReceive('progressUrl')->once()->with('request-id')->andReturn('/signed-switch-progress');
 
         $this->actingAs($admin)->postJson('/super-admin/system/database-switch', [
             'target' => 'remote',
             'confirmation' => 'SWITCH TO REMOTE',
             'command' => 'ignored input; never executed',
         ])->assertAccepted()
+            ->assertJsonPath('statusUrl', '/signed-switch-progress')
             ->assertJsonPath('request.outcome', 'automatic_switch_queued')
             ->assertJsonPath('message', 'The database switch started. Services will restart and all users will need to sign in again. No migrations, seeders, or data synchronization will run.');
     }
@@ -392,6 +404,39 @@ class DatabaseSwitchRequestTest extends TestCase
         $this->assertTrue($status['targetConfigured']);
         $this->assertStringNotContainsString('mongodb://', json_encode($status));
         $this->assertStringNotContainsString('example.test', json_encode($status));
+    }
+
+    public function test_signed_progress_survives_logout_and_reports_verified_completion(): void
+    {
+        config(['session.driver' => 'array', 'cache.default' => 'array']);
+        $this->mock(MongoConnectionProbe::class)->shouldReceive('healthy')->andReturn(true);
+        $service = app(DatabaseSwitchService::class);
+        $request = $service->request('remote', 'SWITCH TO REMOTE', $this->admin());
+        $url = $service->progressUrl($request['requestId']);
+        $service->setStage($request['requestId'], 'starting_services');
+
+        $this->getJson($url.'&_tab='.str_repeat('a', 32))->assertOk()
+            ->assertJsonPath('complete', false)->assertJsonPath('stage', 'starting_services')
+            ->assertDontSee('mongodb://')->assertDontSee('Switch Test Admin');
+        $this->activate('remote');
+        $service->resolve($request['requestId'], 'switch_verified');
+        $this->getJson($url)->assertOk()->assertJsonPath('complete', true)
+            ->assertJsonPath('outcome', 'switch_verified');
+        $this->assertGuest();
+    }
+
+    public function test_progress_requires_a_valid_unexpired_signature(): void
+    {
+        config(['session.driver' => 'array', 'cache.default' => 'array']);
+        $id = (string) \Illuminate\Support\Str::uuid();
+        $this->getJson('/api/system/database-switch/'.$id)->assertForbidden();
+        $expired = \Illuminate\Support\Facades\URL::temporarySignedRoute(
+            'database-switch.progress', now()->subMinute(), ['requestId' => $id], absolute: false,
+        );
+        $this->getJson($expired)->assertForbidden();
+        $valid = app(DatabaseSwitchService::class)->progressUrl($id);
+        $this->getJson($valid)->assertNotFound();
+        $this->getJson(str_replace($id, (string) \Illuminate\Support\Str::uuid(), $valid))->assertForbidden();
     }
 
     private function activate(string $environment): void

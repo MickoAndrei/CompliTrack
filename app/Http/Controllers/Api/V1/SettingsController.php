@@ -44,7 +44,13 @@ class SettingsController extends Controller
         return response()->json([
             'message' => 'The database switch started. Services will restart and all users will need to sign in again. No migrations, seeders, or data synchronization will run.',
             'request' => $result,
+            'statusUrl' => $databaseSwitch->progressUrl($result['requestId']),
         ], 202)->header('Cache-Control', 'no-store');
+    }
+
+    public function databaseSwitchProgress(string $requestId, DatabaseSwitchService $databaseSwitch)
+    {
+        return response()->json($databaseSwitch->progress($requestId))->header('Cache-Control', 'no-store');
     }
 
     public function update(Request $request, SystemSettingsService $settings)

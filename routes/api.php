@@ -14,6 +14,10 @@ use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\DB;
 
 // Capability URLs are short-lived; save callbacks additionally require the server JWT.
+Route::get('/system/database-switch/{requestId}', [\App\Http\Controllers\Api\V1\SettingsController::class, 'databaseSwitchProgress'])
+    ->whereUuid('requestId')->name('database-switch.progress')
+    ->middleware(\Illuminate\Routing\Middleware\ValidateSignature::relative(['_tab']));
+
 Route::get('/document-editor/{session}/file', [\App\Http\Controllers\Api\V1\DocumentEditorController::class, 'file'])->middleware('throttle:120,1');
 Route::post('/document-editor/{session}/callback', [\App\Http\Controllers\Api\V1\DocumentEditorController::class, 'callback'])->middleware('throttle:120,1');
 

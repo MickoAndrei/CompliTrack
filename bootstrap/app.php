@@ -14,7 +14,7 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         // Must run before both web and Sanctum start their cookie sessions.
         $middleware->prepend(\App\Http\Middleware\UseTabSession::class);
-        // The local ngrok agent forwards the public HTTPS scheme to Laravel.
+        // Local tunnel agents forward the public HTTPS scheme to Laravel.
         $middleware->trustProxies(at: ['127.0.0.1', '::1']);
         $middleware->statefulApi();
         $middleware->append(\App\Http\Middleware\UseTunnelAssets::class);

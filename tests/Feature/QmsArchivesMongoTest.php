@@ -695,7 +695,7 @@ class QmsArchivesMongoTest extends TestCase
         $atl = $this->user($legacyUnit, 'faculty_staff', 1, ['email' => 'existing.atl@example.test']);
         $auditor = $this->user($it, 'faculty_staff', 2, ['assignedDepartmentIds' => [new ObjectId((string) $it->getKey())]]);
         $db = DB::connection('mongodb')->getMongoDB();
-        $snapshotUser = fn ($user) => \MongoDB\BSON\toCanonicalExtendedJSON(\MongoDB\BSON\fromPHP($db->users->findOne(['_id' => new ObjectId((string) $user->getKey())])));
+        $snapshotUser = fn ($user) => \MongoDB\BSON\Document::fromPHP($db->users->findOne(['_id' => new ObjectId((string) $user->getKey())]))->toCanonicalExtendedJSON();
         $before = $snapshotUser($atl); $beforeAuditor = $snapshotUser($auditor);
         $seeder = app(\App\Services\QmsDevelopmentData::class);
         $this->assertFalse($seeder->run()['applied']);

@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\User;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Str;
+use Illuminate\Support\Facades\URL;
 use Illuminate\Validation\ValidationException;
 use RuntimeException;
 
@@ -39,9 +40,38 @@ class DatabaseSwitchService
                 'requestedAt' => $pending['requestedAt'],
                 'outcome' => $pending['outcome'],
                 'stage' => $pending['stage'] ?? 'queued',
+                'statusUrl' => $this->progressUrl($pending['requestId']),
             ],
             'lastOutcome' => $lastAudit['outcome'] ?? null,
         ];
+    }
+
+    public function progressUrl(string $requestId): string
+    {
+        return URL::temporarySignedRoute('database-switch.progress', now()->addMinutes(15),
+            ['requestId' => $requestId], absolute: false);
+    }
+
+    public function progress(string $requestId): array
+    {
+        $state = $this->readState();
+        $pending = $state['pendingRequest'];
+        if ($pending !== null && hash_equals($pending['requestId'], $requestId)) {
+            return [
+                'complete' => ($pending['stage'] ?? '') === 'rollback_failed',
+                'stage' => $pending['stage'] ?? 'queued',
+                'outcome' => ($pending['stage'] ?? '') === 'rollback_failed' ? 'rollback_failed' : null,
+            ];
+        }
+
+        foreach (array_reverse($state['audit']) as $entry) {
+            if (hash_equals($entry['requestId'], $requestId)
+                && in_array($entry['outcome'], ['switch_verified', 'rolled_back', 'cancelled', 'automatic_worker_launch_failed'], true)) {
+                return ['complete' => true, 'stage' => 'finished', 'outcome' => $entry['outcome']];
+            }
+        }
+
+        abort(404);
     }
 
     public function request(string $target, string $confirmation, User $actor): array
@@ -137,15 +167,7 @@ class DatabaseSwitchService
             throw new RuntimeException('The controlled Windows database switch worker is missing.');
         }
 
-        $scriptLiteral = str_replace("'", "''", $scriptPath);
-        $workingDirectoryLiteral = str_replace("'", "''", base_path());
-        $command = "\$ErrorActionPreference = 'Stop'; "
-            ."\$scriptPath = '{$scriptLiteral}'; "
-            ."\$childArguments = '-NoProfile -NonInteractive -ExecutionPolicy Bypass -File \"' + \$scriptPath + '\"'; "
-            ."\$started = Start-Process -FilePath 'powershell.exe' -ArgumentList \$childArguments "
-            ."-WorkingDirectory '{$workingDirectoryLiteral}' -WindowStyle Hidden -PassThru; "
-            ."if (-not \$started) { exit 1 }";
-        $encodedCommand = base64_encode(mb_convert_encoding($command, 'UTF-16LE', 'UTF-8'));
+        $encodedCommand = $this->workerLauncherCommand($scriptPath, base_path(), PHP_BINARY);
         $pipes = [];
         $process = proc_open(
             ['powershell.exe', '-NoProfile', '-NonInteractive', '-EncodedCommand', $encodedCommand],
@@ -170,6 +192,32 @@ class DatabaseSwitchService
         if ($exitCode !== 0) {
             throw new RuntimeException('Unable to launch the controlled database switch worker.');
         }
+    }
+
+    private function workerLauncherCommand(string $scriptPath, string $workingDirectory, string $phpExecutable): string
+    {
+        $scriptLiteral = str_replace("'", "''", $scriptPath);
+        $workingDirectoryLiteral = str_replace("'", "''", $workingDirectory);
+        $phpLiteral = str_replace("'", "''", $phpExecutable);
+        File::ensureDirectoryExists($workingDirectory.'/logs');
+        // WMI creates the worker outside PHP's process tree and without inherited
+        // listening sockets. Start-Process can keep port 8000 alive after PHP exits.
+        $workerCommand = "& '{$scriptLiteral}' -PhpExecutable '{$phpLiteral}' "
+            ."1> '{$workingDirectoryLiteral}/logs/database-switch-worker.log' "
+            ."2> '{$workingDirectoryLiteral}/logs/database-switch-worker.err.log'";
+        $workerEncoded = base64_encode(mb_convert_encoding($workerCommand, 'UTF-16LE', 'UTF-8'));
+        $command = "\$ErrorActionPreference = 'Stop'; "
+            ."\$scriptPath = '{$scriptLiteral}'; "
+            ."\$parseErrors = \$null; \$tokens = \$null; "
+            ."[System.Management.Automation.Language.Parser]::ParseFile(\$scriptPath, [ref]\$tokens, [ref]\$parseErrors) | Out-Null; "
+            ."if (\$parseErrors.Count -gt 0) { exit 1 }; "
+            ."\$startup = New-CimInstance -ClassName Win32_ProcessStartup -ClientOnly -Property @{ ShowWindow = [uint16]0 }; "
+            ."\$powershell = Join-Path \$PSHOME 'powershell.exe'; "
+            ."\$workerLine = [char]34 + \$powershell + [char]34 + ' -NoProfile -NonInteractive -ExecutionPolicy Bypass -EncodedCommand {$workerEncoded}'; "
+            ."\$started = Invoke-CimMethod -ClassName Win32_Process -MethodName Create -Arguments @{ "
+            ."CommandLine = \$workerLine; CurrentDirectory = '{$workingDirectoryLiteral}'; ProcessStartupInformation = \$startup }; "
+            ."if (\$started.ReturnValue -ne 0 -or -not \$started.ProcessId) { exit 1 }";
+        return base64_encode(mb_convert_encoding($command, 'UTF-16LE', 'UTF-8'));
     }
 
     public function adoptPendingRequest(string $confirmation): array

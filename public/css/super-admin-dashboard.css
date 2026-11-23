@@ -250,6 +250,12 @@ body.super-admin-dashboard-page #main-content { padding-top: 8px; }
 .sa-db-dot.is-amber { background: #f5b942; box-shadow: 0 0 0 3px #fef3c7; }
 .sa-db-dot:not(.is-ok):not(.is-amber) { background: #ef4444; box-shadow: 0 0 0 3px #fee2e2; }
 .sa-db-badge { flex-shrink: 0; font-size: 11px; font-weight: 800; letter-spacing: .06em; padding: 5px 8px; border-radius: 99px; background: #00205b; color: #fff; }
+.sa-db-switch { max-width: 50%; text-align: right; }
+.sa-db-switch > button { border: 0; cursor: pointer; white-space: normal; }
+.sa-db-switch > button:disabled { opacity: .55; cursor: not-allowed; }
+.sa-db-switch > button:focus-visible { outline: 2px solid #2563eb; outline-offset: 3px; }
+.sa-db-switch-message { margin: 5px 0 0; font-size: 11px; color: #475569; overflow-wrap: anywhere; }
+.sa-db-switch-message[role="alert"] { color: #991b1b; }
 .sa-db-storage { margin-bottom: 16px; }
 .sa-db-storage-top { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
 .sa-db-storage-top strong { font-size: 22px; letter-spacing: -.02em; }

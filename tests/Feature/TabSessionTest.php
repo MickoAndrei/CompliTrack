@@ -58,6 +58,13 @@ class TabSessionTest extends TestCase
             Route::post('/protected', fn () => response('saved'))->middleware(EnforceTabCsrf::class);
         });
         Route::middleware('api')->get('/api/_tab-test/me', fn () => response()->json(['id' => Auth::guard('web')->id()]));
+        Route::middleware(['api', EnforceTabCsrf::class])->post('/api/_tab-test/browser-login/{id}', function (Request $request, string $id) use ($users) {
+            $this->assertTrue(\Laravel\Sanctum\Http\Middleware\EnsureFrontendRequestsAreStateful::fromFrontend($request));
+            Auth::guard('web')->login($users[$id]);
+            $request->session()->regenerate();
+
+            return response()->json(['id' => Auth::guard('web')->id()]);
+        });
     }
 
     private function visit(string $method, string $url, array $headers = [], array $data = [])
@@ -118,5 +125,30 @@ class TabSessionTest extends TestCase
         $this->visit('GET', '/_tab-test/me?_tab[]=bad')->assertStatus(400);
         $this->visit('GET', '/_tab-test/me?_tab=bad')->assertStatus(400);
         $this->visit('GET', '/_tab-test/external?_tab='.str_repeat('a', 32))->assertRedirect('https://example.org/landing');
+    }
+
+    public function test_same_origin_login_keeps_its_session_through_forwarded_ports_and_enforces_csrf(): void
+    {
+        foreach (['http://localhost:8000', 'https://example.asse.devtunnels.ms', 'https://example.ngrok-free.dev'] as $origin) {
+            $tab = bin2hex(random_bytes(16));
+            $csrf = $this->visit('GET', "$origin/_tab-test/me?_tab=$tab")->json('csrf');
+            $headers = ['Origin' => $origin, 'X-CSRF-TOKEN' => $csrf];
+            $this->visit('POST', "$origin/api/_tab-test/browser-login/alice?_tab=$tab", $headers)
+                ->assertOk()->assertJsonPath('id', 'alice');
+            $this->visit('GET', "$origin/_tab-test/me?_tab=$tab")->assertJsonPath('id', 'alice');
+            $this->visit('POST', "$origin/api/_tab-test/browser-login/alice?_tab=$tab", ['Origin' => $origin])
+                ->assertStatus(419);
+            $this->visit('POST', "$origin/api/_tab-test/browser-login/alice?_tab=$tab", ['Origin' => $origin, 'X-CSRF-TOKEN' => 'invalid'])
+                ->assertStatus(419);
+        }
+    }
+
+    public function test_other_tunnel_origins_and_requests_without_a_browser_origin_stay_stateless(): void
+    {
+        $url = 'https://example.asse.devtunnels.ms/api/v1/auth/login';
+        $request = Request::create($url, 'POST');
+        $this->assertFalse(\Laravel\Sanctum\Http\Middleware\EnsureFrontendRequestsAreStateful::fromFrontend($request));
+        $request->headers->set('Origin', 'https://another.asse.devtunnels.ms');
+        $this->assertFalse(\Laravel\Sanctum\Http\Middleware\EnsureFrontendRequestsAreStateful::fromFrontend($request));
     }
 }

@@ -1,3 +1,4 @@
+import { databaseSwitchControl } from './database-switch-control';
 import { portalDate } from './portal-date';
 export function formatArchiveBytes(value) {
     const bytes = Math.max(0, Number(value) || 0);
@@ -6,6 +7,7 @@ export function formatArchiveBytes(value) {
     return `${new Intl.NumberFormat(undefined, { maximumFractionDigits: index ? 2 : 0 }).format(bytes / (1024 ** index))} ${units[index]}`;
 }
 document.addEventListener('alpine:init', () => {
+    window.Alpine.data('databaseSwitchControl', databaseSwitchControl);
     window.Alpine.data('superAdminDashboard', () => ({
         loading: true, error: '', data: null, health: null, healthError: '', healthLoading: false, healthRefreshTimer: null,
         init() {

@@ -1,5 +1,6 @@
 @extends('layouts.app')
 @section('title', 'Audit Team Leader Dashboard')
+@section('body-class', 'atl-dashboard-page')
 @section('heading', 'Audit Team Leader Dashboard')
 @section('subtitle', 'Your assigned audits and authorized CET corrective actions.')
 @push('styles')

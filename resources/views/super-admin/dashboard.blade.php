@@ -83,7 +83,6 @@
             get total() { return data?.stats?.archiveStorageCapacityBytes ?? 536870912 },
             get free() { return Math.max(0, this.total - this.used) },
             get pct() { return this.total ? Math.round(this.used / this.total * 100) : 0 },
-            get env() { return (data?.databaseEnvironment || data?.stats?.databaseEnvironment || 'REMOTE').toUpperCase() },
             get mongo() { return (health?.components || []).find(s => /mongo|database/i.test(s.name)) },
             get mongoStatus() { return this.mongo?.status || 'Operational' },
             get storageHealth() { return this.pct >= 90 ? 'Critical' : this.pct >= 80 ? 'Warning' : 'Healthy' }
@@ -91,9 +90,19 @@
             <header><div><h3>Database Overview</h3><p>Storage · Health · Environment — live MongoDB</p></div></header>
             <x-dashboard-skeleton type="activity" x-show="loading" />
             <div class="sa-db-body" x-show="data && !loading" x-cloak>
-                <div class="sa-db-env">
-                    <div class="sa-db-env-left"><span class="sa-db-dot" :class="{'is-ok': mongoStatus === 'Operational'}"></span><div><b x-text="`${env} — Connected`"></b><small>USTP Database Server</small></div></div>
-                    <span class="sa-db-badge" x-text="env"></span>
+                <div class="sa-db-env" x-data="databaseSwitchControl" :aria-busy="loading || busy || switching">
+                    <div class="sa-db-env-left"><span class="sa-db-dot" :class="{'is-ok': !loading && state.databaseSwitch?.health === 'connected'}"></span><div><b x-text="databaseConnectionLabel()">Checking database...</b><small>USTP Database Server</small></div></div>
+                    <div class="sa-db-switch">
+                        <button type="button" class="sa-db-badge" data-database-switch-button
+                            @click="openDatabaseSwitch()"
+                            :disabled="loading || busy || switching || !state.databaseSwitch?.targetConfigured || !!state.databaseSwitch?.pendingRequest"
+                            :aria-label="databaseSwitchLabel()"
+                            x-text="loading ? 'Checking...' : switching ? 'Switching...' : state.databaseSwitch?.pendingRequest?.stage === 'rollback_failed' ? 'Switch failed' : state.databaseSwitch?.targetEnvironment ? `Switch to ${state.databaseSwitch.targetEnvironment === 'local' ? 'Local' : 'Remote'}` : 'Switch unavailable'">Checking...</button>
+                        <p class="sa-db-switch-message" role="status" aria-live="polite" x-show="switching" x-text="databaseSwitchStage()"></p>
+                        <p class="sa-db-switch-message" role="status" x-show="!loading && !error && !state.databaseSwitch?.targetConfigured">Configure the target in .env to switch.</p>
+                        <p class="sa-db-switch-message" role="alert" x-show="error" x-text="error"></p>
+                        <x-database-switch-dialog />
+                    </div>
                 </div>
                 <div class="sa-db-storage">
                     <div class="sa-db-storage-top"><strong><span x-text="bytes(used)"></span> <span>used</span></strong><small>of <span x-text="bytes(total)"></span> total</small></div>
@@ -107,7 +116,7 @@
                     <div class="sa-db-row"><div class="sa-db-row-left"><span class="sa-db-dot is-amber"></span><div>Archive storage<small x-text="`${bytes(used)} used`"></small></div></div><span class="sa-db-pill" :class="storageHealth === 'Healthy' ? 'is-amber' : 'is-red'" x-text="storageHealth"></span></div>
                     <div class="sa-db-row"><div class="sa-db-row-left"><span class="sa-db-dot is-ok"></span><div>Last backup<small>Database Control</small></div></div><span class="sa-db-pill is-green">Completed</span></div>
                 </div>
-                <p class="sa-db-foot"><span x-show="health?.checkedAt" x-text="`Last checked: ${date(health.checkedAt)}`"></span><span>Local available · Switch in Database Control</span></p>
+                <p class="sa-db-foot"><span x-show="health?.checkedAt" x-text="`Last checked: ${date(health.checkedAt)}`"></span><span>Switching restarts services and signs out all users.</span></p>
             </div>
         </article>
         <article class="sa-panel sa-health" :aria-busy="healthLoading"><header><div><h3>System Health</h3><p>Refreshes automatically every minute</p></div><button type="button" class="sa-health-refresh" @click="loadHealth()" :disabled="healthLoading" aria-label="Refresh system health"><i data-lucide="refresh-cw" :class="{'is-spinning': healthLoading}" aria-hidden="true"></i></button></header>

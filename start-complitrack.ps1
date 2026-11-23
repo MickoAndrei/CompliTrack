@@ -2,7 +2,9 @@ param(
     [switch]$DisableOpcache,
     [switch]$SkipMongoBootstrap,
     [switch]$SkipLogout,
-    [switch]$SkipFrontendBuild
+    [switch]$SkipFrontendBuild,
+    [switch]$SkipDependencyInstall,
+    [switch]$DatabaseSwitchRestart
 )
 $ErrorActionPreference = "Stop"
 
@@ -23,7 +25,7 @@ $schedulerPidFile = Join-Path $repoRoot ".scheduler.pid"
 
 function Test-PortInUse([int]$port) {
     try {
-        $listener = Get-NetTCPConnection -LocalPort $port -ErrorAction SilentlyContinue
+        $listener = Get-NetTCPConnection -State Listen -LocalPort $port -ErrorAction SilentlyContinue
         return $null -ne $listener
     } catch {
         return $false
@@ -86,6 +88,20 @@ function Ensure-MongoRunning {
     Write-Host "Laravel will verify connectivity against the configured MongoDB URI before startup."
 }
 
+if ($DatabaseSwitchRestart) {
+    # The running installation was already checked before the switch. Reuse it.
+    $SkipMongoBootstrap = $true
+    $SkipLogout = $true
+    $SkipFrontendBuild = $true
+    $SkipDependencyInstall = $true
+    foreach ($requiredPath in @('.env', 'vendor/autoload.php', 'realtime/node_modules', 'public/build/manifest.json')) {
+        if (-not (Test-Path -LiteralPath (Join-Path $repoRoot $requiredPath))) {
+            throw "Controlled restart requires an existing installation: $requiredPath"
+        }
+    }
+    Get-Command php,node -ErrorAction Stop | Out-Null
+    Write-Host 'Restarting existing services using built frontend assets; npm installation, build, and Vite are skipped.'
+} else {
 Write-Host "Checking required tools..."
 $commands = @("php", "composer", "node", "npm")
 foreach ($cmd in $commands) {
@@ -112,9 +128,9 @@ Write-Host "  [OK] Node.js version: $nodeVersion"
 
 Write-Host ""
 Write-Host "Checking PHP extension set..."
+$mods = php -m
 $requiredExts = @("pdo", "pdo_sqlite", "sqlite3", "mbstring", "openssl", "tokenizer", "json", "ctype", "fileinfo", "xml", "dom", "curl")
 foreach ($ext in $requiredExts) {
-    $mods = php -m
     if ($mods -contains $ext) {
         Write-Host "  [OK] PHP extension: $ext"
     } else {
@@ -188,11 +204,11 @@ if (-not (Test-Path (Join-Path $repoRoot "vendor"))) {
     Write-Host "  [OK] PHP dependencies already installed"
 }
 
-if (-not (Test-Path (Join-Path $repoRoot "node_modules"))) {
-    & $env:ComSpec /c "`"$npmCommand`" install"
-    Write-Host "  [OK] Installed Node dependencies"
-} else {
-    Write-Host "  [OK] Node dependencies already installed"
+# Existing node_modules may be missing dependencies added by another workspace.
+if (-not $SkipDependencyInstall) {
+    & $npmCommand install --no-audit --no-fund
+    if ($LASTEXITCODE -ne 0) { throw "Node dependency installation failed. Resolve the npm error above before starting CompliTrack." }
+    Write-Host "  [OK] Node dependencies synchronized"
 }
 
 if (Test-Path (Join-Path $repoRoot "realtime")) {
@@ -212,6 +228,8 @@ if (-not ((Get-Content (Join-Path $repoRoot ".env")) -match '^APP_KEY=') -or ((G
     Write-Host "  [OK] Generated Laravel APP_KEY"
 } else {
     Write-Host "  [OK] APP_KEY already present"
+}
+
 }
 
 Ensure-MongoRunning
@@ -277,8 +295,14 @@ if (Test-PortInUse $realtimePort) {
     Stop-PidFile $realtimePidFile
     Write-Host "Starting realtime service..."
     $realtimePath = Join-Path $repoRoot "realtime"
+    if ($DatabaseSwitchRestart) {
+        $nodeCommand = (Get-Command node -ErrorAction Stop).Source
+        $realtimeEntry = Join-Path $realtimePath 'src/server.js'
+        $p = Start-Process -FilePath $nodeCommand -ArgumentList ('"' + $realtimeEntry + '"') -WorkingDirectory $realtimePath -WindowStyle Hidden -RedirectStandardOutput "$logDir\realtime.log" -RedirectStandardError "$logDir\realtime.err.log" -PassThru
+    } else {
     $npmArgs = "/d /s /c `"`"$npmCommand`" --prefix `"$realtimePath`" start`""
     $p = Start-Process -FilePath $env:ComSpec -ArgumentList $npmArgs -WorkingDirectory $realtimePath -WindowStyle Hidden -RedirectStandardOutput "$logDir\realtime.log" -RedirectStandardError "$logDir\realtime.err.log" -PassThru
+    }
     $p.Id | Set-Content $realtimePidFile
 }
 
@@ -302,7 +326,12 @@ if (-not $SkipFrontendBuild) {
     Write-Host "Building frontend..."
     $buildArgs = "/d /s /c `"`"$npmCommand`" run build > `"$logDir\frontend-build.log`" 2>&1`""
     & $env:ComSpec $buildArgs | Out-Null
+    if ($LASTEXITCODE -ne 0) { throw "Frontend build failed. See logs\frontend-build.log for details." }
     Write-Host "  [OK] Frontend build complete"
+}
+
+if (-not (Test-Path -LiteralPath (Join-Path $repoRoot "public\build\manifest.json"))) {
+    throw "Frontend build is missing. Run npm run build or restart without -SkipFrontendBuild."
 }
 
 $hotFile = Join-Path $repoRoot "public\hot"
@@ -311,7 +340,9 @@ if (Test-Path $hotFile) {
     Write-Host "  [OK] Removed public/hot file"
 }
 
-if (Test-PortInUse 5173) {
+if ($DatabaseSwitchRestart) {
+    Write-Host 'Using built frontend assets; Vite is not needed for a database switch.'
+} elseif (Test-PortInUse 5173) {
     Write-Host "Vite dev server already running"
 } else {
     Stop-PidFile $vitePidFile
@@ -326,6 +357,10 @@ Write-Host "========================================"
 Write-Host "CompliTrack is running"
 Write-Host "Laravel: http://localhost:$appPort"
 Write-Host "Realtime: http://localhost:$realtimePort/health"
-Write-Host "Vite: http://localhost:5173"
+if ($DatabaseSwitchRestart) {
+    Write-Host 'Frontend: existing production build'
+} else {
+    Write-Host "Vite: http://localhost:5173"
+}
 Write-Host "Logs: $logDir"
 Write-Host "========================================"

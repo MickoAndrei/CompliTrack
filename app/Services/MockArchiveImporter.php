@@ -110,7 +110,7 @@ class MockArchiveImporter
         $db = DB::connection('mongodb')->getMongoDB(); $snapshot = [];
         foreach (['archive_documents', 'counters', 'audit_logs'] as $collection) {
             $snapshot[$collection] = [];
-            foreach ($db->$collection->find() as $document) { $snapshot[$collection][] = \MongoDB\BSON\toCanonicalExtendedJSON(\MongoDB\BSON\fromPHP($document)); }
+            foreach ($db->$collection->find() as $document) { $snapshot[$collection][] = \MongoDB\BSON\Document::fromPHP($document)->toCanonicalExtendedJSON(); }
         }
         $plaintext = json_encode(['database' => $db->getDatabaseName(), 'documents' => $snapshot], JSON_THROW_ON_ERROR);
         $encryption = app(ArchiveEncryptionService::class); $encrypted = $encryption->encrypt($plaintext);

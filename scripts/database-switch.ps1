@@ -1,4 +1,8 @@
+param([string]$PhpExecutable = 'php')
+
 $ErrorActionPreference = 'Stop'
+$phpCommand = (Get-Command $PhpExecutable -ErrorAction Stop).Source
+$env:Path = (Split-Path -Parent $phpCommand) + [IO.Path]::PathSeparator + $env:Path
 
 $repoRoot = Split-Path -Parent $PSScriptRoot
 $envPath = Join-Path $repoRoot '.env'
@@ -40,7 +44,7 @@ function Get-PendingRequest {
 function Invoke-Artisan([string[]]$Arguments) {
     Push-Location $repoRoot
     try {
-        & php artisan @Arguments *> $null
+        & $phpCommand artisan @Arguments *> $null
         if ($LASTEXITCODE -ne 0) {
             Write-SwitchLog ('Laravel command failed: {0}' -f $Arguments[0])
             throw 'A required Laravel maintenance command failed.'
@@ -139,7 +143,7 @@ function Set-ActiveEnvironment([string]$Environment) {
 
 function Start-ManagedServices {
     try {
-        & (Join-Path $repoRoot 'start-complitrack.ps1') -SkipMongoBootstrap -SkipLogout -SkipFrontendBuild
+        & (Join-Path $repoRoot 'start-complitrack.ps1') -DatabaseSwitchRestart
     } catch {
         Write-SwitchLog ('Managed service startup script failed: {0}' -f $_.Exception.GetType().Name)
         throw

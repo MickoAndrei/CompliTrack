@@ -42,7 +42,7 @@ class QmsArchiveMigration
         foreach (['departments', 'users', 'archive_documents', 'colleges', 'qms_categories', 'migrations'] as $collection) {
             $snapshot[$collection] = [];
             foreach ($db->$collection->find() as $document) {
-                $snapshot[$collection][] = \MongoDB\BSON\toCanonicalExtendedJSON(\MongoDB\BSON\fromPHP($document));
+                $snapshot[$collection][] = \MongoDB\BSON\Document::fromPHP($document)->toCanonicalExtendedJSON();
             }
             $indexes[$collection] = [];
             if (in_array($collection, $existingCollections, true)) {

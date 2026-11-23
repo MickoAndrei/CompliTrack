@@ -318,7 +318,8 @@ DB_CONNECTION=mongodb
 MONGODB_URI=mongodb://localhost:27017/?replicaSet=rs0&directConnection=true
 MONGODB_DATABASE=complitrack
 
-# Optional switch-request targets; keep the legacy active settings until a supervised cutover.
+# Configure both targets once to switch automatically from Super Admin settings.
+MONGODB_ACTIVE_ENVIRONMENT=
 MONGODB_LOCAL_URI=mongodb://localhost:27017/?replicaSet=rs0&directConnection=true
 MONGODB_LOCAL_DATABASE=complitrack
 MONGODB_REMOTE_URI=
@@ -337,6 +338,12 @@ MAIL_PORT=587
 # Realtime service endpoint
 NODE_SOCKET_URL=http://localhost:4000
 ```
+
+After configuring both MongoDB targets, use **Super Admin → Settings → Switch Database**
+and confirm the target. With the application running through `start-complitrack.ps1`,
+the switch checks connectivity, applies the selected environment, restarts services,
+and returns the browser to sign-in automatically. If target startup fails, the worker
+restores the previous environment. It does not migrate, seed, or synchronize database data. The switch popup shows confirmed stages and reconnects through the restart. Controlled restarts reuse built frontend assets, skip setup checks and npm/Vite, and start realtime directly with Node.
 
 - **Encryption Key:** Generate via `php -r "echo base64_encode(random_bytes(32)), PHP_EOL;"`. Never commit this key to source control.
 - **Mail Services:** Password reset emails utilize a dedicated PHPMailer SMTP transport instead of logging links. For Microsoft 365 OAuth setup and the `php artisan mail:check` verification command, refer to [PASSWORD_RESET_EMAIL.md](docs/PASSWORD_RESET_EMAIL.md).

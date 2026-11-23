@@ -397,7 +397,7 @@ class QmsDevelopmentData
         $db = DB::connection('mongodb')->getMongoDB(); $snapshot = []; $indexes = []; $collections = iterator_to_array($db->listCollectionNames());
         foreach (['users', 'departments', 'colleges', 'qms_categories', 'audits', 'compliance_checks', 'archive_documents', 'notifications', 'audit_logs', 'counters', 'migrations', 'roles'] as $name) {
             $snapshot[$name] = [];
-            foreach ($db->$name->find() as $row) { $snapshot[$name][] = \MongoDB\BSON\toCanonicalExtendedJSON(\MongoDB\BSON\fromPHP($row)); }
+            foreach ($db->$name->find() as $row) { $snapshot[$name][] = \MongoDB\BSON\Document::fromPHP($row)->toCanonicalExtendedJSON(); }
             $indexes[$name] = [];
             if (in_array($name, $collections, true)) { foreach ($db->$name->listIndexes() as $index) { $indexes[$name][] = $index->__debugInfo(); } }
         }
