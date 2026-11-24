@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <script src="/js/tab-session.js?v=1794575474"></script>
+    <meta name="csrf-token" content="vlSoPfTWYxYcgsH4oLeQlYMeJBHP0mmVo18BwBup">
+    <title>Audit Reviews | USTP Claveria</title>
+    <link rel="preload" href="/fonts/inter/inter-3100e775e861.woff2" as="font" type="font/woff2" crossorigin>
+    <link rel="preload" href="/fonts/plusjakartasans/plusjakartasans-153fc85b7029.woff2" as="font" type="font/woff2" crossorigin>
+    <link rel="stylesheet" href="/css/fonts.css?v=1794383519">
+    <link rel="preload" as="style" href="/build/assets/app-C9WHKppb.css" /><link rel="modulepreload" as="script" href="/build/assets/app-DavhhP-y.js" /><link rel="stylesheet" href="/build/assets/app-C9WHKppb.css" /><script type="module" src="/build/assets/app-DavhhP-y.js"></script>    <link rel="stylesheet" href="/css/page-notices.css?v=1794319322">
+                                    <link rel="stylesheet" href="/css/admin-portal.css">
+                       <link rel="stylesheet" href="/css/admin-ui.css?v=1795479990">             <link rel="stylesheet" href="/css/sidebar.css?v=1794295808">
+                <link rel="stylesheet" href="/css/pagination.css?v=1795488665">
+                <link rel="stylesheet" href="/css/portal-header.css?v=1794570204">
+        <link rel="stylesheet" href="/css/portal-typography.css?v=1794839441">
+    </head>
+<body class="min-h-screen " data-user-id="6b054a2dca7f87acb30b9864" data-portal-role="1">
+                                    <div class="app-container" x-data="{ sidebarOpen: false }">
+            <div x-cloak x-show="sidebarOpen" x-transition.opacity class="fixed inset-0 z-40 bg-ustp-dark/50 lg:hidden" @click="sidebarOpen = false"></div>
+            <aside x-cloak :class="{ 'open': sidebarOpen }"
+       class="sidebar app-sidebar fixed inset-y-0 left-0 z-50 flex w-64 -translate-x-full flex-col bg-ustp-navy text-white transition-transform duration-200 lg:static lg:z-auto lg:translate-x-0">
+    <div class="sidebar-primary">
+        <a href="/admin/dashboard" class="sidebar-header">
+            <span class="brand-emblem-svg">
+                <img src="/images/ustp-claveria-logo.jpg" alt="USTP Claveria" class="sidebar-brand-logo" width="40" height="40">
+            </span>
+            <span class="super-admin-brand-copy">
+                <span class="brand-title">Compli<span class="track-highlight">Track</span></span>
+                <span class="brand-subtitle">CLAVERIA CAMPUS</span>
+            </span>
+        </a>
+        <nav class="sidebar-nav" aria-label="Main navigation">
+                                                                                            <a href="/admin/dashboard"  class="nav-link-item "><i data-lucide="layout-dashboard" class="nav-icon size-5 shrink-0" aria-hidden="true"></i><span>Dashboard</span></a>
+                                                                                <a href="/audit-plans"  class="nav-link-item "><i data-lucide="clipboard-list" class="nav-icon size-5 shrink-0" aria-hidden="true"></i><span>Audit Plans</span></a>
+                                                                                <a href="/audits"  class="nav-link-item "><i data-lucide="clipboard-list" class="nav-icon size-5 shrink-0" aria-hidden="true"></i><span>Audit Assignments</span></a>
+                                                                                <a href="/audits?view=reviews"  aria-current="page"  class="nav-link-item active"><i data-lucide="clipboard-check" class="nav-icon size-5 shrink-0" aria-hidden="true"></i><span>Audit Reviews</span></a>
+                                                                                <a href="/admin/compliance-records?monitor=1"  class="nav-link-item "><i data-lucide="triangle-alert" class="nav-icon size-5 shrink-0" aria-hidden="true"></i><span>Corrective Monitoring</span></a>
+                                                                                <a href="/admin/departments"  class="nav-link-item "><i data-lucide="building-2" class="nav-icon size-5 shrink-0" aria-hidden="true"></i><span>Departments</span></a>
+                                                                                <a href="/admin/users"  class="nav-link-item "><i data-lucide="users" class="nav-icon size-5 shrink-0" aria-hidden="true"></i><span>Users</span></a>
+                                                                                <a href="/admin/documents"  class="nav-link-item "><i data-lucide="archive" class="nav-icon size-5 shrink-0" aria-hidden="true"></i><span>Documents</span></a>
+                                                                                <a href="/admin/reports"  class="nav-link-item "><i data-lucide="chart-no-axes-combined" class="nav-icon size-5 shrink-0" aria-hidden="true"></i><span>Reports</span></a>
+                                                                                <a href="/admin/notifications"  class="nav-link-item "><i data-lucide="bell" class="nav-icon size-5 shrink-0" aria-hidden="true"></i><span>Notifications</span></a>
+                                                                                <a href="/admin/help"  class="nav-link-item "><i data-lucide="circle-help" class="nav-icon size-5 shrink-0" aria-hidden="true"></i><span>Help &amp; Standards</span></a>
+                                        </nav>
+    </div>
+</aside>
+            <div class="main-wrapper">
+                <header class="top-header-bar app-header">
+    <div class="header-left">
+        <button type="button" class="menu-toggle" aria-label="Open navigation" @click="sidebarOpen = true">
+            <i data-lucide="menu" class="size-5"></i>
+        </button>
+        <div>
+            <h1 class="header-page-title">Audit Reviews</h1>
+            <p class="header-page-subtitle"> Review submitted audit results and manage revision decisions. </p>
+        </div>
+    </div>
+    <div class="header-right">
+                    <div class="relative" x-data="auditeeNotifications()" @click.outside="close()" @keydown.escape.window="close()">
+                <button type="button" @click="toggle()" class="notification-bell-btn" :aria-label="badgeCount() > 0 ? `Notifications, ${badgeCount()} unread` : 'Notifications'" :aria-expanded="open.toString()" aria-haspopup="dialog">
+                    <i data-lucide="bell" class="size-5"></i>
+                    <span x-show="badgeCount() > 0" x-cloak class="header-notification-count" aria-hidden="true" x-text="badgeCount() > 99 ? '99+' : badgeCount()"></span>
+                </button>
+                <div x-cloak x-show="open" class="header-notification-panel" :style="{ height: `${(false && !loading ? Math.max(1, Math.min(previewLimit(), previewItems().length)) : previewLimit()) * 68 + 134}px` }" role="dialog" aria-label="Notifications" :aria-busy="loading">
+    <header>
+        <svg class="header-notification-heading-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+        <h2>Notifications</h2>
+        <button type="button" @click="markAllRead()" :disabled="loading || markingRead || badgeCount() === 0">Read all</button>
+        <button type="button" @click="clearNotifications()" :disabled="loading || markingRead || previewItems().length === 0">Clear all</button>
+        <button type="button" @click="close()" aria-label="Close notifications">×</button>
+    </header>
+    <div x-show="loading" role="status" class="header-notification-loading">
+        <span class="sr-only">Loading notifications…</span>
+        <template x-for="row in previewLimit()" :key="row"><div class="header-notification-skeleton" aria-hidden="true"><span></span><span></span><span></span></div></template>
+    </div>
+    <div x-show="!loading" class="header-notification-content" :class="{ 'is-empty': !error && previewItems().length === 0 }">
+        <p x-page-notice x-show="error" role="alert" class="header-notification-error" x-text="error"></p>
+        <div x-show="!error && previewItems().length === 0" class="header-notification-empty">
+            <svg class="header-notification-empty-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="m8 12 3 3 5-6"/></svg>
+            <p>You're all caught up.</p>
+        </div>
+        <template x-for="item in previewItems().slice((previewPage - 1) * previewLimit(), previewPage * previewLimit())" :key="item.kind + item.record._id">
+            <button type="button" class="header-notification-item" @click="markNotificationRead(item.record)" :title="item.record.message" :class="{'is-unread': !item.record.isRead}">
+                <span class="header-notification-item-icon" aria-hidden="true">
+                    <svg x-show="item.kind === 'notification'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4M2 8a10 10 0 0 1 2-5M22 8a10 10 0 0 0-2-5"/></svg>
+                </span>
+                <span class="header-notification-item-copy">
+                    <strong x-text="item.record.title"></strong>
+                    <span x-text="item.record.message"></span>
+                    <time :datetime="item.record.createdAt" x-text="formatActivityTime(item.record.createdAt)"></time>
+                </span>
+            </button>
+        </template>
+    </div>
+    <footer>
+        <button type="button" @click="previewPage--" :disabled="loading || previewPage <= 1" aria-label="Previous notifications">Previous</button>
+        <span x-text="`${previewPage} / ${previewPages()}`"></span>
+        <button type="button" @click="previewPage++" :disabled="loading || previewPage >= previewPages()" aria-label="Next notifications">Next</button>
+        <a href="/admin/notifications">View all notifications</a>
+    </footer>
+</div>
+            </div>
+                            <div class="header-divider"></div>
+            <a href="/admin/profile" class="header-user-badge" aria-label="Open my profile">
+                                    <img src="" alt="" class="header-avatar hidden" data-user-avatar>
+                    <span class="header-avatar header-avatar-initials" data-user-avatar-fallback>R</span>
+                                <span class="header-user-info">
+                    <span class="header-user-name">Reviewer</span>
+                    <span class="header-user-role">Admin </span>
+                </span>
+            </a>
+            </div>
+</header>
+                <main id="main-content" class="content-area">
+                    <div class="review-queue">
+            <div class="review-summary stats-grid">
+                <a class="stat-card" href="/audits?view=reviews&amp;status=submitted&amp;page=1"><div class="admin-stat-info"><span class="admin-stat-label">Submitted — Awaiting ATL Review</span><strong class="admin-stat-number">1</strong><small>Ready for your decision</small></div><span class="stat-icon blue"><i data-lucide="clipboard-check" aria-hidden="true"></i></span></a>
+                <a class="stat-card" href="/audits?view=reviews&amp;status=returned&amp;page=1"><div class="admin-stat-info"><span class="admin-stat-label">Returned for Revision</span><strong class="admin-stat-number">0</strong><small>With the assigned auditor</small></div><span class="stat-icon amber"><i data-lucide="rotate-ccw" aria-hidden="true"></i></span></a>
+                <a class="stat-card" href="/audits?view=reviews&amp;status=accepted&amp;page=1"><div class="admin-stat-info"><span class="admin-stat-label">Accepted / Completed</span><strong class="admin-stat-number">0</strong><small>Accepted audit results</small></div><span class="stat-icon green"><i data-lucide="check-check" aria-hidden="true"></i></span></a>
+            </div>
+    <div class="review-panel">
+        <form method="GET" action="/audits" class="review-filters" aria-label="Filter review queue" data-review-filters>
+            <input type="hidden" name="view" value="reviews">
+            <label class="review-search">Search<input name="search" value="" placeholder="Audit reference, title or department" maxlength="160"></label>
+            <label>Audit plan<select name="planId"><option value="">All plans</option><option value="6b054a2eca7f87acb30b9867" >Isolated authorized audit plan</option></select></label>
+            <label>Auditor<select name="auditorId"><option value="">All auditors</option><option value="6b054a2dca7f87acb30b9865" >Auditor</option></select></label>
+            <label>Department / office<select name="departmentId"><option value="">All units</option><option value="6b054a2dca7f87acb30b9863" >Information Technology</option></select></label>
+            <label>Status<select name="status"><option value="submitted" selected>Submitted — Awaiting ATL Review</option><option value="returned" >Returned for Revision</option><option value="accepted" >Accepted / Completed</option></select></label>
+            <a href="/audits?view=reviews" class="atl-secondary" data-review-reset>Reset Filter</a>
+        </form>
+        <p data-review-filter-error role="alert" hidden class="atl-error review-sort"></p>
+        <div data-review-results aria-live="polite" aria-busy="false" tabindex="-1">
+        <p class="atl-muted review-sort">1 matching audits · Oldest submission first · Missing submission dates appear last</p>
+        <div class="review-table-wrap"><table class="review-table"><thead><tr><th>Audit</th><th>Assigned auditor</th><th>Submitted</th><th>Status</th><th>Checklist</th><th>Action</th></tr></thead><tbody>
+                                                <tr><td data-label="Audit"><strong>Workflow test</strong><small>IQA-2026-0001</small><span>Information Technology</span></td>
+                <td data-label="Auditor">Auditor</td>
+                <td data-label="Submitted"><time>Not recorded</time><small class="">Submission history unavailable</small></td>
+                <td data-label="Status"><span class="review-badge is-submitted">Submitted — Awaiting ATL Review</span></td>
+                <td data-label="Checklist"><strong>0/0</strong><small>evaluated</small></td>
+                <td><a class="atl-primary" href="/audits/6b054a30ca7f87acb30b9868?review=1" data-atl-review aria-haspopup="dialog" aria-label="Review IQA-2026-0001">Review</a></td></tr>
+                    </tbody></table></div>
+        <div class="review-pagination"><nav class="app-pagination" aria-label="Record pages">
+    <span class="app-pagination-total">1 record</span>    <label class="app-page-size">Rows
+    <select aria-label="Rows per page" onchange="window.location.assign(this.value)">
+                    <option value="/audits?view=reviews&amp;perPage=5&amp;page=1" >5</option>
+                    <option value="/audits?view=reviews&amp;perPage=10&amp;page=1" >10</option>
+                    <option value="/audits?view=reviews&amp;perPage=20&amp;page=1" selected>20</option>
+                    <option value="/audits?view=reviews&amp;perPage=50&amp;page=1" >50</option>
+                    <option value="/audits?view=reviews&amp;perPage=100&amp;page=1" >100</option>
+            </select>
+</label>
+    <span class="app-pagination-button" aria-disabled="true">Previous</span>    <span class="app-pagination-status">Page 1 of 1</span>
+    <span class="app-pagination-button" aria-disabled="true">Next</span></nav>
+</div>
+        </div>
+        <template data-review-skeleton><div class="review-loading" role="status"><span class="sr-only">Loading audit reviews</span><div class="review-loading-row" aria-hidden="true"><span></span><span></span><span></span><span></span><span></span></div><div class="review-loading-row" aria-hidden="true"><span></span><span></span><span></span><span></span><span></span></div><div class="review-loading-row" aria-hidden="true"><span></span><span></span><span></span><span></span><span></span></div><div class="review-loading-row" aria-hidden="true"><span></span><span></span><span></span><span></span><span></span></div><div class="review-loading-row" aria-hidden="true"><span></span><span></span><span></span><span></span><span></span></div></div></template>
+    </div>
+    </div>
+                </main>
+            </div>
+        </div>
+             <dialog id="atl-review-dialog" class="atl-review-dialog" aria-labelledby="atl-review-title">
+    <header class="atl-modal-header">
+        <div class="atl-modal-heading"><p class="atl-modal-kicker">COMPLITRACK / INTERNAL QUALITY AUDIT</p><h2 id="atl-review-title">Audit Results Review</h2><p data-atl-review-header-meta></p></div>
+        <button type="button" data-atl-review-close aria-label="Close audit review">&times;</button>
+    </header>
+    <p x-page-notice class="atl-review-feedback" data-atl-review-feedback role="status" aria-live="polite" hidden></p>
+    <div class="atl-review-body" data-atl-review-body aria-busy="false"></div>
+</dialog>
+<dialog id="atl-review-confirm" class="review-confirm" aria-labelledby="review-confirm-title">
+    <h2 id="review-confirm-title">Confirm review decision</h2><p></p>
+    <form method="dialog" class="atl-actions"><button value="cancel" class="atl-secondary" autofocus>Keep reviewing</button><button value="confirm" class="atl-primary">Confirm decision</button></form>
+</dialog>
+ </body>
+</html>

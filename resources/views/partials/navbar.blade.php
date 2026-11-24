@@ -29,7 +29,8 @@
         @endif
         @if (in_array($roleId, [0, 1, 2, 3], true))
             <div class="header-divider"></div>
-            <a href="{{ $profilePath }}" class="header-user-badge" aria-label="Open my profile">
+            <div class="header-profile-menu" x-data="{ open: false }" @click.outside="open = false" @keydown.escape.window="open = false">
+            <button type="button" class="header-user-badge" @click="open = !open" :aria-expanded="open.toString()" aria-haspopup="true" aria-label="Open account menu">
                 @if ($userAvatarUrl)
                     <img src="{{ $userAvatarUrl }}" alt="" class="header-avatar" data-user-avatar>
                     <span class="header-avatar header-avatar-initials hidden" data-user-avatar-fallback>{{ $userInitials }}</span>
@@ -41,20 +42,12 @@
                     <span class="header-user-name">{{ auth()->user()->fullName }}</span>
                     <span class="header-user-role">{{ $roleNames[$roleId] ?? 'User' }} <x-organizational-responsibility :user="auth()->user()" /></span>
                 </span>
-            </a>
-        @elseif ($roleId === 3)
-            <a href="{{ $profilePath }}" class="inline-flex items-center gap-2 rounded-full bg-slate-100 py-1.5 pl-1.5 pr-3 text-sm font-semibold text-ustp-navy transition hover:bg-slate-200" aria-label="Open profile">
-                <span class="flex size-9 items-center justify-center overflow-hidden rounded-full bg-ustp-gold text-xs font-bold text-ustp-navy">
-                    @if ($userAvatarUrl)
-                        <img src="{{ $userAvatarUrl }}" alt="" class="size-full object-cover" data-user-avatar>
-                        <span class="hidden" data-user-avatar-fallback>{{ $userInitials }}</span>
-                    @else
-                        <img src="" alt="" class="hidden" data-user-avatar>
-                        <span data-user-avatar-fallback>{{ $userInitials }}</span>
-                    @endif
-                </span>
-                <span class="hidden sm:inline">{{ auth()->user()->fullName }}</span>
-            </a>
+            </button>
+            <div class="header-profile-dropdown" x-cloak x-show="open">
+                <a href="{{ $profilePath }}"><i data-lucide="circle-user-round" aria-hidden="true"></i><span>Profile</span></a>
+                <form method="POST" action="{{ route('logout') }}">@csrf<button type="submit"><i data-lucide="log-out" aria-hidden="true"></i><span>Logout</span></button></form>
+            </div>
+            </div>
         @endif
     </div>
 </header>

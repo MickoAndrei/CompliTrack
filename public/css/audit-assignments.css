@@ -53,6 +53,7 @@ html:has(:is(#audit-assignment-dialog, #audit-scope-dialog)[open]), body:has(:is
 .assignment-modal-body { display:grid; gap:24px; min-height:0; padding:24px 28px; overflow-y:auto; overscroll-behavior:contain; scrollbar-gutter:stable; }
 .assignment-modal-body > label { display:grid; gap:7px; min-width:0; color:#334155; font-size:12px; font-weight:600; }
 .assignment-modal-body > .assignment-schedule { width:220px; max-width:100%; }
+.assignment-schedule small { color:#64748b; font-size:12px; font-weight:400; white-space:nowrap; }
 .assignment-modal-body > p { margin:0; font-size:13px; line-height:1.7; color:#334155; }
 .assignment-modal-body > .assignment-info-note { padding:12px 16px; border-left:3px solid #ffc72c; border-radius:6px; background:#f1f5f9; color:#334155; }
 .assignment-modal-body > [data-plan-procedure]:empty { display:none; }
@@ -69,3 +70,75 @@ html:has(:is(#audit-assignment-dialog, #audit-scope-dialog)[open]), body:has(:is
 #audit-assignment-dialog [data-save-assignment]:hover:not(:disabled) { background:#eab308; }
 #audit-assignment-dialog :is(input,select,textarea,button):focus-visible { outline:2px solid #ffc72c; outline-offset:2px; }
 @media(max-width:640px) { #audit-assignment-dialog .assignment-modal-header, #audit-assignment-dialog .assignment-modal-body, #audit-assignment-dialog .assignment-modal-form > footer { padding:18px; } }
+
+/* Compact ATL assignment register; existing dialog rules remain unchanged. */
+#main-content:has(.atl-assignment-page) { min-height:0; padding:8px 16px 16px; overflow-y:auto; overscroll-behavior:contain; scrollbar-gutter:stable; }
+.atl-assignment-page { display:grid; gap:8px; min-width:0; }
+.atl-assignment-page .assignment-stats { gap:8px; }
+.atl-assignment-page .assignment-stats article { display:flex; align-items:center; justify-content:space-between; gap:10px; min-width:0; min-height:90px; padding:12px 14px; border-radius:14px; }
+.assignment-stat-info { min-width:0; }
+.assignment-stat-info span { display:block; font-size:12px; }
+.assignment-stat-info strong { margin-top:4px; font-size:27px; font-weight:800; line-height:1.15; }
+.assignment-stat-icon { display:flex; align-items:center; justify-content:center; flex:0 0 44px; width:44px; height:44px; border-radius:50%; }
+.assignment-stat-icon svg { width:20px; height:20px; }
+.assignment-stat-icon.blue { background:#eff6ff; color:#2563eb; }
+.assignment-stat-icon.green { background:#f0fdf4; color:#15803d; }
+.assignment-stat-icon.amber { background:#fffbeb; color:#b45309; }
+.atl-assignment-page .assignment-register { min-width:0; padding:12px; border-radius:12px; container-type:inline-size; }
+.assignment-controls { background:#fff; }
+.assignment-controls > .atl-section-heading { margin:0 0 8px; }
+.assignment-register .assignment-filters { display:flex; flex-wrap:nowrap; align-items:flex-end; gap:10px; margin-bottom:12px; }
+.assignment-register .assignment-filters > label { flex:1 1 0; min-width:0; gap:5px; }
+.assignment-register .assignment-filters > .assignment-search { flex:1.3 1 0; }
+.assignment-register .assignment-filters :is(input,select) { height:38px; padding:8px 10px; text-overflow:ellipsis; }
+.assignment-register .assignment-filter-actions { display:flex; flex:0 0 auto; align-items:center; flex-wrap:nowrap; gap:8px; }
+.assignment-register .assignment-filter-actions > :is(button,a) { box-sizing:border-box; min-height:38px; padding:8px 12px; white-space:nowrap; border-radius:9999px; }
+.assignment-register .assignment-filter-actions .atl-primary { background:#ffc72c; color:#00205b; border:1px solid #eab308; border-radius:9999px; padding-inline:16px; }
+.assignment-register .assignment-filter-actions .atl-primary:hover { background:#eab308; }
+.assignment-register .assignment-table-scroll { margin:8px 0; }
+.assignment-register table { min-width:780px; font-size:12px; line-height:1.45; }
+.assignment-register th,.assignment-register td { padding:9px 8px; vertical-align:middle; }
+.assignment-register th:nth-child(4),.assignment-register td:nth-child(4) { min-width:128px; padding-inline:16px; white-space:nowrap; }
+.assignment-register .assignment-date-format { display:block; margin-top:3px; font-size:10px; font-weight:400; }
+.assignment-register th { vertical-align:top; }
+.assignment-register :is(th, td):nth-child(4) { padding-left:22px; }
+.app-pagination.assignment-register-pagination > .app-pagination-button { border-radius:999px; }
+.assignment-register th:first-child,.assignment-register td:first-child { padding-left:8px; }
+.assignment-register th:last-child,.assignment-register td:last-child { padding-right:8px; }
+.assignment-register td:first-child p { margin:2px 0; }
+.assignment-register td [data-edit-assignment] { padding:6px 10px; font-size:12px; line-height:1.4; }
+.assignment-plan-reference { display:block; max-width:190px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:11px; color:#64748b; }
+.assignment-register .assignment-status { display:inline-block; box-sizing:border-box; max-width:100%; border-radius:9999px; padding:5px 9px; font-size:11px; line-height:1.4; white-space:normal; overflow-wrap:anywhere; }
+.assignment-register .assignment-status-draft { background:#f1f5f9; color:#475569; }
+.assignment-register .assignment-status-ready,.assignment-register .assignment-status-submitted { background:#fef3c7; color:#92400e; }
+.assignment-register .assignment-status-returned { background:#fee2e2; color:#991b1b; }
+.assignment-register .assignment-status-accepted { background:#eaf5ee; color:#166534; }
+@container (max-width:820px) {
+    .assignment-register .assignment-filters { flex-wrap:wrap; }
+    .assignment-register .assignment-filters > label,.assignment-register .assignment-filters > .assignment-search { flex:1 1 160px; }
+    .assignment-register .assignment-filter-actions { margin-left:auto; }
+}
+@container (max-width:440px) {
+    .assignment-register .assignment-filters > label,.assignment-register .assignment-filters > .assignment-search { flex-basis:100%; }
+    .assignment-register .assignment-filter-actions { flex-wrap:wrap; margin-left:0; }
+}
+@media(max-width:640px) { #main-content:has(.atl-assignment-page) { padding:8px; } .atl-assignment-page .assignment-stats { grid-template-columns:1fr; } }
+/* Follow User Management: one page scrollbar with stacked sticky controls. */
+@media(min-width:641px) {
+    .assignment-register .assignment-controls { position:sticky; top:0; z-index:12; padding:12px 14px; border:1px solid #d9e2ee; border-radius:10px; box-shadow:0 2px 3px #00205b05; }
+    .assignment-register .assignment-controls .assignment-filters { margin-bottom:0; }
+    .assignment-register .assignment-table-scroll { overflow:visible; }
+    .assignment-register table { min-width:0; width:100%; table-layout:fixed; border-collapse:separate; border-spacing:0; }
+    .assignment-register thead th { position:sticky; top:var(--assignment-controls-height,150px); z-index:11; background:#fff; border-top:1px solid #d9e2ee; border-bottom:1px solid #d9e2ee; box-shadow:0 2px 3px #00205b05; }
+    .assignment-register th:nth-child(1) { width:16%; }
+    .assignment-register th:nth-child(2) { width:13%; }
+    .assignment-register th:nth-child(3) { width:12%; }
+    .assignment-register th:nth-child(4) { width:14%; }
+    .assignment-register th:nth-child(5) { width:14%; }
+    .assignment-register th:nth-child(6) { width:18%; }
+    .assignment-register th:nth-child(7) { width:13%; }
+    .assignment-register th:nth-child(4),.assignment-register td:nth-child(4) { min-width:0; padding-inline:10px; }
+    .assignment-register thead th:first-child { border-left:1px solid #d9e2ee; border-radius:10px 0 0 10px; }
+    .assignment-register thead th:last-child { border-right:1px solid #d9e2ee; border-radius:0 10px 10px 0; }
+    .assignment-register .assignment-plan-reference { max-width:100%; }
+}

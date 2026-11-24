@@ -49,6 +49,26 @@ class ProfileImageDatabaseTest extends TestCase
         $this->assertSame([], Storage::disk('public')->allFiles());
     }
 
+    public function test_authentication_omits_photo_bytes_but_photo_requests_can_load_them(): void
+    {
+        $user = User::create(['email' => 'lean@example.test', 'fullName' => 'Lean User', 'roleId' => 3, 'isActive' => true]);
+        $contents = "\xff\xd8\xff".str_repeat('photo', 1000);
+        app(ProfileImageService::class)->store($user, $contents, 'image/jpeg');
+        $provider = app('auth')->createUserProvider('users');
+
+        $this->app->instance('request', \Illuminate\Http\Request::create('/audit-plans'));
+        $lean = $provider->retrieveById($user->getKey());
+        $this->assertArrayNotHasKey('avatarData', $lean->getAttributes());
+        $this->assertSame($user->avatarVersion, $lean->avatarVersion);
+        $this->assertSame(3, $lean->roleId);
+        $user->isActive = false;
+        $user->save();
+        $this->assertFalse($provider->retrieveById($user->getKey())->isActive);
+
+        $this->app->instance('request', \Illuminate\Http\Request::create('/api/v1/auth/avatar'));
+        $this->assertSame($contents, $provider->retrieveById($user->getKey())->avatarData->getData());
+    }
+
     public function test_legacy_migration_command_persists_images_and_can_be_rerun(): void
     {
         Storage::fake('public');

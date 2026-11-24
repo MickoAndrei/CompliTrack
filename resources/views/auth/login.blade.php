@@ -1,7 +1,7 @@
 @extends('layouts.app')
 @section('title', 'Sign in')
 @section('content')
-<div class="auth-container">
+<div class="auth-container auth-container--login">
     @include('auth.brand-panel')
     <main class="main-panel">
         <section class="form-wrapper" x-data="loginPage()">

@@ -39,7 +39,6 @@
             ['Documents', '/auditee/documents', 'archive'],
             ['Notifications', '/auditee/notifications', 'bell'],
             ['Help & Standards', '/auditee/help', 'circle-help'],
-            ['Profile', $profilePath, 'circle-user-round'],
         ],
     ];
     if ($roleId === 1 || app(\App\Services\AuditPlanPermissions::class)->allows(auth()->user(), false)) {

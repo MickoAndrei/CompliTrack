@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <script src="/js/tab-session.js?v=1794575474"></script>
+    <meta name="csrf-token" content="">
+    <title>Audit Plans | USTP Claveria</title>
+    <link rel="preload" href="/fonts/inter/inter-3100e775e861.woff2" as="font" type="font/woff2" crossorigin>
+    <link rel="preload" href="/fonts/plusjakartasans/plusjakartasans-153fc85b7029.woff2" as="font" type="font/woff2" crossorigin>
+    <link rel="stylesheet" href="/css/fonts.css?v=1794383519">
+    <link rel="preload" as="style" href="/build/assets/app-C9WHKppb.css" /><link rel="modulepreload" as="script" href="/build/assets/app-DavhhP-y.js" /><link rel="stylesheet" href="/build/assets/app-C9WHKppb.css" /><script type="module" src="/build/assets/app-DavhhP-y.js"></script>    <link rel="stylesheet" href="/css/page-notices.css?v=1794319322">
+                                    <link rel="stylesheet" href="/css/super-admin-portal.css">
+                                    <link rel="stylesheet" href="/css/sidebar.css?v=1794295808">
+        <link rel="stylesheet" href="/css/audit-plans.css?v=1795507007">        <link rel="stylesheet" href="/css/pagination.css?v=1795488665">
+                <link rel="stylesheet" href="/css/portal-header.css?v=1794570204">
+        <link rel="stylesheet" href="/css/portal-typography.css?v=1794839441">
+    </head>
+<body class="min-h-screen " data-user-id="0123456789abcdef01234567" data-portal-role="0">
+                                    <div class="app-container" x-data="{ sidebarOpen: false }">
+            <div x-cloak x-show="sidebarOpen" x-transition.opacity class="fixed inset-0 z-40 bg-ustp-dark/50 lg:hidden" @click="sidebarOpen = false"></div>
+            <aside x-cloak :class="{ 'open': sidebarOpen }"
+       class="sidebar app-sidebar fixed inset-y-0 left-0 z-50 flex w-64 -translate-x-full flex-col bg-ustp-navy text-white transition-transform duration-200 lg:static lg:z-auto lg:translate-x-0">
+    <div class="sidebar-primary">
+        <a href="/super-admin/dashboard" class="sidebar-header">
+            <span class="brand-emblem-svg">
+                <img src="/images/ustp-claveria-logo.jpg" alt="USTP Claveria" class="sidebar-brand-logo" width="40" height="40">
+            </span>
+            <span class="super-admin-brand-copy">
+                <span class="brand-title">Compli<span class="track-highlight">Track</span></span>
+                <span class="brand-subtitle">CLAVERIA CAMPUS</span>
+            </span>
+        </a>
+        <nav class="sidebar-nav" aria-label="Main navigation">
+                                                        <a href="/super-admin/dashboard"                    class="nav-link-item ">
+                    <i data-lucide="layout-dashboard" class="nav-icon size-5 shrink-0"></i>
+                    <span>Dashboard</span>
+                </a>
+                                            <a href="/super-admin/users"                    class="nav-link-item ">
+                    <i data-lucide="users" class="nav-icon size-5 shrink-0"></i>
+                    <span>Users</span>
+                </a>
+                                            <a href="/super-admin/roles"                    class="nav-link-item ">
+                    <i data-lucide="shield-check" class="nav-icon size-5 shrink-0"></i>
+                    <span>Roles</span>
+                </a>
+                                            <a href="/super-admin/departments"                    class="nav-link-item ">
+                    <i data-lucide="building-2" class="nav-icon size-5 shrink-0"></i>
+                    <span>Departments</span>
+                </a>
+                                            <a href="/super-admin/documents"                    class="nav-link-item ">
+                    <i data-lucide="archive" class="nav-icon size-5 shrink-0"></i>
+                    <span>Documents</span>
+                </a>
+                                            <a href="/super-admin/notifications"                    class="nav-link-item ">
+                    <i data-lucide="bell" class="nav-icon size-5 shrink-0"></i>
+                    <span>Notifications</span>
+                </a>
+                                            <a href="/super-admin/logs"                    class="nav-link-item ">
+                    <i data-lucide="scroll-text" class="nav-icon size-5 shrink-0"></i>
+                    <span>System Activity Logs</span>
+                </a>
+                                            <a href="/super-admin/settings"                    class="nav-link-item ">
+                    <i data-lucide="settings-2" class="nav-icon size-5 shrink-0"></i>
+                    <span>Settings</span>
+                </a>
+                                            <a href="/super-admin/help"                    class="nav-link-item ">
+                    <i data-lucide="circle-help" class="nav-icon size-5 shrink-0"></i>
+                    <span>Help &amp; Standards</span>
+                </a>
+                                </nav>
+    </div>
+</aside>
+            <div class="main-wrapper">
+                <header class="top-header-bar app-header">
+    <div class="header-left">
+        <button type="button" class="menu-toggle" aria-label="Open navigation" @click="sidebarOpen = true">
+            <i data-lucide="menu" class="size-5"></i>
+        </button>
+        <div>
+            <h1 class="header-page-title">Audit Plans</h1>
+            <p class="header-page-subtitle"> Prepare audit plans and record explicit approval before assigning auditors. </p>
+        </div>
+    </div>
+    <div class="header-right">
+                    <div class="relative" x-data="auditeeNotifications()" @click.outside="close()" @keydown.escape.window="close()">
+                <button type="button" @click="toggle()" class="notification-bell-btn" :aria-label="badgeCount() > 0 ? `Notifications, ${badgeCount()} unread` : 'Notifications'" :aria-expanded="open.toString()" aria-haspopup="dialog">
+                    <i data-lucide="bell" class="size-5"></i>
+                    <span x-show="badgeCount() > 0" x-cloak class="header-notification-count" aria-hidden="true" x-text="badgeCount() > 99 ? '99+' : badgeCount()"></span>
+                </button>
+                <div x-cloak x-show="open" class="header-notification-panel" :style="{ height: `${(false && !loading ? Math.max(1, Math.min(previewLimit(), previewItems().length)) : previewLimit()) * 68 + 134}px` }" role="dialog" aria-label="Notifications" :aria-busy="loading">
+    <header>
+        <svg class="header-notification-heading-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+        <h2>Notifications</h2>
+        <button type="button" @click="markAllRead()" :disabled="loading || markingRead || badgeCount() === 0">Read all</button>
+        <button type="button" @click="clearNotifications()" :disabled="loading || markingRead || previewItems().length === 0">Clear all</button>
+        <button type="button" @click="close()" aria-label="Close notifications">×</button>
+    </header>
+    <div x-show="loading" role="status" class="header-notification-loading">
+        <span class="sr-only">Loading notifications…</span>
+        <template x-for="row in previewLimit()" :key="row"><div class="header-notification-skeleton" aria-hidden="true"><span></span><span></span><span></span></div></template>
+    </div>
+    <div x-show="!loading" class="header-notification-content" :class="{ 'is-empty': !error && previewItems().length === 0 }">
+        <p x-page-notice x-show="error" role="alert" class="header-notification-error" x-text="error"></p>
+        <div x-show="!error && previewItems().length === 0" class="header-notification-empty">
+            <svg class="header-notification-empty-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="m8 12 3 3 5-6"/></svg>
+            <p>You're all caught up.</p>
+        </div>
+        <template x-for="item in previewItems().slice((previewPage - 1) * previewLimit(), previewPage * previewLimit())" :key="item.kind + item.record._id">
+            <button type="button" class="header-notification-item" @click="markNotificationRead(item.record)" :title="item.record.message" :class="{'is-unread': !item.record.isRead}">
+                <span class="header-notification-item-icon" aria-hidden="true">
+                    <svg x-show="item.kind === 'notification'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4M2 8a10 10 0 0 1 2-5M22 8a10 10 0 0 0-2-5"/></svg>
+                </span>
+                <span class="header-notification-item-copy">
+                    <strong x-text="item.record.title"></strong>
+                    <span x-text="item.record.message"></span>
+                    <time :datetime="item.record.createdAt" x-text="formatActivityTime(item.record.createdAt)"></time>
+                </span>
+            </button>
+        </template>
+    </div>
+    <footer>
+        <button type="button" @click="previewPage--" :disabled="loading || previewPage <= 1" aria-label="Previous notifications">Previous</button>
+        <span x-text="`${previewPage} / ${previewPages()}`"></span>
+        <button type="button" @click="previewPage++" :disabled="loading || previewPage >= previewPages()" aria-label="Next notifications">Next</button>
+        <a href="/super-admin/notifications">View all notifications</a>
+    </footer>
+</div>
+            </div>
+                            <div class="header-divider"></div>
+            <a href="/super-admin/profile" class="header-user-badge" aria-label="Open my profile">
+                                    <img src="" alt="" class="header-avatar hidden" data-user-avatar>
+                    <span class="header-avatar header-avatar-initials" data-user-avatar-fallback>Pb</span>
+                                <span class="header-user-info">
+                    <span class="header-user-name">Plan browser fixture</span>
+                    <span class="header-user-role">Super Admin </span>
+                </span>
+            </a>
+            </div>
+</header>
+                <main id="main-content" class="view-content-container">
+                    <section class="plan-page attention-page" x-data="auditPlans" :aria-busy="loading">
+    <p x-page-notice role="alert" x-show="error" x-text="error"></p><p x-page-notice x-show="notice" x-text="notice"></p>
+    <div class="attention-stats" aria-label="Audit plan summary" :class="{'is-loading': loading}">
+                    <article class="metric-stat-card"><div class="metric-info"><span class="metric-label">Total Plans</span><strong class="metric-number color-dark" x-text="loading ? '—' : countStatus('')"></strong></div><div class="metric-icon-box blue"><i data-lucide="clipboard-list" aria-hidden="true"></i></div></article>
+                    <article class="metric-stat-card"><div class="metric-info"><span class="metric-label">Pending Approval</span><strong class="metric-number color-dark" x-text="loading ? '—' : countStatus('submitted')"></strong></div><div class="metric-icon-box purple"><i data-lucide="clock" aria-hidden="true"></i></div></article>
+                    <article class="metric-stat-card"><div class="metric-info"><span class="metric-label">Approved</span><strong class="metric-number color-dark" x-text="loading ? '—' : countStatus('accepted')"></strong></div><div class="metric-icon-box blue"><i data-lucide="clipboard-check" aria-hidden="true"></i></div></article>
+                    <article class="metric-stat-card"><div class="metric-info"><span class="metric-label">Returned</span><strong class="metric-number color-dark" x-text="loading ? '—' : countStatus('returned')"></strong></div><div class="metric-icon-box danger"><i data-lucide="undo-2" aria-hidden="true"></i></div></article>
+            </div>
+    <div class="plan-register">
+    <div class="attention-tabs" role="group" aria-label="Plan status">
+                    <button type="button" @click="statusFilter = ''; page = 1" :aria-pressed="statusFilter === ''" :class="{'is-active': statusFilter === ''}">All Plans</button>
+                    <button type="button" @click="statusFilter = 'draft'; page = 1" :aria-pressed="statusFilter === 'draft'" :class="{'is-active': statusFilter === 'draft'}">Draft</button>
+                    <button type="button" @click="statusFilter = 'submitted'; page = 1" :aria-pressed="statusFilter === 'submitted'" :class="{'is-active': statusFilter === 'submitted'}">Pending Approval</button>
+                    <button type="button" @click="statusFilter = 'accepted'; page = 1" :aria-pressed="statusFilter === 'accepted'" :class="{'is-active': statusFilter === 'accepted'}">Approved</button>
+                    <button type="button" @click="statusFilter = 'returned'; page = 1" :aria-pressed="statusFilter === 'returned'" :class="{'is-active': statusFilter === 'returned'}">Returned</button>
+            </div>
+    <div class="plan-filter-toolbar">
+        <div class="attention-log-filters plan-filter-group">
+            <label>Search audit plans<input type="search" placeholder="Search title or reference…" x-model="search" @input="page = 1"></label>
+            <label>Filter by unit<select x-model="unitFilter" @change="page = 1"><option value="">All units</option><template x-for="unit in data.units" :key="unit.id"><option :value="unit.id" x-text="unit.name"></option></template></select></label>
+            <label>Sort by<select x-model="sortBy" @change="page = 1"><option value="newest">Newest first</option><option value="oldest">Oldest first</option><option value="title">Title A–Z</option></select></label>
+        </div>
+        <button type="button" class="plan-primary plan-prepare-button" x-cloak x-show="data.canPrepare" :disabled="loading || saving" @click="edit()"><i data-lucide="plus" aria-hidden="true"></i> Prepare Audit Plan</button>
+    </div>
+    <div class="plan-results">
+    <p class="plan-loading-status" role="status" x-show="loading">Loading audit plans…</p>
+    <div class="attention-empty" x-cloak x-show="!loading && !error && !filteredPlans.length"><i data-lucide="search-x" aria-hidden="true"></i><h3>No matching audit plans</h3><p>Try another filter.</p></div>
+    <div class="attention-table-wrap" x-show="loading || filteredPlans.length">
+        <table class="attention-log-table audit-plans-table"><thead><tr><th>Audit Plan</th><th>Covered Units</th><th>Schedule</th><th>Status</th><th>Action</th></tr></thead><tbody>
+                            <tr class="plan-skeleton-row" x-show="loading" aria-hidden="true">
+                    <td><span class="plan-skeleton"></span><span class="plan-skeleton plan-skeleton-short"></span></td>
+                    <td><span class="plan-skeleton"></span></td><td><span class="plan-skeleton"></span></td><td><span class="plan-skeleton"></span></td><td><span class="plan-skeleton"></span></td>
+                </tr>
+                            <tr class="plan-skeleton-row" x-show="loading" aria-hidden="true">
+                    <td><span class="plan-skeleton"></span><span class="plan-skeleton plan-skeleton-short"></span></td>
+                    <td><span class="plan-skeleton"></span></td><td><span class="plan-skeleton"></span></td><td><span class="plan-skeleton"></span></td><td><span class="plan-skeleton"></span></td>
+                </tr>
+                            <tr class="plan-skeleton-row" x-show="loading" aria-hidden="true">
+                    <td><span class="plan-skeleton"></span><span class="plan-skeleton plan-skeleton-short"></span></td>
+                    <td><span class="plan-skeleton"></span></td><td><span class="plan-skeleton"></span></td><td><span class="plan-skeleton"></span></td><td><span class="plan-skeleton"></span></td>
+                </tr>
+                            <tr class="plan-skeleton-row" x-show="loading" aria-hidden="true">
+                    <td><span class="plan-skeleton"></span><span class="plan-skeleton plan-skeleton-short"></span></td>
+                    <td><span class="plan-skeleton"></span></td><td><span class="plan-skeleton"></span></td><td><span class="plan-skeleton"></span></td><td><span class="plan-skeleton"></span></td>
+                </tr>
+                            <tr class="plan-skeleton-row" x-show="loading" aria-hidden="true">
+                    <td><span class="plan-skeleton"></span><span class="plan-skeleton plan-skeleton-short"></span></td>
+                    <td><span class="plan-skeleton"></span></td><td><span class="plan-skeleton"></span></td><td><span class="plan-skeleton"></span></td><td><span class="plan-skeleton"></span></td>
+                </tr>
+                        <template x-for="row in visiblePlans" :key="row.id"><tr x-show="!loading">
+                <td data-label="Audit Plan"><strong x-text="row.title"></strong><small x-text="row.reference"></small></td>
+                <td data-label="Covered Units" x-text="unitNames(row)"></td>
+                <td data-label="Schedule" x-text="schedule(row)"></td>
+                <td data-label="Status"><span class="plan-state" :class="'plan-state-' + row.plan.status" x-text="row.stateLabel"></span></td>
+                <td data-label="Action"><button type="button" class="attention-button" @click="openDetails(row)">View details</button></td>
+            </tr></template>
+        </tbody></table>
+    </div>
+    </div>
+    <nav class="attention-pagination" aria-label="Audit plan pages" x-cloak x-show="loading || (!error && filteredPlans.length)" :style="loading ? 'visibility:hidden' : ''">
+        <span x-text="`${filteredPlans.length} record${filteredPlans.length === 1 ? '' : 's'} · Page ${page} of ${lastPage}`"></span>
+        <div><label class="app-page-size">Rows
+    <select x-model.number="perPage" @change="page = 1" :disabled="loading" aria-label="Rows per page">
+        <option value="5">5</option><option value="10">10</option><option value="20">20</option><option value="50">50</option><option value="100">100</option>    </select>
+</label>
+<button type="button" class="attention-button" @click="page--" :disabled="page <= 1">Previous</button><button type="button" class="attention-button" @click="page++" :disabled="page >= lastPage">Next</button></div>
+    </nav>
+    <p class="plan-note">Only explicitly approved plans are available for new auditor assignments. Approval requires explicit permission.</p>
+    </div>
+    <dialog class="plan-editor plan-details" x-ref="details" aria-labelledby="plan-details-heading" @cancel="if (saving) $event.preventDefault()">
+        <template x-if="detailRow"><article x-data="{ get row() { return detailRow } }">
+            <header class="plan-toolbar"><div><h2 id="plan-details-heading" x-text="row.title"></h2><small x-text="row.reference"></small></div><button type="button" class="plan-details-close" aria-label="Close audit plan details" :disabled="saving" @click="$refs.details.close()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="m18 6-12 12M6 6l12 12" /></svg></button></header>
+            <div class="plan-details-body">
+            <p class="plan-state" x-text="row.stateLabel"></p>
+            <p x-page-notice role="alert" x-show="error" x-text="error"></p>
+            <p x-page-notice x-show="notice" x-text="notice"></p>
+            <dl class="plan-summary"><dt>Scope</dt><dd x-text="row.plan.header.scope"></dd><dt>Criteria</dt><dd x-text="row.plan.header.criteria"></dd><dt>Schedule</dt><dd x-text="row.plan.header.scheduleStart + ' to ' + row.plan.header.scheduleEnd"></dd><dt>Covered units</dt><dd x-text="row.plan.header.unitIds.map(id => data.units.find(unit => unit.id === id)?.name || id).join(', ')"></dd><dt>Authorized Audit Team Leaders</dt><dd x-text="row.plan.header.reviewerIds.map(id => data.reviewers.find(person => person.id === id)?.name || id).join(', ')"></dd><dt>Independence procedure</dt><dd x-text="row.plan.header.procedureReference"></dd></dl>
+            <p role="note" x-show="row.legacyWarning" x-text="row.legacyWarning"></p><section class="plan-history" aria-labelledby="plan-history-heading"><h3 id="plan-history-heading">Decision and revision history</h3><p x-show="!(row.plan.history || []).length">No decisions or revisions recorded yet.</p><template x-for="(entry, index) in row.plan.history" :key="index"><p><strong x-text="entry.decision"></strong> · <span x-text="entry.actorName"></span> · <time  :datetime="entry.at" :title="entry.at" x-text="date(entry.at, {precise:true})"></time><br><span x-text="entry.remarks"></span></p></template></section>
+            <div class="plan-actions"><button type="button" class="plan-secondary" x-show="row.canEdit" :disabled="saving" @click="$refs.details.close(); edit(row)">Edit Draft</button></div>
+            <form class="plan-action-form" x-show="row.canEdit || row.canRevise || row.canDecide" @submit.prevent>
+                <label>Remarks<textarea x-model="remarks[row.id]" required maxlength="3000" rows="2"></textarea></label>
+                <div class="plan-actions">
+                    <button type="submit" class="plan-primary" x-show="row.canEdit" :disabled="saving" @click="if ($el.form.reportValidity()) act(row, 'submit')">Submit for Approval</button>
+                    <button type="submit" class="plan-secondary" x-show="row.canRevise" :disabled="saving" @click="if ($el.form.reportValidity()) act(row, 'revise')">Revise Plan</button>
+                    <button type="submit" class="plan-secondary" x-show="row.canDecide" :disabled="saving" @click="if ($el.form.reportValidity()) act(row, 'return')">Return for Revision</button>
+                    <button type="submit" class="plan-primary" x-show="row.canDecide" :disabled="saving" @click="if ($el.form.reportValidity()) act(row, 'approve')">Approve Plan</button>
+                </div>
+                <p class="plan-note" x-show="row.canRevise">Revising removes this plan from new assignment choices until it is approved again. Existing assignments retain their approved snapshot.</p>
+            </form>
+            </div>
+        </article></template>
+    </dialog>
+    <dialog class="plan-editor plan-prepare-editor" x-ref="editor" aria-labelledby="plan-editor-title" @cancel="if (saving) $event.preventDefault()">
+        <form @submit.prevent="save()" class="plan-prepare-form">
+            <header class="plan-toolbar"><h2 id="plan-editor-title" x-text="editing ? 'Edit Audit Plan' : 'Prepare Audit Plan'"></h2><button type="button" class="plan-details-close" aria-label="Close audit plan editor" :disabled="saving" @click="$refs.editor.close()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="m18 6-12 12M6 6l12 12" /></svg></button></header>
+            <div class="plan-prepare-body">
+            <p x-page-notice role="alert" x-show="error" x-text="error"></p>
+            <section class="plan-form-section">
+                <h3>Audit Information</h3>
+                <label x-show="!editing">Controlled audit-plan document<select x-model="selected" @change="draft.confirmPlanDocument = false; draft.classificationReason = ''" required :disabled="!!editing"><option value="">Select the controlled audit plan document</option><template x-for="archive in documentChoices" :key="archive.id"><option :value="archive.id" x-text="`${archive.code} · ${archive.title} · ${archive.type || 'Legacy method'} · v${archive.version}${archive.eligible ? '' : ' · Classification required'}`"></option></template></select></label>
+                <button type="button" class="plan-text-button" x-show="!editing" @click="showLegacy = !showLegacy; if (!showLegacy && needsClassification) { selected = ''; draft.confirmPlanDocument = false; }" x-text="showLegacy ? 'Show verified documents only' : 'Advanced: show legacy documents'"></button>
+                <div class="plan-classification" x-show="needsClassification" x-cloak>
+                    <p>Select only the actual controlled audit-plan document. Attendance, reports, syllabi and corrective evidence are not audit plans.</p>
+                    <button type="button" class="plan-secondary" :aria-pressed="!!draft.confirmPlanDocument" @click="draft.confirmPlanDocument = !draft.confirmPlanDocument" x-text="draft.confirmPlanDocument ? 'Classification confirmed — undo' : 'Confirm this is a controlled audit plan'"></button>
+                    <label>Classification reason<textarea x-model="draft.classificationReason" :required="needsClassification" :disabled="!needsClassification" minlength="10" maxlength="1000" rows="2"></textarea></label>
+                </div>
+            </section>
+            <section class="plan-form-section">
+                <h3>Audit Coverage</h3>
+                <div class="plan-pick" x-data="{ expanded: false, query: '' }" @click.outside="expanded = false" @keydown.escape.stop="expanded = false" x-id="['pick-panel','pick-search']">
+                    <div class="plan-pick-heading"><span class="plan-field-label">Departments / offices covered <span aria-hidden="true">*</span></span><button type="button" class="plan-text-button" @click="draft.unitIds = data.units.map(item => item.id)">Select all</button></div>
+                    <div class="plan-pick-box">
+                        <div class="plan-tags"><template x-for="id in draft.unitIds" :key="id"><span class="plan-tag"><span x-text="data.units.find(item => item.id === id)?.name || id"></span><button type="button" @click="draft.unitIds = draft.unitIds.filter(value => value !== id)" :aria-label="'Remove ' + (data.units.find(item => item.id === id)?.name || id)">×</button></span></template></div>
+                        <button type="button" class="plan-pick-toggle" @click="expanded = !expanded; query = ''; if (expanded) $nextTick(() => $refs.search.focus())" :aria-expanded="expanded" :aria-controls="$id('pick-panel')"><span x-text="draft.unitIds.length ? draft.unitIds.length + ' selected · Change selection' : 'Select departments / offices'"></span><span aria-hidden="true">▾</span></button>
+                        <div x-show="expanded" x-cloak :id="$id('pick-panel')" class="plan-pick-options">
+                            <label :for="$id('pick-search')" class="sr-only">Search departments / offices covered</label><input type="search" x-ref="search" :id="$id('pick-search')" x-model="query" placeholder="Search…">
+                            <template x-for="item in data.units.filter(item => item.name.toLowerCase().includes(query.trim().toLowerCase()))" :key="item.id"><button type="button" class="plan-pick-option" :aria-pressed="draft.unitIds.includes(item.id)" @click="toggleSelection('unitIds', item.id)"><span x-text="item.name"></span><span aria-hidden="true" x-text="draft.unitIds.includes(item.id) ? '✓' : '+'"></span></button></template>
+                            <p class="plan-note" x-show="!data.units.some(item => item.name.toLowerCase().includes(query.trim().toLowerCase()))">No matching options.</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="plan-pick" x-data="{ expanded: false, query: '' }" @click.outside="expanded = false" @keydown.escape.stop="expanded = false" x-id="['pick-panel','pick-search']">
+                    <div class="plan-pick-heading"><span class="plan-field-label">Authorized Audit Team Leaders for assignments <span aria-hidden="true">*</span></span></div>
+                    <div class="plan-pick-box">
+                        <div class="plan-tags"><template x-for="id in draft.reviewerIds" :key="id"><span class="plan-tag"><span x-text="data.reviewers.find(item => item.id === id)?.name || id"></span><button type="button" @click="draft.reviewerIds = draft.reviewerIds.filter(value => value !== id)" :aria-label="'Remove ' + (data.reviewers.find(item => item.id === id)?.name || id)">×</button></span></template></div>
+                        <button type="button" class="plan-pick-toggle" @click="expanded = !expanded; query = ''; if (expanded) $nextTick(() => $refs.search.focus())" :aria-expanded="expanded" :aria-controls="$id('pick-panel')"><span x-text="draft.reviewerIds.length ? draft.reviewerIds.length + ' selected · Change selection' : 'Select audit team leaders'"></span><span aria-hidden="true">▾</span></button>
+                        <div x-show="expanded" x-cloak :id="$id('pick-panel')" class="plan-pick-options">
+                            <label :for="$id('pick-search')" class="sr-only">Search authorized audit team leaders for assignments</label><input type="search" x-ref="search" :id="$id('pick-search')" x-model="query" placeholder="Search…">
+                            <template x-for="item in data.reviewers.filter(item => item.name.toLowerCase().includes(query.trim().toLowerCase()))" :key="item.id"><button type="button" class="plan-pick-option" :aria-pressed="draft.reviewerIds.includes(item.id)" @click="toggleSelection('reviewerIds', item.id)"><span x-text="item.name"></span><span aria-hidden="true" x-text="draft.reviewerIds.includes(item.id) ? '✓' : '+'"></span></button></template>
+                            <p class="plan-note" x-show="!data.reviewers.some(item => item.name.toLowerCase().includes(query.trim().toLowerCase()))">No matching options.</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+            <section class="plan-form-section">
+                <h3>Audit Schedule</h3>
+                <div class="plan-dates">
+                    <div class="plan-date-field"><label for="plan-start-text">Start date * <small class="plan-date-hint">(MM/DD/YYYY)</small></label><span class="plan-date-control"><input id="plan-start-text" type="text" inputmode="numeric" placeholder="MM/DD/YYYY" :value="displayDate(draft.scheduleStart)" @input="$el.setCustomValidity('')" @change="setDate('scheduleStart', $event.target)" required pattern="[0-9]{2}/[0-9]{2}/[0-9]{4}" x-ref="startText"><span class="plan-calendar"><span aria-hidden="true">▦</span><input type="date" aria-label="Choose start date from calendar" x-model="draft.scheduleStart" @change="$refs.startText.setCustomValidity(''); $refs.startText.value = displayDate(draft.scheduleStart)"></span></span></div>
+                    <div class="plan-date-field"><label for="plan-end-text">End date * <small class="plan-date-hint">(MM/DD/YYYY)</small></label><span class="plan-date-control"><input id="plan-end-text" type="text" inputmode="numeric" placeholder="MM/DD/YYYY" :value="displayDate(draft.scheduleEnd)" @input="$el.setCustomValidity('')" @change="setDate('scheduleEnd', $event.target)" required pattern="[0-9]{2}/[0-9]{2}/[0-9]{4}" x-ref="endText"><span class="plan-calendar"><span aria-hidden="true">▦</span><input type="date" aria-label="Choose end date from calendar" x-model="draft.scheduleEnd" :min="draft.scheduleStart || null" @change="$refs.endText.setCustomValidity(''); $refs.endText.value = displayDate(draft.scheduleEnd)"></span></span></div>
+                </div>
+                <p class="plan-date-hint">End date must be on or after the start date.</p>
+            </section>
+            <section class="plan-form-section">
+                <h3>Audit Requirements</h3>
+                <label>Scope<textarea x-model="draft.scope" required maxlength="3000" rows="3"></textarea></label>
+                <label>Criteria<textarea x-model="draft.criteria" required maxlength="3000" rows="3"></textarea></label>
+                <label>Applicable independence / conflict procedure<input type="text" x-model="draft.procedureReference" required minlength="5" maxlength="1000" placeholder="Procedure code, title and revision"></label>
+                <label>Revision remarks<textarea x-model="draft.remarks" required maxlength="3000" rows="2"></textarea></label>
+            </section>
+            </div>
+            <footer class="plan-prepare-footer"><p class="plan-note">Assignments become available after authorized approval.</p><button type="submit" class="plan-primary" :disabled="saving || !selected">Save Draft</button></footer>
+        </form>
+    </dialog>
+</section>
+                </main>
+            </div>
+        </div>
+              </body>
+</html>

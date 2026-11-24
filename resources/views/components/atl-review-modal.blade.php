@@ -1,6 +1,6 @@
 <dialog id="atl-review-dialog" class="atl-review-dialog" aria-labelledby="atl-review-title">
     <header class="atl-modal-header">
-        <div class="atl-modal-heading"><p class="atl-modal-kicker">COMPLITRACK / INTERNAL QUALITY AUDIT</p><h2 id="atl-review-title">Audit Results Review</h2><p data-atl-review-header-meta></p></div>
+        <div class="atl-modal-heading"><h2 id="atl-review-title">Audit Results Review</h2><p data-atl-review-header-meta></p></div>
         <button type="button" data-atl-review-close aria-label="Close audit review">&times;</button>
     </header>
     <p x-page-notice class="atl-review-feedback" data-atl-review-feedback role="status" aria-live="polite" hidden></p>

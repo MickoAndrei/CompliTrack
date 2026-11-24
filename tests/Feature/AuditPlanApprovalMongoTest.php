@@ -265,7 +265,8 @@ class AuditPlanApprovalMongoTest extends TestCase
         $roleData = $this->getJson('/api/v1/roles')->assertOk();
         $plans = $this->actingAs($this->atl)->get('/audit-plans')->assertOk()->assertSee('Prepare Audit Plan');
         $preparerData = $this->getJson('/api/v1/audit-plans')->assertOk()->assertJsonPath('canPrepare', true)->assertJsonPath('canApprove', false);
-        $approvals = $this->actingAs($this->approver)->get('/audit-plans')->assertOk();
+        $this->permission(0, true)->assertOk();
+        $approvals = $this->actingAs($this->super)->get('/audit-plans')->assertOk();
         $approvalData = $this->getJson('/api/v1/audit-plans')->assertOk()->assertJsonPath('canPrepare', false)->assertJsonPath('canApprove', true);
         if (getenv('AUDIT_PLAN_BROWSER_FIXTURES') === '1') {
             $dir = storage_path('framework/testing/plan-ui'); File::ensureDirectoryExists($dir);

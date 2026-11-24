@@ -2,6 +2,12 @@ import { onDocumentReady } from './dom-ready';
 
 onDocumentReady(() => {
     const filters = document.querySelector('.car-filters');
+    const controls = document.querySelector('.car-register-controls');
+    if (controls) {
+        const updateControlHeight = () => controls.closest('.car-panel')?.style.setProperty('--car-controls-height', `${controls.getBoundingClientRect().height}px`);
+        updateControlHeight();
+        new ResizeObserver(updateControlHeight).observe(controls);
+    }
     filters?.addEventListener('change', event => {
         if (event.target.matches('select, input[type="checkbox"]')) filters.requestSubmit();
     });

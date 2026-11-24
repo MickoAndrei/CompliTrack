@@ -66,16 +66,21 @@ const server = http.createServer(async (req, res) => {
         };
         const waitFor = async expression => {
             for (let i = 0; i < 100; i++) { if (await evaluate(expression)) return; await new Promise(r => setTimeout(r, 100)); }
-            throw Error('Timed out: ' + expression);
+            throw Error('Timed out: ' + expression + '\n' + errors.join('\n'));
         };
         await send('Runtime.enable'); await send('Page.enable'); await send('Network.enable');
         await send('Network.setBlockedURLs', { urls: ['https://*'] });
         for (const width of [1440, 768, 390]) {
             await send('Emulation.setDeviceMetricsOverride', { width, height: 900, deviceScaleFactor: 1, mobile: width < 600 });
+            if (!process.env.AUDIT_PLANS_ONLY) {
             await send('Page.navigate', { url: 'http://127.0.0.1:9350/assignments.html' });
             await waitFor('!!window.Alpine && !document.documentElement.hidden && !!document.querySelector("[data-new-assignment]")');
             await new Promise(r => setTimeout(r, 300));
             assert.equal(await evaluate('document.documentElement.scrollWidth > innerWidth'), false, `Register fits ${width}px`);
+            assert.ok(await evaluate(`(()=>{const pill=document.querySelector('[data-assignment-results] .assignment-status'),original=pill.textContent,cell=pill.closest('td'),next=cell.nextElementSibling;const valid=['Submitted — Awaiting ATL Review','Returned for Revision','Accepted / Completed'].every(label=>{pill.textContent=label;return pill.getBoundingClientRect().right<=cell.getBoundingClientRect().right&&pill.getBoundingClientRect().right<=next.getBoundingClientRect().left;});pill.textContent=original;return valid;})()`), 'Long status labels stay inside their column without overlapping assignment actions');
+            if (width > 640) {
+                assert.ok(await evaluate(`(()=>{const main=document.querySelector('#main-content'),register=document.querySelector('.assignment-register'),controls=register.querySelector('.assignment-controls'),table=register.querySelector('[data-assignment-results] table'),body=table.tBodies[0],header=table.querySelector('th');const copies=Array.from({length:40},()=>body.rows[0].cloneNode(true));body.append(...copies);main.scrollTop=600;const controlTop=controls.getBoundingClientRect().top,headerTop=header.getBoundingClientRect().top;main.scrollTop=800;const valid=main.scrollTop>=800&&Math.abs(controls.getBoundingClientRect().top-controlTop)<2&&Math.abs(header.getBoundingClientRect().top-headerTop)<2&&header.getBoundingClientRect().top>=controls.getBoundingClientRect().bottom-2&&getComputedStyle(table.parentElement).overflowY==='visible';copies.forEach(copy=>copy.remove());main.scrollTop=0;return valid;})()`), 'Register follows User Management: page scrolls while controls and column headers stay pinned');
+            }
             assert.equal(await evaluate('document.querySelectorAll("a[data-atl-review]").length'), 0);
             assert.equal(await evaluate('document.querySelector(".header-page-subtitle").textContent.trim()'), 'Assign auditors to departments and offices based on authorized audit plans.');
             assert.equal(await evaluate('!!document.querySelector(".assignment-register .assignment-filter-actions [data-new-assignment]")'), true, 'New assignment sits below the fields inside the register');
@@ -129,6 +134,7 @@ const server = http.createServer(async (req, res) => {
             assert.ok(await evaluate('(()=>{const r=document.querySelector("#atl-review-dialog").getBoundingClientRect();return r.left>=0&&r.right<=innerWidth&&r.top>=0&&r.bottom<=innerHeight})()'), 'Review modal fits');
             assert.equal(await evaluate('!!document.querySelector("#atl-review-dialog [name=result]")'), false);
             console.log(`${width}px: register, header subtitle, creation/amendment modal, plan scope, eligible auditor, focus, Escape and review modal passed`);
+            }
             if (fs.existsSync(planFixtures)) {
                 await send('Page.navigate', { url: 'http://127.0.0.1:9350/roles.html' });
                 await waitFor('document.querySelector("[x-data=auditPlanPermissions]")?._x_dataStack?.[0]?.loading === false');
@@ -139,13 +145,26 @@ const server = http.createServer(async (req, res) => {
                 assert.equal(await evaluate('document.documentElement.scrollWidth > innerWidth'), false);
                 await send('Page.navigate', { url: 'http://127.0.0.1:9350/plans.html' });
                 await waitFor('document.querySelector("[x-data=auditPlans]")?._x_dataStack?.[0]?.loading === false');
+                await evaluate('window.planResultsHeight=document.querySelector(".plan-results").getBoundingClientRect().height; document.querySelector("[x-data=auditPlans]")._x_dataStack[0].loading=true');
+                await waitFor('document.querySelector(".plan-skeleton-row").getClientRects().length > 0');
+                assert.ok(await evaluate('document.querySelector(".plan-results").getBoundingClientRect().height >= window.planResultsHeight'), 'Loading reserves the results area');
+                assert.equal(await evaluate('document.querySelector("[x-data=auditPlans]").getAttribute("aria-busy")'), 'true');
+                await evaluate('document.querySelector("[x-data=auditPlans]")._x_dataStack[0].loading=false');
                 await evaluate('document.querySelector("[x-data=auditPlans]")._x_dataStack[0].edit()');
-                await waitFor('document.querySelector(".plan-editor").open');
-                assert.ok(await evaluate('(()=>{const r=document.querySelector(".plan-editor").getBoundingClientRect();return r.left>=0&&r.right<=innerWidth&&r.top>=0&&r.bottom<=innerHeight})()'), 'Plan editor fits');
-                assert.equal(await evaluate('document.querySelector(".plan-editor form").checkValidity()'), false);
+                await waitFor('document.querySelector("[x-ref=editor]").open');
+                assert.ok(await evaluate('(()=>{const dialog=document.querySelector("[x-ref=editor]"),body=dialog.querySelector(".plan-prepare-body"),header=dialog.querySelector("header"),footer=dialog.querySelector("footer");const top=header.getBoundingClientRect().top,bottom=footer.getBoundingClientRect().bottom;body.scrollTop=body.scrollHeight;const valid=getComputedStyle(dialog).overflowY==="hidden"&&body.scrollTop>0&&header.getBoundingClientRect().top===top&&footer.getBoundingClientRect().bottom===bottom;body.scrollTop=0;return valid;})()'), 'Editor scrollbar stays inside the body with header, footer and rounded shell fixed');
+                assert.ok(await evaluate('(()=>{const r=document.querySelector("[x-ref=editor]").getBoundingClientRect();return r.left>=0&&r.right<=innerWidth&&r.top>=0&&r.bottom<=innerHeight})()'), 'Plan editor fits');
+                assert.equal(await evaluate('document.querySelector("[x-ref=editor] form").checkValidity()'), false);
                 await send('Page.navigate', { url: 'http://127.0.0.1:9350/approvals.html' });
                 await waitFor('document.querySelector("[x-data=auditPlans]")?._x_dataStack?.[0]?.loading === false');
                 assert.equal(await evaluate('document.querySelector("[x-data=auditPlans]")._x_dataStack[0].data.canApprove'), true);
+                await evaluate('document.querySelector(".audit-plans-table tbody button").click()');
+                await waitFor('document.querySelector("[x-ref=details]").open');
+                assert.equal(await evaluate('getComputedStyle(document.querySelector(".plan-details header")).backgroundColor'), 'rgb(0, 32, 91)', 'Details use the navy popup header');
+                assert.equal(await evaluate('document.querySelector(".plan-details .plan-history").tagName'), 'SECTION', 'History is visible without expanding a disclosure');
+                assert.ok(await evaluate('[...document.querySelectorAll(".plan-details .plan-history p")].some(entry=>entry.getClientRects().length > 0)'), 'History entries are displayed immediately');
+                assert.ok(await evaluate('(()=>{const dialog=document.querySelector(".plan-details"),body=dialog.querySelector(".plan-details-body"),header=dialog.querySelector("header"),top=header.getBoundingClientRect().top; const extra=document.createElement("div"); extra.style.height="2000px";body.append(extra);body.scrollTop=body.scrollHeight;const box=dialog.getBoundingClientRect(),valid=body.scrollTop>0&&header.getBoundingClientRect().top===top&&box.top>=0&&box.bottom<=innerHeight;extra.remove();body.scrollTop=0;return valid;})()'), 'Long details scroll beneath a fixed header inside the viewport');
+                assert.equal(await evaluate('document.activeElement.closest("dialog")?.getAttribute("x-ref")'), 'details', 'Details receive focus after content renders');
                 assert.ok(await evaluate('[...document.querySelectorAll("button")].some(b=>b.textContent.trim()==="Approve Plan"&&b.getClientRects().length>0)'), 'Authorized approval action is visible');
                 assert.equal(await evaluate('document.querySelector(".plan-action-form").checkValidity()'), false, 'Decision remarks required');
                 assert.equal(await evaluate('document.documentElement.scrollWidth > innerWidth'), false);

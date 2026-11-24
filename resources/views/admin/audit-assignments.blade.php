@@ -6,14 +6,14 @@
 <link rel="stylesheet" href="{{ asset('css/audit-assignments.css') }}?v={{ filemtime(public_path('css/audit-assignments.css')) }}">
 @endpush
 @section('content')
-<div class="space-y-6 atl-assignment-page" data-assignment-page>
+<div class="atl-assignment-page" data-assignment-page>
     @include('auditor.audit-feedback')
     <div class="assignment-stats">
-        <article><span>Scheduled / preparing</span><strong>{{ $counts['draft'] }}</strong></article>
-        <article><span>Authorized plans available</span><strong>{{ $plans->count() }}</strong></article>
-        <article><span>In Progress</span><strong>{{ $counts['ready'] }}</strong></article>
+        <article><div class="assignment-stat-info"><span>Scheduled / preparing</span><strong>{{ $counts['draft'] }}</strong></div><div class="assignment-stat-icon blue"><i data-lucide="calendar-clock" aria-hidden="true"></i></div></article>
+        <article><div class="assignment-stat-info"><span>Authorized plans available</span><strong>{{ $plans->count() }}</strong></div><div class="assignment-stat-icon green"><i data-lucide="clipboard-check" aria-hidden="true"></i></div></article>
+        <article><div class="assignment-stat-info"><span>In Progress</span><strong>{{ $counts['ready'] }}</strong></div><div class="assignment-stat-icon amber"><i data-lucide="activity" aria-hidden="true"></i></div></article>
     </div>
-    <section class="assignment-register"><header class="atl-section-heading"><h2>Assignment Register</h2></header>
+    <section class="assignment-register"><div class="assignment-controls"><header class="atl-section-heading"><h2>Assignment Register</h2></header>
         <form action="/audits" method="GET" class="assignment-filters" data-assignment-filters>
             <label class="assignment-search">Search assignments<input type="search" name="search" value="{{ request('search') }}" maxlength="160" placeholder="Audit reference, title or department"></label>
             <label>Status<select name="status"><option value="">All statuses</option>@foreach(['draft' => \App\Support\AuditStatus::label('draft'), 'ready' => \App\Support\AuditStatus::label('ready'), 'submitted' => \App\Support\AuditStatus::label('submitted'), 'returned' => \App\Support\AuditStatus::label('returned'), 'accepted' => \App\Support\AuditStatus::label('accepted')] as $value => $label)<option value="{{ $value }}" @selected(request('status') === $value)>{{ $label }}</option>@endforeach</select></label>
@@ -21,25 +21,26 @@
             <label>Assigned auditor<select name="auditorId"><option value="">All auditors</option>@foreach($registerAuditors as $auditor)<option value="{{ $auditor->getKey() }}" @selected(strtolower((string) request('auditorId')) === (string) $auditor->getKey())>{{ $auditor->fullName }}</option>@endforeach</select></label>
             <div class="assignment-filter-actions"><button type="button" class="atl-primary" data-new-assignment>+ New Audit Assignment</button><a href="/audits" class="atl-secondary">Clear filters</a></div>
         </form>
+        </div>
         <p data-assignment-filter-message role="status" aria-live="polite" hidden></p>
         <div data-assignment-loading role="status" hidden>
             <span class="sr-only">Loading assignments...</span>
             <div class="assignment-table-scroll" aria-hidden="true"><table>
-                <thead><tr>@foreach(['Audit / Plan', 'Department / Office', 'Auditor', 'Schedule', 'Scope / Criteria', 'Status', 'Assignment'] as $label)<th>{{ $label }}</th>@endforeach</tr></thead>
+                <thead><tr>@foreach(['Audit / Plan', 'Department / Office', 'Auditor', 'Schedule', 'Scope / Criteria', 'Status', 'Assignment'] as $label)<th>{{ $label }}@if($label === 'Schedule')<small class="assignment-date-format">MM/DD/YYYY</small>@endif</th>@endforeach</tr></thead>
                 <tbody>@foreach(range(1, 10) as $row)<tr>@foreach(range(1, 7) as $column)<td><span class="assignment-skeleton"></span><span class="assignment-skeleton assignment-skeleton-short"></span></td>@endforeach</tr>@endforeach</tbody>
             </table></div>
         </div>
         <div data-assignment-results aria-busy="false">
-        <div class="assignment-table-scroll"><table><thead><tr><th>Audit / Plan</th><th>Department / Office</th><th>Auditor</th><th>Schedule</th><th>Scope / Criteria</th><th>Status</th><th>Assignment</th></tr></thead><tbody>
+        <div class="assignment-table-scroll"><table><thead><tr><th>Audit / Plan</th><th>Department / Office</th><th>Auditor</th><th>Schedule<small class="assignment-date-format">MM/DD/YYYY</small></th><th>Scope / Criteria</th><th>Status</th><th>Assignment</th></tr></thead><tbody>
         @forelse($audits as $audit)
-            <tr><td><strong>{{ $audit->auditCode }}</strong><p>{{ $audit->title }}</p><small>{{ $audit->planTitle ?: 'Legacy record — plan link not recorded' }}</small></td><td>{{ $audit->departmentName }}</td><td>{{ ($people[(string) $audit->auditorId] ?? null)?->fullName ?? \App\Models\User::find($audit->auditorId)?->fullName ?? 'Account unavailable' }}</td><td>{{ $audit->schedule }}</td><td><button type="button" class="assignment-scope-trigger" data-view-audit-scope data-scope-details="{{ json_encode(['audit' => $audit->auditCode, 'scope' => $audit->scope, 'criteria' => $audit->criteria]) }}" aria-haspopup="dialog" aria-controls="audit-scope-dialog">View scope and criteria</button></td><td><span class="atl-status">{{ \App\Support\AuditStatus::label($audit->status) }}</span></td><td>
+            <tr><td><strong>{{ $audit->auditCode }}</strong><p>{{ $audit->title }}</p><small class="assignment-plan-reference" title="{{ $audit->planTitle ?: 'Legacy record — plan link not recorded' }}">{{ $audit->planTitle ?: 'Legacy record — plan link not recorded' }}</small></td><td>{{ $audit->departmentName }}</td><td>{{ ($people[(string) $audit->auditorId] ?? null)?->fullName ?? \App\Models\User::find($audit->auditorId)?->fullName ?? 'Account unavailable' }}</td><td>{{ preg_match('/^\d{4}-\d{2}-\d{2}$/D', (string) $audit->schedule) ? substr($audit->schedule, 5, 2).'/'.substr($audit->schedule, 8, 2).'/'.substr($audit->schedule, 0, 4) : $audit->schedule }}</td><td><button type="button" class="assignment-scope-trigger" data-view-audit-scope data-scope-details="{{ json_encode(['audit' => $audit->auditCode, 'scope' => $audit->scope, 'criteria' => $audit->criteria]) }}" aria-haspopup="dialog" aria-controls="audit-scope-dialog">View scope and criteria</button></td><td><span class="atl-status assignment-status assignment-status-{{ $audit->status }}">{{ \App\Support\AuditStatus::label($audit->status) }}</span></td><td>
             @if($audit->planId && in_array($audit->status, ['draft', 'ready']) && !collect($audit->history ?? [])->contains('action', 'submit'))
                 <button type="button" class="atl-secondary" data-edit-assignment data-assignment="{{ json_encode(['id' => (string) $audit->getKey(), 'version' => $audit->version, 'planId' => (string) $audit->planId, 'departmentId' => (string) $audit->departmentId, 'auditorId' => (string) $audit->auditorId, 'title' => $audit->title, 'schedule' => $audit->schedule]) }}">Change assignment</button>
             @else<span class="atl-muted">{{ $audit->planId ? 'Assignment locked' : 'Legacy assignment retained' }}</span>@endif
             </td></tr>
         @empty<tr><td colspan="7">No audit assignments match this register.</td></tr>@endforelse
         </tbody></table></div>
-        <x-server-pagination :paginator="$audits" />
+        <nav class="app-pagination assignment-register-pagination" aria-label="Assignment pages"><span class="app-pagination-total">{{ $audits->total() }} {{ $audits->total() === 1 ? 'record' : 'records' }} · Page {{ $audits->currentPage() }} of {{ $audits->lastPage() }}</span><x-server-page-size :paginator="$audits" />@if($audits->onFirstPage())<span class="app-pagination-button" aria-disabled="true">Previous</span>@else<a class="app-pagination-button" href="{{ $audits->previousPageUrl() }}" rel="prev">Previous</a>@endif @if($audits->hasMorePages())<a class="app-pagination-button" href="{{ $audits->nextPageUrl() }}" rel="next">Next</a>@else<span class="app-pagination-button" aria-disabled="true">Next</span>@endif</nav>
         </div>
     </section>
     <dialog id="audit-assignment-dialog" class="assignment-dialog" aria-labelledby="assignment-dialog-title" data-reopen="{{ $errors->any() ? '1' : '0' }}" data-old="{{ json_encode(old()) }}">
@@ -55,7 +56,7 @@
             <p class="assignment-info-note">The Office of the Dean is a college office. Only verified CET units within the selected plan are available.</p>
             <label>Assigned Auditor<select name="auditorId" required aria-describedby="assignment-auditor-help"><option value="">Select an eligible auditor</option>@foreach($auditors as $auditor)<option value="{{ $auditor->getKey() }}" data-units="{{ json_encode($units->filter(fn ($unit) => $assignment->eligible($auditor, $unit))->map(fn ($unit) => (string) $unit->getKey())->values()) }}">{{ $auditor->fullName }}</option>@endforeach</select></label>
             <p id="assignment-auditor-help" class="assignment-info-note" data-assignment-auditor-help role="status" aria-live="polite">Select an authorized plan and a department or office to see eligible auditors.</p>
-            <label class="assignment-schedule">Scheduled Audit Date<input type="date" name="schedule" required></label>
+            <label class="assignment-schedule"><span>Scheduled Audit Date <small id="assignment-schedule-format">MM/DD/YYYY (month/day/year)</small></span><input type="date" name="schedule" aria-describedby="assignment-schedule-format" required></label>
             <label>Audit Scope<textarea data-plan-scope readonly rows="3"></textarea></label>
             <label>Audit Criteria<textarea data-plan-criteria readonly rows="3"></textarea></label>
             <p data-plan-procedure class="assignment-info-note"></p>

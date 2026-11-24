@@ -1,4 +1,15 @@
-<div class="um-page" :aria-busy="loading">
+<div class="um-page" :aria-busy="loading" x-data="{
+    filterObserver: null,
+    init() {
+        const page = this.$el;
+        const filters = page.querySelector('.um-filters');
+        this.filterObserver = new ResizeObserver(() => {
+            page.style.setProperty('--um-filter-height', `${filters.getBoundingClientRect().height}px`);
+        });
+        this.filterObserver.observe(filters);
+    },
+    destroy() { this.filterObserver?.disconnect(); }
+}">
     <div class="um-summary">
         @foreach ([['total', 'Total Users', 'users', 'purple'], ['active', 'Active Users', 'user-round-check', 'green'], ['auditors', 'Auditors', 'clipboard-check', 'blue'], ['auditees', 'Auditees', 'building-2', 'slate']] as [$key, $label, $icon, $color])
         <article class="metric-stat-card" data-summary="{{ $key }}"><div class="metric-info"><span class="metric-label">{{ $label }}</span><strong class="metric-number color-dark" x-text="summary?.{{ $key }} ?? '—'"></strong></div><div class="metric-icon-box {{ $color }}"><i data-lucide="{{ $icon }}" aria-hidden="true"></i></div></article>

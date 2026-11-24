@@ -2,6 +2,23 @@
 body[data-portal-role="0"] .main-wrapper:has(.um-page) { height:100dvh; overflow:hidden; }
 body[data-portal-role="0"] #main-content:has(.um-page) { min-height:0; padding-top:8px; overflow-y:auto; overscroll-behavior:contain; scrollbar-gutter:stable; }
 body[data-portal-role="0"] #main-content:has(.um-page):has(.um-dialog[open]) { overflow-y:hidden; }
+/* Keep the directory controls and column labels in the main page scroll area. */
+@media (min-width:641px) {
+    body[data-portal-role="0"] .attention-page.directory-page .um-page > .um-filters { position:sticky; top:0; z-index:12; padding:12px 14px; border:1px solid #d9e2ee; border-radius:10px; background:#fff; box-shadow:0 2px 3px #00205b05; }
+    body[data-portal-role="0"] .attention-page.directory-page .um-page > .um-table-wrap { overflow:visible; contain:none; }
+    body[data-portal-role="0"] .attention-page.directory-page .um-page .um-table { min-width:0; width:100%; table-layout:fixed; border-collapse:separate; border-spacing:0; }
+    body[data-portal-role="0"] .um-page .um-table th:nth-child(1) { width:21%; }
+    body[data-portal-role="0"] .um-page .um-table th:nth-child(2) { width:24%; }
+    body[data-portal-role="0"] .um-page .um-table th:nth-child(3) { width:11%; }
+    body[data-portal-role="0"] .um-page .um-table th:nth-child(4) { width:12%; }
+    body[data-portal-role="0"] .um-page .um-table th:nth-child(5) { width:17%; }
+    body[data-portal-role="0"] .um-page .um-table th:nth-child(6) { width:9%; }
+    body[data-portal-role="0"] .um-page .um-table th:nth-child(7) { width:6%; }
+    body[data-portal-role="0"] .um-page .um-email { max-width:100%; }
+    body[data-portal-role="0"] .attention-page.directory-page .um-page .um-table thead th { position:sticky; top:var(--um-filter-height, 140px); z-index:11; background:#fff; border-top:1px solid #d9e2ee; border-bottom:1px solid #d9e2ee; box-shadow:0 2px 3px #00205b05; }
+    body[data-portal-role="0"] .attention-page.directory-page .um-page .um-table thead th:first-child { border-left:1px solid #d9e2ee; border-radius:10px 0 0 10px; }
+    body[data-portal-role="0"] .attention-page.directory-page .um-page .um-table thead th:last-child { border-right:1px solid #d9e2ee; border-radius:0 10px 10px 0; }
+}
 .um-heading { display:flex; align-items:center; justify-content:flex-end; gap:16px; }
 .um-page p,.um-dialog p { font-size:13px; color:#64748b; line-height:1.6; }
 .um-primary,.um-secondary,.um-menu-trigger { display:inline-flex; align-items:center; justify-content:center; gap:8px; border-radius:8px; padding:10px 16px; font:inherit; font-size:13px; font-weight:650; cursor:pointer; }

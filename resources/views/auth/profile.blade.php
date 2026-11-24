@@ -36,7 +36,7 @@
                 </button>
                 <input x-ref="avatarInput" type="file" accept="image/jpeg,image/png,image/webp" class="sr-only" @change="uploadAvatar($event)">
                 <button type="button" class="super-admin-profile-camera" @click="$refs.avatarInput.click()" :disabled="uploading" aria-label="Upload or update profile picture">
-                    <i data-lucide="camera" aria-hidden="true"></i>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.5 4h-5L7.7 6H5a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-2.7z"/><circle cx="12" cy="13" r="3"/></svg>
                 </button>
             </div>
             <h2>{{ $profileUser->fullName }}</h2>

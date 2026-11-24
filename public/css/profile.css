@@ -309,6 +309,8 @@
 
 /* Keep portal-wide button padding from stretching the avatar control. */
 #main-content .super-admin-profile-page .super-admin-profile-card .super-admin-profile-camera { padding: 0; border-radius: 50%; }
+:is([data-portal-role="2"], [data-portal-role="3"]) #main-content:not(:has(> .qms-explorer)) .super-admin-profile-page .super-admin-profile-camera { box-sizing:border-box; width:30px; height:30px; min-width:30px; min-height:30px; padding:0; border-radius:50%; }
+:is([data-portal-role="2"], [data-portal-role="3"]) #main-content .super-admin-profile-camera svg { display:block; width:15px; height:15px; flex:none; }
 
 .profile-feedback {
   display: flex;
@@ -385,6 +387,7 @@
   }
   .super-admin-profile-avatar { grid-row: 1 / 4; }
   #main-content .super-admin-profile-card .super-admin-profile-identity h2 { margin: 0; }
+  .super-admin-profile-identity .profile-role-details { justify-content: flex-start; min-width: 0; text-align: left; }
   .super-admin-profile-role { justify-self: start; }
   .super-admin-profile-avatar-hint { margin: 0; }
 }
