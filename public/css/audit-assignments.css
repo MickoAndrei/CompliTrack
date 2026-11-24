@@ -1,0 +1,71 @@
+.assignment-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}.assignment-stats article,.assignment-register{background:#fff;border:1px solid #e2e8f0;border-radius:16px;padding:20px}.assignment-stats span{color:#64748b;font-size:.85rem}.assignment-stats strong{display:block;font-size:1.8rem;color:#102744;margin-top:8px}.assignment-register h2,.assignment-dialog h2{font-size:1.2rem;font-weight:700;color:#102744}.assignment-table-scroll{overflow:auto;margin:20px 0}.assignment-register table{width:100%;min-width:900px;border-collapse:collapse;font-size:.875rem}.assignment-register th,.assignment-register td{text-align:left;vertical-align:top;padding:16px 12px;border-bottom:1px solid #e2e8f0;max-width:280px;overflow-wrap:anywhere}.assignment-register th{color:#475569}.assignment-register small{color:#64748b}.assignment-dialog{width:min(960px,calc(100% - 24px));max-height:90dvh;overflow:auto;margin:auto;border:0;border-radius:18px;padding:28px;color:#102744;box-shadow:0 24px 80px #10274440}.assignment-dialog::backdrop{background:#10274488}.assignment-dialog header{position:sticky;top:-28px;background:white;z-index:1;padding:10px 0}.assignment-modal-form{display:grid;gap:18px;margin-top:20px}.assignment-modal-form>label{display:grid;gap:7px;font-weight:600}.assignment-modal-form input:not([type=radio]):not([type=checkbox]),.assignment-modal-form select,.assignment-modal-form textarea{width:100%;min-width:0;padding:12px;border:1px solid #cbd5e1;border-radius:10px;font:inherit;font-weight:400;background:#fff}.assignment-modal-form textarea[readonly]{background:#f8fafc}.assignment-modal-form fieldset{display:flex;gap:24px;border-top:1px solid #e2e8f0;padding-top:14px}.assignment-modal-form fieldset label{display:flex;align-items:center;gap:8px}.assignment-modal-form .assignment-confirm{display:flex;align-items:flex-start;font-weight:400}.assignment-confirm input{margin-top:5px}.assignment-modal-form [hidden]{display:none}.assignment-modal-form footer{justify-content:flex-end}.assignment-register summary{cursor:pointer}@media(max-width:640px){.assignment-stats{grid-template-columns:1fr}.assignment-dialog{padding:18px}.assignment-dialog header{top:-18px}.atl-assignment-page>.atl-section-heading{align-items:flex-start;gap:16px;flex-direction:column}}
+#audit-assignment-dialog{margin:auto;scrollbar-width:none;-ms-overflow-style:none}
+#audit-assignment-dialog::-webkit-scrollbar{display:none}
+.assignment-register [hidden]{display:none}
+.assignment-pagination { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px; padding-top:20px; color:#64748b; font-size:12px; }
+.assignment-pagination > div { display:flex; gap:8px; }
+.assignment-page-button { display:inline-flex; align-items:center; justify-content:center; min-height:36px; padding:7px 16px; border:1px solid #d5dce5; border-radius:999px; background:#fff; color:#475569; font:inherit; font-size:13px; font-weight:600; line-height:1.4; text-decoration:none; }
+.assignment-page-button:hover:not(.is-disabled) { background:#f1f5f9; border-color:#94a3b8; text-decoration:none; }
+.assignment-page-button.is-disabled { opacity:.5; cursor:default; }
+.assignment-page-button:focus-visible { outline:3px solid #ffc72c; outline-offset:3px; }
+.assignment-skeleton{display:block;width:85%;min-width:60px;height:12px;margin:4px 0 10px;border-radius:5px;background:linear-gradient(100deg,#e8edf4 25%,#f5f7fb 45%,#e8edf4 65%);background-size:220% 100%;animation:assignment-shimmer 1.6s ease-in-out infinite}
+.assignment-skeleton-short{width:55%;height:10px;margin-bottom:4px}
+@keyframes assignment-shimmer{from{background-position:200% 0}to{background-position:-20% 0}}
+@media(prefers-reduced-motion:reduce){.assignment-skeleton{animation:none}}
+.assignment-scope-trigger{color:#00205b;text-align:left;text-decoration:underline;text-underline-offset:3px;cursor:pointer;font:inherit}
+#audit-scope-dialog{width:min(520px,calc(100% - 32px));max-height:75dvh;overflow:auto;overscroll-behavior:contain;margin:auto;padding:24px;border:1px solid #dfe6f1;border-radius:16px;background:#fff;color:#102744;box-shadow:0 20px 70px #10274440}
+.assignment-scope-dialog::backdrop{background:#10274466}
+.assignment-scope-dialog header{display:flex;justify-content:space-between;align-items:center;gap:16px;margin-bottom:12px}
+.assignment-scope-dialog h2{font-size:1.1rem;font-weight:700}
+.assignment-scope-dialog h3{font-size:.9rem;font-weight:700;margin:20px 0 8px}
+.assignment-scope-text{white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.6;font-size:.9rem}
+.assignment-filters { display:flex; flex-wrap:wrap; align-items:flex-end; gap:14px; margin-bottom:20px; }
+.assignment-filters > label { display:flex; flex:1 1 150px; min-width:0; flex-direction:column; gap:7px; color:#64748b; font-size:12px; font-weight:500; }
+.assignment-filters > .assignment-search { flex:0 1 250px; }
+.assignment-filters :is(input,select) { box-sizing:border-box; width:100%; min-width:0; border:1px solid #d5dce5; border-radius:9px; padding:10px 11px; background:#fff; color:#0f172a; font:inherit; font-size:13px; }
+.assignment-filter-actions { display:flex; flex:0 0 100%; justify-content:flex-start; flex-wrap:wrap; gap:10px; }
+.assignment-filter-actions > :is(button,a) { display:inline-flex; align-items:center; justify-content:center; min-height:36px; padding:8px 16px; border-radius:999px; font-size:12px; font-weight:600; text-decoration:none; }
+.assignment-filter-actions .atl-primary { background:#ffc72c; border-color:#eab308; color:#00205b; }
+.assignment-filter-actions .atl-primary:hover { background:#eab308; }
+.assignment-filter-actions .atl-secondary:hover { background:#f1f5f9; border-color:#94a3b8; }
+.assignment-filters :is(input,select,button,a):focus-visible { outline:3px solid #ffc72c; outline-offset:3px; }
+@media(max-width:640px) { .assignment-filters > .assignment-search { flex-basis:100%; } }
+/* Assignment dialogs follow the Create User popup presentation. */
+#audit-assignment-dialog { width:min(900px,calc(100vw - 32px)); max-height:calc(100dvh - 32px); padding:0; border:0; border-radius:16px; background:#fff; color:#0f2345; overflow:hidden; box-shadow:0 20px 70px #00205b40; }
+#audit-assignment-dialog[open] { display:flex; flex-direction:column; }
+#audit-assignment-dialog::backdrop { background:#061531a6; }
+html:has(:is(#audit-assignment-dialog, #audit-scope-dialog)[open]), body:has(:is(#audit-assignment-dialog, #audit-scope-dialog)[open]), #main-content:has(:is(#audit-assignment-dialog, #audit-scope-dialog)[open]) { overflow:hidden; }
+:is(#audit-assignment-dialog, #audit-scope-dialog) .assignment-modal-header { position:static; display:flex; align-items:flex-start; justify-content:space-between; flex-shrink:0; gap:16px; margin:0; padding:24px 28px; background:#00205b; border-bottom:1px solid #00205b; }
+:is(#audit-assignment-dialog, #audit-scope-dialog) h2 { margin:4px 0; font-size:22px; font-weight:800; color:#fff; }
+.assignment-eyebrow { color:#e2e8f0; font-size:10px; font-weight:750; letter-spacing:.12em; }
+.assignment-modal-close { display:inline-flex; align-items:center; justify-content:center; flex-shrink:0; width:36px; height:36px; padding:0; background:#fff; color:#00205b; border:1px solid #d9e2ee; border-radius:8px; cursor:pointer; }
+.assignment-modal-close svg { width:20px; height:20px; }
+#audit-scope-dialog { width:min(680px,calc(100vw - 32px)); max-height:calc(100dvh - 32px); padding:0; border:0; color:#0f2345; overflow:hidden; box-shadow:0 20px 70px #00205b40; }
+#audit-scope-dialog[open] { display:flex; flex-direction:column; }
+#audit-scope-dialog::backdrop { background:#061531a6; }
+#audit-scope-dialog .assignment-modal-body { flex:1; }
+#audit-scope-dialog h3 { margin:0 0 12px; color:#00205b; font-size:15px; font-weight:750; }
+#audit-scope-dialog .assignment-scope-text { margin:0; color:#334155; font-size:13px; line-height:1.7; }
+#audit-scope-dialog button:focus-visible { outline:2px solid #ffc72c; outline-offset:2px; }
+@media(max-width:640px) { #audit-scope-dialog :is(.assignment-modal-header, .assignment-modal-body) { padding:18px; } }
+.assignment-modal-close:hover { background:#eef2f7; border-color:#94a3b8; }
+#audit-assignment-dialog .assignment-modal-form { display:flex; flex-direction:column; min-height:0; margin:0; gap:0; }
+.assignment-modal-body { display:grid; gap:24px; min-height:0; padding:24px 28px; overflow-y:auto; overscroll-behavior:contain; scrollbar-gutter:stable; }
+.assignment-modal-body > label { display:grid; gap:7px; min-width:0; color:#334155; font-size:12px; font-weight:600; }
+.assignment-modal-body > .assignment-schedule { width:220px; max-width:100%; }
+.assignment-modal-body > p { margin:0; font-size:13px; line-height:1.7; color:#334155; }
+.assignment-modal-body > .assignment-info-note { padding:12px 16px; border-left:3px solid #ffc72c; border-radius:6px; background:#f1f5f9; color:#334155; }
+.assignment-modal-body > [data-plan-procedure]:empty { display:none; }
+#audit-assignment-dialog .assignment-confirm { display:flex; align-items:flex-start; gap:10px; line-height:1.6; }
+#audit-assignment-dialog .assignment-confirm input { flex:0 0 16px; width:16px; height:16px; margin:2px 0 0; accent-color:#00205b; }
+#audit-assignment-dialog .assignment-confirm span { min-width:0; }
+#audit-assignment-dialog .assignment-modal-body :is(input:not([type=radio]):not([type=checkbox]),select,textarea) { padding:10px 11px; border-radius:7px; color:#0f2345; font:inherit; font-size:13px; }
+#audit-assignment-dialog .assignment-modal-body select:disabled { background:#f1f5f9; color:#64748b; cursor:not-allowed; opacity:1; }
+#audit-assignment-dialog fieldset { flex-wrap:wrap; border:0; border-bottom:1px solid #e2e8f0; padding:0 0 22px; margin:0; }
+#audit-assignment-dialog legend { color:#00205b; font-size:15px; font-weight:750; margin-bottom:16px; }
+#audit-assignment-dialog .assignment-modal-form > footer { flex-shrink:0; display:flex; flex-wrap:wrap; gap:12px; margin:0; padding:18px 28px; border-top:1px solid #e2e8f0; }
+#audit-assignment-dialog .assignment-modal-form > footer button { padding:10px 16px; font-size:13px; font-weight:650; }
+#audit-assignment-dialog [data-save-assignment] { background:#ffc72c; border-color:#eab308; color:#00205b; }
+#audit-assignment-dialog [data-save-assignment]:hover:not(:disabled) { background:#eab308; }
+#audit-assignment-dialog :is(input,select,textarea,button):focus-visible { outline:2px solid #ffc72c; outline-offset:2px; }
+@media(max-width:640px) { #audit-assignment-dialog .assignment-modal-header, #audit-assignment-dialog .assignment-modal-body, #audit-assignment-dialog .assignment-modal-form > footer { padding:18px; } }

@@ -1,4 +1,6 @@
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
+import '../../core/services/avatar_cache.dart';
 import '../../data/models/user_model.dart';
 import '../../data/repositories/auth_repository.dart';
 
@@ -7,6 +9,7 @@ class AuthProvider extends ChangeNotifier {
 
   AuthProvider({AuthRepository? authRepository})
       : _authRepository = authRepository ?? AuthRepository() {
+    _avatarCache = AvatarCache(load: _authRepository.fetchAvatar);
     _initSession();
   }
 
@@ -15,6 +18,9 @@ class AuthProvider extends ChangeNotifier {
   UserModel? _currentUser;
   bool _isInitializing = true;
   int _avatarVersion = 0;
+  late final AvatarCache _avatarCache;
+
+  Future<Uint8List?> loadAvatar() => _avatarCache.load();
 
   bool get isLoggedIn => _isLoggedIn;
   int get roleId => _roleId;
@@ -23,6 +29,7 @@ class AuthProvider extends ChangeNotifier {
   int get avatarVersion => _avatarVersion;
 
   void refreshAvatar() {
+    _avatarCache.clear();
     _avatarVersion++;
     notifyListeners();
   }
@@ -53,6 +60,8 @@ class AuthProvider extends ChangeNotifier {
     final result =
         await _authRepository.login(email: email, password: password);
     if (result != null) {
+      _avatarCache.clear();
+      _avatarVersion++;
       _isLoggedIn = true;
       _roleId = result.user.roleId;
       _currentUser = result.user;
@@ -66,6 +75,8 @@ class AuthProvider extends ChangeNotifier {
     try {
       await _authRepository.logout();
     } finally {
+      _avatarCache.clear();
+      _avatarVersion++;
       _isLoggedIn = false;
       _roleId = -1;
       _currentUser = null;

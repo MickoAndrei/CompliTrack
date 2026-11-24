@@ -27,11 +27,11 @@ $manifest = json_decode(file_get_contents(public_path('build/manifest.json')), t
 $bundle = 'file:///'.str_replace('\\', '/', public_path('build/'.$manifest['resources/js/app.js']['file']));
 foreach (['populated', 'empty'] as $state) {
     $items = $state === 'populated' ? $records : collect();
-    $html = view('auditee.evidence-requests', ['requests' => new Illuminate\Pagination\LengthAwarePaginator($items, $items->count(), 12),
+    $html = view('auditee.evidence-requests', ['requests' => new Illuminate\Pagination\LengthAwarePaginator($items, $items->count(), 4),
         'summary' => $state === 'populated' ? $summary : array_fill_keys(array_keys($summary), 0)])->render();
     $html = preg_replace('/<script\b[^>]*>.*?<\/script>/s', '', $html);
     $html = preg_replace('/<link[^>]+(?:fonts\.googleapis|fonts\.gstatic)[^>]*>/', '', $html);
-    $html = str_replace('http://localhost', 'file:///'.str_replace('\\', '/', public_path()), $html);
+    $html = str_replace([rtrim(asset('/'), '/'), 'http://localhost'], 'file:///'.str_replace('\\', '/', public_path()), $html);
     $html = str_replace('</body>', '<script type="module" src="'.$bundle.'"></script></body>', $html);
     file_put_contents($directory.'/'.$state.'.html', $html);
 }

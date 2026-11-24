@@ -17,16 +17,16 @@
         </div>
         <section role="tabpanel" id="result-panel-overview" aria-labelledby="result-tab-overview" data-result-panel="overview" tabindex="0">
             <h2>Overview</h2>
-            <dl class="workflow-details"><dt>Audited department</dt><dd>{{ $departmentName ?? 'Not recorded' }}</dd><dt>Auditor</dt><dd>{{ $auditorName ?? 'Not recorded' }}</dd><dt>Reference Standard</dt><dd>{{ $check->referenceStandard ?: 'Not recorded' }}</dd><dt>Result recorded</dt><dd>{{ $check->createdAt?->format('M j, Y') ?? 'Not recorded' }}</dd></dl>
+            <dl class="workflow-details"><dt>Audited department</dt><dd>{{ $departmentName ?? 'Not recorded' }}</dd><dt>Auditor</dt><dd>{{ $auditorName ?? 'Not recorded' }}</dd><dt>Reference Standard</dt><dd>{{ $check->referenceStandard ?: 'Not recorded' }}</dd><dt>Result recorded</dt><dd>{{ \App\Support\PortalDate::format($check->createdAt, true) }}</dd></dl>
             <div class="results-detail-block"><h3>Check item / requirement</h3><p>No separate audit question is recorded for this legacy compliance result.</p></div>
             <div class="results-detail-block"><h3>Auditor remarks</h3><p>{{ $check->remarks ?: 'No remarks recorded for this result.' }}</p></div>
             <div class="results-detail-block"><h3>Finding</h3><p>{{ $check->result === 'non_compliant' ? 'Non-conformance recorded against the reference standard. See the auditor remarks for the recorded explanation.' : 'Compliant result. No non-conformance finding is recorded.' }}</p></div>
         </section>
         <section role="tabpanel" id="result-panel-evidence" aria-labelledby="result-tab-evidence" data-result-panel="evidence" tabindex="0">
             <h2>Evidence Reviewed and References</h2>
-            @forelse($archives as $archive)<article class="workflow-response evidence-file-row"><div><strong>{{ $archive->originalName }}</strong><p class="workflow-muted">Authorized linked evidence</p></div><div class="evidence-file-actions"><a class="workflow-secondary" data-evidence-preview data-file-name="{{ $archive->originalName }}" href="/api/v1/archives/{{ $archive->getKey() }}/download" aria-haspopup="dialog" aria-label="Preview {{ $archive->originalName }}">Preview</a><a href="/api/v1/archives/{{ $archive->getKey() }}/download" aria-label="Download {{ $archive->originalName }}">Download</a></div></article>@empty<p class="results-empty">No accessible files are linked to this result.</p>@endforelse
+            @forelse($archives as $archive)<article class="workflow-response evidence-file-row"><div><strong>{{ $archive->originalName }}</strong><p class="workflow-muted">Authorized linked evidence</p></div><div class="evidence-file-actions"><a class="workflow-secondary" data-evidence-preview data-file-name="{{ $archive->originalName }}" href="/api/v1/documents/{{ $archive->getKey() }}/download" aria-haspopup="dialog" aria-label="Preview {{ $archive->originalName }}">Preview</a><a href="/api/v1/documents/{{ $archive->getKey() }}/download" aria-label="Download {{ $archive->originalName }}">Download</a></div></article>@empty<p class="results-empty">No accessible files are linked to this result.</p>@endforelse
             @forelse($check->evidenceResponses ?? [] as $response)
-            <article class="workflow-response"><h3>{{ ucfirst(str_replace('-', ' ', $response['method'])) }}</h3><p class="workflow-muted">Submitted {{ $response['at'] }}</p>@if(!empty($response['reference']))<p>Reference: {{ $response['reference'] }}</p>@endif<p>{{ $response['notes'] }}</p>@if($response['method'] === 'physical-original')<p>Original availability: {{ str_replace('-', ' ', $response['availability'] ?? 'not recorded') }}</p><p>Physical-original signature verification: Not recorded. Availability does not confirm verification.</p>@endif</article>
+            <article class="workflow-response"><h3>{{ ucfirst(str_replace('-', ' ', $response['method'])) }}</h3><p class="workflow-muted">Submitted {{ \App\Support\PortalDate::format($response['at'] ?? null) }}</p>@if(!empty($response['reference']))<p>Reference: {{ $response['reference'] }}</p>@endif<p>{{ $response['notes'] }}</p>@if($response['method'] === 'physical-original')<p>Original availability: {{ str_replace('-', ' ', $response['availability'] ?? 'not recorded') }}</p><p>Physical-original signature verification: Not recorded. Availability does not confirm verification.</p>@endif</article>
             @empty<p class="workflow-muted">No corrective evidence references submitted yet.</p>@endforelse
             <p class="workflow-muted">Only permitted linked files and references are shown. A submitted file or reference does not confirm auditor verification.</p>
         </section>
@@ -37,9 +37,8 @@
             <div class="corrective-detail-grid">
             @include('auditee.car-timeline')
             @if($needsEvidence)
-            <section id="corrective-evidence" class="results-detail-block"><h3>Provide Corrective Evidence</h3><p>Provide a reference or arrange an original for inspection, or <a href="/auditee/upload?checkId={{ $check->getKey() }}">upload an authorized file</a>. Submission does not change the result or close the CAR.</p>
+            <section id="corrective-evidence" class="results-detail-block"><h3>Provide Corrective Evidence</h3><p>Provide a reference or arrange an original for inspection, or <a href="/auditee/documents?checkId={{ $check->getKey() }}@if($check->departmentId)&amp;folder={{ $check->departmentId }}@endif">open Documents and upload an authorized file into the department folder</a>. Submission does not change the result or close the CAR.</p>
                 <div data-corrective-reference>@include('auditee.evidence-response-form', ['entry' => [], 'responseAction' => '/auditee/finding-details/'.$check->getKey().'/response', 'canDraft' => false])</div>
-                <div data-result-upload-slot hidden></div>
             </section>
             @endif
             </div>

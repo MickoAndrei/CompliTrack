@@ -1,0 +1,19 @@
+/* One locally hosted UI font across all authenticated role layouts. */
+body[data-portal-role]:not([data-portal-role=""]) {
+    --portal-font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    --font-family: var(--portal-font-family);
+    --font-sans: var(--portal-font-family);
+    --font-heading: var(--portal-font-family);
+    font-family: var(--portal-font-family);
+}
+
+body[data-portal-role]:not([data-portal-role=""]) :is(
+    .sidebar, .app-header.top-header-bar, .app-header .header-page-title,
+    .page-notification, .font-sans, .font-heading
+) {
+    font-family: var(--portal-font-family);
+}
+
+body[data-portal-role]:not([data-portal-role=""]) :is(button, input, select, textarea) {
+    font-family: inherit;
+}

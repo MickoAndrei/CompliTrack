@@ -1,3 +1,4 @@
+$ErrorActionPreference = 'Stop'
 $repoRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
 Set-Location $repoRoot
 
@@ -19,6 +20,44 @@ function Test-CompliTrackProcess([int]$processId) {
     return $commandLine.IndexOf($repoRoot, [StringComparison]::OrdinalIgnoreCase) -ge 0
 }
 
+function Stop-ProcessIfPresent([int]$processId) {
+    try {
+        Stop-Process -Id $processId -Force -ErrorAction Stop
+    } catch {
+        if (Get-Process -Id $processId -ErrorAction SilentlyContinue) {
+            throw
+        }
+    }
+}
+
+function Stop-CompliTrackTree([int]$rootProcessId) {
+    $processes = @(Get-CimInstance Win32_Process -ErrorAction Stop)
+    $frontier = @($rootProcessId)
+    $descendants = @()
+    $seen = @{}
+    $seen[$rootProcessId] = $true
+
+    while ($frontier.Count -gt 0) {
+        $nextFrontier = @()
+        foreach ($parentId in $frontier) {
+            foreach ($child in $processes | Where-Object { $_.ParentProcessId -eq $parentId }) {
+                $childId = [int]$child.ProcessId
+                if ($seen.ContainsKey($childId)) { continue }
+                $seen[$childId] = $true
+                $descendants += $childId
+                $nextFrontier += $childId
+            }
+        }
+        $frontier = $nextFrontier
+    }
+
+    for ($index = $descendants.Count - 1; $index -ge 0; $index--) {
+        Stop-ProcessIfPresent $descendants[$index]
+    }
+    Stop-ProcessIfPresent $rootProcessId
+    Start-Sleep -Seconds 1
+}
+
 function Stop-PidFile([string]$pidFile) {
     if (-not (Test-Path $pidFile)) {
         Write-Host "No PID file: $pidFile"
@@ -32,13 +71,7 @@ function Stop-PidFile([string]$pidFile) {
         if ([int]::TryParse([string]$processId, [ref]$parsedProcessId) -and $parsedProcessId -gt 0) {
             $proc = Get-Process -Id $parsedProcessId -ErrorAction SilentlyContinue
             if ($proc -and (Test-CompliTrackProcess $parsedProcessId)) {
-                # npm.cmd runs the actual Node service as a child process. Stop the
-                # saved process and its descendants so the listener is released too.
-                & taskkill.exe /PID $parsedProcessId /T /F 2>$null | Out-Null
-                if ($LASTEXITCODE -ne 0) {
-                    Stop-Process -Id $parsedProcessId -Force -ErrorAction SilentlyContinue
-                }
-                Start-Sleep -Seconds 1
+                Stop-CompliTrackTree $parsedProcessId
                 Write-Host "Stopped process tree rooted at PID $parsedProcessId"
             } elseif (-not $proc) {
                 Write-Host "No active process found for PID $parsedProcessId"
@@ -69,10 +102,7 @@ function Stop-PortListener([int]$port) {
         if ($processId -gt 0 -and
             (Get-Process -Id $processId -ErrorAction SilentlyContinue) -and
             (Test-CompliTrackProcess $processId)) {
-            & taskkill.exe /PID $processId /T /F 2>$null | Out-Null
-            if ($LASTEXITCODE -ne 0) {
-                Stop-Process -Id $processId -Force -ErrorAction SilentlyContinue
-            }
+            Stop-CompliTrackTree $processId
             Write-Host "Stopped listener process tree on port $port (PID $processId)"
         } elseif ($processId -gt 0) {
             Write-Host "Listener on port $port (PID $processId) is not verified as this checkout; leaving it running."

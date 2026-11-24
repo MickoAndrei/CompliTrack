@@ -66,12 +66,7 @@ class _CheckDetailScreenState extends State<CheckDetailScreen> {
           }
           if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
           final check = snapshot.data!;
-          final nextStatus = switch (check.correctiveStatus) {
-            'open' => 'in_progress',
-            'in_progress' => 'closed',
-            'closed' => 'open',
-            _ => null,
-          };
+          final nextStatus = check.allowedTransitions.isEmpty ? null : check.allowedTransitions.first;
           return ListView(
             padding: const EdgeInsets.all(20),
             children: [
@@ -80,6 +75,7 @@ class _CheckDetailScreenState extends State<CheckDetailScreen> {
               Text('Result: ${check.result.replaceAll('_', ' ')}'),
               Text('Standard: ${check.referenceStandard}'),
               Text('Corrective status: ${check.correctiveStatus ?? 'Not required'}'),
+              if (check.nextAction != null) Text(check.nextAction!),
               if (check.remarks != null) ...[
                 const SizedBox(height: 12),
                 Text('Remarks: ${check.remarks}'),

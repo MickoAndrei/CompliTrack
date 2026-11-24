@@ -10,7 +10,7 @@
     $profileUser = auth()->user();
     $roleNames = ['Super Admin', 'Admin', 'Auditor', 'Auditee'];
     $profileInitials = collect(explode(' ', $profileUser->fullName ?? 'U'))->filter()->take(2)->map(fn ($part) => mb_substr($part, 0, 1))->implode('');
-    $avatarUrl = $profileUser->avatarPath ? url('/api/v1/auth/avatar') : null;
+    $avatarUrl = $profileUser->avatarUrl();
 @endphp
 <section class="super-admin-profile-page" x-data="profilePage({ avatarUrl: @js($avatarUrl) })">
     <div x-page-notice="error ? 'error' : 'success'" x-cloak x-show="error || message" x-transition class="profile-feedback" :class="error ? 'is-error' : 'is-success'" :role="error ? 'alert' : 'status'" aria-live="polite">
@@ -40,7 +40,10 @@
                 </button>
             </div>
             <h2>{{ $profileUser->fullName }}</h2>
-            <x-role-badge :role-id="$profileUser->roleId" class="super-admin-profile-role" :data-profile-role="(int) $profileUser->roleId" />
+            <div class="profile-role-details">
+                <x-role-badge :role-id="$profileUser->roleId" class="super-admin-profile-role" :data-profile-role="(int) $profileUser->roleId" />
+                <x-organizational-responsibility :user="$profileUser" />
+            </div>
             <p class="super-admin-profile-avatar-hint" x-text="uploading ? 'Uploading photo…' : (avatarUrl ? 'Select your photo to enlarge it, or the camera to update it' : 'Select the camera to add a profile photo')"></p>
         </header>
 

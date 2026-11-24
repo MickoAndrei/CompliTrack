@@ -64,7 +64,7 @@ class MockArchiveImporter
                 ['source' => $source, 'path' => $path, 'existing' => $archive] = $item;
                 if (!$archive) {
                     $description = 'Fictional training document from '.$dataset['datasetId'].'. Source role: '.$source['ownerId'].'. Record date: '.$source['recordDate'].'. Revision: '.$source['revision'].'. Not an official approved QMS record.';
-                    $request = Request::create('/api/v1/archives/upload', 'POST', [
+                    $request = Request::create('/api/v1/documents/upload', 'POST', [
                         'purpose' => 'qms', 'unitId' => (string) $unit->getKey(), 'categoryId' => (string) $item['category']->getKey(),
                         'title' => '[MOCK] '.$source['title'].(!empty($source['recordReference']) ? ' — '.$source['recordReference'] : ''),
                         'description' => $description, 'recordType' => 'file', 'documentReference' => $source['documentCode'],
@@ -110,7 +110,7 @@ class MockArchiveImporter
         $db = DB::connection('mongodb')->getMongoDB(); $snapshot = [];
         foreach (['archive_documents', 'counters', 'audit_logs'] as $collection) {
             $snapshot[$collection] = [];
-            foreach ($db->$collection->find() as $document) { $snapshot[$collection][] = \MongoDB\BSON\toCanonicalExtendedJSON(\MongoDB\BSON\fromPHP($document)); }
+            foreach ($db->$collection->find() as $document) { $snapshot[$collection][] = \MongoDB\BSON\Document::fromPHP($document)->toCanonicalExtendedJSON(); }
         }
         $plaintext = json_encode(['database' => $db->getDatabaseName(), 'documents' => $snapshot], JSON_THROW_ON_ERROR);
         $encryption = app(ArchiveEncryptionService::class); $encrypted = $encryption->encrypt($plaintext);

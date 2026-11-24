@@ -13,6 +13,7 @@ class Audit extends Model
     public const UPDATED_AT = 'updatedAt';
     protected $guarded = ['_id'];
     protected $casts = [
+        'planId' => NullableObjectId::class,
         'departmentId' => NullableObjectId::class,
         'auditorId' => NullableObjectId::class,
         'reviewerId' => NullableObjectId::class,

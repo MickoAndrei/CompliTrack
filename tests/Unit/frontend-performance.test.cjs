@@ -50,6 +50,20 @@ test('delayed page modules initialize DOM handlers even after DOMContentLoaded',
     } finally { delete global.document; }
 });
 
+test('page initialization waits until the tab owns its session context', async () => {
+    const { onDocumentReady } = await import('../../resources/js/dom-ready.js');
+    let release, calls = 0;
+    global.document = { readyState: 'complete' };
+    global.window = { complitrackTabReady: new Promise(resolve => { release = resolve; }) };
+    try {
+        onDocumentReady(() => calls++);
+        assert.equal(calls, 0);
+        release();
+        await window.complitrackTabReady;
+        assert.equal(calls, 1);
+    } finally { delete global.window; delete global.document; }
+});
+
 test('obsolete User searches are aborted and cannot replace newer results', async () => {
     const { enhancedUserManagement } = await import('../../resources/js/user-management.js');
     const requests = [];

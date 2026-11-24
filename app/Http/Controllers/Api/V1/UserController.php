@@ -16,6 +16,8 @@ use App\Services\RoleScopeService;
 use App\Support\MongoId;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
+use Symfony\Component\Mailer\Exception\TransportExceptionInterface;
 use MongoDB\BSON\ObjectId;
 
 class UserController extends Controller
@@ -32,7 +34,8 @@ class UserController extends Controller
         $request->validate(['roleId' => 'sometimes|integer|between:0,3', 'departmentId' => 'sometimes|nullable|string|regex:/^[a-f0-9]{24}$/i',
             'responsibility' => 'sometimes|nullable|string|in:'.implode(',', config('qms.responsibilities')),
             'status' => 'sometimes|nullable|in:active,inactive', 'search' => 'sometimes|nullable|string|max:255',
-            'includeOptions' => 'sometimes|boolean']);
+            'sortBy' => 'sometimes|in:fullName,createdAt', 'sortDirection' => 'sometimes|in:asc,desc',
+            'includeOptions' => 'sometimes|boolean', 'includeSummary' => 'sometimes|boolean']);
         $management = $request->boolean('management');
         abort_if($management && (int) $request->user()->roleId !== 0, 403);
         // Management is restricted to Super Admin, whose user scope is the whole collection.
@@ -64,9 +67,15 @@ class UserController extends Controller
 
         $filtered = collect(['roleId', 'departmentId', 'responsibility', 'status', 'search'])
             ->contains(fn ($field) => $request->filled($field));
-        $page = $query->orderBy('fullName')
+        $directorySummary = ! $management && $request->boolean('includeSummary') ? [
+            'total' => (clone $query)->count(),
+            'active' => (clone $query)->where('isActive', true)->count(),
+            'inactive' => (clone $query)->where('isActive', false)->count(),
+        ] : null;
+        $page = $query->orderBy($request->query('sortBy', 'fullName'), $request->query('sortDirection', 'asc'))
+            ->orderBy('_id')
             ->paginate(min(max((int) $request->query('perPage', 20), 1), 100),
-                total: $management && !$filtered ? $summary['total'] : null);
+                total: $management && !$filtered ? $summary['total'] : ($directorySummary['total'] ?? null));
 
         return response()->json([
             'data' => $this->serializeUsers($page->items()),
@@ -77,6 +86,7 @@ class UserController extends Controller
                 'lastPage' => $page->lastPage(),
             ],
             ...($management ? ['summary' => $summary] : []),
+            ...($directorySummary !== null ? ['summary' => $directorySummary] : []),
             ...($management && $request->boolean('includeOptions', true)
                 ? ['options' => app(UserManagementPresenter::class)->options()] : []),
         ]);
@@ -120,8 +130,8 @@ class UserController extends Controller
         ]);
 
         $email = strtolower(trim($data['email']));
-        if (User::where('email', $email)->exists()) {
-            return response()->json(['message' => 'The email has already been taken.'], 422);
+        if (User::where('email', 'regex', '/^'.preg_quote($email, '/').'$/i')->exists()) {
+            throw ValidationException::withMessages(['email' => 'An account with this email address already exists. Use the existing account or enter a different email address.']);
         }
 
         $actor = $request->user();
@@ -142,9 +152,6 @@ class UserController extends Controller
         if ($roleId !== 0 && ! $departmentId && !$collegeRole) {
             return response()->json(['message' => 'A department is required for this role.'], 422);
         }
-        if ($roleId === 3 && empty($data['officeName']) && !$collegeRole && empty($data['archiveResponsibility'])) {
-            return response()->json(['message' => 'An office name is required for auditees.'], 422);
-        }
 
         $prefix = [0 => 'SA', 1 => 'ADM', 2 => 'AUD', 3 => 'ATE'][$roleId];
         $user = User::create([
@@ -164,10 +171,18 @@ class UserController extends Controller
             ...$organization,
         ]);
 
-        $this->passwordResets->send($user);
         $this->auditLogs->record($request, 'Created user', 'user', $user->getKey());
+        $setupEmailSent = true;
+        try {
+            $this->passwordResets->send($user);
+        } catch (TransportExceptionInterface $exception) {
+            $setupEmailSent = false;
+            report($exception);
+        }
 
-        return response()->json(['data' => $this->serialize($user)], 201);
+        return response()->json(['data' => $this->serialize($user), 'setupEmailSent' => $setupEmailSent,
+            'message' => $setupEmailSent ? 'User created. An account setup link has been sent.'
+                : 'The account was created, but the setup email could not be sent. Use Reset password on this account to send a new link.'], 201);
     }
 
     public function show(Request $request, string $id)
@@ -215,15 +230,15 @@ class UserController extends Controller
 
         if (isset($data['email'])) {
             $email = strtolower(trim($data['email']));
-            if (User::where('email', $email)->where('_id', '!=', $user->getKey())->exists()) {
-                return response()->json(['message' => 'The email has already been taken.'], 422);
+            if (User::where('email', 'regex', '/^'.preg_quote($email, '/').'$/i')->where('_id', '!=', $user->getKey())->exists()) {
+                throw ValidationException::withMessages(['email' => 'An account with this email address already exists. Use the existing account or enter a different email address.']);
             }
             $data['email'] = $email;
         }
 
         $roleId = (int) ($data['roleId'] ?? $user->roleId);
         $organization = $this->organizationInput($request, $roleId, $data, $user);
-        foreach (['archiveResponsibility', 'archiveUnitIds', 'archiveCollegeIds'] as $key) { unset($data[$key]); }
+        foreach (['archiveResponsibility', 'archiveUnitIds', 'archiveCollegeIds', 'archiveCluster'] as $key) { unset($data[$key]); }
         $data = array_merge($data, $organization);
         $collegeRole = $this->isCollegeResponsibility(array_key_exists('archiveResponsibility', $data) ? $data['archiveResponsibility'] : $user->archiveResponsibility);
         if ((int) $request->user()->roleId === 1 && ! in_array($roleId, [2, 3], true)) {
@@ -240,12 +255,13 @@ class UserController extends Controller
         sort($oldAssignments); sort($newAssignments);
         // Unverified legacy ownership blocks new assignments, not unrelated account maintenance.
         if ($roleId !== (int) $user->roleId || (string) $departmentId !== (string) $user->departmentId || $oldAssignments !== $newAssignments) {
-            $this->validateDepartmentAssignment($request->user(), $roleId, $departmentId, $assignedIds, $collegeRole, $data['archiveCollegeIds'] ?? $user->archiveCollegeIds ?? []);
+            $this->validateDepartmentAssignment($request->user(), $roleId, $departmentId, $assignedIds, $collegeRole, $data['archiveCollegeIds'] ?? $user->archiveCollegeIds ?? [],
+                (int) $request->user()->roleId === 0 && $roleId === 2 && (int) $user->roleId === 2 ? $oldAssignments : []);
         }
-        if ($collegeRole && $departmentId) {
+        if ($collegeRole && $departmentId && $roleId !== 2 && ($data['archiveResponsibility'] ?? $user->archiveResponsibility) !== 'cluster_administrator') {
             $unit = Department::find($departmentId);
             abort_unless($unit && $unit->unitType === 'college_office' && in_array((string) $unit->collegeId, array_map('strval', $data['archiveCollegeIds'] ?? $user->archiveCollegeIds ?? []), true), 422,
-                'College responsibilities belong to a college, not an individual department.');
+                'College positions belong to a college, not an individual department.');
         }
         if (isset($data['isActive']) && $data['isActive'] && !$user->isActive) {
             $this->ensureDepartmentsActive($departmentId, $assignedIds);
@@ -261,9 +277,11 @@ class UserController extends Controller
         if ($oldAssignments !== $newAssignments) {
             $data['assignedDepartmentIds'] = array_map(static fn ($value) => MongoId::parse((string) $value, 'assignedDepartmentIds'), $assignedIds);
         } else { unset($data['assignedDepartmentIds']); }
+        $permissionsChanged = isset($data['roleId']) || array_key_exists('departmentId', $data) || isset($data['assignedDepartmentIds'])
+            || array_key_exists('archiveResponsibility', $data) || array_key_exists('archiveUnitIds', $data);
         $user->fill($data)->save();
 
-        $this->auditLogs->record($request, 'Updated user', 'user', $user->getKey());
+        $this->auditLogs->record($request, $permissionsChanged ? 'Updated user permissions' : 'Updated user', 'user', $user->getKey());
 
         return response()->json(['data' => $this->serialize($user->fresh())]);
     }
@@ -327,11 +345,12 @@ class UserController extends Controller
         array $assignedDepartmentIds,
         bool $collegeRole = false,
         array $collegeIds = [],
+        array $preservedLegacyAssignmentIds = [],
     ): void {
-        if ($collegeRole && $departmentId) {
+        if ($collegeRole && $departmentId && $roleId !== 2) {
             $unit = Department::find($departmentId);
             abort_unless($unit && $unit->unitType === 'college_office' && in_array((string) $unit->collegeId, array_map('strval', $collegeIds), true), 422,
-                'College responsibilities belong to a college, not an individual department.');
+                'College positions belong to a college, not an individual department.');
         }
         if ($roleId === 0) {
             return;
@@ -348,8 +367,19 @@ class UserController extends Controller
         foreach (array_unique(array_map('strval', $ids)) as $id) {
             $objectId = MongoId::parse($id, 'assignedDepartmentIds');
             $department = Department::find($objectId);
+            // A stale eligibility reference must not prevent correcting an auditor's home unit.
+            // Retain existing legacy references for history; never accept a new one or a legacy home.
+            if ($department && $department->unitType === 'legacy_unclassified'
+                && $id !== (string) $departmentId && in_array($id, $preservedLegacyAssignmentIds, true)) {
+                continue;
+            }
+            // Audit eligibility is separate from employment/organizational membership.
+            // Super Admin may authorize an independent CET auditor to audit a verified office.
+            $auditorOfficeTarget = $roleId === 2 && (int) $actor->roleId === 0 && $department
+                && $department->ownershipVerified && $department->collegeName === 'CET'
+                && $id !== (string) $departmentId && in_array($id, array_map('strval', $assignedDepartmentIds), true);
             if (! $department || ! $department->isActive || $department->unitType === 'legacy_unclassified'
-                || ($department->unitType === 'college_office' && $roleId !== 3 && !($collegeRole && in_array((string) $department->collegeId, array_map('strval', $collegeIds), true)))
+                || ($department->unitType === 'college_office' && $roleId !== 3 && !$auditorOfficeTarget && !($collegeRole && in_array((string) $department->collegeId, array_map('strval', $collegeIds), true)))
                 || ((int) $actor->roleId === 1 && $department->collegeName !== 'CET')) {
                 abort(422, 'The selected department is unavailable or outside your scope.');
             }
@@ -398,6 +428,7 @@ class UserController extends Controller
         $department = $user->departmentId ? $related['departments']->get((string) $user->departmentId) : null;
         $data['departmentName'] = $department?->departmentName;
         $data['departmentId'] = $user->departmentId ? (string) $user->departmentId : null;
+        $data['clusterName'] = config('qms.clusters')[$user->archiveCluster ?? ''] ?? null;
         foreach (['assignedDepartmentIds', 'archiveUnitIds', 'archiveCollegeIds'] as $key) { $data[$key] = array_map('strval', $user->$key ?? []); }
         $access = app(\App\Services\QmsArchiveAccess::class);
         $unitIds = array_fill_keys(array_map('strval', $access->ids($user->archiveUnitIds ?? [])), true);
@@ -414,26 +445,28 @@ class UserController extends Controller
 
     private function organizationRules(): array
     {
-        return ['archiveResponsibility' => 'sometimes|nullable|string|in:'.implode(',', config('qms.responsibilities')),
+        return ['archiveCluster' => 'sometimes|nullable|string|in:'.implode(',', array_keys(config('qms.clusters'))),
+            'archiveResponsibility' => 'sometimes|nullable|string|in:'.implode(',', config('qms.responsibilities')),
             'archiveUnitIds' => 'sometimes|array|max:50', 'archiveUnitIds.*' => 'string|regex:/^[a-f0-9]{24}$/i|distinct',
             'archiveCollegeIds' => 'sometimes|array|max:20', 'archiveCollegeIds.*' => 'string|regex:/^[a-f0-9]{24}$/i|distinct'];
     }
 
     private function organizationInput(Request $request, int $role, array $data, ?User $user = null): array
     {
-        $keys = ['archiveResponsibility', 'archiveUnitIds', 'archiveCollegeIds'];
+        $keys = ['archiveResponsibility', 'archiveUnitIds', 'archiveCollegeIds', 'archiveCluster'];
         $explicit = array_intersect($keys, array_keys($data)) !== [];
-        abort_if($explicit && (int) $request->user()->roleId !== 0, 403, 'Only Super Admin may assign organizational responsibilities.');
+        abort_if($explicit && (int) $request->user()->roleId !== 0, 403, 'Only Super Admin may assign positions.');
         $changed = $user && $role !== (int) $user->roleId;
         foreach ($keys as $key) {
-            if (array_key_exists($key, $data) && ($key === 'archiveResponsibility'
+            if (array_key_exists($key, $data) && (in_array($key, ['archiveResponsibility', 'archiveCluster'], true)
                 ? ($data[$key] ?: null) !== ($user?->$key ?: null)
                 : array_map('strval', $data[$key]) !== array_map('strval', $user?->$key ?? []))) { $changed = true; }
         }
         if ($user && !$changed) { return []; } // Preserve unchanged legacy relationships during unrelated maintenance.
         if (!$explicit && !$changed) { return []; }
         return app(UserOrganization::class)->validate($role, array_key_exists('archiveResponsibility', $data) ? $data['archiveResponsibility'] : $user?->archiveResponsibility,
-            $data['archiveUnitIds'] ?? $user?->archiveUnitIds ?? [], $data['archiveCollegeIds'] ?? $user?->archiveCollegeIds ?? []);
+            $data['archiveUnitIds'] ?? $user?->archiveUnitIds ?? [], $data['archiveCollegeIds'] ?? $user?->archiveCollegeIds ?? [],
+            array_key_exists('archiveCluster', $data) ? $data['archiveCluster'] : ($user?->archiveCluster ?: null));
     }
 
     private function isCollegeResponsibility(?string $responsibility): bool

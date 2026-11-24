@@ -11,6 +11,19 @@
 .app-settings-page .settings-card p { margin: 3px 0 0; color: #7386a2; font-size: 11px; line-height: 1.6; }
 .app-settings-page .settings-card-heading, .app-settings-page .settings-card-footer { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .app-settings-page .settings-card-footer { margin-top: 13px; padding-top: 13px; border-top: 1px solid #edf2f7; min-height: 36px; }
+.app-settings-page .database-switch-card { margin-bottom: 16px; }
+.app-settings-page .database-switch-card .settings-card-heading { align-items: flex-start; }
+.app-settings-page .database-switch-icon { width: 20px; height: 20px; color: #64748b; }
+.app-settings-page .database-switch-summary { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-top: 14px; }
+.app-settings-page .database-switch-summary h3 { margin: 0; font-size: 12px; font-weight: 700; }
+.app-settings-page .database-switch-summary .database-switch-active { margin-top: 4px; color: #071b3d; font-size: 14px; font-weight: 600; }
+.app-settings-page .database-health-badge { flex: 0 0 auto; padding: 3px 9px; border-radius: 999px; font-size: 11px; font-weight: 600; }
+.app-settings-page .database-health-badge.is-connected { background: #dcfce7; color: #15803d; }
+.app-settings-page .database-health-badge.is-unavailable { background: #fee2e2; color: #b91c1c; }
+.app-settings-page .database-switch-footer { margin-top: 14px; padding-top: 14px; border-top: 1px solid #edf2f7; }
+.app-settings-page .database-switch-footer p { margin-top: 9px; }
+.app-settings-page .database-switch-action { width: 100%; padding: 11px 16px; border-radius: 999px; background: #101010; color: #fff; font-size: 13px; }
+.app-settings-page .database-switch-action:disabled { background: #475569; }
 .app-settings-page .settings-control-label { font-size: 12px; font-weight: 600; }
 .app-settings-page .settings-muted { color: #7386a2; font-size: 12px; line-height: 1.5; }
 .app-settings-page .settings-switch { display: inline-flex; align-items: center; flex-shrink: 0; width: 36px; height: 20px; padding: 2px; border: 0; border-radius: 20px; background: #64748b; }

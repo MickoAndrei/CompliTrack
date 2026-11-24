@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math' as math;
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
@@ -25,6 +26,7 @@ class _SuperAdminDashboardScreenState extends State<SuperAdminDashboardScreen> {
   final AuditLogRepository _auditLogRepository = AuditLogRepository();
   late Future<SuperAdminDashboardModel> _dashboardFuture;
   late Future<List<AuditLogModel>> _auditLogsFuture;
+  final _healthKey = GlobalKey<_SystemHealthCardState>();
 
   @override
   void initState() {
@@ -34,6 +36,7 @@ class _SuperAdminDashboardScreenState extends State<SuperAdminDashboardScreen> {
   }
 
   Future<void> _reload() async {
+    final healthFuture = _healthKey.currentState?._checkHealth();
     final future = _repository.getDashboardMetrics();
     final logsFuture = _auditLogRepository.getAuditLogs();
     setState(() {
@@ -42,6 +45,7 @@ class _SuperAdminDashboardScreenState extends State<SuperAdminDashboardScreen> {
     });
     await future;
     await logsFuture.catchError((_) => <AuditLogModel>[]);
+    await healthFuture;
   }
 
   @override
@@ -98,7 +102,7 @@ class _SuperAdminDashboardScreenState extends State<SuperAdminDashboardScreen> {
                 Row(children: [
                   Expanded(
                       child: _MetricCard(
-                          value: '${metrics.storageUsedGb} GB',
+                          value: metrics.storageUsedLabel,
                           label: 'Storage Used',
                           icon: Icons.storage_outlined,
                           color: AppColors.ustpGold,
@@ -119,7 +123,7 @@ class _SuperAdminDashboardScreenState extends State<SuperAdminDashboardScreen> {
                 const SizedBox(height: 20),
                 _RecentLogsCard(future: _auditLogsFuture),
                 const SizedBox(height: 14),
-                const _SystemHealthCard(),
+                _SystemHealthCard(key: _healthKey),
               ],
             ),
           );
@@ -347,6 +351,14 @@ class _ComplianceCard extends StatelessWidget {
               ),
             ],
           ),
+          const Text(
+            'Accepted audits · N/A = Not yet assessed',
+            style: TextStyle(
+              fontFamily: 'Inter',
+              fontSize: 9,
+              color: AppColors.ustpMuted,
+            ),
+          ),
           const SizedBox(height: 12),
           Expanded(
             child: departments.isEmpty
@@ -426,7 +438,9 @@ class _DepartmentBar extends StatelessWidget {
           height: 14,
           child: Center(
             child: Text(
-              '${percentage.round()}%',
+              department.isAssessed
+                  ? '${percentage.toStringAsFixed(percentage == percentage.roundToDouble() ? 0 : 1)}%'
+                  : 'N/A',
               style: const TextStyle(
                 fontFamily: 'Inter',
                 fontSize: 10,
@@ -449,7 +463,7 @@ class _DepartmentBar extends StatelessWidget {
                 alignment: Alignment.bottomCenter,
                 child: Container(
                   width: compact ? 22 : 28,
-                  height: barHeight,
+                  height: department.isAssessed ? barHeight : 0,
                   decoration: const BoxDecoration(
                     color: AppColors.ustpGold,
                     borderRadius:
@@ -596,24 +610,45 @@ class _RecentLogsCard extends StatelessWidget {
 }
 
 class _SystemHealthCard extends StatefulWidget {
-  const _SystemHealthCard();
+  const _SystemHealthCard({super.key});
 
   @override
   State<_SystemHealthCard> createState() => _SystemHealthCardState();
 }
 
-class _SystemHealthCardState extends State<_SystemHealthCard> {
+class _SystemHealthCardState extends State<_SystemHealthCard>
+    with WidgetsBindingObserver {
   final SystemHealthRepository _repository = SystemHealthRepository();
   SystemHealthStatus? _status;
-  bool _checking = true;
+  bool _checking = false;
+  Timer? _refreshTimer;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _checkHealth();
+    _refreshTimer = Timer.periodic(const Duration(minutes: 1), (_) {
+      if (WidgetsBinding.instance.lifecycleState == AppLifecycleState.resumed) {
+        _checkHealth();
+      }
+    });
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) _checkHealth();
+  }
+
+  @override
+  void dispose() {
+    _refreshTimer?.cancel();
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
   }
 
   Future<void> _checkHealth() async {
+    if (_checking) return;
     setState(() => _checking = true);
     final status = await _repository.check();
     if (!mounted) return;
@@ -625,9 +660,6 @@ class _SystemHealthCardState extends State<_SystemHealthCard> {
 
   @override
   Widget build(BuildContext context) {
-    final api = _status?.apiAvailable;
-    final database = _status?.databaseAvailable;
-
     return Container(
       padding: const EdgeInsets.fromLTRB(12, 10, 12, 9),
       decoration: _cardDecoration(),
@@ -662,25 +694,27 @@ class _SystemHealthCardState extends State<_SystemHealthCard> {
             ],
           ),
           const SizedBox(height: 3),
-          _HealthRow(
-            label: 'Laravel API',
-            status: _checking
-                ? 'Checking'
-                : api == true
-                    ? 'Operational'
-                    : 'Unavailable',
-            healthy: api == true,
-            checking: _checking,
-          ),
-          _HealthRow(
-            label: 'MongoDB Cluster',
-            status: _checking
-                ? 'Checking'
-                : database == true
-                    ? 'Operational'
-                    : 'Unavailable',
-            healthy: database == true,
-            checking: _checking,
+          for (final name in SystemHealthStatus.serviceNames)
+            _HealthRow(
+              label: name,
+              status: _checking
+                  ? 'Checking'
+                  : _status?.components[name] ?? 'Unknown',
+              healthy: const ['Operational', 'Configured']
+                  .contains(_status?.components[name]),
+              checking: _checking || _status?.components[name] == 'Unknown',
+            ),
+          const SizedBox(height: 6),
+          Text(
+            _status?.error ??
+                (_status?.checkedAt == null
+                    ? 'Refreshes every minute'
+                    : 'Checked ${DateFormat('MMM d, h:mm a').format(_status!.checkedAt!.toLocal())} · Refreshes every minute'),
+            style: const TextStyle(
+              fontFamily: 'Inter',
+              fontSize: 9,
+              color: AppColors.ustpMuted,
+            ),
           ),
         ],
       ),
@@ -725,7 +759,7 @@ class _HealthRow extends StatelessWidget {
           Icon(Icons.circle, size: 7, color: color),
           const SizedBox(width: 5),
           SizedBox(
-            width: 64,
+            width: 90,
             child: Text(
               status,
               textAlign: TextAlign.left,

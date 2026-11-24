@@ -29,7 +29,7 @@ class AdminShell extends StatelessWidget {
           BottomNavigationBarItem(
               icon: Icon(AppIcons.department), label: 'Offices'),
           BottomNavigationBarItem(
-              icon: Icon(AppIcons.archive), label: 'Archive'),
+              icon: Icon(AppIcons.archive), label: 'Documents'),
           BottomNavigationBarItem(
               icon: Icon(AppIcons.compliance), label: 'Reports'),
         ],

@@ -20,26 +20,51 @@
 ])
 @php($roleId = (int) auth()->user()->roleId)
 @php($adminDirectory = $roleId === 1 && in_array($endpoint, ['users', 'departments'], true))
+@php($superAdminDepartments = $roleId === 0 && $endpoint === 'departments')
+@php($directoryPage = in_array($roleId, [0, 1], true) && in_array($endpoint, ['users', 'departments'], true))
 @php($visualRole = $roleId === 3 ? 2 : $roleId)
 @php($searchLabel = match ($title) { 'User Management' => 'User', 'Archive Repository' => 'Archive', 'Audit Logs' => 'Audit Logs', default => strtolower($title) })
 @php($panelClass = match ($visualRole) { 0, 2 => 'app-view-panel active', 3 => 'view-panel active', default => '' })
-<section class="{{ $panelClass }} {{ $endpoint === 'logs' ? 'audit-logs-page' : '' }} {{ $roleId === 1 ? 'admin-resource-page' : '' }}" x-data="resourcePage({ endpoint: @js($endpoint), enhancedUsers: @js($enhancedUsers), columns: @js($columns), perPage: {{ (int) $perPage }}, detailBase: @js($detailBase), allowStatusUpdates: {{ $allowStatusUpdates ? 'true' : 'false' }}, allowArchiveActions: {{ $allowArchiveActions ? 'true' : 'false' }}, allowNotificationActions: {{ $allowNotificationActions ? 'true' : 'false' }}, allowUserCreate: {{ $allowUserCreate ? 'true' : 'false' }}, allowUserActions: {{ $allowUserActions ? 'true' : 'false' }}, actorRoleId: {{ $actorRoleId === null ? 'null' : (int) $actorRoleId }}, allowDepartmentCreate: {{ $allowDepartmentCreate ? 'true' : 'false' }}, allowDepartmentActions: {{ $allowDepartmentActions ? 'true' : 'false' }}, allowBroadcast: {{ $allowBroadcast ? 'true' : 'false' }} })" x-init="load()">
-    @if($roleId === 1 && $showHeading)<header class="admin-resource-heading"><h2>{{ $title }}</h2><p>{{ $description }}</p></header>@endif
+<section class="{{ $panelClass }} {{ $directoryPage ? 'attention-page directory-page' : '' }} {{ $endpoint === 'logs' ? 'audit-logs-page' : '' }} {{ $roleId === 1 ? 'admin-resource-page' : '' }}" x-data="resourcePage({ endpoint: @js($endpoint), directoryPage: @js($directoryPage), enhancedUsers: @js($enhancedUsers), columns: @js($columns), perPage: {{ (int) $perPage }}, detailBase: @js($detailBase), allowStatusUpdates: {{ $allowStatusUpdates ? 'true' : 'false' }}, allowArchiveActions: {{ $allowArchiveActions ? 'true' : 'false' }}, allowNotificationActions: {{ $allowNotificationActions ? 'true' : 'false' }}, allowUserCreate: {{ $allowUserCreate ? 'true' : 'false' }}, allowUserActions: {{ $allowUserActions ? 'true' : 'false' }}, actorRoleId: {{ $actorRoleId === null ? 'null' : (int) $actorRoleId }}, departmentColleges: @js($endpoint === 'departments' ? config('qms.campusColleges') : []), allowDepartmentCreate: {{ $allowDepartmentCreate ? 'true' : 'false' }}, allowDepartmentActions: {{ $allowDepartmentActions ? 'true' : 'false' }}, allowBroadcast: {{ $allowBroadcast ? 'true' : 'false' }} })" x-init="load()">
+    @if($roleId === 1 && $showHeading && !$directoryPage)<header class="admin-resource-heading"><h2>{{ $title }}</h2><p>{{ $description }}</p></header>@endif
     @if ($enhancedUsers)
         @include('super-admin.partials.user-management')
     @else
+    @if($directoryPage)
+    <div class="attention-stats" aria-label="Directory summary for current filters">
+        @foreach ([['total', $endpoint === 'users' ? 'Total Users' : 'Total Departments', $endpoint === 'users' ? 'users' : 'building-2', 'purple'], ['active', 'Active', 'circle-check', 'blue'], ['inactive', 'Inactive', 'circle-alert', 'danger']] as [$key, $label, $icon, $color])
+            <article class="metric-stat-card"><div class="metric-info"><span class="metric-label">{{ $label }}</span><strong class="metric-number color-dark" x-text="summary?.{{ $key }} ?? '—'"></strong></div><div class="metric-icon-box {{ $color }}"><i data-lucide="{{ $icon }}" aria-hidden="true"></i></div></article>
+        @endforeach
+    </div>
+    @endif
     <div x-page-notice="successPopupType" x-cloak x-show="successPopupVisible" x-transition class="fixed right-6 top-6 z-[100] flex min-h-[52px] w-[calc(100%-3rem)] max-w-sm items-center rounded-lg border-l-4 bg-ustp-navy pr-5 py-4 text-[13px] font-medium leading-5 text-white shadow-[0_10px_25px_rgba(5,27,68,0.18)]" :class="successPopupType === 'error' ? 'border-red-500' : 'border-ustp-gold'" style="padding-left: 24px" :role="successPopupType === 'error' ? 'alert' : 'status'" aria-live="polite">
         <span class="min-w-0 flex-1" x-text="successPopupMessage"></span>
     </div>
     @php($toolbarClass = match ($visualRole) { 0, 2 => 'table-filter-bar', 1 => 'toolbar', 3 => 'toolbar-row', default => 'toolbar' })
     @php($controlClass = match ($visualRole) { 0, 2 => 'filter-left-controls', 1 => 'toolbar-left', 3 => '', default => 'toolbar-left' })
     <div class="{{ $toolbarClass }} {{ $adminDirectory ? 'um-filters' : '' }}">
-        <div class="{{ $controlClass }}">
+        <div class="{{ $roleId === 0 && $endpoint === 'departments' ? 'department-filters' : $controlClass }}">
+            @if($roleId === 0 && $endpoint === 'departments')
+            <label class="department-search"><span>Search department</span><input type="search" x-model="search" @input.debounce.350ms="load(1)" placeholder="Department name or code" aria-label="Search department"></label>
+            @else
             <label class="{{ match ($visualRole) { 0, 2 => 'search-input-wrapper', 1 => 'search-box', 3 => 'search-input-box', default => 'search-box' } }}">
                 <i data-lucide="search" aria-hidden="true"></i>
                 <span class="sr-only">Search {{ $searchLabel }}</span>
                 <input type="search" x-model="search" @input.debounce.350ms="load(1)" placeholder="Search {{ $searchLabel }}" aria-label="Search {{ $searchLabel }}" class="{{ in_array($roleId, [0, 2], true) ? 'input-search-field' : '' }}">
             </label>
+            @endif
+            @if($roleId === 1 && $endpoint === 'users')
+            <label class="directory-sort"><span>Sort by</span><select x-model="sortBy" @change="load(1)" aria-label="Sort users by"><option value="fullName:asc">Name: A to Z</option><option value="fullName:desc">Name: Z to A</option><option value="createdAt:desc">Newest first</option><option value="createdAt:asc">Oldest first</option></select></label>
+            @endif
+            @if($endpoint === 'departments')
+            @if($roleId === 0)
+            <label><span>Campus</span><select x-model="departmentFilters.campusName" @change="load(1)" aria-label="Filter departments by campus"><option value="">All campuses</option>@foreach(config('qms.campuses') as $campus)<option value="{{ $campus }}">{{ $campus }}</option>@endforeach</select></label>
+            <label><span>Status</span><select x-model="departmentFilters.status" @change="load(1)" aria-label="Filter departments by status"><option value="">All statuses</option><option value="active">Active</option><option value="inactive">Inactive</option></select></label>
+            @endif
+            @if($roleId !== 0)
+            <label class="department-sort flex items-center gap-2 text-xs"><span class="whitespace-nowrap">Sort by</span><select x-model="sortBy" @change="load(1)" aria-label="Sort departments by" class="std-select min-w-0 rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs"><option value="departmentName:asc">Department: A to Z</option><option value="departmentName:desc">Department: Z to A</option><option value="departmentCode:asc">Code: A to Z</option><option value="departmentCode:desc">Code: Z to A</option><option value="campusName:asc">Campus: A to Z</option><option value="campusName:desc">Campus: Z to A</option><option value="collegeName:asc">College: A to Z</option><option value="collegeName:desc">College: Z to A</option></select></label>
+            @endif
+            @endif
             @if($roleId === 1 && $endpoint === 'notifications')
             <label class="admin-unread-filter"><input type="checkbox" x-model="unreadOnly" @change="load(1)">Unread only</label>
             <label class="admin-type-filter"><span class="sr-only">Notification type</span><select x-model="typeFilter" @change="load(1)" aria-label="Notification type"><option value="">All notification types</option>@foreach(['audit_assigned'=>'Audit assignments','audit_submitted'=>'Submitted audits','audit_returned'=>'Returned audits','audit_accepted'=>'Accepted audits','status_changed'=>'CAR updates','admin_broadcast'=>'Announcements'] as $value=>$label)<option value="{{ $value }}">{{ $label }}</option>@endforeach</select></label>
@@ -73,7 +98,9 @@
         <button x-show="allowUserCreate" x-cloak type="button" @click="startUserCreate()" class="{{ $roleId === 1 ? 'btn-gold user-create-trigger' : 'btn btn-gold user-create-trigger' }}"><i data-lucide="user-round-plus" aria-hidden="true"></i><span>Create User</span></button>
         @endif
         @if($allowDepartmentCreate)
+        @if($roleId === 0)<div class="directory-filter-actions department-filter-actions">@endif
         <button x-show="allowDepartmentCreate" x-cloak type="button" @click="startDepartmentCreate()" class="{{ $roleId === 1 ? 'btn-gold department-create-trigger' : 'btn btn-gold department-create-trigger' }}"><i data-lucide="building-2" aria-hidden="true"></i><span>Add Department</span></button>
+        @if($roleId === 0)<button type="button" class="attention-button" @click="clearDepartmentFilters()">Clear filters</button></div>@endif
         @endif
         <button x-show="allowBroadcast" x-cloak type="button" @click="startBroadcast()" class="btn-gold"><i data-lucide="send" aria-hidden="true"></i><span>Broadcast</span></button>
     </div>
@@ -103,7 +130,7 @@
         </div>
     </template>
     <template x-if="!loading && !error && rows.length === 0">
-        <div class="{{ in_array($endpoint, ['archives', 'logs'], true) ? 'resource-empty-state resource-empty-state-centered' : 'resource-empty-state' }} rounded-2xl bg-white px-6 py-12 text-center shadow-sm">
+        <div class="{{ in_array($endpoint, ['documents', 'logs'], true) ? 'resource-empty-state resource-empty-state-centered' : 'resource-empty-state' }} rounded-2xl bg-white px-6 py-12 text-center shadow-sm">
             <span class="archive-empty-icon"><i data-lucide="inbox" aria-hidden="true"></i></span>
             <p class="archive-empty-title">No records yet</p>
             <p class="archive-empty-description">Records will appear here when available.</p>
@@ -113,8 +140,8 @@
         @if($roleId === 1 && $endpoint === 'notifications')
         <div class="admin-notification-list"><template x-for="row in rows" :key="row._id"><article class="admin-notification-card" :class="{'is-unread': !row.isRead}"><span class="admin-notification-icon" aria-hidden="true"><i data-lucide="bell"></i></span><div class="admin-notification-copy"><div class="atl-section-heading"><h3 x-text="row.title"></h3><span class="atl-status" x-text="row.isRead ? 'Read' : 'Unread'"></span></div><p x-text="row.message"></p><div class="admin-notification-meta"><span x-text="formatValue(row.type)"></span><time :datetime="row.createdAt" x-text="formatValue(row.createdAt)"></time></div><div class="admin-notification-actions"><button type="button" x-show="!row.isRead" @click="markRead(row)">Mark as read</button><a x-show="row.destination && row.destination.startsWith('/') && !row.destination.startsWith('//')" :href="row.destination">View related record</a></div></div></article></template></div>
         @else
-        <div class="{{ match ($visualRole) { 0 => 'responsive-table-wrapper', 2 => 'table-container', default => 'overflow-x-auto' } }}">
-            <table class="{{ $adminDirectory ? 'um-table admin-directory-table' : '' }} min-w-full divide-y divide-slate-100 text-left text-sm {{ match ($visualRole) { 0, 3 => 'data-table', 2 => 'compliance-table', default => '' } }}">
+        <div class="{{ $superAdminDepartments ? 'um-table-wrap' : match ($visualRole) { 0 => 'responsive-table-wrapper', 2 => 'table-container', default => 'overflow-x-auto' } }}">
+            <table class="{{ $directoryPage ? 'directory-table' : '' }} {{ $adminDirectory ? 'um-table admin-directory-table' : '' }} {{ $superAdminDepartments ? 'um-table' : 'min-w-full divide-y divide-slate-100 text-left text-sm '.match ($visualRole) { 0, 3 => 'data-table', 2 => 'compliance-table', default => '' } }}">
                 <thead class="bg-slate-50 text-xs uppercase tracking-wide text-ustp-muted">
                     <tr><template x-for="column in columns" :key="column.key"><th scope="col" class="whitespace-nowrap px-5 py-3 font-semibold" x-text="column.label"></th></template>@if(!$adminDirectory)<th x-show="allowArchiveActions || allowNotificationActions || allowUserActions || allowDepartmentActions" scope="col" class="px-5 py-3 font-semibold">Actions</th>@endif</tr>
                 </thead>
@@ -140,10 +167,10 @@
                                     <template x-if="['status', 'result', 'correctiveStatus'].includes(column.key) && !(column.key === 'correctiveStatus' && allowStatusUpdates && row.correctiveStatus)">
                                         <span class="rounded-full px-2.5 py-1 text-xs font-semibold capitalize" :class="statusClass(row[column.key])" x-text="formatValue(row[column.key])"></span>
                                     </template>
-                                    @if($adminDirectory)
-                                    <template x-if="column.key === 'isActive'"><span class="um-status" :class="{'is-inactive': !isRowActive(row)}" x-text="isRowActive(row) ? 'Active' : 'Inactive'"></span></template>
+                                    @if($directoryPage)
+                                    <template x-if="column.key === 'isActive'"><span class="um-status directory-status" :class="{'is-inactive': !isRowActive(row)}" x-text="isRowActive(row) ? 'Active' : 'Inactive'"></span></template>
                                     @endif
-                                    <template x-if="column.key !== 'checkCode' && column.key !== 'roleId' && {{ $adminDirectory ? "column.key !== 'isActive' &&" : '' }} !['status', 'result', 'correctiveStatus'].includes(column.key)">
+                                    <template x-if="column.key !== 'checkCode' && column.key !== 'roleId' && {{ $directoryPage ? "column.key !== 'isActive' &&" : '' }} !['status', 'result', 'correctiveStatus'].includes(column.key)">
                                         <span x-text="formatValue(row[column.key])"></span>
                                     </template>
                                 </td>
@@ -177,10 +204,14 @@
             </table>
         </div>
         @endif
+        @if($roleId === 0 && $endpoint === 'departments')
+        @include('components.partials.attention-pagination', ['label' => 'Departments pages'])
+        @else
         <div class="flex flex-col gap-3 border-t border-slate-100 px-5 py-4 text-sm sm:flex-row sm:items-center sm:justify-between">
             <p class="text-ustp-muted"><span x-text="meta.total || 0"></span> records</p>
             <x-pagination-controls :label="$title.' pages'" />
         </div>
+        @endif
     </div>
     <template x-if="message"><div class="mt-4"><x-alert-banner type="success"><span x-text="message"></span></x-alert-banner></div></template>
     @if(!$adminDirectory)
@@ -213,7 +244,7 @@
             <footer class="user-modal-footer"><span>New users will receive an account setup email.</span><div><button type="button" @click="userModalOpen = false" class="user-modal-cancel">Cancel</button><button type="submit" :disabled="saving" class="user-modal-submit"><i data-lucide="user-round-plus" aria-hidden="true"></i><span x-text="saving ? 'Saving...' : (userForm._id ? 'Save changes' : 'Create User')"></span></button></div></footer>
         </form>
     </div>
-    <div x-cloak x-show="departmentModalOpen" class="user-modal-overlay fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-ustp-dark/50 p-4" @keydown.escape.window="departmentModalOpen = false" @click.self="departmentModalOpen = false" role="dialog" aria-modal="true" aria-labelledby="departmentModalTitle">
+    <div x-cloak x-show="departmentModalOpen" :class="{'department-dialog-open': departmentModalOpen}" class="user-modal-overlay fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-ustp-dark/50 p-4" @keydown.escape.window="departmentModalOpen = false" @click.self="departmentModalOpen = false" role="dialog" aria-modal="true" aria-labelledby="departmentModalTitle">
         <form @submit.prevent="saveDepartment()" class="department-modal-form my-auto w-full max-w-xl rounded-2xl bg-white shadow-xl">
             <header class="user-modal-header">
                 <span class="user-modal-heading-icon department-modal-heading-icon"><i data-lucide="building-2" aria-hidden="true"></i></span>
@@ -225,8 +256,8 @@
                 <div class="user-modal-fields">
                     <label>Department code<input x-model="departmentForm.departmentCode" :readonly="departmentForm._id !== null" required maxlength="30" placeholder="e.g. CED"></label>
                     <label>Department name<input x-model="departmentForm.departmentName" required maxlength="255" placeholder="Enter department name"></label>
-                    <label>College<input x-model="departmentForm.collegeName" :readonly="actorRoleId === 1" required maxlength="100" placeholder="Enter college name"></label>
-                    <label>Campus<input x-model="departmentForm.campusName" required maxlength="100" placeholder="Enter campus name"></label>
+                    <label>Campus<select x-model="departmentForm.campusName" @change="changeDepartmentCampus()" :disabled="actorRoleId === 1" required><option value="">Select a campus</option>@foreach(config('qms.campuses') as $campus)<option value="{{ $campus }}">USTP {{ $campus }}</option>@endforeach</select></label>
+                    <label>College<select x-model="departmentForm.collegeName" :disabled="actorRoleId === 1 || !departmentCollegeOptions().length" :required="departmentCollegeOptions().length > 0" aria-describedby="department-college-note"><option value="" x-text="departmentCollegeOptions().length ? 'Select a college' : 'No published college list'"></option><template x-for="college in departmentCollegeOptions()" :key="college.value"><option :value="college.value" x-text="college.label"></option></template></select><small id="department-college-note" x-show="departmentForm.campusName && !departmentCollegeOptions().length">No named-college list is published on this campus's official page. College will remain unassigned.</small></label>
                 </div>
             </div>
             <footer class="user-modal-footer"><span>Changes apply to this department record.</span><div><button type="button" @click="departmentModalOpen = false" class="user-modal-cancel">Cancel</button><button type="submit" :disabled="saving" class="user-modal-submit"><i data-lucide="building-2" aria-hidden="true"></i><span x-text="saving ? 'Saving...' : (departmentForm._id ? 'Save changes' : 'Add Department')"></span></button></div></footer>
@@ -234,7 +265,7 @@
     </div>
     <div x-cloak x-show="broadcastModalOpen" class="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-ustp-dark/50 p-4" @keydown.escape.window="broadcastModalOpen = false">
         <form @submit.prevent="sendBroadcast()" class="my-auto w-full max-w-lg space-y-4 rounded-2xl bg-white p-6 shadow-xl">
-            <div class="flex items-start justify-between"><div><h3 class="font-heading text-xl font-bold text-ustp-navy">Broadcast notification</h3><p class="mt-1 text-sm text-ustp-muted">This message will be sent to auditees in the chosen department.</p></div><button type="button" @click="broadcastModalOpen = false" aria-label="Close" class="rounded-lg p-2 hover:bg-ustp-light"><i data-lucide="x" class="size-5"></i></button></div>
+            <div class="flex items-start justify-between"><div><h3 class="font-heading text-xl font-bold text-ustp-navy">Broadcast notification</h3><p class="mt-1 text-sm text-ustp-muted">This message will be sent to active auditors and auditees in the chosen department.</p></div><button type="button" @click="broadcastModalOpen = false" aria-label="Close" class="rounded-lg p-2 hover:bg-ustp-light"><i data-lucide="x" class="size-5"></i></button></div>
             <template x-if="error"><x-alert-banner type="error"><span x-text="error"></span></x-alert-banner></template>
             <label class="block text-sm font-medium">Department<select x-model="broadcastForm.departmentId" required class="mt-1.5 w-full rounded-xl border border-slate-200 px-3 py-2.5"><option value="">Choose a department</option><template x-for="department in departments" :key="department._id"><option :value="department._id" x-text="department.departmentName"></option></template></select></label>
             <label class="block text-sm font-medium">Message<textarea x-model="broadcastForm.message" required maxlength="2000" rows="5" class="mt-1.5 w-full rounded-xl border border-slate-200 px-3 py-2.5"></textarea></label>
@@ -271,7 +302,14 @@
             </footer>
         </div>
     </div>
-    <div x-cloak x-show="deactivateConfirmOpen" class="user-modal-overlay fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-ustp-dark/50 p-4" @keydown.escape.window="closeDeactivateModals()" @click.self="closeDeactivateModals()" role="dialog" aria-modal="true">
+    <div x-cloak x-show="deactivateConfirmOpen" class="user-modal-overlay fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-ustp-dark/50 p-4" @keydown.escape.window="closeDeactivateModals()" @click.self="closeDeactivateModals()" role="dialog" aria-modal="true" @if($superAdminDepartments) aria-labelledby="deactivate-department-title" @endif>
+        @if($superAdminDepartments)
+        <div class="um-dialog um-confirm um-deactivate department-confirm-dialog">
+            <header><h2 id="deactivate-department-title">Deactivate department?</h2><button type="button" @click="closeDeactivateModals()" aria-label="Close deactivate department dialog" class="um-close"><i data-lucide="x" aria-hidden="true"></i></button></header>
+            <div class="um-dialog-body"><p x-text="deactivateTarget?.departmentName"></p><p>Users in this department will be affected. A Super Admin can reactivate the department.</p></div>
+            <footer><button type="button" @click="closeDeactivateModals()" class="um-secondary">Cancel</button><button type="button" @click="confirmDeactivate()" :disabled="deactivateSending" class="um-primary" x-text="deactivateSending ? 'Deactivating...' : 'Deactivate department'"></button></footer>
+        </div>
+        @else
         <div class="my-auto w-full max-w-md rounded-2xl bg-white shadow-xl overflow-hidden">
             <header class="user-modal-header">
                 <span class="user-modal-heading-icon" style="background-color: rgb(239 68 68 / 0.1); color: rgb(239 68 68);">
@@ -298,8 +336,16 @@
                 </div>
             </footer>
         </div>
+        @endif
     </div>
-    <div x-cloak x-show="reactivateConfirmOpen" class="user-modal-overlay fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-ustp-dark/50 p-4" @keydown.escape.window="closeReactivateModals()" @click.self="closeReactivateModals()" role="dialog" aria-modal="true" aria-labelledby="reactivate-user-title">
+    <div x-cloak x-show="reactivateConfirmOpen" class="user-modal-overlay fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-ustp-dark/50 p-4" @keydown.escape.window="closeReactivateModals()" @click.self="closeReactivateModals()" role="dialog" aria-modal="true" aria-labelledby="{{ $superAdminDepartments ? 'reactivate-department-title' : 'reactivate-user-title' }}">
+        @if($superAdminDepartments)
+        <div class="um-dialog um-confirm um-reactivate department-confirm-dialog">
+            <header><h2 id="reactivate-department-title">Reactivate department?</h2><button type="button" @click="closeReactivateModals()" aria-label="Close reactivate department dialog" class="um-close"><i data-lucide="x" aria-hidden="true"></i></button></header>
+            <div class="um-dialog-body"><p x-text="reactivateTarget?.departmentName"></p><p>The department will become active and available again.</p></div>
+            <footer><button type="button" @click="closeReactivateModals()" class="um-secondary">Cancel</button><button type="button" @click="confirmReactivate()" :disabled="reactivateSending" class="um-primary" x-text="reactivateSending ? 'Reactivating...' : 'Reactivate department'"></button></footer>
+        </div>
+        @else
         <div class="my-auto w-full max-w-md rounded-2xl bg-white shadow-xl overflow-hidden">
             <header class="user-modal-header">
                 <span class="user-modal-heading-icon" style="background-color: rgb(34 197 94 / 0.1); color: rgb(5 150 105);"><i :data-lucide="reactivateType === 'department' ? 'building-2' : 'user-round-check'" aria-hidden="true"></i></span>
@@ -311,6 +357,7 @@
             </div>
             <footer class="user-modal-footer"><span x-text="reactivateType === 'department' ? 'The department will be available again.' : 'This restores account access.'"></span><div><button type="button" @click="closeReactivateModals()" class="user-modal-cancel">Cancel</button><button type="button" @click="confirmReactivate()" :disabled="reactivateSending" class="rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-60" x-text="reactivateSending ? 'Reactivating...' : 'Yes, reactivate'"></button></div></footer>
         </div>
+        @endif
     </div>
     <div x-cloak x-show="reactivateErrorOpen" class="user-modal-overlay fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-ustp-dark/50 p-4" @keydown.escape.window="closeReactivateModals()" @click.self="closeReactivateModals()" role="alertdialog" aria-modal="true" aria-labelledby="reactivate-error-title">
         <div class="my-auto w-full max-w-md rounded-2xl bg-white shadow-xl overflow-hidden">

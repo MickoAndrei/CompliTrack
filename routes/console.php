@@ -9,6 +9,7 @@ use App\Models\User;
 use Illuminate\Support\Facades\Schedule;
 use App\Services\SystemSettingsService;
 use App\Services\SystemBackupService;
+use App\Services\DatabaseSwitchService;
 
 Artisan::command('complitrack:backup', function () {
     try {
@@ -33,6 +34,50 @@ Artisan::command('complitrack:backup-restore {file} {database} {directory}', fun
     app(SystemBackupService::class)->restore($this->argument('file'), $this->argument('database'), $this->argument('directory'));
     $this->info('Backup restored into the new database and directory. Live configuration was not changed.');
 })->purpose('Restore a backup into a NEW database and a NEW directory only');
+
+Artisan::command('complitrack:database-switch:resolve {requestId} {outcome}', function (DatabaseSwitchService $switch) {
+    $result = $switch->resolve($this->argument('requestId'), $this->argument('outcome'));
+    $this->info('Database maintenance request resolved as '.$result['outcome'].'.');
+})->purpose('Reconcile a maintenance request after an operator verifies a switch, rollback, or cancellation');
+
+Artisan::command('complitrack:database-switch:stage {requestId} {stage}', function (DatabaseSwitchService $switch) {
+    $switch->setStage($this->argument('requestId'), $this->argument('stage'));
+    $this->info('Database switch stage updated.');
+})->purpose('Update progress for the controlled local database switch');
+
+Artisan::command('complitrack:database-switch:execute-pending {confirmation}', function (DatabaseSwitchService $switch) {
+    $request = $switch->adoptPendingRequest($this->argument('confirmation'));
+    try {
+        $switch->launchAutomaticSwitch($request['requestId']);
+    } catch (\RuntimeException $exception) {
+        $switch->cancelUndispatched($request['requestId']);
+        report($exception);
+        $this->error('The automatic switch worker could not start. The active database was not changed.');
+
+        return 1;
+    }
+
+    $this->info('The previously confirmed database request is executing through the controlled local switch workflow.');
+
+    return 0;
+})->purpose('Execute an existing typed maintenance request through the controlled local switch workflow');
+
+Artisan::command('complitrack:database-switch:probe {environment}', function (DatabaseSwitchService $switch) {
+    if (! in_array($this->argument('environment'), ['local', 'remote'], true)) {
+        $this->error('Environment must be local or remote.');
+
+        return 2;
+    }
+    if (! $switch->targetIsHealthy($this->argument('environment'))) {
+        $this->error('MongoDB target health check failed.');
+
+        return 1;
+    }
+
+    $this->info('MongoDB target is reachable.');
+
+    return 0;
+})->purpose('Check a configured MongoDB target without exposing its connection details');
 
 Schedule::call(function () {
     touch(app(SystemSettingsService::class)->path('scheduler-heartbeat'));
@@ -91,22 +136,93 @@ Artisan::command('mongodb:check {--ping : Only check database connectivity, with
     }
 })->purpose('Check MongoDB connectivity and change-stream support');
 
-Artisan::command('complitrack:logout-all', function () {
+Artisan::command('complitrack:logout-all {--all-mongodb-targets}', function () {
     $driver = config('session.driver');
-    if ($driver === 'database' || $driver === 'mongodb') {
-        DB::connection(config('session.connection'))->table(config('session.table', 'sessions'))->delete();
-    } elseif ($driver === 'file') {
-        File::cleanDirectory(config('session.files'));
-    } else {
-        $this->error("Automatic restart logout does not support SESSION_DRIVER=$driver. No sessions were cleared.");
+    if ($this->option('all-mongodb-targets')) {
+        if (! in_array($driver, ['database', 'mongodb', 'file'], true)) {
+            $this->error("Automatic restart logout does not support SESSION_DRIVER=$driver. No sessions were cleared.");
 
-        return 1;
+            return 1;
+        }
+
+        if ($driver === 'file') {
+            File::cleanDirectory(config('session.files'));
+        } elseif ($driver === 'database') {
+            $sessionConnection = config('session.connection', 'mongodb');
+            if (config('database.connections.'.$sessionConnection.'.driver') === 'mongodb') {
+                foreach (['local', 'remote'] as $environment) {
+                    $target = config('database.mongodb_targets.'.$environment, []);
+                    if (empty($target['dsn']) || empty($target['database'])) {
+                        $this->error("The $environment MongoDB target is not configured; no complete logout was performed.");
+
+                        return 1;
+                    }
+                    $connectionName = 'database_switch_logout_'.$environment;
+                    config(['database.connections.'.$connectionName => array_replace(
+                        config('database.connections.mongodb', []),
+                        $target,
+                    )]);
+                    DB::purge($connectionName);
+                    DB::connection($connectionName)->table(config('session.table', 'sessions'))->delete();
+                    DB::purge($connectionName);
+                }
+            } else {
+                DB::connection($sessionConnection)->table(config('session.table', 'sessions'))->delete();
+            }
+        } elseif ($driver === 'mongodb') {
+            foreach (['local', 'remote'] as $environment) {
+                $target = config('database.mongodb_targets.'.$environment, []);
+                if (empty($target['dsn']) || empty($target['database'])) {
+                    $this->error("The $environment MongoDB target is not configured; no complete logout was performed.");
+
+                    return 1;
+                }
+                $connectionName = 'database_switch_logout_'.$environment;
+                config(['database.connections.'.$connectionName => array_replace(
+                    config('database.connections.mongodb', []),
+                    $target,
+                )]);
+                DB::purge($connectionName);
+                DB::connection($connectionName)->table(config('session.table', 'sessions'))->delete();
+                DB::purge($connectionName);
+            }
+        }
+
+        foreach (['local', 'remote'] as $environment) {
+            $target = config('database.mongodb_targets.'.$environment, []);
+            if (empty($target['dsn']) || empty($target['database'])) {
+                $this->error("The $environment MongoDB target is not configured; no complete logout was performed.");
+
+                return 1;
+            }
+            $connectionName = 'database_switch_logout_'.$environment;
+            config(['database.connections.'.$connectionName => array_replace(
+                config('database.connections.mongodb', []),
+                $target,
+            )]);
+            DB::purge($connectionName);
+            DB::connection($connectionName)->table('users')->update(['remember_token' => null]);
+            DB::connection($connectionName)->table('personal_access_tokens')->delete();
+            DB::purge($connectionName);
+        }
+    } else {
+        if ($driver === 'database' || $driver === 'mongodb') {
+            DB::connection(config('session.connection'))->table(config('session.table', 'sessions'))->delete();
+        } elseif ($driver === 'file') {
+            File::cleanDirectory(config('session.files'));
+        } else {
+            $this->error("Automatic restart logout does not support SESSION_DRIVER=$driver. No sessions were cleared.");
+
+            return 1;
+        }
+
+        User::query()->update(['remember_token' => null]);
+        PersonalAccessToken::query()->delete();
     }
 
-    User::query()->update(['remember_token' => null]);
-    PersonalAccessToken::query()->delete();
-
-    $this->info('All web sessions, remember-me logins, and API tokens were cleared.');
+    $this->info($this->option('all-mongodb-targets')
+        ? 'Sessions, remember-me logins, and API tokens were cleared from both configured MongoDB targets.'
+        : 'All web sessions, remember-me logins, and API tokens were cleared.');
 
     return 0;
 })->purpose('Log out all accounts after a CompliTrack server restart');

@@ -1,6 +1,6 @@
 @if(!empty($oversight))
 <section class="workflow-card" aria-labelledby="qms-oversight-title">
-    <div class="dashboard-section-heading"><h2 id="qms-oversight-title">{{ $oversight['responsibility'] }} · Authorized oversight</h2><a href="/auditee/archives">Browse archives</a></div>
+    <div class="dashboard-section-heading"><h2 id="qms-oversight-title">{{ $oversight['responsibility'] }} · Authorized oversight</h2><a href="/auditee/documents">Browse archives</a></div>
     <p>{{ $oversight['units'] }} authorized departments / offices · {{ $oversight['audits'] }} audits · {{ $oversight['openCars'] }} outstanding corrective actions</p>
     <p class="workflow-muted">Read-only organizational summaries. Evidence responses and audit review actions remain with their assigned accounts.</p>
     @forelse($oversight['records'] as $record)

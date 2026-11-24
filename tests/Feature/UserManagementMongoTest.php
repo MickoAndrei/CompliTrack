@@ -45,6 +45,163 @@ class UserManagementMongoTest extends TestCase
             'password' => Hash::make('Existing-test-password!'), 'roleId' => $role, 'isActive' => true]);
     }
 
+    public function test_existing_email_returns_an_account_notification_without_creating_another_user(): void
+    {
+        $this->account(3, ['email' => 'Existing.Account@example.test']);
+        $count = User::count();
+        $this->postJson('/api/v1/users', $this->payload(['email' => 'existing.account@example.test']))
+            ->assertUnprocessable()->assertJsonValidationErrors('email')
+            ->assertJsonPath('message', 'An account with this email address already exists. Use the existing account or enter a different email address.');
+        $this->assertSame($count, User::count());
+        Notification::assertNothingSent();
+    }
+
+    public function test_account_creation_reports_email_failure_without_inviting_duplicate_creation(): void
+    {
+        $this->mock(\App\Services\PasswordResetService::class, function ($mock) {
+            $mock->shouldReceive('send')->once()->andThrow(new \Symfony\Component\Mailer\Exception\TransportException('SMTP unavailable'));
+        });
+        $payload = $this->payload();
+        $this->postJson('/api/v1/users', $payload)->assertCreated()
+            ->assertJsonPath('setupEmailSent', false)
+            ->assertJsonPath('message', 'The account was created, but the setup email could not be sent. Use Reset password on this account to send a new link.');
+        $this->assertSame(1, User::where('email', $payload['email'])->count());
+        $this->postJson('/api/v1/users', $payload)->assertUnprocessable()->assertJsonValidationErrors('email');
+    }
+
+    public function test_position_indicator_uses_the_assigned_unit_or_college_instead_of_a_different_home_department(): void
+    {
+        $head = $this->account(3, ['departmentId' => $this->units[0]->getKey(),
+            'archiveResponsibility' => 'department_head', 'archiveUnitIds' => [$this->units[1]->getKey()]]);
+        $this->actingAs($head)->get('/auditee/profile')->assertOk()
+            ->assertSee('Department Head &mdash; '.$this->units[1]->departmentName, false)
+            ->assertDontSee('Department Head &mdash; '.$this->units[0]->departmentName, false);
+
+        $dean = $this->account(3, ['departmentId' => $this->units[0]->getKey(),
+            'archiveResponsibility' => 'college_dean', 'archiveCollegeIds' => [(string) $this->college->getKey()]]);
+        $this->actingAs($dean)->get('/auditee/profile')->assertOk()
+            ->assertSee('College Dean &mdash; '.$this->college->collegeName, false);
+
+        $legacyHead = $this->account(3, ['departmentId' => (string) $this->units[0]->getKey(), 'archiveResponsibility' => 'department_head']);
+        $this->assertSame($this->units[0]->departmentName, app(\App\Services\PositionScope::class)->label($legacyHead));
+        $unassigned = $this->account(3, ['archiveResponsibility' => 'department_head']);
+        $this->assertSame('Department / office not assigned', app(\App\Services\PositionScope::class)->label($unassigned));
+    }
+
+    public function test_cluster_administrators_can_be_created_and_edited_with_cluster_choices(): void
+    {
+        $this->getJson('/api/v1/users/options')->assertOk()
+            ->assertJsonPath('options.clusters.0.name', 'Cluster A (Claveria Group)')
+            ->assertJsonPath('options.clusters.1.name', 'Cluster B (Cagayan de Oro/Main Group)');
+        $payload = $this->payload(['departmentId' => null, 'officeName' => '',
+            'archiveResponsibility' => 'cluster_administrator', 'archiveUnitIds' => [],
+            'archiveCollegeIds' => [], 'archiveCluster' => 'cluster_a']);
+        $id = $this->postJson('/api/v1/users', $payload)->assertCreated()
+            ->assertJsonPath('data.archiveCluster', 'cluster_a')
+            ->assertJsonPath('data.clusterName', 'Cluster A (Claveria Group)')->json('data._id');
+        $this->patchJson('/api/v1/users/'.$id, ['archiveCluster' => 'cluster_b'])->assertOk()
+            ->assertJsonPath('data.clusterName', 'Cluster B (Cagayan de Oro/Main Group)');
+        $this->getJson('/api/v1/users/'.$id)->assertOk()->assertJsonPath('data.archiveCluster', 'cluster_b');
+        $this->assertSame('Cluster B (Cagayan de Oro/Main Group)', app(\App\Services\PositionScope::class)->label(User::findOrFail($id)));
+        $this->patchJson('/api/v1/users/'.$id, ['archiveCluster' => 'unknown'])->assertUnprocessable()->assertJsonValidationErrors('archiveCluster');
+        $this->patchJson('/api/v1/users/'.$id, ['archiveCluster' => null])->assertUnprocessable()->assertJsonValidationErrors('archiveCluster');
+        $this->patchJson('/api/v1/users/'.$id, ['archiveCollegeIds' => [(string) $this->college->getKey()]])->assertUnprocessable();
+        $this->patchJson('/api/v1/users/'.$id, ['archiveResponsibility' => 'college_dean', 'archiveCluster' => null,
+            'archiveCollegeIds' => [(string) $this->college->getKey()]])->assertOk()->assertJsonPath('data.archiveCluster', null);
+        $this->patchJson('/api/v1/users/'.$id, ['archiveCluster' => 'cluster_a'])->assertUnprocessable();
+        $legacy = $this->account(3, ['archiveResponsibility' => 'cluster_administrator',
+            'departmentId' => $this->units[0]->getKey(), 'archiveCollegeIds' => [$this->college->getKey()]]);
+        $this->patchJson('/api/v1/users/'.$legacy->getKey(), ['archiveCluster' => 'cluster_a', 'archiveCollegeIds' => []])->assertOk()
+            ->assertJsonPath('data.departmentId', (string) $this->units[0]->getKey())
+            ->assertJsonPath('data.clusterName', 'Cluster A (Claveria Group)');
+        $this->actingAs($this->account(1))->patchJson('/api/v1/users/'.$id, ['archiveCluster' => 'cluster_a'])->assertForbidden();
+    }
+
+    public function test_auditor_positions_can_be_created_and_changed_without_rewriting_audit_assignments(): void
+    {
+        $home = (string) $this->units[0]->getKey();
+        $positionUnit = (string) $this->units[1]->getKey();
+        $id = $this->postJson('/api/v1/users', $this->payload(['roleId' => 2,
+            'departmentId' => $home, 'assignedDepartmentIds' => [$home],
+            'archiveResponsibility' => 'department_head', 'archiveUnitIds' => [$positionUnit]]))
+            ->assertCreated()->assertJsonPath('data.roleId', 2)
+            ->assertJsonPath('data.archiveResponsibility', 'department_head')->json('data._id');
+        foreach (config('qms.responsibilities') as $position) {
+            $collegePosition = in_array($position, ['college_dean', 'college_secretary'], true);
+            $cluster = $position === 'cluster_administrator';
+            $payload = ['archiveResponsibility' => $position,
+                'archiveUnitIds' => $collegePosition || $cluster ? [] : [$positionUnit],
+                'archiveCollegeIds' => $collegePosition ? [(string) $this->college->getKey()] : [],
+                'archiveCluster' => $cluster ? 'cluster_b' : null];
+            $this->patchJson('/api/v1/users/'.$id, $payload)->assertOk()
+                ->assertJsonPath('data.roleId', 2)->assertJsonPath('data.archiveResponsibility', $position)
+                ->assertJsonPath('data.departmentId', $home)->assertJsonPath('data.assignedDepartmentIds', [$home]);
+            $actor = User::findOrFail($id);
+            // The automatic-access redesign preserves Chair responsibility separately from audit assignments.
+            // This fixture has no college in cluster_b; assigning that position yields no cluster units.
+            $expected = $position === 'department_head' ? [$home, $positionUnit] : ($cluster ? [] : [$home]);
+            $this->assertEqualsCanonicalizing($expected, app(\App\Services\QmsArchiveAccess::class)->organizationalUnits($actor)->get()
+                ->map(fn ($unit) => (string) $unit->getKey())->all());
+        }
+        $this->patchJson('/api/v1/users/'.$id, ['archiveResponsibility' => null, 'archiveUnitIds' => [],
+            'archiveCollegeIds' => [], 'archiveCluster' => null])->assertOk()->assertJsonPath('data.archiveResponsibility', null);
+        $this->actingAs(User::findOrFail($id))->patchJson('/api/v1/users/'.$id, ['archiveResponsibility' => 'faculty_staff'])->assertForbidden();
+    }
+
+    public function test_auditor_chair_scope_does_not_authorize_unassigned_audits_or_unshared_assignment_evidence(): void
+    {
+        [$home, $assigned, $chair, $unrelated] = $this->units->take(4)->all();
+        $actor = $this->account(2, ['departmentId' => $home->getKey(), 'assignedDepartmentIds' => [$assigned->getKey()],
+            'archiveResponsibility' => 'department_head', 'archiveUnitIds' => [$chair->getKey()]]);
+        $assignment = Audit::create(['departmentId' => $assigned->getKey(), 'auditorId' => $actor->getKey(), 'status' => 'ready']);
+        $notAssigned = Audit::create(['departmentId' => $chair->getKey(), 'auditorId' => $actor->getKey(), 'status' => 'ready']);
+        $this->assertTrue(app(\App\Services\AuditAssignment::class)->eligible($actor, $assigned));
+        $this->assertFalse(app(\App\Services\AuditAssignment::class)->eligible($actor, $chair));
+        $this->assertSame([(string) $assignment->getKey()], app(\App\Services\AtlWorkspace::class)->audits($actor)->get()->map(fn ($a) => (string) $a->getKey())->all());
+        $make = fn ($unit, $extra = []) => \App\Models\ArchiveDocument::create($extra + ['title' => 'Scope regression',
+            'departmentId' => $unit->getKey(), 'collegeId' => $this->college->getKey(), 'ownershipVerified' => true,
+            'visibility' => 'department', 'recordType' => 'file']);
+        $chairFile = $make($chair);
+        $unshared = $make($assigned);
+        $foreign = $make($unrelated);
+        $shared = $make($assigned, ['sharedAuditIds' => [$assignment->getKey()]]);
+        $this->actingAs($actor);
+        $visible = app(\App\Services\QmsArchiveAccess::class)->documents($actor)->get()->map(fn ($d) => (string) $d->getKey())->all();
+        $this->assertContains((string) $chairFile->getKey(), $visible);
+        $this->assertContains((string) $shared->getKey(), $visible);
+        $this->assertNotContains((string) $unshared->getKey(), $visible);
+        $this->assertNotContains((string) $foreign->getKey(), $visible);
+        $this->get('/audits/'.$notAssigned->getKey())->assertNotFound();
+    }
+
+    public function test_auditee_creation_and_editing_do_not_require_an_office_position_name(): void
+    {
+        $payload = $this->payload(['archiveResponsibility' => null, 'archiveUnitIds' => []]);
+        unset($payload['officeName']);
+        $id = $this->postJson('/api/v1/users', $payload)->assertCreated()->assertJsonPath('data.officeName', null)->json('data._id');
+        $this->patchJson('/api/v1/users/'.$id, ['fullName' => 'Updated account'])->assertOk()->assertJsonPath('data.fullName', 'Updated account');
+    }
+
+    public function test_an_additional_cet_department_can_be_created_and_used_for_positions_and_audit_eligibility(): void
+    {
+        $payload = ['departmentCode' => 'CET-NEW', 'departmentName' => 'Electrical Engineering', 'collegeName' => 'CET', 'campusName' => 'Claveria'];
+        $id = $this->postJson('/api/v1/departments', $payload)->assertCreated()
+            ->assertJsonPath('data.unitType', 'academic_department')->assertJsonPath('data.ownershipVerified', true)->json('data._id');
+        $this->assertSame(6, Department::where('collegeName', 'CET')->count());
+        $option = collect($this->getJson('/api/v1/users/options')->assertOk()->json('options.departments'))->firstWhere('_id', $id);
+        $this->assertTrue($option['authorizedCet']);
+        $this->assertTrue($option['auditEligible']);
+        $head = $this->account(3, ['departmentId' => $this->units[0]->getKey()]);
+        $this->patchJson('/api/v1/users/'.$head->getKey(), ['archiveResponsibility' => 'department_head', 'archiveUnitIds' => [$id]])->assertOk();
+        $auditor = $this->account(2, ['departmentId' => $this->units[0]->getKey()]);
+        $this->patchJson('/api/v1/users/'.$auditor->getKey(), ['assignedDepartmentIds' => [$id]])->assertOk();
+        $this->assertTrue(app(\App\Services\AuditAssignment::class)->eligible($auditor->fresh(), Department::findOrFail($id)));
+        $this->getJson('/api/v1/system/dashboard')->assertOk()->assertJsonPath('data.stats.cetDepartments', 6);
+        $this->postJson('/api/v1/departments', $payload)->assertUnprocessable();
+        $this->postJson('/api/v1/departments', array_merge($payload, ['departmentCode' => 'CET-OTHER']))->assertUnprocessable();
+        $this->postJson('/api/v1/departments', array_merge($payload, ['departmentCode' => 'DEAN', 'departmentName' => 'Office of the Dean']))->assertUnprocessable();
+    }
+
     private function payload(array $extra = []): array
     {
         return $extra + ['fullName' => 'New Department Head', 'email' => 'new@example.test', 'roleId' => 3,
@@ -56,6 +213,63 @@ class UserManagementMongoTest extends TestCase
     {
         $document = DB::connection('mongodb')->getMongoDB()->users->findOne(['_id' => new ObjectId((string) $user->getKey())]);
         return \MongoDB\BSON\toCanonicalExtendedJSON(\MongoDB\BSON\fromPHP($document));
+    }
+
+    public function test_super_admin_can_authorize_independent_auditors_for_verified_cet_offices_without_changing_home_units(): void
+    {
+        $office = Department::create(['departmentName' => 'Office of the Dean', 'departmentCode' => 'CET-DEAN', 'collegeName' => 'CET',
+            'collegeId' => $this->college->getKey(), 'unitType' => 'college_office', 'ownershipVerified' => true, 'isActive' => true]);
+        $auditor = $this->account(2, ['departmentId' => $this->units[0]->getKey(), 'assignedDepartmentIds' => [$this->units[0]->getKey()]]);
+        $options = $this->getJson('/api/v1/users/options')->assertOk()->json('options.departments');
+        $option = collect($options)->firstWhere('_id', (string) $office->getKey());
+        $this->assertTrue($option['auditEligible']);
+        $this->assertFalse($option['authorizedCet'], 'An office must not become a sixth academic department.');
+        $this->patchJson('/api/v1/users/'.$auditor->getKey(), ['assignedDepartmentIds' => [(string) $office->getKey()]])->assertOk()
+            ->assertJsonPath('data.departmentId', (string) $this->units[0]->getKey());
+        $this->assertTrue(app(\App\Services\AuditAssignment::class)->eligible($auditor->fresh(), $office));
+        $this->assertInstanceOf(ObjectId::class, $auditor->fresh()->assignedDepartmentIds[0]);
+        $this->patchJson('/api/v1/users/'.$auditor->getKey(), ['departmentId' => (string) $office->getKey()])->assertUnprocessable();
+        $outside = Department::create(['departmentName' => 'Outside Office', 'collegeName' => 'OTHER', 'unitType' => 'college_office', 'ownershipVerified' => true, 'isActive' => true]);
+        $this->patchJson('/api/v1/users/'.$auditor->getKey(), ['assignedDepartmentIds' => [(string) $outside->getKey()]])->assertUnprocessable();
+        $office->update(['ownershipVerified' => false]);
+        $this->patchJson('/api/v1/users/'.$auditor->getKey(), ['assignedDepartmentIds' => [(string) $office->getKey(), (string) $this->units[1]->getKey()]])->assertUnprocessable();
+        $this->assertSame((string) $this->units[0]->getKey(), (string) $auditor->fresh()->departmentId);
+        $atl = $this->account(1, ['departmentId' => $this->units[0]->getKey()]);
+        $this->actingAs($atl)->patchJson('/api/v1/users/'.$auditor->getKey(), ['assignedDepartmentIds' => []])->assertForbidden();
+    }
+
+    public function test_super_admin_can_correct_an_auditors_legacy_home_without_rewriting_historical_eligibility(): void
+    {
+        $legacy = Department::create(['departmentName' => '[DEMO] Engineering', 'unitType' => 'legacy_unclassified',
+            'collegeName' => 'Collage of Engineering and Technology', 'isActive' => true, 'ownershipVerified' => false]);
+        $auditor = $this->account(2, ['userCode' => 'AUD-LEGACY', 'departmentId' => (string) $legacy->getKey(),
+            'assignedDepartmentIds' => [(string) $legacy->getKey()]]);
+        $before = $auditor->getRawOriginal();
+        // Merely granting eligibility cannot validate an unclassified home department.
+        $this->patchJson('/api/v1/users/'.$auditor->getKey(), ['assignedDepartmentIds' => [(string) $this->units[1]->getKey()]])->assertUnprocessable();
+        // The actual editor sends only the changed home field, retaining hidden legacy assignments.
+        $this->patchJson('/api/v1/users/'.$auditor->getKey(), ['departmentId' => (string) $this->units[0]->getKey()])->assertOk()
+            ->assertJsonPath('data.departmentId', (string) $this->units[0]->getKey());
+        foreach (['password', 'userCode', 'assignedDepartmentIds'] as $field) {
+            $this->assertEquals($before[$field], $auditor->fresh()->getRawOriginal($field));
+        }
+        $this->assertInstanceOf(ObjectId::class, $auditor->fresh()->departmentId);
+        $this->patchJson('/api/v1/users/'.$auditor->getKey(), ['assignedDepartmentIds' => [
+            (string) $legacy->getKey(), (string) $this->units[0]->getKey(), (string) $this->units[1]->getKey(),
+        ]])->assertOk();
+        $eligibility = app(\App\Services\AuditAssignment::class);
+        $this->assertTrue($eligibility->eligible($auditor->fresh(), $this->units[1]));
+        $this->assertFalse($eligibility->eligible($auditor->fresh(), $this->units[0]));
+        $this->assertFalse($eligibility->units()->contains(fn ($unit) => (string) $unit->getKey() === (string) $legacy->getKey()));
+        $anotherLegacy = Department::create(['departmentName' => 'Other legacy', 'unitType' => 'legacy_unclassified', 'isActive' => true]);
+        $snapshot = $this->snapshot($auditor->fresh());
+        $this->patchJson('/api/v1/users/'.$auditor->getKey(), ['assignedDepartmentIds' => [
+            (string) $legacy->getKey(), (string) $anotherLegacy->getKey(),
+        ]])->assertUnprocessable();
+        $this->patchJson('/api/v1/users/'.$auditor->getKey(), ['departmentId' => (string) $legacy->getKey()])->assertUnprocessable();
+        $this->assertSame($snapshot, $this->snapshot($auditor->fresh()));
+        $this->patchJson('/api/v1/users/'.$auditor->getKey(), ['assignedDepartmentIds' => []])->assertOk();
+        $this->patchJson('/api/v1/users/'.$auditor->getKey(), ['assignedDepartmentIds' => [(string) $legacy->getKey()]])->assertUnprocessable();
     }
 
     public function test_creation_uses_existing_user_collection_and_password_setup_without_changing_existing_accounts(): void
@@ -90,10 +304,62 @@ class UserManagementMongoTest extends TestCase
         $this->assertSame($before, $this->snapshot($person));
         $legacy = Department::create(['departmentName' => 'Legacy', 'departmentCode' => 'OTHER', 'unitType' => 'academic_department', 'isActive' => true, 'ownershipVerified' => true]);
         foreach ([[], [(string) $legacy->getKey()], [(string) $this->units[0]->getKey(), (string) $this->units[1]->getKey()]] as $ids) {
-            $this->patchJson('/api/v1/archives/organization/'.$person->getKey(), ['responsibility' => 'department_secretary', 'unitIds' => $ids, 'collegeIds' => []])->assertForbidden();
+            $this->patchJson('/api/v1/documents/organization/'.$person->getKey(), ['responsibility' => 'department_head', 'unitIds' => $ids, 'collegeIds' => []])->assertForbidden();
         }
-        $this->patchJson('/api/v1/users/'.$person->getKey(), ['archiveResponsibility' => 'department_secretary', 'archiveUnitIds' => [(string) $this->units[1]->getKey()], 'archiveCollegeIds' => []])->assertOk();
+        $this->patchJson('/api/v1/users/'.$person->getKey(), ['archiveResponsibility' => 'department_head', 'archiveUnitIds' => [(string) $this->units[1]->getKey()], 'archiveCollegeIds' => []])->assertOk();
         $this->assertSame(3, $person->fresh()->roleId);
+    }
+
+    public function test_removed_position_is_unavailable_and_rejected_without_changing_accounts(): void
+    {
+        $this->assertNotContains('department_secretary', config('qms.responsibilities'));
+        $person = $this->account(3, ['departmentId' => $this->units[0]->getKey()]);
+        $before = $this->snapshot($person);
+        $this->postJson('/api/v1/users', $this->payload(['archiveResponsibility' => 'department_secretary']))->assertUnprocessable();
+        $this->patchJson('/api/v1/users/'.$person->getKey(), [
+            'archiveResponsibility' => 'department_secretary', 'archiveUnitIds' => [(string) $this->units[0]->getKey()],
+        ])->assertUnprocessable();
+        $this->assertSame($before, $this->snapshot($person));
+        $this->get('/super-admin/departments')->assertOk()->assertDontSee('Department Secretary');
+    }
+
+    public function test_removed_position_migration_preserves_identity_and_records_without_promoting_management_access(): void
+    {
+        $home = $this->units[0]; $other = $this->units[1];
+        $person = $this->account(3, ['departmentId' => $home->getKey(), 'archiveResponsibility' => 'department_secretary',
+            'archiveUnitIds' => [$other->getKey()], 'fullName' => '[MOCK] Department Secretary']);
+        $person->forceFill(['mockSeedKey' => 'legacy-secretary'])->save();
+        $personId = (string) $person->getKey();
+        $before = $person->getRawOriginal();
+        $dean = $this->account(3, ['archiveResponsibility' => 'college_secretary', 'archiveCollegeIds' => [$this->college->getKey()]]);
+        $deanBefore = $this->snapshot($dean);
+        $db = DB::connection('mongodb')->getMongoDB();
+        $documentId = $db->archive_documents->insertOne(['uploadedByUserId' => $person->getKey(),
+            'departmentId' => $home->getKey(), 'title' => '[MOCK] IT syllabus uploaded by Department Secretary',
+            'mockSeedKey' => 'legacy-syllabus', 'encryptedPath' => 'preserve.enc'])->getInsertedId();
+        $audit = Audit::create(['auditeeId' => $person->getKey(), 'departmentId' => $home->getKey(), 'status' => 'ready']);
+        $auditBefore = $audit->fresh()->getRawOriginal();
+        $migration = require database_path('migrations/2026_11_16_000000_remove_department_secretary_position.php');
+        $migration->up(); $migration->up();
+        $person->refresh();
+        $this->assertSame($personId, (string) $person->getKey());
+        foreach (['password', 'roleId', 'departmentId', 'email', 'isActive'] as $field) {
+            $this->assertEquals($before[$field], $person->getRawOriginal($field));
+        }
+        $this->assertSame('faculty_staff', $person->archiveResponsibility);
+        $this->assertSame([], $person->archiveUnitIds);
+        $this->assertSame('[MOCK] Faculty Staff', $person->fullName);
+        $this->assertSame($deanBefore, $this->snapshot($dean->fresh()));
+        $this->assertEquals($auditBefore, $audit->fresh()->getRawOriginal());
+        $document = $db->archive_documents->findOne(['_id' => $documentId]);
+        $this->assertEquals($person->getKey(), $document['uploadedByUserId']);
+        $this->assertSame('preserve.enc', $document['encryptedPath']);
+        $this->assertSame('[MOCK] IT syllabus', $document['title']);
+        $permissions = app(\App\Services\QmsFolderAccess::class)->permissions($person, $home);
+        $this->assertTrue($permissions['view']);
+        $this->assertFalse($permissions['upload']);
+        $this->assertFalse($permissions['manage']);
+        $this->assertFalse(app(\App\Services\QmsFolderAccess::class)->permissions($person, $other)['view']);
     }
 
     public function test_counts_filters_search_and_pagination_use_database_records_without_read_side_effects(): void
@@ -244,7 +510,8 @@ class UserManagementMongoTest extends TestCase
             ->assertJsonPath('data.scope.assignedAudits.0.reference', 'ASSIGNED-ONLY')->assertJsonMissingPath('data.password');
         $this->assertIsString($response->json('data.lastLoginAt'));
         $this->actingAs($user)->get('/audits')->assertOk()->assertSee('ASSIGNED-ONLY')->assertDontSee('UNASSIGNED-SECRET');
-        $this->actingAs($this->super)->patchJson('/api/v1/users/'.$user->getKey(), ['archiveResponsibility' => 'college_dean', 'archiveCollegeIds' => [(string) $this->college->getKey()]])->assertUnprocessable();
+        $this->actingAs($this->super)->patchJson('/api/v1/users/'.$user->getKey(), ['archiveResponsibility' => 'college_dean', 'archiveCollegeIds' => [(string) $this->college->getKey()]])->assertOk();
+        $this->actingAs($user->fresh())->get('/audits')->assertOk()->assertSee('ASSIGNED-ONLY')->assertDontSee('UNASSIGNED-SECRET');
     }
 
     public function test_reset_link_uses_existing_flow_and_does_not_change_password_until_used(): void

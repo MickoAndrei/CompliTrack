@@ -15,8 +15,13 @@ class ComplianceCheck extends Model
     protected $fillable = [
         'checkCode', 'departmentId', 'auditorId', 'auditeeId',
         'referenceStandard', 'result', 'remarks', 'correctiveStatus',
-        'statusHistory', 'linkedArchiveIds', 'dueDate', 'closedAt',
+        'statusHistory', 'linkedArchiveIds', 'dueDate', 'closedAt', 'carLog',
     ];
+
+    public function getCorrectiveStatusAttribute($value)
+    {
+        return \App\Support\CarStatus::canonical($value);
+    }
 
     protected $casts = [
         'departmentId' => NullableObjectId::class,

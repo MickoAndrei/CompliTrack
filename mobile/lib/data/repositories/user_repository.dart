@@ -24,12 +24,23 @@ class UserRepository {
     return ApiResponse.list(response.data).map(UserModel.fromJson).toList();
   }
 
+  Future<Map<String, dynamic>> getOptions() async {
+    final response = await _dio.get('/api/v1/users/options');
+    return response.data['options'] as Map<String, dynamic>;
+  }
+
   Future<UserModel> createUser({
     required String fullName,
     required String email,
     required int roleId,
-    required String departmentId,
+    String? departmentId,
     String? officeName,
+    bool? isActive,
+    List<String>? assignedDepartmentIds,
+    String? archiveResponsibility,
+    List<String>? archiveUnitIds,
+    List<String>? archiveCollegeIds,
+    String? archiveCluster,
   }) async {
     final response = await _dio.post(
       '/api/v1/users',
@@ -37,9 +48,18 @@ class UserRepository {
         'fullName': fullName,
         'email': email,
         'roleId': roleId,
-        'departmentId': departmentId,
+        if (departmentId != null) 'departmentId': departmentId,
         if (officeName != null && officeName.isNotEmpty)
           'officeName': officeName,
+        if (isActive != null) 'isActive': isActive,
+        if (assignedDepartmentIds != null)
+          'assignedDepartmentIds': assignedDepartmentIds,
+        if (archiveResponsibility != null && archiveResponsibility.isNotEmpty)
+          'archiveResponsibility': archiveResponsibility,
+        if (archiveUnitIds != null) 'archiveUnitIds': archiveUnitIds,
+        if (archiveCollegeIds != null) 'archiveCollegeIds': archiveCollegeIds,
+        if (archiveCluster != null && archiveCluster.isNotEmpty)
+          'archiveCluster': archiveCluster,
       },
     );
     return UserModel.fromJson(ApiResponse.object(response.data));
@@ -53,6 +73,11 @@ class UserRepository {
     String? departmentId,
     String? officeName,
     bool? isActive,
+    List<String>? assignedDepartmentIds,
+    String? archiveResponsibility,
+    List<String>? archiveUnitIds,
+    List<String>? archiveCollegeIds,
+    String? archiveCluster,
   }) async {
     final response = await _dio.patch(
       '/api/v1/users/$userId',
@@ -63,6 +88,13 @@ class UserRepository {
         if (departmentId != null) 'departmentId': departmentId,
         if (officeName != null) 'officeName': officeName,
         if (isActive != null) 'isActive': isActive,
+        if (assignedDepartmentIds != null)
+          'assignedDepartmentIds': assignedDepartmentIds,
+        if (archiveResponsibility != null)
+          'archiveResponsibility': archiveResponsibility,
+        if (archiveUnitIds != null) 'archiveUnitIds': archiveUnitIds,
+        if (archiveCollegeIds != null) 'archiveCollegeIds': archiveCollegeIds,
+        if (archiveCluster != null) 'archiveCluster': archiveCluster,
       },
     );
     return UserModel.fromJson(ApiResponse.object(response.data));

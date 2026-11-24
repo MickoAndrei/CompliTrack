@@ -1,16 +1,9 @@
+import { portalDate } from './portal-date';
+import { databaseSwitchControl } from './database-switch-control';
 document.addEventListener('alpine:init', () => {
     Alpine.data('systemSettings', () => ({
-        state: {}, loading: true, busy: false, message: '', error: '',
+        ...databaseSwitchControl(),
         action: '', password: '', confirmation: '',
-        async init() { await this.refresh(); },
-        async refresh() {
-            try {
-                const { data } = await window.axios.get('/api/v1/settings');
-                this.state = data;
-            } catch (error) {
-                this.error = error.response?.data?.message || 'Unable to load settings. Reload to try again.';
-            } finally { this.loading = false; }
-        },
         async request(method, endpoint, payload, success) {
             if (this.busy) return false;
             this.busy = true;
@@ -53,6 +46,6 @@ document.addEventListener('alpine:init', () => {
             this.password = '';
             if (ok) this.closeConfirmation();
         },
-        formattedDate(value) { return value ? new Date(value).toLocaleString() : 'Not yet'; },
+        formattedDate(value) { return value ? portalDate(value, {precise:true}) : 'Not yet'; },
     }));
 });

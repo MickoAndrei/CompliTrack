@@ -43,15 +43,19 @@ reactivate endpoints are reused.
 the existing archive responsibility editor. Validation completes before saving
 account edits, so an invalid scope does not partially save account information.
 
-- Department Heads and Department Secretaries require exactly one active,
+- Department Heads require exactly one active,
   verified academic department matching the authorized CET code/name mapping.
 - College Dean and College Secretary responsibilities require exactly one active
   CET college and no organizational unit IDs. New college-level accounts do not
   need a home department; a retained home office must belong to that college.
 - Faculty/staff can belong to a verified office without becoming college officers.
-- Auditor organizational responsibilities are rejected. Existing audit and archive
-  access services continue to require explicit audit assignment and evidence
-  sharing; department membership does not grant unassigned audit access.
+- Auditor positions and organizational responsibilities remain independent of
+  audit assignments, as specified in `QMS_AUTOMATIC_ACCESS_REDESIGN.md`.
+  A Department Head retains the explicitly configured chair department's QMS
+  scope; other assigned departments grant only authorized audit evidence access.
+  Audit eligibility still requires explicit assignment: chair scope does not
+  authorize unassigned audits or unshared assignment evidence. College and
+  cluster positions continue to use their configured scope rules.
 - Admins cannot escalate primary roles or assign organizational responsibilities.
 - Self-deactivation is rejected. The existing stronger policy protects **all**
   Super Admin accounts from deactivation/demotion, protecting the last active

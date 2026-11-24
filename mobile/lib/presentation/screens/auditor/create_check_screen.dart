@@ -50,7 +50,7 @@ class _CreateCheckScreenState extends State<CreateCheckScreen> {
         List<ArchiveDocumentModel> archives
       })> _loadOptions() async {
     final departments =
-        await _departmentRepository.getDepartments(campus: 'CET Claveria');
+        await _departmentRepository.getDepartments();
     final auditees = await _userRepository.getUsers(roleId: 3, perPage: 100);
     final archives = await _archiveRepository.getArchiveDocuments();
     return (

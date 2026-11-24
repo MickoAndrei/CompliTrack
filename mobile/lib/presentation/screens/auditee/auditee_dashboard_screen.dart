@@ -410,19 +410,16 @@ class _QuickUploadCard extends StatelessWidget {
             const SizedBox(height: 11),
             SizedBox(
               width: double.infinity,
-              height: 36,
+              height: 48,
               child: ElevatedButton(
                 onPressed: onTap,
-                child: const FittedBox(
-                  fit: BoxFit.scaleDown,
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.cloud_upload_outlined, size: 16),
-                      SizedBox(width: 7),
-                      Text('Quick Upload', maxLines: 1, softWrap: false),
-                    ],
-                  ),
+                child: const Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.cloud_upload_outlined, size: 22),
+                    SizedBox(width: 8),
+                    Text('Quick Upload', maxLines: 1, softWrap: false),
+                  ],
                 ),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.ustpGold,
@@ -430,7 +427,7 @@ class _QuickUploadCard extends StatelessWidget {
                   elevation: 0,
                   textStyle: const TextStyle(
                     fontFamily: 'Inter',
-                    fontSize: 11,
+                    fontSize: 14,
                     fontWeight: FontWeight.w700,
                   ),
                   shape: RoundedRectangleBorder(

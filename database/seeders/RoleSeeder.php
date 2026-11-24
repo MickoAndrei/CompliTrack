@@ -18,7 +18,8 @@ class RoleSeeder extends Seeder
         ];
 
         foreach ($roles as $role) {
-            Role::updateOrCreate(['roleId' => $role['roleId']], $role);
+            // Permission settings are explicit administrator choices; reseeding must not revoke or grant them.
+            Role::firstOrCreate(['roleId' => $role['roleId']], $role);
         }
     }
 }

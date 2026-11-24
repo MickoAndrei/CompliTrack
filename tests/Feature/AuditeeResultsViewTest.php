@@ -18,7 +18,7 @@ class AuditeeResultsViewTest extends TestCase
         $archive->setAttribute('_id', new \MongoDB\BSON\ObjectId());
         $this->view('auditee.result-detail-content', ['check' => $check, 'archives' => collect([$archive])])
             ->assertSee('data-evidence-preview', false)->assertSee('Preview')->assertSee('Download')
-            ->assertSee('/api/v1/archives/'.$archive->getKey().'/download')->assertDontSee('<script>document</script>', false);
+            ->assertSee('/api/v1/documents/'.$archive->getKey().'/download')->assertDontSee('<script>document</script>', false);
         $this->view('auditee.result-modal')->assertSee('id="audit-result-modal"', false)
             ->assertSee('id="evidence-preview-modal"', false)->assertSee('Back to audit result');
     }

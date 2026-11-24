@@ -3,6 +3,29 @@
 use Illuminate\Support\Str;
 use Pdo\Mysql;
 
+$activeMongoEnvironment = env('MONGODB_ACTIVE_ENVIRONMENT');
+if ($activeMongoEnvironment !== null && $activeMongoEnvironment !== ''
+    && ! in_array($activeMongoEnvironment, ['local', 'remote'], true)) {
+    throw new InvalidArgumentException('MONGODB_ACTIVE_ENVIRONMENT must be local or remote when set.');
+}
+
+$activeMongoTarget = match ($activeMongoEnvironment) {
+    'local' => [
+        'dsn' => env('MONGODB_LOCAL_URI'),
+        'database' => env('MONGODB_LOCAL_DATABASE'),
+    ],
+    'remote' => [
+        'dsn' => env('MONGODB_REMOTE_URI'),
+        'database' => env('MONGODB_REMOTE_DATABASE'),
+    ],
+    default => null,
+};
+if ($activeMongoTarget !== null
+    && (! is_string($activeMongoTarget['dsn']) || trim($activeMongoTarget['dsn']) === ''
+        || ! is_string($activeMongoTarget['database']) || trim($activeMongoTarget['database']) === '')) {
+    throw new InvalidArgumentException('The selected MongoDB target is not fully configured.');
+}
+
 return [
 
     /*
@@ -46,8 +69,8 @@ return [
 
         'mongodb' => [
             'driver' => 'mongodb',
-            'dsn' => env('MONGODB_URI', 'mongodb://127.0.0.1:27017/?directConnection=true'),
-            'database' => env('MONGODB_DATABASE', 'complitrack'),
+            'dsn' => $activeMongoTarget['dsn'] ?? env('MONGODB_URI', 'mongodb://127.0.0.1:27017/?directConnection=true'),
+            'database' => $activeMongoTarget['database'] ?? env('MONGODB_DATABASE', 'complitrack'),
         ],
 
         'mysql' => [
@@ -120,6 +143,17 @@ return [
             // 'trust_server_certificate' => env('DB_TRUST_SERVER_CERTIFICATE', 'false'),
         ],
 
+    ],
+
+    'mongodb_targets' => [
+        'local' => [
+            'dsn' => env('MONGODB_LOCAL_URI'),
+            'database' => env('MONGODB_LOCAL_DATABASE'),
+        ],
+        'remote' => [
+            'dsn' => env('MONGODB_REMOTE_URI'),
+            'database' => env('MONGODB_REMOTE_DATABASE'),
+        ],
     ],
 
     /*

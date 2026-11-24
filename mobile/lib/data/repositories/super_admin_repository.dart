@@ -9,7 +9,18 @@ class SuperAdminRepository {
   SuperAdminRepository({Dio? dio}) : _dio = dio ?? ApiClient().dio;
 
   Future<SuperAdminDashboardModel> getDashboardMetrics() async {
-    final response = await _dio.get('/api/v1/reports');
-    return SuperAdminDashboardModel.fromJson(ApiResponse.object(response.data));
+    final responses = await Future.wait([
+      _dio.get('/api/v1/reports'),
+      _dio.get('/api/v1/system/dashboard'),
+    ]);
+    final report = ApiResponse.object(responses[0].data);
+    final dashboard = ApiResponse.object(responses[1].data);
+    if (dashboard['departmentCompliance'] is! List) {
+      throw const FormatException('Missing department compliance data.');
+    }
+    return SuperAdminDashboardModel.fromJson({
+      ...report,
+      'departmentCompliance': dashboard['departmentCompliance'],
+    });
   }
 }

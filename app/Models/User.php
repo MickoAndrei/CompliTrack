@@ -29,6 +29,21 @@ class User extends Authenticatable implements JWTSubject
     protected $connection = 'mongodb';
     protected $collection = 'users';
 
+    public function avatarUrl(): ?string
+    {
+        if (! $this->avatarVersion && ! $this->avatarPath) {
+            return null;
+        }
+
+        $tab = request()->attributes->get('complitrack.tab');
+
+        return url('/api/v1/auth/avatar').'?'.http_build_query([
+            'user' => (string) $this->getKey(),
+            'version' => $this->avatarVersion ?: hash('sha256', $this->avatarPath),
+            ...($tab ? ['_tab' => $tab] : []),
+        ]);
+    }
+
     /**
      * The attributes that are mass assignable.
      *
@@ -46,7 +61,7 @@ class User extends Authenticatable implements JWTSubject
         'roleSlug',
         'assignedDepartmentIds',
         'isActive',
-        'archiveResponsibility', 'archiveUnitIds', 'archiveCollegeIds',
+        'archiveResponsibility', 'archiveUnitIds', 'archiveCollegeIds', 'archiveCluster',
     ];
 
     /**
@@ -57,6 +72,7 @@ class User extends Authenticatable implements JWTSubject
     protected $hidden = [
         'password',
         'remember_token',
+        'avatarData',
     ];
 
     /**

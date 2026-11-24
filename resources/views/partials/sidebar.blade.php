@@ -6,44 +6,48 @@
             ['Users', '/super-admin/users', 'users'],
             ['Roles', '/super-admin/roles', 'shield-check'],
             ['Departments', '/super-admin/departments', 'building-2'],
-            ['Archive Repository', '/super-admin/archives', 'archive'],
-            ['Logs', '/super-admin/logs', 'scroll-text'],
+            ['Documents', '/super-admin/documents', 'archive'],
+            ['Notifications', '/super-admin/notifications', 'bell'],
+            ['System Activity Logs', '/super-admin/logs', 'scroll-text'],
             ['Settings', '/super-admin/settings', 'settings-2'],
+            ['Help & Standards', '/super-admin/help', 'circle-help'],
         ],
         1 => [
             ['Dashboard', '/admin/dashboard', 'layout-dashboard'],
             ['Audit Assignments', '/audits', 'clipboard-list'],
             ['Audit Reviews', '/audits?view=reviews', 'clipboard-check'],
             ['Corrective Monitoring', '/admin/compliance-records?monitor=1', 'triangle-alert'],
-            ['Compliance Records', '/admin/compliance-records', 'list-checks'],
             ['Departments', '/admin/departments', 'building-2'],
             ['Users', '/admin/users', 'users'],
-            ['Archives', '/admin/archives', 'archive'],
+            ['Documents', '/admin/documents', 'archive'],
             ['Reports', '/admin/reports', 'chart-no-axes-combined'],
             ['Notifications', '/admin/notifications', 'bell'],
+            ['Help & Standards', '/admin/help', 'circle-help'],
         ],
         2 => [
             ['Dashboard', '/auditor/dashboard', 'layout-dashboard'],
             ['My Assigned Audits', '/audits', 'clipboard-list'],
-            ['Compliance Checks', '/auditor/checks', 'clipboard-check'],
-            ['Archive Review', '/auditor/archives', 'archive'],
+            ['Documents', '/auditor/documents', 'archive'],
             ['Corrective Actions', '/auditor/corrective-actions', 'kanban'],
             ['Notifications', '/auditor/notifications', 'bell'],
+            ['Help & Standards', '/auditor/help', 'circle-help'],
         ],
         3 => [
             ['Dashboard', '/auditee/dashboard', 'layout-dashboard'],
             ['My Audit Results', '/auditee/my-findings', 'clipboard-list'],
             ['Evidence Requests', '/auditee/evidence-requests', 'clipboard-check'],
-            ['Provide Evidence', '/auditee/upload', 'upload-cloud'],
-            ['Archives', '/auditee/archives', 'archive'],
+            ['Documents', '/auditee/documents', 'archive'],
             ['Notifications', '/auditee/notifications', 'bell'],
             ['Help & Standards', '/auditee/help', 'circle-help'],
             ['Profile', $profilePath, 'circle-user-round'],
         ],
     ];
+    if ($roleId === 1 || app(\App\Services\AuditPlanPermissions::class)->allows(auth()->user(), false)) {
+        array_splice($menus[$roleId], 1, 0, [['Audit Plans', '/audit-plans', 'clipboard-list']]);
+    }
     $roleNames = ['Super Admin', 'Admin', 'Auditor', 'Auditee'];
     $homePaths = [0 => '/super-admin/dashboard', 1 => '/admin/dashboard', 2 => '/auditor/dashboard', 3 => '/auditee/dashboard'];
-    $userAvatarUrl = auth()->user()->avatarPath ? url('/api/v1/auth/avatar') : null;
+    $userAvatarUrl = auth()->user()->avatarUrl();
     $userInitials = collect(explode(' ', auth()->user()->fullName ?? 'U'))->filter()->take(2)->map(fn ($part) => mb_substr($part, 0, 1))->implode('');
 @endphp
 <aside x-cloak :class="{ 'open': sidebarOpen }"
@@ -67,7 +71,7 @@
                     @endforeach
             @else
             @foreach ($menus[$roleId] ?? [] as [$label, $href, $icon])
-                @php($active = request()->is(ltrim($href, '/'), ltrim($href, '/').'/*'))
+                @php($active = request()->is(ltrim($href, '/'), ltrim($href, '/').'/*') || ($roleId === 2 && $href === '/audits' && request()->is('auditor/historical-records', 'auditor/checks', 'auditor/checks/*')))
                 <a href="{{ $href }}" @if ($active) aria-current="page" @endif
                    class="nav-link-item {{ $active ? 'active' : '' }}">
                     <i data-lucide="{{ $icon }}" class="nav-icon size-5 shrink-0"></i>

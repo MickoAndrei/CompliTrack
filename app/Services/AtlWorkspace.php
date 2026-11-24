@@ -15,7 +15,7 @@ class AtlWorkspace
     {
         abort_unless($actor->isActive && in_array((int) $actor->roleId, [1, 2], true), 403);
         $ids = (int) $actor->roleId === 2 ? $this->scopes->assignedDepartmentIds($actor)
-            : $this->scopes->departments($actor)->get(['_id'])->map(fn ($d) => MongoId::parse((string) $d->getKey()))->all();
+            : \App\Models\Department::where('collegeName', 'CET')->where('unitType', '!=', 'legacy_unclassified')->get(['_id'])->map(fn ($d) => MongoId::parse((string) $d->getKey()))->all();
         return Audit::whereIn((int) $actor->roleId === 2 ? 'auditorId' : 'reviewerId', [MongoId::parse((string) $actor->getKey()), (string) $actor->getKey()])
             ->whereIn('departmentId', array_merge($ids, array_map('strval', $ids)));
     }
@@ -24,16 +24,16 @@ class AtlWorkspace
     {
         $this->authorize($actor);
         return $this->scopes->checks($actor)->where('result', 'non_compliant')
-            ->whereIn('correctiveStatus', ['open', 'in_progress', 'closed']);
+            ->whereIn('correctiveStatus', \App\Support\CarStatus::storedValues(['open', 'in_progress', 'awaiting_verification', 'returned_for_revision', 'closed']));
     }
 
-    public function dashboard(User $actor, int $page = 1): array
+    public function dashboard(User $actor, int $page = 1, int $perPage = 5): array
     {
         $this->authorize($actor);
         $query = $this->audits($actor);
         $audits = (clone $query)->get(['auditCode', 'title', 'departmentId', 'departmentName', 'auditorId', 'schedule', 'status', 'items', 'updatedAt']);
         $departments = $this->scopes->departments($actor)->where('unitType', 'academic_department')->where('ownershipVerified', true)
-            ->whereIn('departmentCode', array_keys(config('qms.departments')))->orderBy('departmentName')->get();
+            ->orderBy('departmentName')->get();
         $names = $this->scopes->departments($actor)->get(['departmentName'])->mapWithKeys(fn ($d) => [(string) $d->getKey() => $d->departmentName]);
         $people = User::whereIn('_id', $this->archives->ids($audits->pluck('auditorId')->all()))->get(['fullName'])
             ->mapWithKeys(fn ($u) => [(string) $u->getKey() => $u->fullName]);
@@ -44,7 +44,7 @@ class AtlWorkspace
             'schedule' => $audit->schedule, 'progress' => AuditChecklist::progress($audit->items ?? []),
         ])->values();
         $cars = $this->cars($actor)->get(['checkCode', 'departmentId', 'correctiveStatus', 'dueDate']);
-        $openCars = $cars->whereIn('correctiveStatus', ['open', 'in_progress']);
+        $openCars = $cars->whereIn('correctiveStatus', ['open', 'in_progress', 'awaiting_verification', 'returned_for_revision']);
         $overdue = $openCars->filter(fn ($car) => $this->isOverdue($car));
         $attention = $assignments->whereIn('status', ['submitted', 'returned'])->sortBy(fn ($a) => $a['status'] === 'submitted' ? 0 : 1)
             ->take(10)->map(fn ($audit) => ['kind' => 'audit', 'id' => $audit['id'], 'reference' => $audit['reference'],
@@ -64,18 +64,22 @@ class AtlWorkspace
             return ['id' => (string) $department->getKey(), 'name' => $department->departmentName, 'counts' => $counts,
                 'completedAudits' => $completed->count(), 'percentage' => $applicable ? round(100 * $counts['C'] / $applicable, 1) : null];
         })->values();
+        $perPage = in_array($perPage, [5, 10, 20, 50, 100], true) ? $perPage : 5;
+        $pages = max(1, (int) ceil($assignments->count() / $perPage));
+        $page = max(1, min($page, $pages));
         return ['stats' => ['activeAudits' => $audits->whereIn('status', ['draft', 'ready', 'submitted', 'returned'])->count(),
             'pendingReviews' => $audits->where('status', 'submitted')->count(), 'openCars' => $openCars->count(), 'overdueCars' => $overdue->count()],
             'people' => ['auditors' => $this->scopes->users($actor)->where('roleId', 2)->where('isActive', true)->count(),
                 'auditees' => $this->scopes->users($actor)->where('roleId', 3)->where('isActive', true)->count()],
-            'attention' => $attention, 'assignments' => $assignments->slice(($page - 1) * 20, 20)->values(),
-            'assignmentPages' => max(1, (int) ceil($assignments->count() / 20)), 'departmentCompliance' => $comparison,
+            'attention' => $attention, 'assignments' => $assignments->slice(($page - 1) * $perPage, $perPage)->values(),
+            'assignmentPages' => $pages, 'assignmentPage' => $page, 'assignmentTotal' => $assignments->count(),
+            'assignmentPerPage' => $perPage, 'departmentCompliance' => $comparison,
             'generatedAt' => now()->toIso8601String()];
     }
 
     public function isOverdue(ComplianceCheck $car): bool
     {
-        return in_array($car->correctiveStatus, ['open', 'in_progress'], true) && $car->dueDate
+        return in_array($car->correctiveStatus, ['open', 'in_progress', 'awaiting_verification', 'returned_for_revision'], true) && $car->dueDate
             && $car->dueDate->copy()->timezone(config('system.timezone', config('app.timezone')))->endOfDay()->isPast();
     }
 
@@ -100,11 +104,7 @@ class AtlWorkspace
 
     public static function date(mixed $value): string
     {
-        if (!$value) { return 'Not recorded'; }
-        try {
-            if ($value instanceof \MongoDB\BSON\UTCDateTime) { $value = $value->toDateTime(); }
-            return Carbon::parse($value)->timezone(config('system.timezone', config('app.timezone')))->format('M j, Y g:i A');
-        } catch (\Throwable) { return 'Not recorded'; }
+        return \App\Support\PortalDate::format($value);
     }
 
     private function authorize(User $actor): void

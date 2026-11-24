@@ -12,6 +12,7 @@ class AdminPortalViewTest extends TestCase
     {
         parent::setUp();
         $this->withoutVite();
+        $this->mock(\App\Services\AuditLogService::class)->shouldReceive('record')->andReturnNull();
         $user = new User(['fullName' => 'Admin Test', 'roleId' => 1, 'isActive' => true]);
         $user->setAttribute('_id', new ObjectId());
         $this->actingAs($user);
@@ -20,7 +21,7 @@ class AdminPortalViewTest extends TestCase
     public function test_admin_dashboard_has_summary_cards_without_quick_actions(): void
     {
         $this->get('/admin/dashboard')->assertOk()
-            ->assertSee('admin-dashboard')->assertSee('admin-stat-heading')
+            ->assertSee('admin-dashboard')->assertSee('admin-stat-info')
             ->assertSee('admin-stat-number')->assertSee('css/admin-ui.css')
             ->assertSee('Audit Team Leader Dashboard')->assertSee('Active Audits')->assertSee('Pending Audit Reviews')
             ->assertSee('Overdue Corrective Actions')->assertSee('Requires My Attention')
@@ -52,10 +53,14 @@ class AdminPortalViewTest extends TestCase
     public function test_other_admin_sections_have_scoped_styling_and_readable_notifications(): void
     {
         foreach (['users', 'departments', 'compliance-records', 'notifications'] as $page) {
+            if ($page === 'notifications') {
+                $this->get('/admin/notifications')->assertOk()->assertSee('notification-inbox')->assertSee('Mark all read');
+                continue;
+            }
             $response = $this->get('/admin/'.$page)->assertOk()->assertSee('admin-resource-page');
-            if ($page === 'users') {
+            if (in_array($page, ['users', 'departments'], true)) {
                 $response->assertDontSee('admin-resource-heading')
-                    ->assertSeeInOrder(['<h2>User Management</h2>', 'View auditors and auditees assigned to CET departments.', '<main'], false);
+                    ->assertSee('attention-page directory-page');
             } else {
                 $response->assertSee('admin-resource-heading');
             }
@@ -63,15 +68,15 @@ class AdminPortalViewTest extends TestCase
         foreach (['users', 'departments'] as $page) {
             $this->get('/admin/'.$page)->assertOk()->assertSee('admin-directory-table')
                 ->assertSee('css/user-management.css')->assertSee('Active')
-                ->assertSee('admin-directory-loading')->assertSee('perPage: 10', false)
+                ->assertSee('admin-directory-loading')->assertSee('perPage: '.($page === 'departments' ? 5 : 10), false)
                 ->assertDontSee('userModalTitle')->assertDontSee('departmentModalTitle')
                 ->assertDontSee('@click="startUserEdit(row)"', false)->assertDontSee('@click="startDepartmentEdit(row)"', false)
                 ->assertDontSee('user-create-trigger')->assertDontSee('department-create-trigger');
         }
-        $this->get('/admin/notifications')->assertOk()->assertSee('admin-notification-card')
-            ->assertSee('Unread only')->assertSee("row.isRead ? 'Read' : 'Unread'", false);
-        $this->get('/admin/reports')->assertOk()->assertSee('admin-reports')->assertSee('Recorded Check Compliance');
-        $this->get('/admin/archives')->assertOk()->assertSee('qms-explorer')->assertSee('QMS Archives');
+        $this->get('/admin/notifications')->assertOk()->assertSee('notification-list')
+            ->assertSee('Unread')->assertSee('Read')->assertSee('View details');
+        $this->get('/admin/reports')->assertOk()->assertSee('admin-reports')->assertSee('Annual IQA report')->assertSee('Export CSV');
+        $this->get('/admin/documents')->assertOk()->assertSee('qms-explorer')->assertSee('QMS Documents');
     }
 
     public function test_admin_cannot_write_users_or_departments_through_the_api(): void

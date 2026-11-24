@@ -1,7 +1,7 @@
 @extends('layouts.app')
 @section('title', 'User Management')
 @section('heading', 'User Management')
-@section('subtitle', 'Manage accounts and keep organizational responsibilities separate from access roles.')
+@section('subtitle', 'Manage accounts and keep positions separate from access roles.')
 @push('styles')
 <link rel="stylesheet" href="{{ asset('css/super-admin-dashboard.css') }}?v={{ filemtime(public_path('css/super-admin-dashboard.css')) }}">
 <link rel="stylesheet" href="{{ asset('css/user-management.css') }}?v={{ filemtime(public_path('css/user-management.css')) }}">

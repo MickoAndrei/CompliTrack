@@ -28,17 +28,44 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
   UserModel? _editingUser;
   bool _isCreatingUser = false;
   List<DepartmentModel> _editDepartments = [];
+  Map<String, dynamic>? _userOptions;
+  String? _loadingFormUserId;
+  bool _isLoadingCreateForm = false;
+  bool _isPreloadingMetadata = false;
 
   @override
   void initState() {
     super.initState();
     _loadUsers();
+    _preloadFormData();
   }
 
   @override
   void dispose() {
     _searchController.dispose();
     super.dispose();
+  }
+
+  Future<void> _preloadFormData() async {
+    if (_editDepartments.isNotEmpty && _userOptions != null) return;
+    if (_isPreloadingMetadata) return;
+    _isPreloadingMetadata = true;
+    try {
+      final results = await Future.wait([
+        DepartmentRepository().getDepartments(campus: 'Claveria'),
+        _userRepository.getOptions(),
+      ]);
+      if (mounted) {
+        setState(() {
+          _editDepartments = results[0] as List<DepartmentModel>;
+          _userOptions = results[1] as Map<String, dynamic>;
+        });
+      }
+    } catch (_) {
+      // Non-critical background failure; fallback fetch happens when editing
+    } finally {
+      _isPreloadingMetadata = false;
+    }
   }
 
   Future<void> _loadUsers() async {
@@ -70,41 +97,73 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
   }
 
   Future<void> _showEditUser(UserModel user) async {
-    try {
-      final departments =
-          await DepartmentRepository().getDepartments(campus: 'Claveria');
-      if (!mounted) return;
+    if (_editDepartments.isNotEmpty && _userOptions != null) {
       setState(() {
         _editingUser = user;
         _isCreatingUser = false;
-        _editDepartments = departments;
+      });
+      return;
+    }
+
+    setState(() => _loadingFormUserId = user.id);
+    try {
+      final results = await Future.wait([
+        DepartmentRepository().getDepartments(campus: 'Claveria'),
+        _userRepository.getOptions().then<Map<String, dynamic>?>(
+          (opt) => opt,
+          onError: (_) => null,
+        ),
+      ]);
+      if (!mounted) return;
+      setState(() {
+        _editDepartments = results[0] as List<DepartmentModel>;
+        _userOptions = results[1] as Map<String, dynamic>?;
+        _editingUser = user;
+        _isCreatingUser = false;
+        _loadingFormUserId = null;
       });
     } catch (_) {
       if (!mounted) return;
       setState(() {
         _editingUser = user;
         _isCreatingUser = false;
-        _editDepartments = [];
+        _loadingFormUserId = null;
       });
     }
   }
 
   Future<void> _showCreateUserForm() async {
-    try {
-      final departments =
-          await DepartmentRepository().getDepartments(campus: 'Claveria');
-      if (!mounted) return;
+    if (_editDepartments.isNotEmpty && _userOptions != null) {
       setState(() {
         _editingUser = null;
         _isCreatingUser = true;
-        _editDepartments = departments;
+      });
+      return;
+    }
+
+    setState(() => _isLoadingCreateForm = true);
+    try {
+      final results = await Future.wait([
+        DepartmentRepository().getDepartments(campus: 'Claveria'),
+        _userRepository.getOptions().then<Map<String, dynamic>?>(
+          (opt) => opt,
+          onError: (_) => null,
+        ),
+      ]);
+      if (!mounted) return;
+      setState(() {
+        _editDepartments = results[0] as List<DepartmentModel>;
+        _userOptions = results[1] as Map<String, dynamic>?;
+        _editingUser = null;
+        _isCreatingUser = true;
+        _isLoadingCreateForm = false;
       });
     } catch (_) {
       if (!mounted) return;
       setState(() {
         _editingUser = null;
         _isCreatingUser = true;
-        _editDepartments = [];
+        _isLoadingCreateForm = false;
       });
     }
   }
@@ -233,12 +292,14 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                         child: TextField(
                           controller: _searchController,
                           onChanged: (_) => _loadUsers(),
+                          textAlignVertical: TextAlignVertical.center,
                           style: const TextStyle(
                             fontFamily: 'Inter',
                             fontSize: 14,
                             color: Color(0xFF0F172A),
                           ),
                           decoration: const InputDecoration(
+                            isDense: true,
                             hintText: 'Search users...',
                             hintStyle: TextStyle(
                               fontFamily: 'Inter',
@@ -250,8 +311,16 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                               color: Color(0xFF94A3B8),
                               size: 20,
                             ),
+                            prefixIconConstraints: BoxConstraints.tightFor(
+                              width: 44,
+                              height: 42,
+                            ),
                             border: InputBorder.none,
-                            contentPadding: EdgeInsets.symmetric(vertical: 10),
+                            enabledBorder: InputBorder.none,
+                            focusedBorder: InputBorder.none,
+                            disabledBorder: InputBorder.none,
+                            filled: false,
+                            contentPadding: EdgeInsets.only(right: 12),
                           ),
                         ),
                       ),
@@ -366,22 +435,32 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                             color: const Color(0xFFFBBF24),
                             borderRadius: BorderRadius.circular(10),
                             child: InkWell(
-                              onTap: _showCreateUserForm,
+                              onTap: _isLoadingCreateForm ? null : _showCreateUserForm,
                               borderRadius: BorderRadius.circular(10),
                               child: Container(
                                 height: 42,
                                 padding: const EdgeInsets.symmetric(
                                     horizontal: 14, vertical: 8),
-                                child: const Row(
+                                child: Row(
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
-                                    Icon(
-                                      Icons.person_add_alt_1_rounded,
-                                      size: 18,
-                                      color: Color(0xFF0F172A),
-                                    ),
-                                    SizedBox(width: 6),
-                                    Text(
+                                    if (_isLoadingCreateForm)
+                                      const SizedBox(
+                                        width: 16,
+                                        height: 16,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                          color: Color(0xFF0F172A),
+                                        ),
+                                      )
+                                    else
+                                      const Icon(
+                                        Icons.person_add_alt_1_rounded,
+                                        size: 18,
+                                        color: Color(0xFF0F172A),
+                                      ),
+                                    const SizedBox(width: 6),
+                                    const Text(
                                       'Create User',
                                       style: TextStyle(
                                         fontFamily: 'Inter',
@@ -433,6 +512,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
           : SuperAdminUserEditForm(
               user: _editingUser,
               departments: _editDepartments,
+              options: _userOptions,
               onCancel: () => setState(() {
                 _editingUser = null;
                 _isCreatingUser = false;
@@ -565,16 +645,25 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   GestureDetector(
-                    onTap: () => _showEditUser(user),
-                    child: const Text(
-                      'Edit',
-                      style: TextStyle(
-                        fontFamily: 'Inter',
-                        fontSize: 13,
-                        fontWeight: FontWeight.bold,
-                        color: Color(0xFF2563EB),
-                      ),
-                    ),
+                    onTap: _loadingFormUserId == user.id ? null : () => _showEditUser(user),
+                    child: _loadingFormUserId == user.id
+                        ? const SizedBox(
+                            width: 14,
+                            height: 14,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Color(0xFF2563EB),
+                            ),
+                          )
+                        : const Text(
+                            'Edit',
+                            style: TextStyle(
+                              fontFamily: 'Inter',
+                              fontSize: 13,
+                              fontWeight: FontWeight.bold,
+                              color: Color(0xFF2563EB),
+                            ),
+                          ),
                   ),
                   const Padding(
                     padding: EdgeInsets.symmetric(horizontal: 6),

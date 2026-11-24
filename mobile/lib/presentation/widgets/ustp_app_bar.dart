@@ -41,9 +41,11 @@ class _UstpAppBarState extends State<UstpAppBar> {
       child: SafeArea(
         child: Row(
           children: [
-            const UstpLogo(
+            UstpLogo(
               fontSize: 16,
-              subtitle: 'CLAVERIA CAMPUS / MOBILE',
+              subtitle: widget.title != 'CompliTrack'
+                  ? widget.title
+                  : 'CLAVERIA CAMPUS / MOBILE',
             ),
             const Spacer(),
             UstpNotificationButton(
@@ -74,6 +76,7 @@ class _UstpAppBarState extends State<UstpAppBar> {
                     context.go(route);
                   },
               child: CurrentUserAvatar(
+                key: ValueKey(auth.currentUser?.id),
                 radius: 16,
                 avatarVersion: auth.avatarVersion,
               ),

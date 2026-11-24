@@ -56,6 +56,8 @@ class PasswordResetMailTest extends TestCase
         Mail::extend('phpmailer', fn () => $this->transport($mailer));
         Notification::route('mail', 'recipient@example.test')->notify(new PasswordResetLink('https://example.test/reset-password?token=fixture-reset-token'));
         $this->assertSame(0, $mailer->SMTPDebug);
+        $this->assertSame(5, $mailer->Timeout);
+        $this->assertSame(5, $smtp->Timelimit);
         $this->assertSame('tls', $mailer->SMTPSecure);
         Log::shouldNotHaveReceived('debug');
         Log::shouldNotHaveReceived('info');

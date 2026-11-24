@@ -13,6 +13,14 @@ use App\Http\Middleware\EnsureUserIsActive;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\DB;
 
+// Capability URLs are short-lived; save callbacks additionally require the server JWT.
+Route::get('/system/database-switch/{requestId}', [\App\Http\Controllers\Api\V1\SettingsController::class, 'databaseSwitchProgress'])
+    ->whereUuid('requestId')->name('database-switch.progress')
+    ->middleware(\Illuminate\Routing\Middleware\ValidateSignature::relative(['_tab']));
+
+Route::get('/document-editor/{session}/file', [\App\Http\Controllers\Api\V1\DocumentEditorController::class, 'file'])->middleware('throttle:120,1');
+Route::post('/document-editor/{session}/callback', [\App\Http\Controllers\Api\V1\DocumentEditorController::class, 'callback'])->middleware('throttle:120,1');
+
 Route::prefix('v1')->group(function () {
     Route::get('/version', fn () => response()->json([
         'version' => config('app.version'),
@@ -38,6 +46,10 @@ Route::prefix('v1')->group(function () {
         // Admin/ATL directories are read-only; account and department writes belong to Super Admin.
         Route::middleware('role:1')->get('/admin/workspace', [\App\Http\Controllers\Web\AtlWorkspaceController::class, 'summary']);
         Route::middleware('role:0')->get('/users/options', [UserController::class, 'options']);
+        Route::middleware('role:0')->get('/roles', [\App\Http\Controllers\Api\V1\RolePermissionController::class, 'index']);
+        Route::middleware(['role:0', 'throttle:10,1'])->patch('/roles/{id}/permissions', [\App\Http\Controllers\Api\V1\RolePermissionController::class, 'update']);
+        Route::get('/audit-plans', [\App\Http\Controllers\Api\V1\AuditPlanController::class, 'index']);
+        Route::post('/audit-plans/{id}', [\App\Http\Controllers\Api\V1\AuditPlanController::class, 'update']);
         Route::middleware('role:0,1')->group(function () {
             Route::apiResource('users', UserController::class)->only(['index', 'show'])->parameters(['users' => 'id']);
             Route::apiResource('departments', DepartmentController::class)->only(['index', 'show'])->parameters(['departments' => 'id']);
@@ -49,20 +61,33 @@ Route::prefix('v1')->group(function () {
             Route::apiResource('departments', DepartmentController::class)->only(['store', 'update', 'destroy'])->parameters(['departments' => 'id']);
         });
 
-        // Archive module
-        Route::post('/archives/upload', [ArchiveController::class, 'upload']);
-        Route::get('/archives', [ArchiveController::class, 'index']);
-        Route::get('/archives/tree', [\App\Http\Controllers\Api\V1\QmsArchiveController::class, 'tree']);
-        Route::get('/archives/organization', [\App\Http\Controllers\Api\V1\QmsArchiveController::class, 'organization']);
-        Route::patch('/archives/organization/{id}', [\App\Http\Controllers\Api\V1\QmsArchiveController::class, 'assign']);
-        Route::patch('/archives/categories/{id}', [\App\Http\Controllers\Api\V1\QmsArchiveController::class, 'updateCategory']);
-        Route::get('/archives/{id}', [\App\Http\Controllers\Api\V1\QmsArchiveController::class, 'show']);
-        Route::post('/archives/{id}/versions', [ArchiveController::class, 'version']);
-        Route::patch('/archives/{id}/permissions', [\App\Http\Controllers\Api\V1\QmsArchiveController::class, 'permissions']);
-        Route::post('/archives/{id}/share', [\App\Http\Controllers\Api\V1\QmsArchiveController::class, 'share']);
-        Route::delete('/archives/{id}/share/{auditId}', [\App\Http\Controllers\Api\V1\QmsArchiveController::class, 'revokeShare']);
-        Route::get('/archives/{id}/download', [ArchiveController::class, 'download']);
-        Route::get('/archives/{id}/verify-checksum', [ArchiveController::class, 'verifyChecksum']);
+        // QMS Documents. The /archives namespace is reserved for future development.
+        Route::post('/documents/upload', [ArchiveController::class, 'upload']);
+        Route::get('/documents', [ArchiveController::class, 'index']);
+        Route::get('/documents/tree', [\App\Http\Controllers\Api\V1\QmsArchiveController::class, 'tree']);
+        Route::get('/documents/audit-folders', [\App\Http\Controllers\Api\V1\QmsArchiveController::class, 'auditFolders']);
+        Route::post('/documents/folders', [\App\Http\Controllers\Api\V1\QmsFolderController::class, 'store']);
+        Route::get('/documents/folders/{id}', [\App\Http\Controllers\Api\V1\QmsFolderController::class, 'show']);
+        Route::patch('/documents/folders/{id}/star', [\App\Http\Controllers\Api\V1\QmsFolderController::class, 'star']);
+        Route::patch('/documents/folders/{id}', [\App\Http\Controllers\Api\V1\QmsFolderController::class, 'update']);
+        Route::delete('/documents/folders/{id}', [\App\Http\Controllers\Api\V1\QmsFolderController::class, 'destroy']);
+        Route::patch('/documents/folder-grants/{id}', [\App\Http\Controllers\Api\V1\QmsFolderController::class, 'grants']);
+        Route::get('/documents/organization', [\App\Http\Controllers\Api\V1\QmsArchiveController::class, 'organization']);
+        Route::patch('/documents/organization/{id}', [\App\Http\Controllers\Api\V1\QmsArchiveController::class, 'assign']);
+        Route::patch('/documents/categories/{id}', [\App\Http\Controllers\Api\V1\QmsArchiveController::class, 'updateCategory']);
+        Route::get('/documents/{id}', [\App\Http\Controllers\Api\V1\QmsArchiveController::class, 'show']);
+        Route::patch('/documents/{id}', [\App\Http\Controllers\Api\V1\QmsArchiveController::class, 'updateDocument']);
+        Route::delete('/documents/{id}', [\App\Http\Controllers\Api\V1\QmsArchiveController::class, 'deleteDocument']);
+        Route::patch('/documents/{id}/star', [\App\Http\Controllers\Api\V1\QmsArchiveController::class, 'star']);
+        Route::post('/documents/{id}/versions', [ArchiveController::class, 'version']);
+        Route::post('/documents/{id}/editor', [\App\Http\Controllers\Api\V1\DocumentEditorController::class, 'start']);
+        Route::get('/document-editor/{session}/status', [\App\Http\Controllers\Api\V1\DocumentEditorController::class, 'status']);
+        Route::post('/document-editor/{session}/save', [\App\Http\Controllers\Api\V1\DocumentEditorController::class, 'save'])->middleware('throttle:30,1');
+        Route::patch('/documents/{id}/permissions', [\App\Http\Controllers\Api\V1\QmsArchiveController::class, 'permissions']);
+        Route::post('/documents/{id}/share', [\App\Http\Controllers\Api\V1\QmsArchiveController::class, 'share']);
+        Route::delete('/documents/{id}/share/{auditId}', [\App\Http\Controllers\Api\V1\QmsArchiveController::class, 'revokeShare']);
+        Route::get('/documents/{id}/download', [ArchiveController::class, 'download']);
+        Route::get('/documents/{id}/verify-checksum', [ArchiveController::class, 'verifyChecksum']);
 
         // Compliance checks (Auditor creates, all roles can view per scope)
         Route::middleware('role:2')->get('/auditor/metrics', [\App\Http\Controllers\Web\AuditController::class, 'metrics']);
@@ -75,12 +100,14 @@ Route::prefix('v1')->group(function () {
 
         // Notifications
         Route::get('/notifications', [NotificationController::class, 'index']);
+        Route::get('/notifications/{id}/open', [NotificationController::class, 'open']);
+        Route::get('/notifications/{id}', [NotificationController::class, 'show']);
         Route::patch('/notifications/{id}/read', [NotificationController::class, 'markRead']);
         Route::patch('/notifications/read-all', [NotificationController::class, 'markAllRead']);
 
         // Super Admin only
         Route::middleware('role:0')->group(function () {
-            Route::get('/settings', [\App\Http\Controllers\Api\V1\SettingsController::class, 'show']);
+            Route::get('/settings', [\App\Http\Controllers\Api\V1\SettingsController::class, 'show'])->middleware('can:database.switch');
             Route::patch('/settings', [\App\Http\Controllers\Api\V1\SettingsController::class, 'update']);
             Route::post('/settings/backup', [\App\Http\Controllers\Api\V1\SettingsController::class, 'backup']);
             Route::post('/settings/rotate-key', [\App\Http\Controllers\Api\V1\SettingsController::class, 'rotate'])->middleware('throttle:5,1');
@@ -89,6 +116,7 @@ Route::prefix('v1')->group(function () {
             Route::get('/system/dashboard/health', [\App\Http\Controllers\Api\V1\SuperAdminDashboardController::class, 'health']);
             Route::get('/dashboard/health', [\App\Http\Controllers\Api\V1\SuperAdminDashboardController::class, 'health']);
             Route::get('/logs', [AuditLogController::class, 'index']);
+            Route::get('/logs/{id}', [AuditLogController::class, 'show']);
             Route::get('/system/database-stats', DatabaseStatsController::class);
             Route::get('/system/health', function () {
                 try {

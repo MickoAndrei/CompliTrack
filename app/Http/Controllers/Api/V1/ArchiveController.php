@@ -22,6 +22,8 @@ class ArchiveController extends Controller
     private const MIME_TYPES = [
         'pdf' => 'application/pdf',
         'docx' => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        'xlsx' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        'pptx' => 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
         'png' => 'image/png',
         'jpg' => 'image/jpeg',
         'jpeg' => 'image/jpeg',
@@ -37,15 +39,63 @@ class ArchiveController extends Controller
     public function index(Request $request)
     {
         $request->validate(['search' => 'nullable|string|max:120', 'collegeId' => 'nullable|string|regex:/^[a-f0-9]{24}$/i', 'unitId' => 'nullable|string|regex:/^[a-f0-9]{24}$/i',
-            'categoryId' => 'nullable|string|regex:/^[a-f0-9]{24}$/i', 'recordType' => 'nullable|in:file,digital-reference,physical-original']);
-        $query = $this->scopes->archives($request->user());
+            'categoryId' => 'nullable|string|regex:/^[a-f0-9]{24}$/i', 'recordType' => 'nullable|in:file,digital-reference,physical-original',
+            'view' => 'nullable|in:my,shared,audit,recent,starred,department,cycles,assigned', 'sort' => 'nullable|in:newest,oldest,name,modified',
+            'auditId' => 'nullable|string|regex:/^[a-f0-9]{24}$/i', 'scope' => 'nullable|in:current,authorized']);
+        $query = app(\App\Services\QmsAuditArchive::class)->applyContext($this->scopes->archives($request->user()), $request->user(), $request);
+        $actorIds = [MongoId::parse((string) $request->user()->getKey()), (string) $request->user()->getKey()];
+        $browser = app(\App\Services\QmsBrowser::class);
+        $recentIds = $request->query('view') === 'recent' ? app(\App\Services\QmsRecentDocuments::class)->ids($request->user()) : [];
+        if ($request->query('view') === 'department') {
+            $own = $browser->departmentUnits($request->user())->get(['_id'])->map(fn ($u) => $u->getKey())->all();
+            $query->whereIn('departmentId', array_merge(app(\App\Services\QmsArchiveAccess::class)->ids($own), array_map('strval', $own)));
+        }
+        if (in_array($request->query('view'), ['cycles', 'assigned'], true)) {
+            $folders = app(\App\Services\QmsRepositoryPolicy::class)->navigation($request->user());
+            $assignments = $browser->assignments($request->user())->map(fn ($a) => (string) $a->getKey())->all();
+            $folderIds = $request->query('view') === 'assigned'
+                ? array_column(array_filter($folders, fn ($f) => in_array($f['auditAssignmentId'] ?? null, $assignments, true) && in_array($f['folderPolicy'], ['evidence', 'notes'], true)), '_id')
+                : $browser->auditFolderIds($folders);
+            $query->where(function ($q) use ($folderIds, $request) {
+                $q->whereIn('categoryId', app(\App\Services\QmsArchiveAccess::class)->ids($folderIds));
+                if ($request->query('view') === 'cycles') {
+                    $q->orWhereNotNull('auditId')->orWhereRaw(['sharedAuditIds.0' => ['$exists' => true]])
+                        ->orWhereIn('_id', app(\App\Services\QmsArchiveAccess::class)->referencedEvidenceIds($request->user()));
+                }
+            });
+        }
+        // Views only narrow the authorized query; saved references never grant access.
+        if ($request->query('view') === 'shared') {
+            $query->whereIn('accessUserIds', $actorIds);
+        } elseif ($request->query('view') === 'starred') {
+            $groups = app(\App\Services\QmsArchiveAccess::class)->ids($browser->starredGroups($request->user()));
+            $query->where(fn ($q) => $q->whereIn('_id', $groups)->orWhereIn('versionGroupId', array_merge($groups, array_map('strval', $groups))));
+        } elseif ($request->query('view') === 'recent') {
+            $query->whereIn('_id', app(\App\Services\QmsArchiveAccess::class)->ids($recentIds));
+        } elseif ($request->query('view') === 'audit' && !$request->filled('planId') && !$request->filled('auditId')) {
+            if ((int) $request->user()->roleId !== 2) {
+                $query->whereRaw(['$or' => [
+                    ['sharedAuditIds.0' => ['$exists' => true]],
+                    ['auditId' => ['$exists' => true, '$ne' => null]],
+                    ['_id' => ['$in' => app(\App\Services\QmsArchiveAccess::class)->referencedEvidenceIds($request->user())]],
+                ]]);
+            }
+        }
         if ($request->filled('collegeId')) { $query->where('collegeId', MongoId::parse($request->query('collegeId'))); }
         if ($request->filled('unitId')) { $query->whereIn('departmentId', [MongoId::parse($request->query('unitId')), $request->query('unitId')]); }
         if ($request->filled('categoryId')) {
-            $category = \App\Models\QmsCategory::find(MongoId::parse($request->query('categoryId')));
-            $ids = $category ? app(\App\Services\QmsArchiveAccess::class)->ids(\App\Models\QmsCategory::where('parentId', MongoId::parse((string) $category->getKey()))->get(['_id'])->map(fn ($child) => $child->getKey())->push($category->getKey())->all()) : [];
-            $query->whereIn('categoryId', $ids);
+            $query->whereIn('categoryId', [MongoId::parse($request->query('categoryId')), $request->query('categoryId')]);
+        } elseif ($request->query('scope') === 'current' && in_array($request->query('view'), ['my', 'department', 'cycles', 'assigned'], true)) {
+            $query->whereNull('categoryId');
         }
+        if ($request->filled('categoryId')) {
+            $category = app(\App\Services\QmsRequestReferences::class)->find(\App\Models\QmsCategory::class, $request->query('categoryId'));
+            if ($category?->cycleKey) {
+                $folder = collect($folders ?? app(\App\Services\QmsRepositoryPolicy::class)->navigation($request->user()))->firstWhere('_id', $request->query('categoryId'));
+                if (!$folder || ($folder['navigationOnly'] ?? false)) { $query->whereRaw(['_id' => null]); }
+            }
+        }
+        if (!in_array($request->query('view'), ['audit', 'recent'], true)) { $query = $browser->latest($query); }
         if ($request->filled('recordType')) {
             if ($request->query('recordType') === 'file') { $query->where(fn ($q) => $q->where('recordType', 'file')->orWhereNull('recordType')); }
             else { $query->where('recordType', $request->query('recordType')); }
@@ -76,18 +126,32 @@ class ArchiveController extends Controller
             }
         }
 
-        $page = $query->orderBy('createdAt', 'desc')
-            ->paginate(min(max((int) $request->query('perPage', 20), 1), 100));
+        $sort = $request->query('sort', 'newest');
+        if ($request->query('view') === 'recent') {
+            $rank = array_flip($recentIds);
+            $recent = $query->get()->sortBy(fn ($document) => $rank[(string) $document->getKey()])->unique(fn ($document) => (string) ($document->versionGroupId ?: $document->getKey()))->take(5)->values();
+            $page = new \Illuminate\Pagination\LengthAwarePaginator($recent, $recent->count(), 5, 1);
+        } else {
+            $page = $query->orderBy($sort === 'name' ? 'title' : ($sort === 'modified' ? 'updatedAt' : 'createdAt'), in_array($sort, ['newest', 'modified'], true) ? 'desc' : 'asc')->orderBy('_id')
+                ->paginate(min(max((int) $request->query('perPage', 20), 1), 100));
+        }
 
+        $rows = collect($page->items());
+        $references = app(\App\Services\QmsRequestReferences::class);
+        $references->prime(Department::class, $rows->pluck('departmentId')->all());
+        $references->prime(User::class, $rows->pluck('uploadedByUserId')->all());
+        $references->prime(\App\Models\QmsCategory::class, $rows->pluck('categoryId')->all());
+        $capabilities = app(\App\Services\QmsDocumentActions::class)->presentationCapabilities($rows);
         return response()->json([
-            'data' => collect($page->items())->map(fn (ArchiveDocument $archive) => $this->serialize($archive)),
+            // These rows came from the current request's authoritative authorized query.
+            'data' => $rows->map(fn (ArchiveDocument $archive) => app(\App\Services\QmsArchivePresenter::class)->document($archive, $request->user(), true, $capabilities[(string) $archive->getKey()] ?? null)),
             'meta' => [
                 'currentPage' => $page->currentPage(),
                 'perPage' => $page->perPage(),
                 'total' => $page->total(),
                 'lastPage' => $page->lastPage(),
             ],
-        ]);
+        ])->header('Cache-Control', 'private, no-store');
     }
 
     public function upload(Request $request)
@@ -174,7 +238,7 @@ class ArchiveController extends Controller
             $linked = $check->getConnection()->getMongoDB()
                 ->selectCollection($check->getTable())
                 ->updateOne(
-                    ['_id' => MongoId::parse((string) $check->getKey()), 'result' => 'non_compliant', 'correctiveStatus' => ['$in' => ['open', 'in_progress']]],
+                    ['_id' => MongoId::parse((string) $check->getKey()), 'result' => 'non_compliant', 'correctiveStatus' => ['$in' => \App\Support\CarStatus::storedValues(['open', 'in_progress', 'returned_for_revision'])]],
                     ['$addToSet' => ['linkedArchiveIds' => $archive->getKey()]],
                 );
             if ($linked->getMatchedCount() !== 1) {
@@ -208,7 +272,7 @@ class ArchiveController extends Controller
 
     public function download(Request $request, string $id)
     {
-        $archive = app(\App\Services\QmsArchiveAccess::class)->documents($request->user(), true)->where('_id', MongoId::parse($id))->firstOrFail();
+        $archive = app(\App\Services\QmsAuditArchive::class)->applyContext(app(\App\Services\QmsArchiveAccess::class)->documents($request->user(), true), $request->user(), $request)->where('_id', MongoId::parse($id))->firstOrFail();
         $plaintext = $this->decryptAndVerify($archive);
         $this->auditLogs->record($request, 'Accessed authorized archive file', 'archive_document', $archive->getKey());
 
@@ -222,7 +286,7 @@ class ArchiveController extends Controller
 
     public function verifyChecksum(Request $request, string $id)
     {
-        $archive = app(\App\Services\QmsArchiveAccess::class)->documents($request->user(), true)->where('_id', MongoId::parse($id))->firstOrFail();
+        $archive = app(\App\Services\QmsAuditArchive::class)->applyContext(app(\App\Services\QmsArchiveAccess::class)->documents($request->user(), true), $request->user(), $request)->where('_id', MongoId::parse($id))->firstOrFail();
         $this->decryptAndVerify($archive);
 
         return response()->json(['isVerified' => true]);
@@ -231,14 +295,42 @@ class ArchiveController extends Controller
     public function version(Request $request, string $id)
     {
         $previous = $this->findInScope($request, $id);
-        abort_unless(app(\App\Services\QmsArchiveAccess::class)->canManage($request->user(), $previous), 403);
+        abort_unless(app(\App\Services\QmsArchiveAccess::class)->canManage($request->user(), $previous)
+            || app(\App\Services\DocumentEditorAccess::class)->canEdit($request->user(), $previous), 403);
         return $this->storeQms($request, $previous);
     }
 
     private function storeQms(Request $request, ?ArchiveDocument $previous = null)
     {
+        // Serialize uploads and repository moves/deletions on the same existing college record.
+        $repositoryFolder = \App\Models\QmsCategory::find($request->input('categoryId'));
+        if ($repositoryFolder?->folderPolicy) {
+            if ($request->attributes->get('onlyofficeSave') === true) {
+                \App\Models\College::where('_id', $repositoryFolder->collegeId)->increment('qmsFolderRevision');
+                return $this->storeQmsRecord($request, $previous);
+            }
+            return \Illuminate\Support\Facades\DB::connection('mongodb')->transaction(function () use ($request, $previous, $repositoryFolder) {
+                \App\Models\College::where('_id', $repositoryFolder->collegeId)->increment('qmsFolderRevision');
+                return $this->storeQmsRecord($request, $previous);
+            }, 3);
+        }
+        $request->validate(['unitId' => 'required|string|regex:/^[a-f0-9]{24}$/i']);
+        // The authenticated ONLYOFFICE callback already owns the MongoDB transaction.
+        if ($request->attributes->get('onlyofficeSave') === true) {
+            Department::where('_id', MongoId::parse($request->input('unitId')))->increment('qmsFolderRevision');
+            return $this->storeQmsRecord($request, $previous);
+        }
+        return \Illuminate\Support\Facades\DB::connection('mongodb')->transaction(function () use ($request, $previous) {
+            Department::where('_id', MongoId::parse($request->input('unitId')))->increment('qmsFolderRevision');
+            return $this->storeQmsRecord($request, $previous);
+        }, 3);
+    }
+
+    private function storeQmsRecord(Request $request, ?ArchiveDocument $previous = null)
+    {
         $data = $request->validate([
-            'unitId' => 'required|string|regex:/^[a-f0-9]{24}$/i', 'categoryId' => 'required|string|regex:/^[a-f0-9]{24}$/i',
+            'unitId' => 'required|string|regex:/^[a-f0-9]{24}$/i', 'categoryId' => 'nullable|string|regex:/^[a-f0-9]{24}$/i',
+            'checkId' => 'nullable|string|regex:/^[a-f0-9]{24}$/i',
             'title' => 'required|string|max:255', 'description' => 'nullable|string|max:3000',
             'recordType' => 'required|in:file,digital-reference,physical-original',
             'documentReference' => 'required_if:recordType,digital-reference|nullable|string|max:500',
@@ -248,9 +340,25 @@ class ArchiveController extends Controller
         ]);
         $access = app(\App\Services\QmsArchiveAccess::class);
         $unit = Department::findOrFail(MongoId::parse($data['unitId']));
-        abort_unless($access->canCreate($request->user(), $unit), 403);
-        $category = \App\Models\QmsCategory::where('_id', MongoId::parse($data['categoryId']))->where('isActive', true)
-            ->where('collegeId', MongoId::parse((string) $unit->collegeId))->where('unitType', $unit->unitType)->firstOrFail();
+        $category = !empty($data['categoryId']) ? \App\Models\QmsCategory::where('_id', MongoId::parse($data['categoryId']))->where('isActive', true)
+            ->where('collegeId', MongoId::parse((string) $unit->collegeId))
+            ->where(fn ($q) => $q->where('unitType', $unit->unitType)->orWhere('folderPolicy', 'administration'))->firstOrFail() : null;
+        $folderPermissions = app(\App\Services\QmsFolderAccess::class)->permissions($request->user(), $unit, $category);
+        $check = null;
+        if (!empty($data['checkId'])) {
+            abort_if($previous || $data['recordType'] !== 'file', 422, 'Corrective evidence must be a new file.');
+            $check = ComplianceCheck::findOrFail(MongoId::parse($data['checkId']));
+            $this->authorizeCheckUpload($request->user(), $check);
+            abort_unless((string) $check->departmentId === (string) $unit->getKey(), 422, 'The finding must belong to this folder department.');
+            $data['visibility'] = 'owner';
+            $data['accessUserIds'] = [];
+        }
+        $correctiveRootUpload = !$category && $check && $folderPermissions['view'];
+        abort_unless($correctiveRootUpload || ((!$category || $category->userManaged || ($category->classification && $category->classification !== 'department')) ? $folderPermissions['upload'] : ($access->canCreate($request->user(), $unit) || $folderPermissions['upload'])), 403);
+        if ($category && ($category->userManaged || ($category->classification && $category->classification !== 'department'))) {
+            $allowed = app(\App\Services\QmsFolderAccess::class)->allowedVisibility($category);
+            abort_unless(in_array($previous?->visibility ?: $data['visibility'], $allowed, true), 422, 'Document visibility cannot exceed its folder classification.');
+        }
         if ($previous) {
             abort_unless((string) $previous->departmentId === (string) $unit->getKey() && ($previous->recordType ?: 'file') === $data['recordType'], 422);
         }
@@ -261,7 +369,7 @@ class ArchiveController extends Controller
             $request->validate(['file' => 'required|file|max:20480', 'copyAuthorized' => 'required|accepted']);
             $file = $request->file('file');
             $extension = strtolower($file->getClientOriginalExtension());
-            abort_unless(isset(self::MIME_TYPES[$extension]) && $this->matchesFileSignature($extension, $file->getContent()), 422, 'The file does not match an allowed PDF, DOCX, PNG or JPG format.');
+            abort_unless(isset(self::MIME_TYPES[$extension]) && $this->matchesFileSignature($extension, $file->getContent()), 422, 'The file does not match an allowed PDF, DOCX, XLSX, PPTX, PNG or JPG format.');
             $encrypted = $this->encryption->encrypt($file->getContent());
             $path = 'archives/'.$code.'.enc';
             if (!$this->writeEncryptedFile($path, $encrypted['ciphertext'])) { throw new \RuntimeException('Unable to save encrypted archive.'); }
@@ -271,9 +379,9 @@ class ArchiveController extends Controller
         }
         $metadata = [
             'fileCode' => $code, 'title' => $data['title'], 'originalName' => $data['title'], 'description' => $data['description'] ?? null,
-            'departmentId' => $unit->getKey(), 'collegeId' => $unit->collegeId, 'categoryId' => $category->getKey(), 'ownershipVerified' => true,
+            'departmentId' => $unit->getKey(), 'collegeId' => $unit->collegeId, 'categoryId' => $category?->getKey(), 'ownershipVerified' => true,
             'uploadedByUserId' => $previous?->uploadedByUserId ?? $request->user()->getKey(), 'recordType' => $data['recordType'],
-            'documentReference' => $data['documentReference'] ?? null, 'physicalLocation' => $data['physicalLocation'] ?? null,
+            'documentReference' => $previous?->documentReference ?? ($data['documentReference'] ?? null), 'physicalLocation' => $data['physicalLocation'] ?? null,
             'signatureRequired' => $data['recordType'] === 'physical-original', 'signatureStatus' => $data['recordType'] === 'physical-original' ? 'not_verified' : 'not_required',
             'visibility' => $previous ? ($previous->visibility ?: 'owner') : $data['visibility'],
             'accessUserIds' => $previous ? ($previous->accessUserIds ?? []) : $access->ids($data['accessUserIds'] ?? []),
@@ -281,7 +389,23 @@ class ArchiveController extends Controller
             'sharedAuditIds' => [], 'versionGroupId' => $previous ? ($previous->versionGroupId ?? $previous->getKey()) : new \MongoDB\BSON\ObjectId(),
             'versionNumber' => $previous ? ($previous->versionNumber ?: 1) + 1 : 1, 'previousVersionId' => $previous?->getKey(), 'qmsSchemaVersion' => 1,
         ];
-        try { $document = ArchiveDocument::create(array_merge($metadata, $fileData)); }
+        try {
+            $document = ArchiveDocument::create(array_merge($metadata, $fileData, $check ? ['referenceStandard' => $check->referenceStandard] : []));
+            if ($check) {
+                $linked = $check->getConnection()->getMongoDB()->selectCollection($check->getTable())->updateOne(
+                    ['_id' => MongoId::parse((string) $check->getKey()), 'result' => 'non_compliant', 'correctiveStatus' => ['$in' => \App\Support\CarStatus::storedValues(['open', 'in_progress', 'returned_for_revision'])]],
+                    ['$addToSet' => ['linkedArchiveIds' => $document->getKey()]],
+                    ['session' => $check->getConnection()->getSession()],
+                );
+                abort_unless($linked->getMatchedCount() === 1, 409, 'The finding is no longer open for corrective evidence.');
+                if ((int) $request->user()->roleId === 3) {
+                    Notification::create(['recipientUserId' => $check->auditorId, 'senderUserId' => $request->user()->getKey(),
+                        'type' => 'evidence_uploaded', 'title' => 'Evidence uploaded',
+                        'message' => "{$request->user()->fullName} uploaded evidence for {$check->checkCode}.",
+                        'relatedCheckId' => $check->getKey(), 'isRead' => false]);
+                }
+            }
+        }
         catch (Throwable $exception) {
             if ($path) { $this->deleteEncryptedFile($path); }
             if ((int) $exception->getCode() === 11000) { abort(409, 'This version already exists. Refresh before creating another version.'); }
@@ -300,7 +424,7 @@ class ArchiveController extends Controller
 
     private function authorizeCheckUpload(User $actor, ComplianceCheck $check): void
     {
-        if ($check->result !== 'non_compliant' || !in_array($check->correctiveStatus, ['open', 'in_progress'], true)) {
+        if ($check->result !== 'non_compliant' || !in_array($check->correctiveStatus, ['open', 'in_progress', 'returned_for_revision'], true)) {
             abort(403, 'Evidence can only be linked to a non-compliant check.');
         }
 
@@ -404,12 +528,12 @@ class ArchiveController extends Controller
             'png' => str_starts_with($contents, "\x89PNG\r\n\x1a\n"),
             'jpg', 'jpeg' => str_starts_with($contents, "\xff\xd8\xff"),
             // DOCX is a ZIP package; verify its ZIP signature without requiring fileinfo.
-            'docx' => $this->isDocx($contents),
+            'docx', 'xlsx', 'pptx' => $this->isOfficePackage($contents, $extension),
             default => false,
         };
     }
 
-    private function isDocx(string $contents): bool
+    private function isOfficePackage(string $contents, string $extension): bool
     {
         if (!class_exists(\ZipArchive::class)) { return false; }
         $path = tempnam(sys_get_temp_dir(), 'ct-docx-');
@@ -417,7 +541,8 @@ class ArchiveController extends Controller
             file_put_contents($path, $contents);
             $zip = new \ZipArchive();
             if ($zip->open($path) !== true) { return false; }
-            $valid = $zip->locateName('[Content_Types].xml') !== false && $zip->locateName('word/document.xml') !== false;
+            $entry = ['docx' => 'word/document.xml', 'xlsx' => 'xl/workbook.xml', 'pptx' => 'ppt/presentation.xml'][$extension];
+            $valid = $zip->locateName('[Content_Types].xml') !== false && $zip->locateName($entry) !== false;
             $zip->close(); return $valid;
         } finally { if (is_file($path)) { unlink($path); } }
     }

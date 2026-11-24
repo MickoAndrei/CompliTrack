@@ -1,21 +1,80 @@
+import { auditStatusLabel } from './audit-status';
 import { onDocumentReady } from './dom-ready';
 
 document.addEventListener('alpine:init', () => {
     Alpine.data('atlWorkspace', () => ({
-        data: null, loading: true, error: '', page: 1,
+        data: null, loading: true, error: '', page: 1, perPage: 5, attentionPage: 1, attentionPerPage: 5,
+        get meta() { return { total: this.data?.assignmentTotal || 0, lastPage: this.data?.assignmentPages || 1 }; },
+        get attentionPages() { return Math.max(1, Math.ceil((this.data?.attention.length || 0) / this.attentionPerPage)); },
+        get visibleAttention() { return (this.data?.attention || []).slice((this.attentionPage - 1) * this.attentionPerPage, this.attentionPage * this.attentionPerPage); },
         init() { this.load(); },
-        label(value) { return String(value || '').replaceAll('_', ' ').replace(/^./, letter => letter.toUpperCase()); },
-        async load() {
+        label(value) { return auditStatusLabel(value); },
+        async load(page = this.page) {
             if (this.requesting) return;
             this.requesting = true; this.loading = true; this.error = '';
             try {
-                const response = await window.axios.get('/api/v1/admin/workspace', { params: { page: this.page } });
+                const response = await window.axios.get('/api/v1/admin/workspace', { params: { page, perPage: this.perPage } });
                 this.data = response.data.data;
+                this.page = this.data.assignmentPage || page;
+                this.attentionPage = Math.min(this.attentionPage, this.attentionPages);
                 this.$nextTick(() => window.renderIcons?.());
-            } catch (error) { this.error = error.response?.data?.message || 'Unable to load your ATL workspace. Use Refresh to retry.'; }
+            } catch (error) { this.error = error.response?.data?.message || 'Unable to load your ATL workspace. Reload the page to retry.'; }
             finally { this.loading = false; this.requesting = false; }
         },
     }));
+});
+
+onDocumentReady(() => {
+    const form = document.querySelector('[data-review-filters]');
+    if (!form) return;
+    const results = document.querySelector('[data-review-results]');
+    const error = document.querySelector('[data-review-filter-error]');
+    const skeleton = document.querySelector('[data-review-skeleton]');
+    let controller, timer, previousResults = results.innerHTML;
+    const syncForm = url => {
+        for (const control of form.querySelectorAll('input:not([type=hidden]),select')) {
+            control.value = url.searchParams.get(control.name) || (control.name === 'status' ? 'submitted' : '');
+        }
+    };
+    const load = async (url, push = true, focus = false) => {
+        clearTimeout(timer); controller?.abort();
+        const request = new AbortController(); controller = request;
+        results.setAttribute('aria-busy', 'true'); error.hidden = true;
+        results.replaceChildren(skeleton.content.cloneNode(true));
+        try {
+            const response = await fetch(url, { signal: request.signal, credentials: 'same-origin', headers: { 'X-Requested-With': 'XMLHttpRequest', Accept: 'text/html' } });
+            if (!response.ok || response.redirected) throw Error('Unable to load audit reviews. Change a filter or use Reset Filter to retry.');
+            const document = new DOMParser().parseFromString(await response.text(), 'text/html');
+            const fresh = document.querySelector('[data-review-results]');
+            if (!fresh) throw Error('Your session may have expired. Reload this page to continue.');
+            if (request.signal.aborted) return;
+            results.innerHTML = fresh.innerHTML; previousResults = fresh.innerHTML;
+            if (push) history.pushState({}, '', url);
+            if (focus) results.focus();
+        } catch (exception) {
+            if (exception.name !== 'AbortError') {
+                results.innerHTML = previousResults; error.textContent = exception.message; error.hidden = false;
+            }
+        } finally { if (controller === request) results.setAttribute('aria-busy', 'false'); }
+    };
+    const filter = () => {
+        const url = new URL(location.href);
+        for (const [name, value] of new FormData(form)) {
+            if (value) url.searchParams.set(name, value); else url.searchParams.delete(name);
+        }
+        url.searchParams.delete('page'); load(url);
+    };
+    form.addEventListener('submit', event => { event.preventDefault(); filter(); });
+    form.addEventListener('change', event => { if (event.target.matches('select')) filter(); });
+    form.addEventListener('input', event => { if (event.target.name === 'search') { clearTimeout(timer); timer = setTimeout(filter, 300); } });
+    document.querySelector('.review-queue').addEventListener('click', event => {
+        if (event.ctrlKey || event.metaKey || event.shiftKey || event.altKey || event.button !== 0) return;
+        const link = event.target.closest('[data-review-reset],.review-pagination a,.review-summary a');
+        if (!link) return;
+        event.preventDefault(); const url = new URL(link.href);
+        syncForm(url); load(url, true, link.closest('.review-pagination') !== null);
+    });
+    window.addEventListener('popstate', () => { const url = new URL(location.href); syncForm(url); load(url, false); });
 });
 
 onDocumentReady(() => {
@@ -24,7 +83,43 @@ onDocumentReady(() => {
     const body = dialog.querySelector('[data-atl-review-body]');
     const feedback = dialog.querySelector('[data-atl-review-feedback]');
     const close = dialog.querySelector('[data-atl-review-close]');
-    let opener, currentUrl, controller, saving = false, changed = false;
+    const title = dialog.querySelector('#atl-review-title');
+    const headerMeta = dialog.querySelector('[data-atl-review-header-meta]');
+    const confirmation = document.querySelector('#atl-review-confirm');
+    const syncHeading = () => {
+        title.textContent = body.querySelector('[data-review-dialog-title]')?.textContent.trim() || 'Audit Results Review';
+        headerMeta.textContent = body.querySelector('[data-review-dialog-meta]')?.textContent.trim() || '';
+    };
+    const selectReviewTab = (selected, focus = false) => {
+        const tabs = [...dialog.querySelectorAll('.atl-review-tabs [role="tab"]')];
+        const panelId = selected.getAttribute('aria-controls');
+        if (!body.querySelector(`#${panelId}`)) return;
+        tabs.forEach(tab => {
+            const active = tab === selected;
+            tab.setAttribute('aria-selected', String(active));
+            tab.tabIndex = active ? 0 : -1;
+        });
+        body.querySelectorAll('[role="tabpanel"]').forEach(panel => { panel.hidden = panel.id !== panelId; });
+        if (focus) selected.focus();
+    };
+    dialog.addEventListener('click', event => {
+        const tab = event.target.closest('.atl-review-tabs [role="tab"]');
+        if (tab) selectReviewTab(tab);
+    });
+    dialog.addEventListener('keydown', event => {
+        const tab = event.target.closest('.atl-review-tabs [role="tab"]');
+        if (!tab) return;
+        const tabs = [...dialog.querySelectorAll('.atl-review-tabs [role="tab"]')];
+        let index = tabs.indexOf(tab);
+        if (event.key === 'ArrowRight') index = (index + 1) % tabs.length;
+        else if (event.key === 'ArrowLeft') index = (index - 1 + tabs.length) % tabs.length;
+        else if (event.key === 'Home') index = 0;
+        else if (event.key === 'End') index = tabs.length - 1;
+        else return;
+        event.preventDefault();
+        selectReviewTab(tabs[index], true);
+    });
+    let opener, currentUrl, controller, saving = false, confirming = false, changed = false;
     const notice = (message, error = false) => {
         feedback.textContent = message; feedback.hidden = !message;
         feedback.classList.toggle('atl-error', error);
@@ -40,6 +135,7 @@ onDocumentReady(() => {
             const html = await response.text();
             if (!dialog.open || request.signal.aborted) return;
             body.innerHTML = html;
+            syncHeading();
         } catch (error) {
             if (error.name !== 'AbortError') { body.textContent = ''; notice(error.message || 'Unable to load the audit. Please retry.', true); }
         } finally { if (controller === request) body.setAttribute('aria-busy', 'false'); }
@@ -56,6 +152,7 @@ onDocumentReady(() => {
     dialog.addEventListener('cancel', event => { if (saving) event.preventDefault(); });
     dialog.addEventListener('close', () => {
         controller?.abort(); body.textContent = ''; notice('');
+        syncHeading();
         const focusTarget = opener?.isConnected ? opener : [...document.querySelectorAll('a[data-atl-review]')].find(link => link.href === currentUrl);
         focusTarget?.focus();
         if (changed && location.pathname === '/audits') window.location.reload();
@@ -63,9 +160,19 @@ onDocumentReady(() => {
     dialog.addEventListener('submit', async event => {
         const form = event.target.closest('[data-atl-review-form]');
         if (!form) return;
-        event.preventDefault(); if (saving) return;
+        event.preventDefault(); if (saving || confirming) return;
         const action = event.submitter?.value;
         if (!['accept', 'return'].includes(action)) return;
+        const notes = form.querySelector('[name=reviewNotes]');
+        notes.setCustomValidity(action === 'return' && (notes.value.trim().length < 10 || !/\p{L}.*\p{L}/u.test(notes.value.trim()))
+            ? 'Explain the required revision in at least 10 characters.' : '');
+        if (!form.reportValidity()) return;
+        confirmation.querySelector('p').textContent = action === 'accept'
+            ? 'Accept these audit results? Evaluations become read-only. Existing CAR states are preserved.'
+            : 'Return this audit to the assigned auditor with your revision feedback?';
+        confirming = true; confirmation.returnValue = ''; confirmation.showModal();
+        const confirmed = await new Promise(resolve => confirmation.addEventListener('close', () => resolve(confirmation.returnValue === 'confirm'), { once: true }));
+        confirming = false; if (!confirmed) return;
         const payload = new FormData(form); payload.set('action', action);
         saving = true; close.disabled = true; notice('Recording review decision…');
         form.querySelectorAll('button,textarea').forEach(control => { control.disabled = true; });
@@ -86,4 +193,5 @@ onDocumentReady(() => {
             form.querySelectorAll('button,textarea').forEach(control => { control.disabled = false; });
         }
     });
+    dialog.addEventListener('input', event => { if (event.target.name === 'reviewNotes') event.target.setCustomValidity(''); });
 });

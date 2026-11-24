@@ -11,6 +11,40 @@
     <p x-page-notice x-cloak x-show="message" x-text="message" class="settings-feedback settings-success" role="status"></p>
     <p x-page-notice x-cloak x-show="error" x-text="error" class="settings-feedback settings-error" role="alert"></p>
     <p x-cloak x-show="busy" class="settings-feedback" role="status">Processing your request. Please keep this page open.</p>
+    <article class="settings-card database-switch-card" aria-labelledby="database-switch-title">
+        <div class="settings-card-heading">
+            <div>
+                <h2 id="database-switch-title">Database Configuration</h2>
+                <p>Super Admin only</p>
+            </div>
+            <span class="database-switch-icon" aria-hidden="true" data-lucide="database"></span>
+        </div>
+        <div class="database-switch-summary">
+            <div>
+                <h3>Active Database</h3>
+                <p class="database-switch-active" x-text="state.databaseSwitch?.activeLabel || 'Checking database environment...'"></p>
+            </div>
+            <span class="database-health-badge"
+                :class="state.databaseSwitch?.health === 'connected' ? 'is-connected' : 'is-unavailable'"
+                x-text="state.databaseSwitch?.health === 'connected' ? 'Connected' : (loading ? 'Checking...' : 'Unavailable')"
+                role="status"></span>
+        </div>
+        <p x-cloak x-show="state.databaseSwitch && !state.databaseSwitch.targetConfigured && state.databaseSwitch.activeEnvironment"
+            class="settings-warning">The other MongoDB target is not configured. No credentials or connection details are shown here.</p>
+        <p x-cloak x-show="state.databaseSwitch?.pendingRequest" class="settings-warning" role="status">
+            Database switch to <span x-text="state.databaseSwitch?.pendingRequest?.targetEnvironment"></span>:
+            <span x-text="databaseSwitchStage()"></span>.
+        </p>
+        <p x-cloak x-show="!state.databaseSwitch?.pendingRequest && ['rolled_back', 'cancelled', 'automatic_worker_launch_failed'].includes(state.databaseSwitch?.lastOutcome)"
+            class="settings-warning" role="status">The most recent switch did not complete. Check the local switch log before trying again.</p>
+        <div class="database-switch-footer">
+            <button type="button" class="settings-button database-switch-action" data-database-switch-button
+                :disabled="loading || busy || switching || !state.databaseSwitch?.targetConfigured || Boolean(state.databaseSwitch?.pendingRequest)"
+                @click="openDatabaseSwitch()"
+                x-text="switching ? 'Switching Database...' : databaseSwitchLabel()">Switch Database</button>
+            <p>The switch restarts the local Laravel, scheduler, and realtime services. All users, including you, must sign in again. Migrations, seeders, and data synchronization are not run.</p>
+        </div>
+    </article>
     <div class="settings-grid">
         <article class="settings-card">
             <h2>Automated Backup</h2>
@@ -76,5 +110,6 @@
             </div>
         </form>
     </dialog>
+    <x-database-switch-dialog />
 </section>
 @endsection

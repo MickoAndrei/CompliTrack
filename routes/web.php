@@ -17,11 +17,17 @@ Route::middleware('throttle:5,1')->group(function () {
 });
 
 Route::middleware(['auth', \App\Http\Middleware\SystemAccess::class])->group(function () {
+    Route::get('/audit-plans', function (\Illuminate\Http\Request $request) {
+        abort_unless($request->user()->isActive && ((int) $request->user()->roleId === 1
+            || app(\App\Services\AuditPlanPermissions::class)->allows($request->user())), 403);
+        return view('audit-plans.index');
+    });
     Route::middleware('role:1,2')->group(function () {
         Route::post('/audits/{id}/requests', [\App\Http\Controllers\Web\AuditeeController::class, 'createRequest']);
         Route::post('/audits/{id}/requests/{requestId}/review', [\App\Http\Controllers\Web\AuditeeController::class, 'review']);
         Route::post('/audits/{id}/requests/{requestId}/publish', [\App\Http\Controllers\Web\AuditeeController::class, 'publish']);
         Route::get('/audits', [\App\Http\Controllers\Web\AuditController::class, 'index']);
+        Route::post('/audits/{id}/assignment', [\App\Http\Controllers\Web\AuditController::class, 'amend']);
         Route::post('/audits', [\App\Http\Controllers\Web\AuditController::class, 'store']);
         Route::get('/audits/{id}', [\App\Http\Controllers\Web\AuditController::class, 'show']);
         Route::post('/audits/{id}', [\App\Http\Controllers\Web\AuditController::class, 'update']);
@@ -34,32 +40,39 @@ Route::middleware(['auth', \App\Http\Middleware\SystemAccess::class])->group(fun
     Route::get('/profile', [ProfileController::class, 'redirectToRoleProfile']);
 
     Route::middleware('role:0')->prefix('super-admin')->group(function () {
+        Route::view('/help', 'help.index');
         Route::view('/profile', 'auth.profile')->name('super-admin.profile');
         Route::view('/dashboard', 'super-admin.dashboard');
         Route::view('/users', 'super-admin.users');
         Route::view('/roles', 'super-admin.roles');
         Route::view('/departments', 'super-admin.departments');
-        Route::view('/archives', 'super-admin.archives');
+        Route::view('/documents', 'super-admin.archives');
         Route::view('/logs', 'super-admin.logs');
-        Route::view('/settings', 'super-admin.settings');
+        Route::view('/notifications', 'super-admin.notifications');
+        Route::view('/settings', 'super-admin.settings')->middleware('can:database.switch');
+        Route::post('/system/database-switch', [\App\Http\Controllers\Api\V1\SettingsController::class, 'requestDatabaseSwitch'])
+            ->middleware(['can:database.switch', 'throttle:2,1']);
     });
     Route::middleware('role:1')->prefix('admin')->group(function () {
+        Route::view('/help', 'help.index');
         Route::view('/profile', 'auth.profile')->name('admin.profile');
         Route::view('/dashboard', 'admin.dashboard');
         Route::view('/departments', 'admin.departments');
         Route::view('/users', 'admin.users');
         Route::get('/compliance-records', [\App\Http\Controllers\Web\AtlWorkspaceController::class, 'records']);
-        Route::view('/archives', 'admin.archives');
+        Route::view('/documents', 'admin.archives');
         Route::view('/reports', 'admin.reports');
         Route::view('/notifications', 'admin.notifications');
     });
     Route::middleware('role:2')->prefix('auditor')->group(function () {
+        Route::view('/help', 'help.index');
         Route::view('/profile', 'auth.profile')->name('auditor.profile');
         Route::view('/dashboard', 'auditor.dashboard');
-        Route::view('/checks', 'auditor.checks');
-        Route::view('/checks/{id}', 'auditor.check-details');
-        Route::view('/check-create', 'auditor.check-create');
-        Route::view('/archives', 'auditor.archives');
+        Route::view('/historical-records', 'auditor.checks')->middleware('EnsureUserIsActive')->name('auditor.historical-records');
+        Route::get('/checks', fn (\Illuminate\Http\Request $request) => redirect()->route('auditor.historical-records', $request->query()));
+        Route::get('/checks/{id}', [\App\Http\Controllers\Web\HistoricalComplianceController::class, 'show']);
+        Route::get('/check-create', fn (\Illuminate\Http\Request $request) => redirect('/audits'.($request->has('_tab') ? '?'.http_build_query($request->only('_tab')) : '')));
+        Route::view('/documents', 'auditor.archives');
         Route::view('/corrective-actions', 'auditor.corrective-actions');
         Route::view('/notifications', 'auditor.notifications');
     });
@@ -71,8 +84,8 @@ Route::middleware(['auth', \App\Http\Middleware\SystemAccess::class])->group(fun
         Route::post('/finding-details/{id}/response', [\App\Http\Controllers\Web\AuditeeController::class, 'correctiveResponse']);
         Route::get('/my-findings', [\App\Http\Controllers\Web\AuditeeController::class, 'results']);
         Route::get('/finding-details/{id}', [\App\Http\Controllers\Web\AuditeeController::class, 'finding']);
-        Route::view('/upload', 'auditee.upload');
-        Route::get('/archives', [\App\Http\Controllers\Web\AuditeeController::class, 'archives']);
+        Route::get('/upload', fn (\Illuminate\Http\Request $request) => redirect('/auditee/documents'.($request->filled('checkId') ? '?'.http_build_query($request->only('checkId')) : '')));
+        Route::get('/documents', [\App\Http\Controllers\Web\AuditeeController::class, 'archives']);
         Route::view('/notifications', 'auditee.notifications');
         Route::view('/help', 'auditee.help');
     });

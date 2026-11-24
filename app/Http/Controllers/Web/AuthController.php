@@ -106,6 +106,7 @@ class AuthController extends Controller
 
     public function logout(Request $request)
     {
+        $this->auditLogs->record($request, 'Signed out', 'authentication', $request->user()?->getKey());
         Auth::guard('web')->logout();
         $request->session()->invalidate();
         $request->session()->regenerateToken();

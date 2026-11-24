@@ -53,7 +53,7 @@ Indexes cover unique college codes, college/unit ownership, unique category code
 - Super Admin archive reporting uses a separate aggregate scope for verified folders. Folder/category counts, total archived documents, and digital file storage bytes remain available in QMS and on the dashboard. File lists, document details, versions, previews, downloads, and checksums remain inaccessible.
 - Audit Team Leaders are active Admin accounts already assigned as an audit reviewer. They have full access to verified QMS records, including restricted and download-disabled files. Only they can add records, create versions, manage QMS responsibilities, configure categories, and update document access.
 - Archive access requires an active account, verified ownership, and authorized organizational scope. Missing/unverified ownership is denied, including direct URLs.
-- Department Heads/Secretaries use one explicitly assigned archive department, or their home assignment when no override is configured. An override does not also grant their former home department. Faculty/staff use organizational assignments plus document permissions.
+- Department Heads use one explicitly assigned archive department, or their home assignment when no override is configured. An override does not also grant their former home department. Faculty/staff use organizational assignments plus document permissions.
 - Deans/College Secretaries need one explicitly authorized college. Cluster Administrators need explicitly authorized colleges. A responsibility name or role ID does not grant unrestricted access.
 - Document visibility never bypasses organizational scope. Owner-only/restricted records require ownership or explicit account permission; a management responsibility alone does not expose them.
 - Auditors need both an active department assignment and evidence explicitly shared through their own audit, linked compliance-check evidence, or submitted audit evidence. Unsubmitted drafts do not grant access. Removing the assignment revokes access.
@@ -68,7 +68,7 @@ node tests/Browser/qms-archives.cjs
 node tests/Browser/evidence-preview.cjs
 npm.cmd run build
 php artisan view:cache
-php artisan route:list --path=archives
+php artisan route:list --path=documents
 php scripts/migrate-qms-archives.php
 php scripts/migrate-qms-archives.php --apply
 php scripts/verify-qms-schema.php
@@ -93,7 +93,7 @@ The actual dataset currently has **0 verified archives and 8 archives awaiting o
 
 These units and their archives are marked unverified, relationships remain intact, and archive access is denied pending approval. Affected accounts see an ownership-review notice. Merging/reassigning requires a separately reviewed mapping after confirmation. Existing authentication, audit results, and CAR records were not removed.
 
-Real people must also be designated explicitly as Dean/Secretary/Head/Cluster Administrator by an Audit Team Leader. Final category/document-control and physical-signature approval requirements remain organizational decisions; the app does not invent those approvals.
+Real people must also be designated explicitly as Dean/College Secretary/Department Head/Cluster Administrator by an Audit Team Leader. Final category/document-control and physical-signature approval requirements remain organizational decisions; the app does not invent those approvals.
 
 ## Files created or modified for this task
 

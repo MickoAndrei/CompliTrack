@@ -42,10 +42,26 @@ const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
             throw new Error(`Timed out: ${expression}`);
         };
         await send('Page.enable');
+        await send('Page.navigate', { url: pathToFileURL(path.join(fixtures, 'populated.html')).href });
+        await waitFor(`!!window.Alpine && !!document.querySelector('[data-evidence-page]')?.dataset.evidenceLayout`);
+        await evaluate(`window.filterSubmissions=[];document.querySelector('.evidence-toolbar').addEventListener('submit',event=>{event.preventDefault();window.filterSubmissions.push(Object.fromEntries(new FormData(event.target)));});
+            const select=document.querySelector('[name=requestStatus]');select.value='reviewed';select.dispatchEvent(new Event('change',{bubbles:true}));`);
+        await waitFor('window.filterSubmissions.length===1');
+        assert.equal(await evaluate('window.filterSubmissions[0].requestStatus'),'reviewed','Status selection automatically submits');
+        await evaluate(`{const select=document.querySelector('[name=auditStatus]');select.value='ready';select.dispatchEvent(new Event('change',{bubbles:true}));}`);
+        await waitFor('window.filterSubmissions.length===2');
+        assert.equal(await evaluate('window.filterSubmissions[1].auditStatus'),'ready','Audit selection automatically submits');
+        await evaluate(`const input=document.querySelector('.evidence-search input');for(const value of ['a','au','audit']){input.value=value;input.dispatchEvent(new Event('input',{bubbles:true}));}`);
+        await waitFor('window.filterSubmissions.length===3');
+        assert.equal(await evaluate('window.filterSubmissions[2].search'),'audit','Typing submits the completed search after debounce');
+        await evaluate(`document.querySelector('.evidence-toolbar button').click()`);
+        await waitFor('window.filterSubmissions.length===4');
+        assert.deepEqual(await evaluate('window.filterSubmissions[3]'),{search:'',requestStatus:'',auditStatus:''},'Clear Filter clears and submits all filters');
+        console.log('PASS automatic search/status filtering and Clear Filter');
         const detail = fs.readFileSync(path.join(fixtures, 'detail.html'), 'utf8');
         const locked = fs.readFileSync(path.join(fixtures, 'locked.html'), 'utf8');
         const populated = fs.readFileSync(path.join(fixtures, 'populated.html'), 'utf8');
-        for (const width of [1440, 900, 768, 390, 320]) {
+        for (const width of [1440, 1199, 1000, 900, 768, 390, 320]) {
             await send('Emulation.setDeviceMetricsOverride', { width, height: 950, deviceScaleFactor: 1, mobile: width < 600 });
             await send('Page.navigate', { url: pathToFileURL(path.join(fixtures, 'populated.html')).href });
             await waitFor('!!window.Alpine && !!document.querySelector("[data-evidence-open]")');
@@ -54,6 +70,36 @@ const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
             assert.equal(await evaluate('document.documentElement.scrollWidth <= innerWidth'), true, `Page overflow at ${width}`);
             assert.equal(await evaluate('document.querySelectorAll(".evidence-summary-card").length'), 4);
             assert.equal(await evaluate(`parseFloat(getComputedStyle(document.querySelector('.evidence-search input')).paddingLeft)>=38`), true, 'Search text clears its icon');
+            assert.equal(await evaluate(`(()=>{
+                const toolbar=document.querySelector('.evidence-toolbar');
+                const controls=[...toolbar.querySelectorAll('input,select,button')].map(el=>el.getBoundingClientRect());
+                const icon=toolbar.querySelector('.evidence-search svg').getBoundingClientRect();
+                return controls.every(rect=>Math.abs(rect.height-44)<1)
+                    && Math.abs(icon.top+icon.height/2-controls[0].top-controls[0].height/2)<1
+                    && (innerWidth<1200 || controls.every(rect=>Math.abs(rect.top-controls[0].top)<1));
+            })()`), true, `Toolbar controls and search icon align at ${width}px`);
+            await evaluate(`document.querySelector('[aria-label="List view"]').click()`);
+            await waitFor(`document.querySelector('[data-evidence-page]').dataset.evidenceLayout==='list'`);
+            assert.equal(await evaluate(`(()=>{
+                const buttons=[...document.querySelectorAll('.evidence-view-toggle button')];
+                const cards=[...document.querySelectorAll('.evidence-request-card')].map(el=>el.getBoundingClientRect());
+                const icons=buttons.map(el=>({button:el.getBoundingClientRect(),icon:el.querySelector('svg').getBoundingClientRect()}));
+                return buttons[1].getAttribute('aria-pressed')==='true' && buttons[0].getAttribute('aria-pressed')==='false'
+                    && cards.every(rect=>Math.abs(rect.left-cards[0].left)<1)
+                    && icons.every(({button,icon})=>Math.abs(button.left+button.width/2-icon.left-icon.width/2)<1 && Math.abs(button.top+button.height/2-icon.top-icon.height/2)<1)
+                    && document.documentElement.scrollWidth<=innerWidth;
+            })()`), true, `List rows fit and layout icons are centered at ${width}px`);
+            await send('Page.reload');
+            await waitFor(`!!window.Alpine && document.querySelector('[data-evidence-page]')?.dataset.evidenceLayout==='list'`);
+            await evaluate(`window.fixtureDetail=${JSON.stringify(detail)};window.fixtureLocked=${JSON.stringify(locked)};window.fixturePage=${JSON.stringify(populated)};
+                window.originalUrl=location.href;window.holdDetail=true;window.fetch=async (url,options)=>{if(window.holdDetail)await new Promise(resolve=>window.releaseDetail=resolve);return {ok:true,redirected:false,text:async()=>window.fixtureDetail};};window.openerControl=document.querySelector('[data-evidence-open]');`);
+            if ([1440,390].includes(width)) {
+                const screenshot=await send('Page.captureScreenshot',{format:'png',captureBeyondViewport:false});
+                fs.writeFileSync(path.join(fixtures,`list-${width}.png`),Buffer.from(screenshot.result.data,'base64'));
+            }
+            await evaluate(`document.querySelector('[aria-label="Grid view"]').click()`);
+            await waitFor(`document.querySelector('[data-evidence-page]').dataset.evidenceLayout==='grid'`);
+            assert.equal(await evaluate(`document.querySelector('[aria-label="Grid view"]').getAttribute('aria-pressed')==='true'`),true,'Grid view can be restored');
             if ([1440, 390].includes(width)) {
                 const screenshot = await send('Page.captureScreenshot', { format: 'png', captureBeyondViewport: false });
                 fs.writeFileSync(path.join(fixtures, `page-${width}.png`), Buffer.from(screenshot.result.data, 'base64'));
@@ -73,15 +119,29 @@ const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
             assert.equal(await evaluate(`!document.querySelector('input[type=file]').disabled&&document.querySelector('input[type=file]').required&&document.querySelector('input[name=copyAuthorized]').required`), true);
             await evaluate(`document.querySelector('#evidence-request-modal select[name=method]').value='digital-reference';document.querySelector('#evidence-request-modal select[name=method]').dispatchEvent(new Event('change',{bubbles:true}));`);
             await delay(40);
-            await evaluate(`window.fetch=async()=>({ok:false,status:422,json:async()=>({errors:{notes:['Enter permitted evidence notes.']}})});document.querySelector('#evidence-request-modal textarea').value='Preserved response';document.querySelector('#evidence-request-modal form').requestSubmit(document.querySelector('#evidence-request-modal button[value=submit]'));`);
+            await evaluate(`window.sentUrl=null;window.fetch=async(url)=>{window.sentUrl=url;return {ok:false,status:422,json:async()=>({errors:{notes:['Enter permitted evidence notes.']}})}};document.querySelector('#evidence-request-modal textarea').value='Preserved response';document.querySelector('#evidence-request-modal form').requestSubmit(document.querySelector('#evidence-request-modal button[value=submit]'));`);
             await waitFor(`document.querySelector('[data-evidence-message]').textContent==='Enter permitted evidence notes.'`);
+            assert.equal(await evaluate('window.sentUrl'), await evaluate('document.querySelector("#evidence-request-modal form").getAttribute("action")'), 'Submit targets the response endpoint even when buttons are named action');
             assert.equal(await evaluate(`document.querySelector('#evidence-request-modal textarea').value==='Preserved response'&&document.querySelector('#evidence-request-modal').open`), true);
-            await evaluate(`window.sentAction='';window.fetch=async(url,options)=>options?.method==='POST'?(window.sentAction=options.body.get('action'),{ok:true,json:async()=>({message:'Draft saved'})}):{ok:true,redirected:false,text:async()=>String(url).includes('requestId=')?window.fixtureDetail:window.fixturePage};document.querySelector('#evidence-request-modal form').requestSubmit(document.querySelector('#evidence-request-modal button[value=draft]'));`);
+            // A conflict refresh must keep the same form, selected File and submission key.
+            await evaluate(`window.conflictForm=document.querySelector('#evidence-request-modal form');window.conflictKey=window.conflictForm.querySelector('[name=submissionKey]').value;const m=window.conflictForm.querySelector('[name=method]');m.value='file';m.dispatchEvent(new Event('change',{bubbles:true}));`);
+            await delay(40);
+            await evaluate(`const transfer=new DataTransfer();transfer.items.add(new File(['%PDF-1.4 Evidence'],'evidence.pdf',{type:'application/pdf'}));window.conflictForm.querySelector('[name=file]').files=transfer.files;window.conflictForm.querySelector('[name=copyAuthorized]').checked=true;window.conflictPosts=0;window.fetch=async(url,options)=>options?.method==='POST'?(window.conflictPosts++,{ok:false,status:409,json:async()=>({message:'Audit changed'})}):{ok:true,redirected:false,text:async()=>window.fixtureDetail.replace('name="version" value="1"','name="version" value="9"')};window.conflictForm.requestSubmit(window.conflictForm.querySelector('[value=submit]'));`);
+            await waitFor(`document.querySelector('[data-evidence-message]').textContent.includes('Review the updated details, then retry.')`);
+            assert.equal(await evaluate(`document.querySelector('#evidence-request-modal form')===window.conflictForm&&window.conflictForm.querySelector('[name=file]').files[0].name==='evidence.pdf'&&window.conflictForm.querySelector('[name=notes]').value==='Preserved response'&&window.conflictForm.querySelector('[name=version]').value==='9'&&window.conflictForm.querySelector('[name=submissionKey]').value===window.conflictKey&&window.conflictPosts===1`), true, '409 keeps response/file and refreshes version without automatic resubmission');
+            await evaluate(`window.fetch=async(url,options)=>options?.method==='POST'?{ok:false,status:409,json:async()=>({message:'Locked'})}:{ok:true,redirected:false,text:async()=>window.fixtureLocked};window.conflictForm.requestSubmit(window.conflictForm.querySelector('[value=submit]'));`);
+            await waitFor(`document.querySelector('[data-evidence-message]').textContent.includes('read-only or its evidence permissions changed')`);
+            assert.equal(await evaluate(`window.conflictForm.querySelector('[name=file]').files[0].name==='evidence.pdf'&&window.conflictForm.querySelector('[name=version]').value==='9'`), true, 'Locked requests retain the file without refreshing an unusable version');
+            await evaluate(`(()=>{const m=document.querySelector('#evidence-request-modal select[name=method]');m.value='digital-reference';m.dispatchEvent(new Event('change',{bubbles:true}));})()`);
+            await delay(40);
+            await evaluate(`window.sentAction='';window.expectedSaveUrl=document.querySelector('#evidence-request-modal form').getAttribute('action');window.fetch=async(url,options)=>options?.method==='POST'?(window.sentUrl=url,window.sentAction=options.body.get('action'),{ok:true,json:async()=>({message:'Draft saved'})}):{ok:true,redirected:false,text:async()=>String(url).includes('requestId=')?window.fixtureDetail:window.fixturePage};document.querySelector('#evidence-request-modal form').requestSubmit(document.querySelector('#evidence-request-modal button[value=draft]'));`);
             await waitFor(`document.querySelector('[data-evidence-message]').textContent==='Draft saved'&&!!document.querySelector('#evidence-request-modal form')&&!document.querySelector('#evidence-request-modal form').dataset.saving&&document.querySelector('[data-evidence-body]').getAttribute('aria-busy')==='false'`);
             assert.equal(await evaluate('window.sentAction'), 'draft');
+            assert.equal(await evaluate('window.sentUrl'), await evaluate('window.expectedSaveUrl'), 'Draft targets the response endpoint');
+            await waitFor(`document.activeElement.matches('#evidence-request-modal select[name=method]')`);
             await evaluate(`document.querySelector('.evidence-modal-header [data-evidence-close]').focus()`);
             await send('Input.dispatchKeyEvent', { type: 'keyDown', key: 'Tab', code: 'Tab', windowsVirtualKeyCode: 9, modifiers: 8 });
-            assert.equal(await evaluate(`document.activeElement===document.querySelector('.evidence-modal-footer [data-evidence-close]')`), true);
+            assert.equal(await evaluate(`document.querySelector('#evidence-request-modal').contains(document.activeElement)&&document.activeElement.matches('.evidence-modal-footer [data-evidence-close], .page-notification-close')`), true, 'Shift+Tab stays in the modal, including its validation notice');
             await send('Input.dispatchKeyEvent', { type: 'keyUp', key: 'Tab', code: 'Tab', windowsVirtualKeyCode: 9 });
             if ([1440, 390].includes(width)) {
                 const screenshot = await send('Page.captureScreenshot', { format: 'png', captureBeyondViewport: false });

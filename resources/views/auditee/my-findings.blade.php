@@ -9,8 +9,8 @@
         <x-alert-banner>Audit results could not be loaded. Please try again. <a href="{{ request()->fullUrl() }}">Retry loading results</a></x-alert-banner>
     @endif
     <div class="auditor-summary-grid results-summary">
-        @foreach([['Total Results', 'total', 'clipboard-check'], ['Nonconformities', 'nonconformities', 'circle-alert'], ['Open CARs', 'openCars', 'triangle-alert']] as [$label, $key, $icon])
-        <article class="auditor-summary-card"><div><h3>{{ $label }}</h3><i data-lucide="{{ $icon }}" class="results-icon-{{ $key }}" aria-hidden="true"></i></div><strong>{{ $summary[$key] ?? '—' }}</strong></article>
+        @foreach([['Total Results', 'total', 'clipboard-check', 'blue'], ['Nonconformities', 'nonconformities', 'circle-alert', 'danger'], ['Open CARs', 'openCars', 'triangle-alert', 'danger']] as [$label, $key, $icon, $color])
+        <article class="auditee-metric-card metric-stat-card"><div class="metric-info"><span class="metric-label">{{ $label }}</span><strong class="metric-number color-dark">{{ $summary[$key] ?? '—' }}</strong></div><div class="metric-icon-box {{ $color }}"><i data-lucide="{{ $icon }}" aria-hidden="true"></i></div></article>
         @endforeach
     </div>
     @unless($loadError ?? false)
@@ -19,7 +19,7 @@
         @forelse($published as $entry)
         @php($resultStatus = match($entry['result']) { 'C' => 'compliant', 'N' => 'non_compliant', 'O' => 'observation', default => 'unknown' })
         <details class="results-shared"><summary><span>{{ $entry['auditCode'] }}</span><x-status-badge class="results-status-badge" :status="$resultStatus" :label="match($entry['result']) { 'C' => 'C — Compliant', 'N' => 'N — Non-Conformance', 'O' => 'O — Observation', default => 'Unknown result' }"/><span class="results-details-label">View Details</span></summary>
-            <dl class="workflow-details"><dt>Shared audit remarks</dt><dd>{{ $entry['summary'] }}</dd><dt>Department</dt><dd>{{ $entry['department'] }}</dd><dt>Shared on</dt><dd>{{ $entry['at'] }}</dd><dt>Corrective action</dt><dd>A shared checklist decision does not automatically create a CAR.</dd></dl>
+            <dl class="workflow-details"><dt>Shared audit remarks</dt><dd>{{ $entry['summary'] }}</dd><dt>Department</dt><dd>{{ $entry['department'] }}</dd><dt>Shared on</dt><dd>{{ \App\Support\PortalDate::format($entry['at']) }}</dd><dt>Corrective action</dt><dd>A shared checklist decision does not automatically create a CAR.</dd></dl>
             <a href="/auditee/evidence-requests#request-{{ $entry['requestId'] }}">View permitted evidence request and responses</a>
         </details>
         @empty
@@ -56,7 +56,7 @@
                 @endfor
             </tbody></table>
         </div>
-        <div class="results-pagination">{{ $checks->links() }}</div>
+        <div class="results-pagination"><x-server-pagination :paginator="$checks" /></div>
     </section>
     @endunless
     @include('auditee.result-modal')

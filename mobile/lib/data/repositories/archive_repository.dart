@@ -16,7 +16,7 @@ class ArchiveRepository {
     String? dateFilter,
   }) async {
     final response = await _dio.get(
-      '/api/v1/archives',
+      '/api/v1/documents',
       queryParameters: {
         if (department != null &&
             department.isNotEmpty &&
@@ -39,7 +39,7 @@ class ArchiveRepository {
   }
 
   Future<bool> verifyChecksum(String fileId) async {
-    final response = await _dio.get('/api/v1/archives/$fileId/verify-checksum');
+    final response = await _dio.get('/api/v1/documents/$fileId/verify-checksum');
     final body = ApiResponse.object(response.data);
     final verified = body['isVerified'];
     if (verified is! bool) {
@@ -51,7 +51,7 @@ class ArchiveRepository {
 
   Future<Uint8List> downloadArchive(String fileId) async {
     final response = await _dio.get<List<int>>(
-      '/api/v1/archives/$fileId/download',
+      '/api/v1/documents/$fileId/download',
       options: Options(responseType: ResponseType.bytes),
     );
     final data = response.data;
@@ -71,7 +71,7 @@ class ArchiveRepository {
     final upload = MultipartFile.fromBytes(bytes, filename: file.name);
 
     final response = await _dio.post(
-      '/api/v1/archives/upload',
+      '/api/v1/documents/upload',
       data: FormData.fromMap({
         'file': upload,
         'checkId': checkId,

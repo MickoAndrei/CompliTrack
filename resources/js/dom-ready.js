@@ -1,4 +1,7 @@
 export function onDocumentReady(callback) {
-    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', callback, { once: true });
-    else callback();
+    const run = () => globalThis.window?.complitrackTabReady
+        ? window.complitrackTabReady.then(callback)
+        : callback();
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', run, { once: true });
+    else run();
 }

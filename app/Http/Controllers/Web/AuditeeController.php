@@ -52,11 +52,13 @@ class AuditeeController extends Controller
             if ($request->filled('auditStatus') && $record['auditStatus'] !== $request->query('auditStatus')) { return false; }
             $status = $request->query('requestStatus');
             if ($status === 'requested' && !in_array($record['status'], ['requested', 'needs_information'], true)) { return false; }
-            if ($status === 'under_review' && $record['statusLabel'] !== 'Under Review') { return false; }
+            if ($status === 'under_review' && !($record['status'] === 'response_submitted'
+                && in_array($record['auditStatus'], ['submitted', 'accepted'], true))) { return false; }
             if ($status && !in_array($status, ['requested', 'under_review'], true) && $record['status'] !== $status) { return false; }
             return !$request->filled('search') || str_contains(mb_strtolower(implode(' ', [$record['title'], $record['description'], $record['auditCode'], $record['auditTitle'], $record['department'], $record['auditor']])), mb_strtolower(trim($request->query('search'))));
         })->values();
-        $requests = new \Illuminate\Pagination\LengthAwarePaginator($filtered->forPage($request->integer('page', 1), 12)->values(), $filtered->count(), 12,
+        $perPage = min(max($request->integer('perPage', 4), 1), 100);
+        $requests = new \Illuminate\Pagination\LengthAwarePaginator($filtered->forPage($request->integer('page', 1), $perPage)->values(), $filtered->count(), $perPage,
             $request->integer('page', 1), ['path' => $request->url(), 'query' => $request->except(['page', 'auditId', 'requestId'])]);
         return view('auditee.evidence-requests', compact('requests', 'summary'));
     }
@@ -65,6 +67,7 @@ class AuditeeController extends Controller
     {
         abort_unless((int) $request->user()->roleId === 2, 403);
         $audit = $this->evidence->audit($request->user(), $id);
+        $this->evidence->ensureCurrentVersion($audit, $request);
         $data = $request->validate(['itemId' => 'required|uuid', 'auditeeId' => 'required|string',
             'description' => 'required|string|max:2000', 'allowUpload' => 'sometimes|boolean',
             'referenceStandard' => 'required|in:ARTA-3days,ARTA-7days,ARTA-20days,ISO9001-9.2']);
@@ -103,7 +106,7 @@ class AuditeeController extends Controller
         }
         abort_unless(in_array($requests[$index]['status'], ['requested', 'needs_information'], true), 403);
         abort_if(count($requests[$index]['responses']) >= 100, 422, 'This request has reached its response limit.');
-        abort_unless((int) $request->input('version') === (int) $audit->version, 409, 'Refresh this audit before submitting.');
+        $this->evidence->ensureCurrentVersion($audit, $request);
         unset($data['action']);
         if ($data['method'] !== 'physical-original') { unset($data['availability']); }
         if ($data['method'] === 'file') {
@@ -227,14 +230,14 @@ class AuditeeController extends Controller
             $scope = $this->scopes->checks($request->user());
             $summary = ['total' => (clone $scope)->count(),
                 'nonconformities' => (clone $scope)->where('result', 'non_compliant')->count(),
-                'openCars' => (clone $scope)->where('result', 'non_compliant')->whereIn('correctiveStatus', ['open', 'in_progress'])->count()];
+                'openCars' => (clone $scope)->where('result', 'non_compliant')->whereIn('correctiveStatus', \App\Support\CarStatus::storedValues(['open', 'in_progress', 'returned_for_revision']))->count()];
             $query = $this->scopes->checks($request->user());
             if ($request->filled('search')) { $query->where('checkCode', 'regex', '/'.preg_quote($request->query('search'), '/').'/i'); }
             if (in_array($request->query('result'), ['compliant', 'non_compliant'], true)) { $query->where('result', $request->query('result')); }
             if ($request->query('result') === 'observation') { $query->whereRaw(['_id' => null]); }
-            if ($request->boolean('actionable')) { $query->whereIn('correctiveStatus', ['open', 'in_progress']); }
-            if ($request->boolean('archived')) { $query->where('correctiveStatus', 'closed'); }
-            $checks = $query->orderBy('createdAt', 'desc')->paginate(20)->withQueryString();
+            if ($request->boolean('actionable')) { $query->whereIn('correctiveStatus', \App\Support\CarStatus::storedValues(['open', 'in_progress', 'returned_for_revision'])); }
+            if ($request->boolean('archived')) { $query->whereIn('correctiveStatus', \App\Support\CarStatus::storedValues(['closed'])); }
+            $checks = $query->orderBy('createdAt', 'desc')->paginate(min(max($request->integer('perPage', 20), 1), 100))->withQueryString();
             $published = $this->published($request->user());
             if ($request->boolean('actionable') || $request->boolean('archived')) { $published = collect(); }
             if ($request->query('result') === 'compliant') { $published = $published->where('result','C'); }

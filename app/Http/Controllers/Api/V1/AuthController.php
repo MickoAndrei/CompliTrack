@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\PasswordResetToken;
 use App\Models\User;
 use App\Services\PasswordResetService;
+use App\Services\ProfileImageService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
@@ -40,10 +41,13 @@ class AuthController extends Controller
             Auth::guard('web')->login($user, $request->boolean('remember'));
             $request->session()->regenerate();
 
+            app(\App\Services\AuditLogService::class)->record($request, 'Signed in', 'authentication', $user->getKey(), actor: $user);
+
             return response()->json(['user' => $user->toArray()]);
         }
 
         $token = auth('api')->login($user);
+        app(\App\Services\AuditLogService::class)->record($request, 'Signed in', 'authentication', $user->getKey(), actor: $user);
 
         return response()->json([
             'token' => $token,
@@ -55,6 +59,7 @@ class AuthController extends Controller
 
     public function logout(Request $request)
     {
+        app(\App\Services\AuditLogService::class)->record($request, 'Signed out', 'authentication', $request->user()?->getKey());
         if ($request->hasSession() && Auth::guard('web')->check()){
             Auth::guard('web')->logout();
             if ($request->hasSession()) {
@@ -62,7 +67,7 @@ class AuthController extends Controller
                 $request->session()->regenerateToken();
             }
         } else {
-            $auth('api')->logout(); // blacklist the JWT
+            auth('api')->logout(); // blacklist the JWT
         }
 
         return response()->json(['message' => 'Logged out.']);
@@ -87,6 +92,8 @@ class AuthController extends Controller
         $user->password = Hash::make($validated['password'], ['rounds' => 12]);
         $user->save();
 
+        app(\App\Services\AuditLogService::class)->record($request, 'Changed account password', 'user', $user->getKey(), actor: $user);
+
         return response()->json([
             'message' => 'Password updated successfully.',
         ]);
@@ -107,21 +114,13 @@ class AuthController extends Controller
         }
 
         $user = $request->user();
-        $previousPath = $user->avatarPath;
-        $path = 'avatars/'.bin2hex(random_bytes(16)).'.'.$image['extension'];
-        $saved = $this->writeAvatarFile($path, $contents);
+        app(ProfileImageService::class)->store($user, $contents, match ($image['extension']) {
+            'jpg' => 'image/jpeg',
+            'png' => 'image/png',
+            'webp' => 'image/webp',
+        });
 
-        if (! $saved) {
-            return response()->json(['message' => 'The profile photo could not be saved.'], 500);
-        }
-
-        $user->avatarPath = $path;
-        $user->save();
-        if ($previousPath && $previousPath !== $path) {
-            $this->deleteAvatarFile($previousPath);
-        }
-
-        return response()->json(['avatarUrl' => url('/api/v1/auth/avatar')]);
+        return response()->json(['avatarUrl' => $user->avatarUrl()]);
     }
 
     private function detectAvatarImage(string $contents): ?array
@@ -141,49 +140,21 @@ class AuthController extends Controller
 
     public function avatar(Request $request)
     {
-        $path = $request->user()->avatarPath;
-        $absolutePath = $path ? $this->avatarFilePath($path) : null;
-        abort_unless($absolutePath && is_file($absolutePath), 404);
+        $user = $request->user();
+        abort_unless(app(ProfileImageService::class)->migrateLegacy($user), 404);
 
-        return response()->file($absolutePath, [
-            'Content-Type' => match (strtolower(pathinfo($path, PATHINFO_EXTENSION))) {
-                'jpg', 'jpeg' => 'image/jpeg',
-                'png' => 'image/png',
-                'webp' => 'image/webp',
-                default => 'application/octet-stream',
-            },
-            'Cache-Control' => 'private, max-age=300',
+        $versioned = $request->query('user') === (string) $user->getKey()
+            && $request->query('version') === $user->avatarVersion;
+        $response = response($user->avatarData->getData(), 200, [
+            'Content-Type' => $user->avatarMimeType,
+            'Cache-Control' => $versioned ? 'private, max-age=3600' : 'private, no-store',
+            'Vary' => 'Cookie, Authorization',
+            'X-Content-Type-Options' => 'nosniff',
         ]);
-    }
+        $response->setEtag($user->avatarVersion);
+        $response->isNotModified($request);
 
-    private function writeAvatarFile(string $relativePath, string $contents): bool
-    {
-        $path = $this->avatarFilePath($relativePath);
-        $directory = dirname($path);
-        if (! is_dir($directory) && ! mkdir($directory, 0775, true) && ! is_dir($directory)) {
-            return false;
-        }
-
-        return file_put_contents($path, $contents, LOCK_EX) !== false;
-    }
-
-    private function deleteAvatarFile(string $relativePath): void
-    {
-        $path = $this->avatarFilePath($relativePath);
-        if (is_file($path)) {
-            unlink($path);
-        }
-    }
-
-    private function avatarFilePath(string $relativePath): string
-    {
-        abort_unless(
-            preg_match('/^avatars\\/[A-Za-z0-9._-]+\\.(?:jpg|jpeg|png|webp)$/i', $relativePath) === 1,
-            404,
-        );
-
-        return rtrim(config('filesystems.disks.public.root'), DIRECTORY_SEPARATOR)
-            .DIRECTORY_SEPARATOR.str_replace('/', DIRECTORY_SEPARATOR, $relativePath);
+        return $response;
     }
 
     public function forgotPassword(Request $request, PasswordResetService $passwordResets)
@@ -238,6 +209,8 @@ class AuthController extends Controller
         $reset->delete();
 
         $passwordResets->complete($reset->token);
+
+        app(\App\Services\AuditLogService::class)->record($request, 'Reset account password', 'user', $user->getKey());
 
         return response()->json(['message' => 'Password reset successfully.']);
     }

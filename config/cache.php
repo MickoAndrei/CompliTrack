@@ -2,6 +2,9 @@
 
 use Illuminate\Support\Str;
 
+$cachePrefix = env('CACHE_PREFIX', Str::slug((string) env('APP_NAME', 'laravel')).'-cache-');
+$cacheNamespace = env('COMPLITRACK_CACHE_NAMESPACE');
+
 return [
 
     /*
@@ -122,6 +125,6 @@ return [
     |
     */
 
-    'prefix' => env('CACHE_PREFIX', Str::slug((string) env('APP_NAME', 'laravel')).'-cache-'),
+    'prefix' => $cachePrefix.($cacheNamespace ? $cacheNamespace.'-' : ''),
 
 ];

@@ -7,6 +7,8 @@
         <section class="form-wrapper" x-data="loginPage()">
             <template x-if="error"><div x-page-notice class="status-toast" role="alert" x-text="error"></div></template>
             @if (request()->query('reason') === 'server-restarted') <div x-page-notice class="status-toast" role="status">The server restarted. Please sign in again.</div> @endif
+            @if (request()->query('reason') === 'database-switched') <div x-page-notice="'success'" class="status-toast" role="status">Database switched successfully. Sign in to continue.</div> @endif
+            @if (request()->query('reason') === 'database-switch-rolled-back') <div x-page-notice class="status-toast" role="status">The database switch could not complete. The previous database was restored. Please sign in again.</div> @endif
             @if (request()->query('reset') === 'success') <div x-page-notice="'success'" class="status-toast" role="status">Password reset successfully. Sign in with your new password.</div> @endif
             <div class="form-header"><div class="campus-pill">USTP CLAVERIA PORTAL</div><h2 class="form-title">Welcome back</h2><p class="form-subtitle">Sign in to your CompliTrack account</p></div>
             @if ($errors->any()) <div x-page-notice class="status-toast" role="alert">{{ $errors->first() }}</div> @endif

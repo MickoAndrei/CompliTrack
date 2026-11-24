@@ -7,6 +7,12 @@ use Tests\TestCase;
 
 class AuditAccessTest extends TestCase
 {
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->mock(\App\Services\AuditLogService::class)->shouldReceive('record')->andReturnNull();
+    }
+
     public function test_guests_are_redirected_to_login(): void
     {
         $this->get('/audits')->assertRedirect('/login');

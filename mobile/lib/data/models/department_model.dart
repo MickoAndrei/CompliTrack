@@ -22,16 +22,37 @@ class DepartmentModel {
   });
 
   factory DepartmentModel.fromJson(Map<String, dynamic> json) {
+    final collegeRaw = json['collegeName'] ??
+        json['collageName'] ??
+        json['college_name'] ??
+        json['college'];
+    final campusRaw =
+        json['campusName'] ?? json['campus_name'] ?? json['campus'];
+    final codeRaw =
+        json['departmentCode'] ?? json['code'] ?? json['department_code'];
+    final nameRaw =
+        json['departmentName'] ?? json['name'] ?? json['department_name'];
+
+    final collegeStr = collegeRaw?.toString();
+    final campusStr = campusRaw?.toString();
+    final codeStr = codeRaw?.toString();
+    final nameStr = nameRaw?.toString();
+
     return DepartmentModel(
-      id: ModelJson.requiredString(json, '_id', alias: 'id'),
-      departmentCode: ModelJson.requiredString(json, 'departmentCode'),
-      departmentName: ModelJson.requiredString(json, 'departmentName'),
-      collegeName: ModelJson.requiredString(json, 'collegeName'),
-      campusName: ModelJson.requiredString(json, 'campusName'),
+      id: ModelJson.optionalString(json, '_id') ??
+          ModelJson.optionalString(json, 'id') ??
+          ModelJson.optionalString(json, 'departmentId') ??
+          '',
+      departmentCode: (codeStr != null && codeStr.isNotEmpty) ? codeStr : '',
+      departmentName: (nameStr != null && nameStr.isNotEmpty) ? nameStr : '',
+      collegeName: collegeStr ?? '',
+      campusName: (campusStr != null && campusStr.isNotEmpty)
+          ? campusStr
+          : 'CET Claveria',
       headUserId: ModelJson.optionalString(json, 'headUserId'),
-      isActive: ModelJson.requiredBool(json, 'isActive'),
+      isActive: ModelJson.optionalBool(json, 'isActive') ?? true,
       createdAt: json['createdAt'] != null
-          ? ModelJson.requiredDateTime(json, 'createdAt')
+          ? DateTime.tryParse(json['createdAt'].toString())?.toUtc()
           : null,
     );
   }

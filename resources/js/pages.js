@@ -1,8 +1,8 @@
+import { portalDate } from './portal-date';
 import { enhancedUserManagement } from './user-management';
 import { deferAfterPrimaryReady } from './page-work';
 import { readNotifications } from './notification-data';
 const apiPath = (endpoint) => `/api/v1/${endpoint.replace(/^\/+/, '')}`;
-const activityStorageKey = name => `complitrack.${document.body?.dataset.userId || 'anonymous'}.${name}`;
 
 function responseData(response) {
     return response.data?.data ?? response.data ?? [];
@@ -22,8 +22,8 @@ function notificationBadge() {
         previewHeight: window.innerHeight || 800,
         previewLimit() { return Math.max(1, Math.min(5, Math.floor((this.previewHeight - 260) / 68))); },
         previewItems() {
-            return [...(this.notifications || []).map(record => ({ kind: 'notification', record })),
-                ...(this.activities || []).map(record => ({ kind: 'activity', record }))];
+            return [...new Map((this.notifications || []).map(record => [record._id, record])).values()]
+                .map(record => ({ kind: 'notification', record }));
         },
         previewPages() { return Math.max(1, Math.ceil(this.previewItems().length / this.previewLimit())); },
         init() {
@@ -174,168 +174,6 @@ document.addEventListener('alpine:init', () => {
         },
     }));
 
-    Alpine.data('activityNotifications', () => ({
-        ...notificationBadge(),
-        open: false,
-        loading: false,
-        markingRead: false,
-        error: null,
-        activities: [],
-        notifications: [],
-        activitiesLoading: false,
-        badgeCount() {
-            return this.unreadCount + this.activities.filter(activity => !this.isActivityRead(activity)).length;
-        },
-        async refreshActivities() {
-            if (this.activitiesLoading || this.notificationDisposed) return;
-            this.activitiesLoading = true;
-            try {
-                const { data } = await axios.get(apiPath('logs'), { params: { perPage: 8 } });
-                if (!this.notificationDisposed) {
-                    this.activities = (data.data || []).filter(activity => !this.dismissedActivityIds.includes(String(activity._id)));
-                }
-            } finally {
-                this.activitiesLoading = false;
-            }
-        },
-        async refreshUnreadCount() {
-            await Promise.all([
-                notificationBadge().refreshUnreadCount.call(this),
-                this.refreshActivities().catch(() => {}),
-            ]);
-        },
-        dismissedActivityIds: (() => {
-            try {
-                return JSON.parse(window.localStorage.getItem(activityStorageKey('dismissedActivities')) || '[]');
-            } catch {
-                return [];
-            }
-        })(),
-        readActivityIds: (() => {
-            try {
-                return JSON.parse(window.localStorage.getItem(activityStorageKey('readActivities')) || '[]');
-            } catch {
-                return [];
-            }
-        })(),
-        refreshTimer: null,
-        async toggle() {
-            this.open = !this.open;
-            this.previewPage = 1;
-            if (this.open) {
-                this.refreshTimer = window.setInterval(() => this.refresh(), 20000);
-                await this.refresh();
-            } else {
-                this.stopRefreshing();
-            }
-        },
-        close() {
-            this.open = false;
-            this.stopRefreshing();
-        },
-        stopRefreshing() {
-            if (this.refreshTimer) window.clearInterval(this.refreshTimer);
-            this.refreshTimer = null;
-        },
-        async refresh() {
-            this.loading = true;
-            this.error = null;
-            try {
-                const [, notificationsResponse] = await Promise.all([
-                    this.refreshActivities(),
-                    readNotifications({ perPage: 8 }),
-                ]);
-                if (this.notificationDisposed) return;
-                this.notifications = (notificationsResponse.data.data || []).filter((notification) => !notification.isRead);
-                this.$nextTick(() => window.renderIcons?.());
-            } catch (error) {
-                this.error = responseMessage(error, 'Unable to load recent activity.');
-            } finally {
-                this.loading = false;
-            }
-        },
-        async markAllRead() {
-            if (this.badgeCount() === 0 || this.markingRead) return;
-            this.markingRead = true;
-            try {
-                if (this.unreadCount > 0) await axios.patch(apiPath('notifications/read-all'));
-                this.notifications = this.notifications.map((notification) => ({ ...notification, isRead: true }));
-                const visibleActivities = this.activities;
-                await this.refreshUnreadCount();
-                this.readActivityIds = [...new Set([
-                    ...this.readActivityIds,
-                    ...visibleActivities.map(activity => String(activity._id)),
-                    ...this.activities.map(activity => String(activity._id)),
-                ])];
-                window.localStorage.setItem(activityStorageKey('readActivities'), JSON.stringify(this.readActivityIds));
-            } catch (error) {
-                this.error = responseMessage(error, 'Unable to mark notifications as read.');
-            } finally {
-                this.markingRead = false;
-            }
-        },
-        async markNotificationRead(notification) {
-            if (notification.isRead) return;
-            try {
-                await axios.patch(apiPath(`notifications/${encodeURIComponent(notification._id)}/read`));
-                notification.isRead = true;
-                await this.refreshUnreadCount();
-            } catch (error) {
-                this.error = responseMessage(error, 'Unable to mark this notification as read.');
-            }
-        },
-        async clearNotifications() {
-            if (this.loading || this.markingRead) return;
-            this.markingRead = true;
-            this.error = null;
-            try {
-                if (this.unreadCount > 0) await axios.patch(apiPath('notifications/read-all'));
-                const visibleActivities = this.activities;
-                await this.refreshUnreadCount();
-                this.dismissedActivityIds = [...new Set([
-                    ...this.dismissedActivityIds,
-                    ...visibleActivities.map((activity) => String(activity._id)),
-                    ...this.activities.map((activity) => String(activity._id)),
-                ])];
-                window.localStorage.setItem(activityStorageKey('dismissedActivities'), JSON.stringify(this.dismissedActivityIds));
-                this.activities = [];
-                this.notifications = [];
-                this.previewPage = 1;
-            } catch (error) {
-                this.error = responseMessage(error, 'Unable to clear notifications.');
-            } finally {
-                this.markingRead = false;
-            }
-        },
-        isActivityRead(activity) {
-            return this.readActivityIds.includes(String(activity._id));
-        },
-        async openActivity(activity) {
-            const id = String(activity._id);
-            if (!this.readActivityIds.includes(id)) {
-                this.readActivityIds = [...this.readActivityIds, id];
-                window.localStorage.setItem(activityStorageKey('readActivities'), JSON.stringify(this.readActivityIds));
-            }
-            await new Promise((resolve) => window.setTimeout(resolve, 220));
-            window.location.assign(`/super-admin/logs?highlight=${encodeURIComponent(id)}`);
-        },
-        formatActivityTime(value) {
-            const date = value ? new Date(value) : null;
-            if (!date || Number.isNaN(date.getTime())) return 'Time unavailable';
-            const seconds = Math.round((date.getTime() - Date.now()) / 1000);
-            const absSeconds = Math.abs(seconds);
-            const [amount, unit] = absSeconds < 60 ? [seconds, 'second']
-                : absSeconds < 3600 ? [Math.round(seconds / 60), 'minute']
-                    : absSeconds < 86400 ? [Math.round(seconds / 3600), 'hour']
-                        : [Math.round(seconds / 86400), 'day'];
-            return new Intl.RelativeTimeFormat(undefined, { numeric: 'auto' }).format(amount, unit);
-        },
-        destroy() {
-            this.stopRefreshing();
-            this.stopUnreadCount();
-        },
-    }));
-
     Alpine.data('profilePage', ({ avatarUrl }) => ({
         avatarUrl: avatarUrl || '',
         photoPreviewError: false,
@@ -373,7 +211,7 @@ document.addEventListener('alpine:init', () => {
             form.append('avatar', file);
             try {
                 const { data } = await axios.post(apiPath('auth/avatar'), form);
-                this.avatarUrl = `${data.avatarUrl}${data.avatarUrl.includes('?') ? '&' : '?'}v=${Date.now()}`;
+                this.avatarUrl = data.avatarUrl;
                 document.querySelectorAll('[data-user-avatar]').forEach((image) => {
                     image.src = this.avatarUrl;
                     image.classList.remove('hidden');
@@ -413,7 +251,7 @@ document.addEventListener('alpine:init', () => {
                 if (!Number.isInteger(roleId) || !destinations[roleId]) {
                     throw new Error('This account does not have a valid CompliTrack role.');
                 }
-                window.location.assign(destinations[roleId]);
+                window.location.assign(window.tabUrl(destinations[roleId]));
             } catch (error) {
                 this.error = responseMessage(error, 'Unable to sign in. Check your credentials and try again.');
             } finally {
@@ -425,7 +263,13 @@ document.addEventListener('alpine:init', () => {
     Alpine.data('resourcePage', (config) => ({
         notificationTimer: null,
         endpoint: config.endpoint,
+        directoryPage: config.directoryPage || false,
         unreadOnly: false,
+        notificationStatus: 'all', notificationUnreadCount: 0,
+        markingReadIds: [], markingAll: false,
+        categoryFilter: '', actorFilter: '', outcomeFilter: '', summary: null,
+        details: null, detailLoading: false, detailError: null, detailVersion: 0,
+        requestVersion: 0, resourceDisposed: false,
         typeFilter: '',
         columns: config.columns,
         perPage: config.perPage || 10,
@@ -443,7 +287,14 @@ document.addEventListener('alpine:init', () => {
         meta: { total: 0, lastPage: 1 },
         page: 1,
         search: '',
-        sortBy: 'createdAt:desc',
+        departmentFilters: { campusName: '', status: '' },
+        clearDepartmentFilters() {
+            this.search = '';
+            this.departmentFilters = { campusName: '', status: '' };
+            this.sortBy = 'departmentName:asc';
+            this.load(1);
+        },
+        sortBy: config.endpoint === 'users' ? 'fullName:asc' : config.endpoint === 'departments' ? 'departmentName:asc' : 'createdAt:desc',
         startDate: '', endDate: '', draftStartDate: '', draftEndDate: '', dateRangeError: null,
         exporting: false,
         exportError: null,
@@ -485,7 +336,13 @@ document.addEventListener('alpine:init', () => {
             window.addEventListener('focus', this.refreshOnFocus);
             document.addEventListener('visibilitychange', this.refreshOnFocus);
             if (this.endpoint === 'notifications') this.notificationTimer = window.setInterval(this.refreshOnFocus, 10000);
+            this.notificationFeedChanged = () => { if (this.endpoint === 'notifications' && !document.hidden) this.load(this.page); };
+            window.addEventListener('complitrack:notifications-changed', this.notificationFeedChanged);
             this.clearResourceState = () => {
+                this.resourceDisposed = true;
+                this.requestVersion++;
+                this.detailVersion++;
+                this.$refs?.recordDetails?.close();
                 this.abortUserRequests?.();
                 this.rows = []; this.summary = null; this.details = null;
                 this.options = { departments: [], colleges: [], responsibilities: [] }; this.optionsLoadedAt = 0;
@@ -495,6 +352,11 @@ document.addEventListener('alpine:init', () => {
         },
 
         destroy() {
+            this.resourceDisposed = true;
+            this.requestVersion++;
+            this.detailVersion++;
+            this.detailController?.abort();
+            window.removeEventListener('complitrack:notifications-changed', this.notificationFeedChanged);
             this.abortUserRequests?.();
             window.removeEventListener('complitrack:clear-sensitive', this.clearResourceState);
             window.clearInterval(this.notificationTimer);
@@ -531,6 +393,9 @@ document.addEventListener('alpine:init', () => {
 
         auditLogParams() {
             return {
+                ...(this.categoryFilter ? { category: this.categoryFilter } : {}),
+                ...(this.actorFilter ? { actor: this.actorFilter } : {}),
+                ...(this.outcomeFilter ? { outcome: this.outcomeFilter } : {}),
                 ...(this.search ? { search: this.search } : {}),
                 ...(this.startDate ? { startDate: this.startDate } : {}),
                 ...(this.endDate ? { endDate: this.endDate } : {}),
@@ -598,29 +463,42 @@ document.addEventListener('alpine:init', () => {
         },
 
         async load(page = this.page) {
+            const version = ++this.requestVersion;
+            if (this.resourceDisposed) return;
             this.loading = true;
             this.error = null;
             try {
-                const { data } = await axios.get(apiPath(this.endpoint), {
-                    params: {
+                const params = {
                         page,
                         perPage: this.perPage,
-                        ...(this.endpoint === 'notifications' ? { unread: this.unreadOnly, type: this.typeFilter } : {}),
+                        ...(this.directoryPage ? { includeSummary: 1 } : {}),
+                        ...(this.endpoint === 'notifications' ? { status: this.notificationStatus, type: this.typeFilter, includeSummary: true } : {}),
                         ...(this.search ? { search: this.search } : {}),
-                        ...(this.endpoint === 'logs' ? this.auditLogParams() : {}),
-                    },
-                });
-                this.rows = Array.isArray(data.data) ? data.data : [];
+                        ...(this.endpoint === 'departments' ? Object.fromEntries(Object.entries(this.departmentFilters).filter(([, value]) => value !== '')) : {}),
+                        ...(['users', 'departments'].includes(this.endpoint) ? { sortBy: this.sortBy.split(':')[0], sortDirection: this.sortBy.split(':')[1] } : {}),
+                        ...(this.endpoint === 'logs' ? { ...this.auditLogParams(), includeSummary: true } : {}),
+                };
+                const { data } = this.endpoint === 'notifications'
+                    ? await readNotifications(params)
+                    : await axios.get(apiPath(this.endpoint), { params });
+                if (version !== this.requestVersion || this.resourceDisposed) return;
+                if (page > (data.meta?.lastPage || 1)) return this.load(data.meta.lastPage || 1);
+                const rows = Array.isArray(data.data) ? data.data : [];
+                this.rows = this.endpoint === 'notifications' ? [...new Map(rows.map(row => [row._id, row])).values()] : rows;
                 this.meta = data.meta || { total: this.rows.length, lastPage: 1 };
+                this.summary = data.summary || null;
+                if (this.endpoint === 'notifications') this.notificationUnreadCount = Number(data.meta?.unreadCount ?? 0);
                 this.page = this.meta.currentPage || page;
             } catch (error) {
-                this.error = responseMessage(error, 'Unable to load these records. Please try again.');
+                if (version === this.requestVersion && !this.resourceDisposed) this.error = responseMessage(error, 'Unable to load these records. Please try again.');
             } finally {
-                this.loading = false;
-                this.$nextTick(() => {
+                if (version === this.requestVersion && !this.resourceDisposed) {
+                    this.loading = false;
+                    this.$nextTick(() => {
                     window.renderIcons?.();
                     this.highlightLogRow();
-                });
+                    });
+                }
             }
         },
 
@@ -628,7 +506,7 @@ document.addEventListener('alpine:init', () => {
             if (value === null || value === undefined || value === '') return '—';
             if (typeof value === 'boolean') return value ? 'Active' : 'Inactive';
             if (typeof value === 'object') return Array.isArray(value) ? value.join(', ') : JSON.stringify(value);
-            if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}T/.test(value)) return new Date(value).toLocaleString();
+            if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}T/.test(value)) return portalDate(value, {precise:true});
             return String(value).replaceAll('_', ' ');
         },
 
@@ -694,13 +572,12 @@ document.addEventListener('alpine:init', () => {
                 if (_id) {
                     await axios.patch(apiPath(`users/${encodeURIComponent(_id)}`), payload);
                 } else {
-                    await axios.post(apiPath('users'), payload);
+                    const response = await axios.post(apiPath('users'), payload);
+                    this.message = response.data.message || 'User created. An account setup email has been sent.';
                 }
                 this.userModalOpen = false;
                 if (_id) {
                     this.showSuccessPopup('User details updated.');
-                } else {
-                    this.message = 'User created. An account setup email has been sent.';
                 }
                 await this.load(1);
             } catch (error) {
@@ -838,13 +715,22 @@ document.addEventListener('alpine:init', () => {
             this.departmentModalOpen = true;
         },
 
+        departmentCollegeOptions() {
+            return Object.entries(config.departmentColleges?.[this.departmentForm.campusName] || {})
+                .map(([value, label]) => ({ value, label }));
+        },
+
+        changeDepartmentCampus() {
+            this.departmentForm.collegeName = '';
+        },
+
         startDepartmentEdit(row) {
             this.error = null;
             this.departmentForm = {
                 _id: row._id,
                 departmentCode: row.departmentCode,
                 departmentName: row.departmentName,
-                collegeName: row.collegeName,
+                collegeName: row.collegeName || '',
                 campusName: row.campusName,
             };
             this.departmentModalOpen = true;
@@ -881,6 +767,7 @@ document.addEventListener('alpine:init', () => {
 
         async startBroadcast() {
             this.error = null;
+            this.message = null;
             this.broadcastForm = { departmentId: '', message: '' };
             this.broadcastModalOpen = true;
             try {
@@ -897,7 +784,7 @@ document.addEventListener('alpine:init', () => {
             try {
                 const { data } = await axios.post(apiPath('notifications/broadcast'), this.broadcastForm);
                 this.broadcastModalOpen = false;
-                this.message = `Broadcast sent to ${data.recipientCount} auditee(s) in ${data.departmentName}.`;
+                this.message = `Broadcast sent to ${data.recipientCount} recipient(s) in ${data.departmentName}.`;
                 await this.load(1);
             } catch (error) {
                 this.error = responseMessage(error, 'Unable to send the broadcast.');
@@ -907,11 +794,10 @@ document.addEventListener('alpine:init', () => {
         },
 
         statusOptions(row) {
-            const labels = { open: 'Open', in_progress: 'In Progress', closed: 'Closed' };
-            const next = { open: 'in_progress', in_progress: 'closed', closed: 'open' }[row.correctiveStatus];
+            const labels = { open: 'Open', in_progress: 'In Progress', closed: 'Closed', awaiting_verification: 'Awaiting Verification', returned_for_revision: 'Returned for Revision' };
             return [
-                { value: row.correctiveStatus, label: labels[row.correctiveStatus], disabled: true },
-                { value: next, label: labels[next], disabled: false },
+                { value: row.correctiveStatus, label: row.statusLabel || labels[row.correctiveStatus] || row.correctiveStatus, disabled: true },
+                ...(row.allowedTransitions || []).map(next => ({value:next,label:labels[next],disabled:false})),
             ];
         },
 
@@ -939,7 +825,7 @@ document.addEventListener('alpine:init', () => {
         async verifyArchive(row) {
             this.error = null;
             try {
-                await axios.get(apiPath(`archives/${encodeURIComponent(row._id)}/verify-checksum`));
+                await axios.get(apiPath(`documents/${encodeURIComponent(row._id)}/verify-checksum`));
                 this.showSuccessPopup(`Archive verification succeeded: ${row.originalName} passed its integrity check.`);
             } catch (error) {
                 this.showSuccessPopup(`Archive verification failed: ${responseMessage(error, 'The archive could not be verified.')}`, 'error');
@@ -949,7 +835,7 @@ document.addEventListener('alpine:init', () => {
         async downloadArchive(row) {
             this.error = null;
             try {
-                const { data } = await axios.get(apiPath(`archives/${encodeURIComponent(row._id)}/download`), { responseType: 'blob' });
+                const { data } = await axios.get(apiPath(`documents/${encodeURIComponent(row._id)}/download`), { responseType: 'blob' });
                 const url = URL.createObjectURL(data);
                 const anchor = document.createElement('a');
                 anchor.href = url;
@@ -963,14 +849,64 @@ document.addEventListener('alpine:init', () => {
         },
 
         async markRead(row) {
+            if (this.endpoint !== 'notifications' || row.isRead || this.markingReadIds.includes(row._id)) return;
+            this.markingReadIds.push(row._id);
             this.error = null;
             try {
                 await axios.patch(apiPath(`notifications/${encodeURIComponent(row._id)}/read`));
                 row.isRead = true;
+                if (this.details?._id === row._id) this.details.isRead = true;
+                this.notificationUnreadCount = Math.max(0, this.notificationUnreadCount - 1);
+                if (this.notificationStatus !== 'all') this.rows = this.rows.filter(item => item._id !== row._id);
                 window.dispatchEvent(new Event('complitrack:notifications-changed'));
             } catch (error) {
-                this.showSuccessPopup(responseMessage(error, 'Unable to mark this notification as read.'), 'error');
+                this.error = responseMessage(error, 'Unable to mark this notification as read.');
+            } finally {
+                this.markingReadIds = this.markingReadIds.filter(id => id !== row._id);
             }
+        },
+
+        async markAllNotificationsRead() {
+            if (this.endpoint !== 'notifications' || this.markingAll || !this.notificationUnreadCount) return;
+            this.markingAll = true;
+            this.error = null;
+            try {
+                await axios.patch(apiPath('notifications/read-all'));
+                this.rows.forEach(row => { row.isRead = true; });
+                if (this.details) this.details.isRead = true;
+                this.notificationUnreadCount = 0;
+                this.message = 'All notifications marked as read.';
+                window.dispatchEvent(new Event('complitrack:notifications-changed'));
+                if (!this.notificationFeedChanged) await this.load(this.page);
+            } catch (error) {
+                this.error = responseMessage(error, 'Unable to mark all notifications as read.');
+            } finally { this.markingAll = false; }
+        },
+
+        async openRecordDetails(row) {
+            if (!['logs', 'notifications'].includes(this.endpoint)) return;
+            this.detailController?.abort();
+            this.detailController = new AbortController();
+            const version = ++this.detailVersion;
+            this.details = null; this.detailError = null; this.detailLoading = true;
+            if (!this.$refs.recordDetails.open) this.$refs.recordDetails.showModal();
+            try {
+                const { data } = await axios.get(apiPath(`${this.endpoint}/${encodeURIComponent(row._id)}`), { signal: this.detailController.signal });
+                if (version === this.detailVersion && !this.resourceDisposed) this.details = data.data;
+            } catch (error) {
+                if (version === this.detailVersion && !this.resourceDisposed) this.detailError = responseMessage(error, 'This record is unavailable or you no longer have access.');
+            } finally {
+                if (version === this.detailVersion && !this.resourceDisposed) {
+                    this.detailLoading = false;
+                    this.$nextTick(() => window.renderIcons?.());
+                }
+            }
+        },
+
+        closeRecordDetails() {
+            this.detailVersion++;
+            this.detailController?.abort();
+            this.details = null; this.detailLoading = false; this.detailError = null;
         },
         ...enhancedUserManagement(config),
     }));
@@ -1062,14 +998,14 @@ document.addEventListener('alpine:init', () => {
                     actions: [
                         ['Manage Users', '/admin/users', 'users'],
                         ['Departments', '/admin/departments', 'building-2'],
-                        ['Archives', '/admin/archives', 'archive'],
+                        ['Archives', '/admin/documents', 'archive'],
                         ['Reports', '/admin/reports', 'chart-no-axes-combined'],
                     ],
                 },
                 2: {
                     title: 'Auditor Dashboard',
-                    subtitle: 'Your compliance checks, corrective actions, and evidence.',
-                    checksUrl: '/auditor/checks',
+                    subtitle: 'Your assigned audits, corrective actions, and evidence.',
+                    checksUrl: '/audits',
                     cards: [
                         ['totalChecks', 'Total Checks', 'clipboard-check'],
                         ['compliantChecks', 'Compliant', 'circle-check'],
@@ -1079,11 +1015,10 @@ document.addEventListener('alpine:init', () => {
                         ['pendingChecks', 'Pending Checks', 'clock-3'],
                     ],
                     actions: [
-                        ['View Checks', '/auditor/checks', 'clipboard-check'],
+                        ['Historical Compliance Records', '/auditor/historical-records', 'history'],
                         ['My Assigned Audits', '/audits', 'clipboard-list'],
-                        ['Create Check', '/auditor/check-create', 'circle-plus'],
                         ['Corrective Actions', '/auditor/corrective-actions', 'kanban'],
-                        ['Archive Review', '/auditor/archives', 'archive'],
+                        ['Archive Review', '/auditor/documents', 'archive'],
                     ],
                 },
                 3: {
@@ -1098,8 +1033,8 @@ document.addEventListener('alpine:init', () => {
                     ],
                     actions: [
                         ['My Findings', '/auditee/my-findings', 'clipboard-list'],
-                        ['Upload Evidence', '/auditee/upload', 'upload-cloud'],
-                        ['My Archives', '/auditee/archives', 'archive'],
+                        ['Upload files', '/auditee/documents', 'upload-cloud'],
+                        ['My Archives', '/auditee/documents', 'archive'],
                         ['Notifications', '/auditee/notifications', 'bell'],
                     ],
                 },
@@ -1172,7 +1107,7 @@ document.addEventListener('alpine:init', () => {
                 this.resetStatus = data.status;
                 if (data.status === 'completed') {
                     window.clearInterval(this.watchTimer);
-                    window.location.assign('/login?reset=success');
+                    window.location.assign(window.tabUrl('/login?reset=success'));
                 } else if (data.status === 'expired') window.clearInterval(this.watchTimer);
             } catch { /* Keep the inbox view usable during a temporary connection failure. */ }
             finally { this.checkingReset = false; }
@@ -1233,7 +1168,7 @@ document.addEventListener('alpine:init', () => {
                     result: this.result,
                     remarks: this.remarks,
                 });
-                window.location.assign(`/auditor/checks/${data.data._id}`);
+                window.location.assign(window.tabUrl(`/auditor/checks/${data.data._id}`));
             } catch (error) {
                 this.error = responseMessage(error, 'Could not create the compliance check.');
             } finally {
@@ -1270,95 +1205,5 @@ document.addEventListener('alpine:init', () => {
         },
     }));
 
-    Alpine.data('evidenceUploadPage', () => ({
-        checks: [],
-        selectedCheckId: '',
-        file: null,
-        dragging: false,
-        get selectedReferenceStandard() {
-            return this.checks.find(check => check._id === this.selectedCheckId)?.referenceStandard || '';
-        },
-        selectFile(file) {
-            if (this.loading || this.saving) return;
-            this.file = file || null;
-            this.dragging = false;
-        },
-        handleDrop(event) {
-            this.dragging = false;
-            this.selectFile(event.dataTransfer?.files?.[0]);
-        },
-        clearFile() {
-            if (this.saving) return;
-            this.file = null;
-            this.$refs.fileInput.value = '';
-        },
-        formatFileSize(bytes) {
-            return bytes < 1024 * 1024 ? `${(bytes / 1024).toFixed(1)} KB` : `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-        },
-        cancelUpload() {
-            if (this.saving) return;
-            const dialog = this.$el.closest('dialog');
-            if (dialog) this.$dispatch('auditee-evidence-upload-cancel');
-            else window.location.assign('/auditee/dashboard');
-        },
-        loading: true,
-        saving: false,
-        message: null,
-        error: null,
-        popupTimeout: null,
-        showPopup(type, text) {
-            window.clearTimeout(this.popupTimeout);
-            this.error = type === 'error' ? text : null;
-            this.message = type === 'success' ? text : null;
-            this.popupTimeout = window.setTimeout(() => {
-                this.error = null;
-                this.message = null;
-            }, 3000);
-        },
-        async init() {
-            try {
-                const { data } = await axios.get(apiPath('compliance-checks'), { params: { result: 'non_compliant', actionable: true, perPage: 100 } });
-                this.checks = (data.data || []).filter((check) => check.auditeeId === document.body.dataset.userId);
-                const requestedCheck = this.$el.dataset.checkId || new URLSearchParams(window.location.search).get('checkId');
-                if (this.checks.some((check) => check._id === requestedCheck)) this.selectedCheckId = requestedCheck;
-            } catch (error) {
-                this.error = responseMessage(error, 'Unable to load checks that can receive evidence.');
-            } finally {
-                this.loading = false;
-            }
-        },
-        async submit() {
-            if (!this.file || !this.selectedCheckId) {
-                this.showPopup('error', 'Choose a compliance check and a file before uploading.');
-                return;
-            }
-            const check = this.checks.find((item) => item._id === this.selectedCheckId);
-            if (!check) {
-                this.showPopup('error', 'The selected check is no longer available.');
-                return;
-            }
-            this.saving = true;
-            window.clearTimeout(this.popupTimeout);
-            this.error = null;
-            this.message = null;
-            const form = new FormData();
-            form.append('file', this.file);
-            form.append('checkId', check._id);
-            form.append('referenceStandard', check.referenceStandard);
-            try {
-                await axios.post(apiPath('archives/upload'), form);
-                this.showPopup('success', 'Evidence uploaded and encrypted successfully.');
-                this.file = null;
-                this.$refs.fileInput.value = '';
-                this.$dispatch('auditee-evidence-uploaded');
-            } catch (error) {
-                this.showPopup('error', responseMessage(error, 'Evidence could not be uploaded.'));
-            } finally {
-                this.saving = false;
-            }
-        },
-        destroy() {
-            window.clearTimeout(this.popupTimeout);
-        },
-    }));
+
 });

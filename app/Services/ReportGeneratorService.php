@@ -30,7 +30,7 @@ class ReportGeneratorService
 
         $totalChecks = (clone $checks)->count();
         $compliantChecks = (clone $checks)->where('result', 'compliant')->count();
-        $openCars = (clone $checks)->whereIn('correctiveStatus', ['open', 'in_progress'])->count();
+        $openCars = (clone $checks)->whereIn('correctiveStatus', \App\Support\CarStatus::storedValues(['open', 'in_progress', 'awaiting_verification', 'returned_for_revision']))->count();
         $openOverSevenDays = (clone $checks)->where('correctiveStatus', 'open')
             ->where('createdAt', '<', now()->utc()->subDays(7))
             ->count();
@@ -84,7 +84,7 @@ class ReportGeneratorService
                 ->get(['createdAt', 'result', 'correctiveStatus']);
             $total = $departmentChecks->count();
             $compliant = $departmentChecks->where('result', 'compliant')->count();
-            $openChecks = $departmentChecks->whereIn('correctiveStatus', ['open', 'in_progress']);
+            $openChecks = $departmentChecks->whereIn('correctiveStatus', ['open', 'in_progress', 'awaiting_verification', 'returned_for_revision']);
             $agingDays = $openChecks->isEmpty()
                 ? 0
                 : (int) round($openChecks->avg(

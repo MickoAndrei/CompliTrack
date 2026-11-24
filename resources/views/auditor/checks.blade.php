@@ -1,8 +1,7 @@
 @extends('layouts.app')
-@section('title', 'Compliance Checks')
-@section('heading', 'Compliance Checks')
+@section('title', 'Historical Compliance Records')
+@section('heading', 'Historical Compliance Records')
 @section('content')
-<p class="mb-4"><a href="/audits" class="font-semibold text-ustp-navy underline">Open assigned audit checklists</a> to prepare questions, evaluate N/C/O, and review evidence. Existing standalone checks remain below.</p>
-<div class="mb-5 flex justify-end"><a href="/auditor/check-create" class="inline-flex items-center gap-2 rounded-xl bg-ustp-navy px-4 py-2.5 text-sm font-semibold text-white hover:bg-ustp-gold hover:text-ustp-navy"><i data-lucide="plus" class="size-4"></i>New Compliance Check</a></div>
-<x-resource-page title="Compliance Checks" description="Checks assigned to your auditor account." endpoint="compliance-checks" detail-base="auditor/checks" :columns="[['key' => 'checkCode', 'label' => 'Check Code'], ['key' => 'departmentName', 'label' => 'Department'], ['key' => 'auditeeName', 'label' => 'Auditee'], ['key' => 'referenceStandard', 'label' => 'Standard'], ['key' => 'result', 'label' => 'Result'], ['key' => 'correctiveStatus', 'label' => 'Corrective Status']]" />
+<p class="mb-4">Existing standalone compliance records assigned to you are retained here. For new evaluations, open <a href="/audits" class="font-semibold text-ustp-navy underline">My Assigned Audits → Audit Workspace → Audit Checklist</a>. Manage existing CARs in <a href="/auditor/corrective-actions" class="font-semibold text-ustp-navy underline">Corrective Actions</a>.</p>
+<x-resource-page title="Historical Compliance Records" description="Read existing standalone records; new evaluations belong in assigned audit checklists." endpoint="compliance-checks" detail-base="auditor/checks" :columns="[['key' => 'checkCode', 'label' => 'Check Code'], ['key' => 'departmentName', 'label' => 'Department'], ['key' => 'auditeeName', 'label' => 'Auditee'], ['key' => 'referenceStandard', 'label' => 'Standard'], ['key' => 'result', 'label' => 'Result'], ['key' => 'correctiveStatus', 'label' => 'Corrective Status']]" />
 @endsection

@@ -46,11 +46,15 @@ database.compliance_checks.createIndex({ departmentId: 1, result: 1, correctiveS
 database.compliance_checks.createIndex({ auditeeId: 1, correctiveStatus: 1 }, { name: "checks_auditee_status" });
 database.compliance_checks.createIndex({ auditorId: 1, createdAt: -1 }, { name: "checks_auditor_created" });
 database.notifications.createIndex({ recipientUserId: 1, isRead: 1, createdAt: -1 }, { name: "notifications_recipient_read_created" });
+// The All inbox does not constrain isRead; this index preserves newest-first pagination.
+database.notifications.createIndex({ recipientUserId: 1, createdAt: -1, _id: -1 }, { name: "notifications_recipient_created_id" });
 database.notifications.createIndex({ createdAt: 1 }, { expireAfterSeconds: 15552000, name: "notifications_created_ttl" });
 database.notifications.createIndex({ dedupeKey: 1 }, { unique: true, sparse: true, name: "notifications_dedupe_unique" });
 database.notifications.createIndex({ realtimeDeliveredAt: 1, realtimeLeaseUntil: 1, createdAt: 1 }, { name: "notifications_realtime_pending" });
 database.audit_logs.createIndex({ userId: 1, createdAt: -1 }, { name: "audit_logs_user_created" });
 database.audit_logs.createIndex({ action: 1, createdAt: -1 }, { name: "audit_logs_action_created" });
+database.audit_logs.createIndex({ createdAt: -1, _id: -1 }, { name: "audit_logs_created" });
+database.audit_logs.createIndex({ category: 1, outcome: 1, createdAt: -1, _id: -1 }, { name: "audit_logs_category_outcome_created" });
 database.personal_access_tokens.createIndex({ token: 1 }, { unique: true, name: "personal_access_tokens_token_unique" });
 database.personal_access_tokens.createIndex({ tokenable_id: 1 }, { name: "personal_access_tokens_tokenable_id" });
 database.password_reset_tokens.createIndex({ email: 1 }, { unique: true, name: "password_reset_tokens_email_unique" });

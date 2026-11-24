@@ -13,7 +13,7 @@ class SuperAdminDashboard
     {
         abort_unless((int) $actor->roleId === 0 && $actor->isActive, 403);
         $departments = Department::where('collegeName', 'CET')->where('unitType', 'academic_department')
-            ->where('ownershipVerified', true)->whereIn('departmentName', array_values(config('qms.departments')))
+            ->where('ownershipVerified', true)
             ->orderBy('departmentName')->get();
         $completed = Audit::where('status', 'accepted')->get(['departmentId', 'items']);
         $comparison = $departments->map(function ($department) use ($completed) {
@@ -33,7 +33,7 @@ class SuperAdminDashboard
         })->values();
 
         $checks = $this->scopes->checks($actor);
-        $cars = (clone $checks)->where('result', 'non_compliant')->whereIn('correctiveStatus', ['open', 'in_progress']);
+        $cars = (clone $checks)->where('result', 'non_compliant')->whereIn('correctiveStatus', \App\Support\CarStatus::storedValues(['open', 'in_progress', 'awaiting_verification', 'returned_for_revision']));
         $attention = (clone $cars)->get(['checkCode', 'departmentId', 'auditeeId', 'correctiveStatus', 'dueDate', 'createdAt', 'sourceAuditId']);
         $names = Department::get(['departmentName'])->mapWithKeys(fn ($unit) => [(string) $unit->getKey() => $unit->departmentName]);
         $people = User::whereIn('_id', $this->archives->ids($attention->pluck('auditeeId')->all()))
@@ -65,7 +65,7 @@ class SuperAdminDashboard
             'recordSummary' => ['completedAudits' => $completed->count(),
                 'legacyChecks' => (clone $checks)->whereNull('sourceAuditId')->count(),
                 'checklistLinkedCars' => (clone $checks)->whereNotNull('sourceAuditId')->where('result', 'non_compliant')
-                    ->whereIn('correctiveStatus', ['open', 'in_progress', 'closed'])->count()],
+                    ->whereIn('correctiveStatus', \App\Support\CarStatus::storedValues(['open', 'in_progress', 'closed']))->count()],
             'userGrowth' => $this->userGrowth($actor),
             'generatedAt' => now()->toIso8601String(),
         ];
