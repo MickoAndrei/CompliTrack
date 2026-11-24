@@ -101,6 +101,22 @@ async function restore(client, databaseName, data) {
     return actual;
 }
 
+async function replaceWithRollback({ replace, verifyAndReport, rollback }) {
+    try {
+        const copied = await replace();
+        return await verifyAndReport(copied);
+    } catch (error) {
+        await rollback();
+        throw error;
+    }
+}
+
+function verifySourceUnchanged(source, remoteAfter) {
+    if (JSON.stringify(signature(remoteAfter)) !== JSON.stringify(signature(source))) {
+        throw new Error('The remote database changed during copying. Retry during a quiet source window.');
+    }
+}
+
 async function main() {
     if (!process.argv.includes('--apply')) throw new Error('An explicit --apply is required to replace local data.');
     const key = Buffer.from((env.APP_KEY || '').replace(/^base64:/, ''), 'base64');
@@ -119,7 +135,6 @@ async function main() {
     const stageName = 'complitrack_copy_stage_' + crypto.randomBytes(12).toString('hex');
     let stageCreated = false;
     let localBefore;
-    let replacingLocal = false;
     let originalIndexDiskLimit = null;
     fs.mkdirSync(directory, { recursive: true, mode: 0o700 });
     try {
@@ -155,23 +170,24 @@ async function main() {
         stageCreated = true;
         await restore(local, stageName, loadBackup(remoteFile, key));
         console.log('Temporary local restore matches remote documents, BSON types, collection options, and indexes.');
-        replacingLocal = true;
-        const copied = await restore(local, localName, loadBackup(remoteFile, key));
-        replacingLocal = false;
-        const remoteAfter = await snapshot(remote, remoteName);
-        const report = { completedAt: new Date().toISOString(), source: 'remote', destination: 'local',
-            remoteBackup: remoteFile, localRollbackBackup: localFile,
-            exportMatchesLocal: true,
-            remoteStillMatchesExport: JSON.stringify(signature(remoteAfter)) === JSON.stringify(signature(source)),
-            collections: signature(copied).map(({ name, count, documentsSha256 }) => ({ name, count, documentsSha256 })) };
-        fs.writeFileSync(path.join(directory, 'report.json'), JSON.stringify(report, null, 2), { flag: 'wx', mode: 0o600 });
+        const report = await replaceWithRollback({
+            replace: () => restore(local, localName, loadBackup(remoteFile, key)),
+            verifyAndReport: async copied => {
+                const remoteAfter = await snapshot(remote, remoteName);
+                verifySourceUnchanged(source, remoteAfter);
+                const report = { completedAt: new Date().toISOString(), source: 'remote', destination: 'local',
+                    remoteBackup: remoteFile, localRollbackBackup: localFile,
+                    exportMatchesLocal: true, remoteStillMatchesExport: true,
+                    collections: signature(copied).map(({ name, count, documentsSha256 }) => ({ name, count, documentsSha256 })) };
+                fs.writeFileSync(path.join(directory, 'report.json'), JSON.stringify(report, null, 2), { flag: 'wx', mode: 0o600 });
+                return report;
+            },
+            rollback: async () => {
+                await restore(local, localName, localBefore);
+                console.log('Original local database restored and verified after import failure.');
+            },
+        });
         console.log(JSON.stringify(report));
-    } catch (error) {
-        if (replacingLocal && localBefore) {
-            await restore(local, localName, localBefore);
-            console.log('Original local database restored and verified after import failure.');
-        }
-        throw error;
     } finally {
         try {
             if (stageCreated && /^complitrack_copy_stage_[a-f0-9]{24}$/.test(stageName)) {
@@ -188,7 +204,7 @@ async function main() {
     }
 }
 
-module.exports = { snapshot, saveBackup, loadBackup, signature, restore };
+module.exports = { snapshot, saveBackup, loadBackup, signature, restore, replaceWithRollback, verifySourceUnchanged };
 if (require.main === module) main().catch(error => {
     // Driver errors can include credential-bearing URIs or document contents.
     console.error('Database copy failed (' + error.name + ').');

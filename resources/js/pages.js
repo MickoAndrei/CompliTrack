@@ -472,7 +472,7 @@ document.addEventListener('alpine:init', () => {
                         page,
                         perPage: this.perPage,
                         ...(this.directoryPage ? { includeSummary: 1 } : {}),
-                        ...(this.endpoint === 'notifications' ? { status: this.notificationStatus, type: this.typeFilter, includeSummary: true } : {}),
+                        ...(this.endpoint === 'notifications' ? { status: this.unreadOnly ? 'unread' : this.notificationStatus, type: this.typeFilter, includeSummary: true } : {}),
                         ...(this.search ? { search: this.search } : {}),
                         ...(this.endpoint === 'departments' ? Object.fromEntries(Object.entries(this.departmentFilters).filter(([, value]) => value !== '')) : {}),
                         ...(['users', 'departments'].includes(this.endpoint) ? { sortBy: this.sortBy.split(':')[0], sortDirection: this.sortBy.split(':')[1] } : {}),

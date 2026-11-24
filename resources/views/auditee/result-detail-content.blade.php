@@ -1,6 +1,6 @@
 @php
     $hasCar = $check->result === 'non_compliant' && filled($check->correctiveStatus);
-    $needsEvidence = $hasCar && in_array($check->correctiveStatus, ['open', 'in_progress'], true);
+    $needsEvidence = $hasCar && in_array($check->correctiveStatus, ['open', 'in_progress', 'returned_for_revision'], true);
 @endphp
 <div data-result-detail class="result-detail">
     <header data-result-detail-header class="result-detail-header">

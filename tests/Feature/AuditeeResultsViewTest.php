@@ -73,6 +73,8 @@ class AuditeeResultsViewTest extends TestCase
             ->assertSee('data-result-panel="overview"', false)->assertSee('data-result-panel="evidence"', false)
             ->assertSee('data-result-panel="corrective"', false)->assertSee('Review date: Not recorded')
             ->assertSee('No separate audit question is recorded');
+        $check->correctiveStatus = 'returned_for_revision';
+        $this->view('auditee.result-detail-content', $data)->assertSee('Provide Corrective Evidence');
         $check->correctiveStatus = 'closed';
         $this->view('auditee.result-detail-content', $data)->assertSee('This corrective action is closed.')
             ->assertDontSee('Provide Corrective Evidence')->assertDontSee('name="submissionKey"', false);

@@ -90,3 +90,24 @@ body[data-portal-role="0"] .attention-page.directory-page [aria-labelledby="depa
     :is(.attention-page.directory-page, .atl-progress-card) :is(.um-table, .directory-table) td > small { grid-column: 2; }
     :is(.attention-page.directory-page, .atl-progress-card) .um-table strong { min-width: 0; }
 }
+
+/* Match the compact Users directory on the Departments page. */
+body.department-page #main-content { padding-top: 8px; }
+body.department-page .attention-page.directory-page { padding: 0; border: 0; border-radius: 0; background: transparent; box-shadow: none; }
+body.department-page .directory-page > .attention-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin: 0 0 14px; padding: 0; border: 0; border-radius: 0; background: transparent; box-shadow: none; }
+body.department-page .directory-page .attention-stats > .metric-stat-card { min-height: 0; height: auto; padding: 14px 16px; border: 1px solid #d9e2ee; border-radius: 10px; }
+body.department-page .directory-page > .table-filter-bar { margin-bottom: 14px; align-items: flex-end; }
+body.department-page .directory-page .directory-table th { padding: 10px; white-space: normal; line-height: 1.35; vertical-align: top; }
+body.department-page .directory-page .directory-table td { padding: 8px 10px; line-height: 1.35; vertical-align: middle; }
+@media (min-width: 1200px) {
+    body.department-page .directory-page > .table-filter-bar { flex-wrap: nowrap; gap: 12px; }
+    body.department-page .directory-page .department-filters { display: grid; grid-template-columns: minmax(180px, 1.4fr) repeat(2, minmax(120px, 1fr)); flex: 1 1 auto; gap: 10px; }
+    body.department-page .directory-page .department-filter-actions { flex: 0 0 auto; flex-wrap: nowrap; gap: 8px; }
+    body.department-page .directory-page .department-filter-actions > button { min-height: 40px; padding: 8px 12px; white-space: nowrap; }
+}
+@media (max-width: 640px) {
+    body.department-page .directory-page > .attention-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+    body.department-page .directory-page .attention-stats > .metric-stat-card { padding: 12px; gap: 6px; }
+    body.department-page .directory-page .attention-stats .metric-icon-box { display: none; }
+    body.department-page .directory-page .directory-table td { padding: 5px 0; }
+}

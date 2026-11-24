@@ -33,6 +33,7 @@ class _CorrectiveBoardScreenState extends State<CorrectiveBoardScreen> {
   final _search = TextEditingController();
   Timer? _debounce;
   String _department = '';
+  List<Map> _departments = [];
   String _status = '';
   int _page = 1;
   bool _openingHistory = false;
@@ -109,8 +110,15 @@ class _CorrectiveBoardScreenState extends State<CorrectiveBoardScreen> {
             final loading = snapshot.connectionState != ConnectionState.done;
             final summary = data?['summary'] as Map?;
             final meta = data?['meta'] as Map?;
-            final departments =
-                (data?['departments'] as List? ?? const []).cast<Map>();
+            if (data?['departments'] is List) {
+              _departments = (data!['departments'] as List).cast<Map>();
+            }
+            final departments = [..._departments];
+            // Keep the submitted filter visible even if a refreshed option list omits it.
+            if (_department.isNotEmpty &&
+                !departments.any((unit) => unit['id'] == _department)) {
+              departments.add({'id': _department, 'name': 'Selected department (unavailable)'});
+            }
             final rows = (data?['data'] as List? ?? const []).cast<Map>();
             return RefreshIndicator(
               onRefresh: () => _refresh(),
