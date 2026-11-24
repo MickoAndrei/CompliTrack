@@ -1,6 +1,6 @@
 .um-page { display:grid; min-width:0; gap:20px; color:#0f2345; }
 body[data-portal-role="0"] .main-wrapper:has(.um-page) { height:100dvh; overflow:hidden; }
-body[data-portal-role="0"] #main-content:has(.um-page) { min-height:0; overflow-y:auto; overscroll-behavior:contain; scrollbar-gutter:stable; }
+body[data-portal-role="0"] #main-content:has(.um-page) { min-height:0; padding-top:8px; overflow-y:auto; overscroll-behavior:contain; scrollbar-gutter:stable; }
 body[data-portal-role="0"] #main-content:has(.um-page):has(.um-dialog[open]) { overflow-y:hidden; }
 .um-heading { display:flex; align-items:center; justify-content:flex-end; gap:16px; }
 .um-page p,.um-dialog p { font-size:13px; color:#64748b; line-height:1.6; }

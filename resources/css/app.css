@@ -2,6 +2,7 @@
 @import './attention.css';
 @import './directories.css';
 @import './archive-preview.css';
+@import './table-sorting.css';
 
 @source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
 @source '../../storage/framework/views/*.php';

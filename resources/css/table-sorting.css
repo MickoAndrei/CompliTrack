@@ -1,0 +1,7 @@
+#main-content table th .table-sort-button { display:inline-flex; align-items:flex-start; justify-content:flex-start; gap:6px; max-width:100%; min-height:0; padding:0; border:0; border-radius:3px; background:transparent; box-shadow:none; color:inherit; font:inherit; letter-spacing:inherit; text-transform:inherit; text-align:left; cursor:pointer; }
+.table-sort-label { min-width:0; }
+.table-sort-arrows { display:inline-flex; flex-direction:column; flex:none; line-height:7px; font-size:11px; margin-top:2px; color:#94a3b8; }
+th[aria-sort="ascending"] .table-sort-arrows [data-direction="asc"], th[aria-sort="descending"] .table-sort-arrows [data-direction="desc"] { color:#00205b; }
+#main-content table th .table-sort-button:hover { color:#00205b; }
+#main-content table th .table-sort-button:focus-visible { outline:2px solid #eab308; outline-offset:4px; }
+@media print { .table-sort-arrows { display:none; } }

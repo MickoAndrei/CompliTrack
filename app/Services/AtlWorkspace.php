@@ -64,7 +64,7 @@ class AtlWorkspace
             return ['id' => (string) $department->getKey(), 'name' => $department->departmentName, 'counts' => $counts,
                 'completedAudits' => $completed->count(), 'percentage' => $applicable ? round(100 * $counts['C'] / $applicable, 1) : null];
         })->values();
-        $perPage = in_array($perPage, [5, 10], true) ? $perPage : 5;
+        $perPage = in_array($perPage, [5, 10, 20, 50, 100], true) ? $perPage : 5;
         $pages = max(1, (int) ceil($assignments->count() / $perPage));
         $page = max(1, min($page, $pages));
         return ['stats' => ['activeAudits' => $audits->whereIn('status', ['draft', 'ready', 'submitted', 'returned'])->count(),

@@ -79,8 +79,8 @@ const server = http.createServer(async (req, res) => {
             assert.equal(await evaluate('document.querySelectorAll("a[data-atl-review]").length'), 0);
             assert.equal(await evaluate('document.querySelector(".header-page-subtitle").textContent.trim()'), 'Assign auditors to departments and offices based on authorized audit plans.');
             assert.equal(await evaluate('!!document.querySelector(".assignment-register .assignment-filter-actions [data-new-assignment]")'), true, 'New assignment sits below the fields inside the register');
-            assert.equal(await evaluate('document.querySelector(".assignment-pagination > span").textContent.trim()'), '1 record \u00b7 Page 1 of 1');
-            assert.equal(await evaluate('document.querySelectorAll(".assignment-pagination [aria-disabled=true]").length'), 2, 'Single-page registers keep pagination visible with unavailable directions disabled');
+            assert.equal(await evaluate('document.querySelector(".app-pagination-status").textContent.trim()'), 'Page 1 of 1');
+            assert.equal(await evaluate('document.querySelectorAll(".app-pagination [aria-disabled=true]").length'), 2, 'Single-page registers keep pagination visible with unavailable directions disabled');
             await evaluate(`(()=>{const form=document.querySelector('[data-assignment-filters]');form.elements.search.value='Workflow';form.elements.search.dispatchEvent(new Event('input',{bubbles:true}));})()`);
             await waitFor('new URL(location.href).searchParams.get("search")==="Workflow" && document.querySelector("[data-assignment-loading]").hidden');
             await evaluate(`(()=>{const form=document.querySelector('[data-assignment-filters]');for(const name of ['departmentId','auditorId'])form.elements[name].selectedIndex=1;form.elements.status.value='draft';form.elements.status.dispatchEvent(new Event('change',{bubbles:true}));})()`);

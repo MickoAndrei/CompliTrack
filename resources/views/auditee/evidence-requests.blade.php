@@ -49,13 +49,7 @@
                 <div class="evidence-empty"><span class="evidence-empty-icon"><i data-lucide="{{ request()->hasAny(['search', 'requestStatus', 'auditStatus']) ? 'search-x' : 'clipboard-list' }}" aria-hidden="true"></i></span><h3>{{ request()->hasAny(['search', 'requestStatus', 'auditStatus']) ? 'No matching requests' : 'No evidence requests yet' }}</h3><p>{{ request()->hasAny(['search', 'requestStatus', 'auditStatus']) ? 'Try another search or clear your filters to see your requests.' : 'When your auditor requests evidence from you, it will appear here. You can provide a document reference, arrange an original for inspection, or upload a file when authorized.' }}</p><div class="workflow-actions">@if(request()->hasAny(['search', 'requestStatus', 'auditStatus']))<a href="/auditee/evidence-requests" class="auditor-gold-button">Clear filters</a>@else<a href="/auditee/my-findings" class="workflow-secondary">My Audit Results</a><a href="/auditee/help#respond" class="auditor-gold-button">How to provide evidence</a>@endif</div></div>
                 @endforelse
             </div>
-            <nav class="evidence-pagination" aria-label="Evidence request pages">
-                <span>{{ $requests->total() }} {{ $requests->total() === 1 ? 'record' : 'records' }} &middot; Page {{ $requests->currentPage() }} of {{ $requests->lastPage() }}</span>
-                <div>
-                    @if($requests->onFirstPage())<span class="evidence-page-button is-disabled" aria-disabled="true">Previous</span>@else<a class="evidence-page-button" href="{{ $requests->previousPageUrl() }}" rel="prev">Previous</a>@endif
-                    @if($requests->hasMorePages())<a class="evidence-page-button" href="{{ $requests->nextPageUrl() }}" rel="next">Next</a>@else<span class="evidence-page-button is-disabled" aria-disabled="true">Next</span>@endif
-                </div>
-            </nav>
+            <x-server-pagination :paginator="$requests" />
         </div>
         <p class="evidence-privacy"><i data-lucide="shield-check" aria-hidden="true"></i>Share only authorized evidence. Internal audit notes and protected documents remain restricted.</p>
     </section>

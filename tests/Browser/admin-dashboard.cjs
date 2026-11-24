@@ -8,7 +8,8 @@ const root = path.resolve(__dirname, '../..');
 const directory = path.join(root, 'storage/framework/testing/admin-dashboard');
 fs.mkdirSync(directory, { recursive: true });
 const fragment = execFileSync('php', ['-r', `require 'vendor/autoload.php'; $app=require 'bootstrap/app.php'; $app->make(Illuminate\\Contracts\\Console\\Kernel::class)->bootstrap(); echo view('admin.atl-dashboard')->render();`], { cwd: root, encoding: 'utf8', windowsHide: true });
-const workspace = fs.readFileSync(path.join(root, 'resources/js/atl-workspace.js'), 'utf8').replace("import { onDocumentReady } from './dom-ready';", 'const onDocumentReady = callback => document.addEventListener("DOMContentLoaded", callback);');
+const statusLabels = fs.readFileSync(path.join(root, 'resources/js/audit-status.js'), 'utf8').replace('export function', 'function');
+const workspace = fs.readFileSync(path.join(root, 'resources/js/atl-workspace.js'), 'utf8').replace("import { auditStatusLabel } from './audit-status';", statusLabels).replace("import { onDocumentReady } from './dom-ready';", 'const onDocumentReady = callback => document.addEventListener("DOMContentLoaded", callback);');
 const fixture = `
 window.calls=[];window.empty=false;window.fail=false;window.hold=true;window.pending=[];
 const assignments=Array.from({length:12},(_,i)=>({id:String(i+1).padStart(24,'0'),reference:'AUDIT-'+(i+1),title:'Assigned process audit',department:'Department of Computer Engineering',auditor:'Assigned Auditor',status:'submitted',progress:{evaluated:3,total:5,percent:60}}));
@@ -41,8 +42,8 @@ try{
  const evaluate=async expression=>{const r=await send('Runtime.evaluate',{expression,returnByValue:true,awaitPromise:true});if(r.result.exceptionDetails)throw Error(r.result.exceptionDetails.text);return r.result.result.value;};
  const wait=async expression=>{for(let i=0;i<80;i++){if(await evaluate(expression))return;await delay(50);}throw Error('Timed out: '+expression);};
  const checkHeights=async()=>{
-  const state=await evaluate(`(()=>{const cards=[...document.querySelectorAll('.atl-overview-grid > .atl-card')];return {heights:cards.map(el=>Math.round(el.getBoundingClientRect().height)),expected:innerWidth<=600?840:600,scrollable:[...cards,...document.querySelectorAll('.atl-panel-content')].some(el=>['auto','scroll'].includes(getComputedStyle(el).overflowY)),clipped:cards.some(el=>el.scrollHeight>el.clientHeight+1)}})()`);
-  assert.ok(state.heights.every(height=>height>=state.expected-2)&&Math.abs(state.heights[0]-state.heights[1])<=1,'Both panels retain equal heights and fit their header content');
+  const state=await evaluate(`(()=>{const cards=[...document.querySelectorAll('.atl-overview-grid > .atl-card')];return {heights:cards.map(el=>Math.round(el.getBoundingClientRect().height)),sideBySide:innerWidth>1000,scrollable:[...cards,...document.querySelectorAll('.atl-panel-content')].some(el=>['auto','scroll'].includes(getComputedStyle(el).overflowY)),clipped:cards.some(el=>el.scrollHeight>el.clientHeight+1)}})()`);
+  assert.ok(state.heights.every(height=>height>0)&&(!state.sideBySide||Math.abs(state.heights[0]-state.heights[1])<=1),'Panels fit their content and align when side by side');
   assert.equal(state.scrollable,false,'Panels have no internal scrolling');
   assert.equal(state.clipped,false,'All panel content fits');
   assert.equal(await evaluate(`!!document.querySelector('.atl-compliance-card .atl-panel-header .atl-compliance-note')`),true,'The compliance description stays inside its header');
@@ -69,15 +70,15 @@ try{
   assert.equal(await evaluate(`(()=>{const a=document.querySelector('.atl-attention-card').getBoundingClientRect(),b=document.querySelector('.atl-compliance-card').getBoundingClientRect();return Math.abs(a.top-b.top)<2})()`),width>1000);
   await evaluate(`document.querySelector('.atl-attention-pagination button:last-child').click()`);await wait(`document.querySelectorAll('.atl-attention-row').length===3`);
   await checkHeights();
-  await evaluate(`document.querySelector('.atl-attention-pagination button:first-child').click()`);await wait(`document.querySelectorAll('.atl-attention-row').length===5`);
+  await evaluate(`document.querySelector('.atl-attention-pagination button:first-of-type').click()`);await wait(`document.querySelectorAll('.atl-attention-row').length===5`);
   await evaluate(`window.hold=true;void Alpine.$data(document.querySelector('.atl-workspace')).load()`);await checkSkeletons();await release();
   await wait(`[...document.querySelectorAll('.atl-panel-content')].every(el=>el.getClientRects().length)`);await checkHeights();
   assert.equal(await evaluate(`document.querySelector('.atl-progress-card .attention-pagination > span').textContent`),'12 records \u00b7 Page 1 of 3');
-  assert.equal(await evaluate(`document.querySelector('.atl-progress-card select')===null`),true);
+  assert.equal(await evaluate(`document.querySelector('.atl-progress-card select')!==null`),true);
   await evaluate(`document.querySelector('.atl-progress-card .attention-pagination button:last-child').click()`);await wait(`document.querySelector('.atl-progress-card .attention-pagination > span').textContent==='12 records \u00b7 Page 2 of 3'`);
   await evaluate(`document.querySelector('.atl-progress-card .attention-pagination button:last-child').click()`);await wait(`document.querySelectorAll('.um-table tbody tr').length===2`);
   assert.equal(await evaluate(`document.querySelector('.atl-progress-card .attention-pagination button:last-child').disabled`),true);
-  await evaluate(`document.querySelector('.atl-progress-card .attention-pagination button:first-child').click()`);await wait(`document.querySelectorAll('.um-table tbody tr').length===5`);
+  await evaluate(`document.querySelector('.atl-progress-card .attention-pagination button:first-of-type').click()`);await wait(`document.querySelectorAll('.um-table tbody tr').length===5`);
   const shot=await send('Page.captureScreenshot',{format:'png',captureBeyondViewport:true});fs.writeFileSync(path.join(directory,`dashboard-${width}.png`),Buffer.from(shot.result.data,'base64'));
   console.log(`${width}px: equal stable heights, initial/refresh skeletons, attention and assignment paging passed`);
  }

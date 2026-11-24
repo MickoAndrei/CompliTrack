@@ -19,7 +19,7 @@ document.addEventListener('alpine:init', () => {
         get showDocumentContents() { return !this.repositoryFolder?.navigationOnly && (this.currentView !== 'my' || !!(this.unitId || this.categoryId || this.repositoryId)); },
         get showRepositoryFolders() { return this.repositoryMode || this.currentView === 'starred' || (['my','department'].includes(this.currentView) && this.unitId && !this.categoryId && this.repositoryChildren.length > 0); },
         folderSortDescending: false,
-        folderPage: 1, foldersPerPage: 12,
+        folderPage: 1, foldersPerPage: 12, perPage: 12,
         get paginatingDriveFolders() { return this.tree.canViewDocuments !== false && this.currentView === 'my' && !this.repositoryId && !this.unitId && !this.categoryId; },
         get driveFolderRows() {
             return [
@@ -423,7 +423,7 @@ document.addEventListener('alpine:init', () => {
                         return;
                     }
                 }
-                const params = { page: this.currentView === 'recent' ? 1 : page, perPage: this.currentView === 'recent' ? 5 : 12, search: this.search || undefined, unitId: this.unitId || undefined,
+                const params = { page: this.currentView === 'recent' ? 1 : page, perPage: this.currentView === 'recent' ? 5 : this.perPage, search: this.search || undefined, unitId: this.unitId || undefined,
                     categoryId: this.categoryId || undefined, recordType: this.recordType || undefined, collegeId: this.collegeId || undefined,
                     view: this.currentView, sort: this.sort, scope:['my','department','cycles','assigned'].includes(this.currentView) ? 'current' : 'authorized', ...(this.currentView === 'audit' ? this.archivePath : {}) };
                 const response = await window.axios.get('/api/v1/documents', { params, signal:controller.signal, timeout:30000 });

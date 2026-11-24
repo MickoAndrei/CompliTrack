@@ -27,7 +27,11 @@ class PhpMailerTransport extends AbstractTransport
         $mailer->isSMTP();
         $mailer->Host = (string) ($this->config['host'] ?? '');
         $mailer->Port = (int) ($this->config['port'] ?? 587);
-        $mailer->Timeout = 20;
+        $mailer->Timeout = 5;
+        // Bound SMTP reply waits as well as the initial connection. The default
+        // command limit exceeds PHP's request timeout and causes a fatal error.
+        $smtp = $mailer->getSMTPInstance();
+        $smtp->Timelimit = 5;
         $mailer->SMTPDebug = SMTP::DEBUG_OFF;
         $mailer->Debugoutput = static function (): void {};
         $mailer->Username = (string) ($this->config['username'] ?? '');
@@ -54,7 +58,6 @@ class PhpMailerTransport extends AbstractTransport
             if (! $mailer->smtpConnect()) {
                 throw new TransportException('SMTP connection failed.');
             }
-            $smtp = $mailer->getSMTPInstance();
             $envelope = $message->getEnvelope();
             if (! $smtp->mail($envelope->getSender()->getAddress())) {
                 throw new TransportException('SMTP sender rejected.');

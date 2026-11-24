@@ -42,7 +42,7 @@
                 <td><a class="atl-primary" href="/audits/{{ $audit->getKey() }}?review=1" data-atl-review aria-haspopup="dialog" aria-label="Review {{ $audit->auditCode }}">{{ $status === 'submitted' ? 'Review' : 'View review' }}</a></td></tr>
             @empty<tr><td colspan="6" class="review-empty">No audits match this queue. Adjust the filters or choose another category.</td></tr>@endforelse
         </tbody></table></div>
-        <div class="review-pagination">{{ $audits->links() }}</div>
+        <div class="review-pagination"><x-server-pagination :paginator="$audits" /></div>
         </div>
         <template data-review-skeleton><div class="review-loading" role="status"><span class="sr-only">Loading audit reviews</span>@for($row = 0; $row < 5; $row++)<div class="review-loading-row" aria-hidden="true"><span></span><span></span><span></span><span></span><span></span></div>@endfor</div></template>
     </div>

@@ -45,6 +45,30 @@ class UserManagementMongoTest extends TestCase
             'password' => Hash::make('Existing-test-password!'), 'roleId' => $role, 'isActive' => true]);
     }
 
+    public function test_existing_email_returns_an_account_notification_without_creating_another_user(): void
+    {
+        $this->account(3, ['email' => 'Existing.Account@example.test']);
+        $count = User::count();
+        $this->postJson('/api/v1/users', $this->payload(['email' => 'existing.account@example.test']))
+            ->assertUnprocessable()->assertJsonValidationErrors('email')
+            ->assertJsonPath('message', 'An account with this email address already exists. Use the existing account or enter a different email address.');
+        $this->assertSame($count, User::count());
+        Notification::assertNothingSent();
+    }
+
+    public function test_account_creation_reports_email_failure_without_inviting_duplicate_creation(): void
+    {
+        $this->mock(\App\Services\PasswordResetService::class, function ($mock) {
+            $mock->shouldReceive('send')->once()->andThrow(new \Symfony\Component\Mailer\Exception\TransportException('SMTP unavailable'));
+        });
+        $payload = $this->payload();
+        $this->postJson('/api/v1/users', $payload)->assertCreated()
+            ->assertJsonPath('setupEmailSent', false)
+            ->assertJsonPath('message', 'The account was created, but the setup email could not be sent. Use Reset password on this account to send a new link.');
+        $this->assertSame(1, User::where('email', $payload['email'])->count());
+        $this->postJson('/api/v1/users', $payload)->assertUnprocessable()->assertJsonValidationErrors('email');
+    }
+
     public function test_position_indicator_uses_the_assigned_unit_or_college_instead_of_a_different_home_department(): void
     {
         $head = $this->account(3, ['departmentId' => $this->units[0]->getKey(),

@@ -25,6 +25,6 @@
         <div class="maa-empty"><i data-lucide="clipboard-list" aria-hidden="true"></i><h3>{{ $summary['total'] ? 'No matching audits' : 'No Assigned Audits Yet' }}</h3><p>{{ $summary['total'] ? 'Try a different title, department, or status.' : 'Your assigned audits will appear here once an authorized audit assignment has been made.' }}</p>@if($summary['total'])<a href="/audits" class="maa-button" data-my-audit-reset>Clear filters</a>@endif</div>
         @endforelse
     </div>
-    {{ $audits->links() }}
+    <x-server-pagination :paginator="$audits" />
     </div>
 </div>

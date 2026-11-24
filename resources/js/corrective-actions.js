@@ -1,7 +1,7 @@
 import { portalDate } from './portal-date';
 document.addEventListener('alpine:init', () => {
     window.Alpine.data('correctiveActions', () => ({
-        rows: [], summary: null, departments: [], meta: { total: 0, lastPage: 1 }, page: 1,
+        rows: [], summary: null, departments: [], meta: { total: 0, lastPage: 1 }, page: 1, perPage: 10,
         search: '', departmentId: '', status: '', loading: true, error: '', notice: '',
         detail: null, detailLoading: false, detailError: '', remarks: '', saving: false,
         listRequest: 0, detailRequest: 0, disposed: false,
@@ -13,7 +13,7 @@ document.addEventListener('alpine:init', () => {
             this.loading = true; this.error = '';
             try {
                 const { data } = await window.axios.get('/api/v1/compliance-checks', { params: {
-                    correctiveActions: 1, page, perPage: 10, search: this.search, departmentId: this.departmentId, status: this.status,
+                    correctiveActions: 1, page, perPage: this.perPage, search: this.search, departmentId: this.departmentId, status: this.status,
                 } });
                 if (this.disposed || request !== this.listRequest) return;
                 this.rows = data.data; this.summary = data.summary; this.departments = data.departments;

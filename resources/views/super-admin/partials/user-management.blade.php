@@ -20,7 +20,7 @@
         <p>No users match these filters. Try a different search or clear the filters.</p>
     </div>
     <div class="um-table-wrap" x-show="!loading && !error && rows.length" x-cloak>
-        <table class="um-table"><thead><tr><th>Full Name</th><th>Email</th><th>Primary Role</th><th>Position</th><th>Assigned Cluster / College / Department / Office</th><th>Account Status</th><th><span class="sr-only">Actions</span></th></tr></thead>
+        <table class="um-table"><thead><tr><th>Full Name</th><th>Email</th><th>Primary Role</th><th>Position</th><th>Assigned Cluster / College /<br>Department / Office</th><th>Account Status</th><th><span class="sr-only">Actions</span></th></tr></thead>
             <tbody><template x-for="row in rows" :key="row._id"><tr>
                 <td data-label="Full Name"><strong x-text="row.fullName"></strong><small x-text="row.userCode || 'No user code recorded'"></small></td>
                 <td data-label="Email"><span class="um-email" :title="row.email" x-text="row.email"></span></td>

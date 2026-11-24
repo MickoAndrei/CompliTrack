@@ -100,10 +100,10 @@ export function enhancedUserManagement(config) {
                         if (JSON.stringify(payload[key]) === JSON.stringify(original)) delete payload[key];
                     }
                 }
-                if (_id) await axios.patch(`${endpoint}/${encodeURIComponent(_id)}`, payload);
-                else await axios.post(endpoint, payload);
+                const response = _id ? await axios.patch(`${endpoint}/${encodeURIComponent(_id)}`, payload)
+                    : await axios.post(endpoint, payload);
                 this.$refs.userEditor.close();
-                this.showSuccessPopup(_id ? 'User updated.' : 'User created. An account setup link has been sent.');
+                this.showSuccessPopup(_id ? 'User updated.' : response.data.message || 'User created. An account setup link has been sent.');
                 await this.load(_id ? this.page : 1, { refreshOptions: true });
             } catch (error) {
                 this.formError = message(error, 'The user could not be saved.'); this.fieldErrors = error.response?.data?.errors || {};

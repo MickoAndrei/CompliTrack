@@ -38,7 +38,8 @@ class AuditReviewQueue
             $search = mb_strtolower(trim($request->query('search', '')));
             return $search === '' || str_contains(mb_strtolower($audit->auditCode.' '.$audit->title.' '.$audit->departmentName), $search);
         })->sortBy(fn ($a) => (self::submission($a)['at'] ?? '9999').'|'.$a->getKey())->values();
-        $audits = new LengthAwarePaginator($filtered->forPage($request->integer('page', 1), 20), $filtered->count(), 20,
+        $perPage = min(max($request->integer('perPage', 20), 1), 100);
+        $audits = new LengthAwarePaginator($filtered->forPage($request->integer('page', 1), $perPage), $filtered->count(), $perPage,
             $request->integer('page', 1), ['path' => $request->url(), 'query' => $request->query()]);
         return compact('audits', 'counts', 'status', 'people', 'departments', 'plans');
     }

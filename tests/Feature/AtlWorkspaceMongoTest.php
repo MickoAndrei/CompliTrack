@@ -119,7 +119,12 @@ class AtlWorkspaceMongoTest extends TestCase
             ->assertJsonCount(10, 'data.assignments')->assertJsonPath('data.assignmentPages', 2);
         $this->getJson('/api/v1/admin/workspace?page=99&perPage=10')->assertOk()
             ->assertJsonCount(2, 'data.assignments')->assertJsonPath('data.assignmentPage', 2);
-        $this->getJson('/api/v1/admin/workspace?perPage=20')->assertUnprocessable();
+        foreach ([20, 50, 100] as $size) {
+            $this->getJson('/api/v1/admin/workspace?perPage='.$size)->assertOk()
+                ->assertJsonCount(12, 'data.assignments')->assertJsonPath('data.assignmentPages', 1)
+                ->assertDontSee('PRIVATE OTHER REVIEW');
+        }
+        $this->getJson('/api/v1/admin/workspace?perPage=101')->assertUnprocessable();
         Audit::query()->delete();
         $this->getJson('/api/v1/admin/workspace?page=2')->assertOk()
             ->assertJsonCount(0, 'data.assignments')->assertJsonPath('data.assignmentPage', 1)

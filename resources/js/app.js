@@ -1,5 +1,6 @@
 import './bootstrap';
 import './page-notices';
+import './table-sorting';
 import Alpine from 'alpinejs';
 import { createIcons } from 'lucide';
 import { icons } from './icons';

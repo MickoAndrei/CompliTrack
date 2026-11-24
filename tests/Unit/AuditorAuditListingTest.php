@@ -9,6 +9,19 @@ use Tests\TestCase;
 
 class AuditorAuditListingTest extends TestCase
 {
+    public function test_page_size_changes_the_slice_and_preserves_filters_in_links(): void
+    {
+        $records = collect(range(1, 15))->map(fn ($i) => new Audit(['title' => 'Routine '.$i,
+            'auditCode' => 'REF-'.$i, 'status' => 'draft', 'items' => []]));
+        $page = (new AuditorAuditListing)->present($records,
+            Request::create('/audits', 'GET', ['perPage' => 5, 'page' => 2, 'search' => 'Routine']))['audits'];
+        $this->assertCount(5, $page->items());
+        $this->assertSame(3, $page->lastPage());
+        $this->assertSame('REF-6', $page->items()[0]['code']);
+        $this->assertStringContainsString('perPage=5', $page->nextPageUrl());
+        $this->assertStringContainsString('search=Routine', $page->nextPageUrl());
+    }
+
     public function test_actions_and_progress_are_derived_without_changing_lifecycle_statuses(): void
     {
         $presenter = new AuditorAuditListing;

@@ -17,7 +17,7 @@ class AtlWorkspaceController extends Controller
 
     public function summary(Request $request, AtlWorkspace $workspace)
     {
-        $request->validate(['page' => 'sometimes|integer|min:1', 'perPage' => 'sometimes|integer|in:5,10']);
+        $request->validate(['page' => 'sometimes|integer|min:1', 'perPage' => 'sometimes|integer|in:5,10,20,50,100']);
         return response()->json(['data' => $workspace->dashboard($request->user(), $request->integer('page', 1), $request->integer('perPage', 5))])
             ->header('Cache-Control', 'no-store');
     }

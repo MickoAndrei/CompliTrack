@@ -16,6 +16,8 @@ use App\Services\RoleScopeService;
 use App\Support\MongoId;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
+use Symfony\Component\Mailer\Exception\TransportExceptionInterface;
 use MongoDB\BSON\ObjectId;
 
 class UserController extends Controller
@@ -128,8 +130,8 @@ class UserController extends Controller
         ]);
 
         $email = strtolower(trim($data['email']));
-        if (User::where('email', $email)->exists()) {
-            return response()->json(['message' => 'The email has already been taken.'], 422);
+        if (User::where('email', 'regex', '/^'.preg_quote($email, '/').'$/i')->exists()) {
+            throw ValidationException::withMessages(['email' => 'An account with this email address already exists. Use the existing account or enter a different email address.']);
         }
 
         $actor = $request->user();
@@ -169,10 +171,18 @@ class UserController extends Controller
             ...$organization,
         ]);
 
-        $this->passwordResets->send($user);
         $this->auditLogs->record($request, 'Created user', 'user', $user->getKey());
+        $setupEmailSent = true;
+        try {
+            $this->passwordResets->send($user);
+        } catch (TransportExceptionInterface $exception) {
+            $setupEmailSent = false;
+            report($exception);
+        }
 
-        return response()->json(['data' => $this->serialize($user)], 201);
+        return response()->json(['data' => $this->serialize($user), 'setupEmailSent' => $setupEmailSent,
+            'message' => $setupEmailSent ? 'User created. An account setup link has been sent.'
+                : 'The account was created, but the setup email could not be sent. Use Reset password on this account to send a new link.'], 201);
     }
 
     public function show(Request $request, string $id)
@@ -220,8 +230,8 @@ class UserController extends Controller
 
         if (isset($data['email'])) {
             $email = strtolower(trim($data['email']));
-            if (User::where('email', $email)->where('_id', '!=', $user->getKey())->exists()) {
-                return response()->json(['message' => 'The email has already been taken.'], 422);
+            if (User::where('email', 'regex', '/^'.preg_quote($email, '/').'$/i')->where('_id', '!=', $user->getKey())->exists()) {
+                throw ValidationException::withMessages(['email' => 'An account with this email address already exists. Use the existing account or enter a different email address.']);
             }
             $data['email'] = $email;
         }

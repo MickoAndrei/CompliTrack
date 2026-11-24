@@ -56,7 +56,7 @@
                 @endfor
             </tbody></table>
         </div>
-        <div class="results-pagination">{{ $checks->links() }}</div>
+        <div class="results-pagination"><x-server-pagination :paginator="$checks" /></div>
     </section>
     @endunless
     @include('auditee.result-modal')

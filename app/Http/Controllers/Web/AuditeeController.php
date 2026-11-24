@@ -57,7 +57,8 @@ class AuditeeController extends Controller
             if ($status && !in_array($status, ['requested', 'under_review'], true) && $record['status'] !== $status) { return false; }
             return !$request->filled('search') || str_contains(mb_strtolower(implode(' ', [$record['title'], $record['description'], $record['auditCode'], $record['auditTitle'], $record['department'], $record['auditor']])), mb_strtolower(trim($request->query('search'))));
         })->values();
-        $requests = new \Illuminate\Pagination\LengthAwarePaginator($filtered->forPage($request->integer('page', 1), 4)->values(), $filtered->count(), 4,
+        $perPage = min(max($request->integer('perPage', 4), 1), 100);
+        $requests = new \Illuminate\Pagination\LengthAwarePaginator($filtered->forPage($request->integer('page', 1), $perPage)->values(), $filtered->count(), $perPage,
             $request->integer('page', 1), ['path' => $request->url(), 'query' => $request->except(['page', 'auditId', 'requestId'])]);
         return view('auditee.evidence-requests', compact('requests', 'summary'));
     }
@@ -236,7 +237,7 @@ class AuditeeController extends Controller
             if ($request->query('result') === 'observation') { $query->whereRaw(['_id' => null]); }
             if ($request->boolean('actionable')) { $query->whereIn('correctiveStatus', \App\Support\CarStatus::storedValues(['open', 'in_progress', 'returned_for_revision'])); }
             if ($request->boolean('archived')) { $query->whereIn('correctiveStatus', \App\Support\CarStatus::storedValues(['closed'])); }
-            $checks = $query->orderBy('createdAt', 'desc')->paginate(20)->withQueryString();
+            $checks = $query->orderBy('createdAt', 'desc')->paginate(min(max($request->integer('perPage', 20), 1), 100))->withQueryString();
             $published = $this->published($request->user());
             if ($request->boolean('actionable') || $request->boolean('archived')) { $published = collect(); }
             if ($request->query('result') === 'compliant') { $published = $published->where('result','C'); }

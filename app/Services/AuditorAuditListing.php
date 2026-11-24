@@ -33,7 +33,8 @@ class AuditorAuditListing
             && (!$filters['departmentId'] || $card['departmentId'] === $filters['departmentId'])
             && (!$filters['status'] || $card['status'] === $filters['status']))->values();
         $page = max(1, (int) $request->query('page', 1));
-        $audits = new LengthAwarePaginator($filtered->forPage($page, 12)->values(), $filtered->count(), 12, $page,
+        $perPage = min(max($request->integer('perPage', 12), 1), 100);
+        $audits = new LengthAwarePaginator($filtered->forPage($page, $perPage)->values(), $filtered->count(), $perPage, $page,
             ['path' => $request->url(), 'query' => $request->query()]);
         return compact('audits', 'summary', 'departments', 'filters');
     }

@@ -572,13 +572,12 @@ document.addEventListener('alpine:init', () => {
                 if (_id) {
                     await axios.patch(apiPath(`users/${encodeURIComponent(_id)}`), payload);
                 } else {
-                    await axios.post(apiPath('users'), payload);
+                    const response = await axios.post(apiPath('users'), payload);
+                    this.message = response.data.message || 'User created. An account setup email has been sent.';
                 }
                 this.userModalOpen = false;
                 if (_id) {
                     this.showSuccessPopup('User details updated.');
-                } else {
-                    this.message = 'User created. An account setup email has been sent.';
                 }
                 await this.load(1);
             } catch (error) {

@@ -67,7 +67,7 @@ class AuditController extends Controller
                 });
             }
         }
-        $audits = $query->orderBy('createdAt', 'desc')->orderBy('_id', 'desc')->paginate(10)->withQueryString();
+        $audits = $query->orderBy('createdAt', 'desc')->orderBy('_id', 'desc')->paginate(min(max($request->integer('perPage', 10), 1), 100))->withQueryString();
         if (!$admin) { return view('auditor.audits', compact('audits')); }
         $assignment = app(\App\Services\AuditAssignment::class);
         $plans = $assignment->plans($request->user());

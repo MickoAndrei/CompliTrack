@@ -25,11 +25,7 @@
             <td data-label="Verification Results">{{ $car['verification'] }}</td>
             <td><a class="car-view" data-car-history href="{{ request()->fullUrlWithQuery(['car'=>$car['_id'],'export'=>null]) }}#car-history">View details</a></td>
         </tr>@empty<tr><td colspan="6">No corrective actions match these filters.</td></tr>@endforelse
-    </tbody></table><footer class="car-pagination"><p>{{ $cars->total() }} records</p><nav aria-label="Corrective action table pagination">
-        @if($cars->onFirstPage())<span class="car-page-button" aria-disabled="true">Previous</span>@else<a class="car-page-button" rel="prev" href="{{ $cars->previousPageUrl() }}">Previous</a>@endif
-        <span class="car-page-position" aria-live="polite">Page {{ $cars->currentPage() }} of {{ $cars->lastPage() }}</span>
-        @if($cars->hasMorePages())<a class="car-page-button" rel="next" href="{{ $cars->nextPageUrl() }}">Next</a>@else<span class="car-page-button" aria-disabled="true">Next</span>@endif
-    </nav></footer></div>
+    </tbody></table><footer class="car-pagination"><p>{{ $cars->total() }} records</p><x-server-pagination :paginator="$cars" :show-total="false" /></footer></div>
     </section>
     <dialog id="car-history-dialog" class="car-dialog" aria-labelledby="car-dialog-title" data-auto-open="{{ $detail ? 'true' : 'false' }}">
         <header><div><small>CORRECTIVE ACTION REPORT · FM-USTP-009-2</small><h2 id="car-dialog-title">{{ $detail ? (($detail['formal'] ? $detail['carNo'] : $detail['checkCode']).' · ') : '' }}Corrective Action Details</h2></div><button type="button" data-car-history-close aria-label="Close CAR details">×</button></header>

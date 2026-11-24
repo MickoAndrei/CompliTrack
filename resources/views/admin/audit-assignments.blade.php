@@ -39,13 +39,7 @@
             </td></tr>
         @empty<tr><td colspan="7">No audit assignments match this register.</td></tr>@endforelse
         </tbody></table></div>
-        <nav class="assignment-pagination" aria-label="Assignment Register pages">
-            <span>{{ $audits->total() }} {{ $audits->total() === 1 ? 'record' : 'records' }} &middot; Page {{ $audits->currentPage() }} of {{ $audits->lastPage() }}</span>
-            <div>
-                @if($audits->onFirstPage())<span class="assignment-page-button is-disabled" aria-disabled="true">Previous</span>@else<a class="assignment-page-button" href="{{ $audits->previousPageUrl() }}" rel="prev">Previous</a>@endif
-                @if($audits->hasMorePages())<a class="assignment-page-button" href="{{ $audits->nextPageUrl() }}" rel="next">Next</a>@else<span class="assignment-page-button is-disabled" aria-disabled="true">Next</span>@endif
-            </div>
-        </nav>
+        <x-server-pagination :paginator="$audits" />
         </div>
     </section>
     <dialog id="audit-assignment-dialog" class="assignment-dialog" aria-labelledby="assignment-dialog-title" data-reopen="{{ $errors->any() ? '1' : '0' }}" data-old="{{ json_encode(old()) }}">

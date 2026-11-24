@@ -4,4 +4,11 @@
 #main-content .app-pagination button.app-pagination-button:disabled { opacity: .5; cursor: default; }
 #main-content .app-pagination button.app-pagination-button:focus-visible { outline: 2px solid #eac354; outline-offset: 2px; }
 .app-pagination-status { white-space: nowrap; }
+.app-pagination-total { margin-right:auto; }
+.app-page-size { display:inline-flex; align-items:center; gap:6px; flex-shrink:0; color:#475569; font-size:12px; font-weight:500; white-space:nowrap; }
+.app-page-size select { width:auto; min-width:60px; height:36px; padding:6px 24px 6px 8px; border:1px solid #dfe6ef; border-radius:8px; background-color:#fff; color:#071d49; font:inherit; }
+.app-page-size select:focus-visible { outline:2px solid #eac354; outline-offset:2px; }
+.app-pagination > :is(a,span).app-pagination-button { padding:9px 14px; border:1px solid #dfe6ef; border-radius:9px; background:#fff; color:#071d49; text-decoration:none; }
+.app-pagination > [aria-disabled=true] { opacity:.5; }
+.attention-pagination > div { align-items:center; flex-wrap:wrap; }
 @media (max-width: 400px) { .app-pagination { gap: 8px; } #main-content .app-pagination button.app-pagination-button { padding: 9px 10px; } }

@@ -3,10 +3,10 @@ import { onDocumentReady } from './dom-ready';
 
 document.addEventListener('alpine:init', () => {
     Alpine.data('atlWorkspace', () => ({
-        data: null, loading: true, error: '', page: 1, perPage: 5, attentionPage: 1,
+        data: null, loading: true, error: '', page: 1, perPage: 5, attentionPage: 1, attentionPerPage: 5,
         get meta() { return { total: this.data?.assignmentTotal || 0, lastPage: this.data?.assignmentPages || 1 }; },
-        get attentionPages() { return Math.max(1, Math.ceil((this.data?.attention.length || 0) / 5)); },
-        get visibleAttention() { return (this.data?.attention || []).slice((this.attentionPage - 1) * 5, this.attentionPage * 5); },
+        get attentionPages() { return Math.max(1, Math.ceil((this.data?.attention.length || 0) / this.attentionPerPage)); },
+        get visibleAttention() { return (this.data?.attention || []).slice((this.attentionPage - 1) * this.attentionPerPage, this.attentionPage * this.attentionPerPage); },
         init() { this.load(); },
         label(value) { return auditStatusLabel(value); },
         async load(page = this.page) {

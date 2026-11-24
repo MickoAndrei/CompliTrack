@@ -56,7 +56,7 @@ class CarRegister extends CorrectiveActionPresenter
         $request->validate(['search' => 'nullable|string|max:255', 'departmentId' => 'nullable|regex:/^[a-f0-9]{24}$/i',
             'status' => 'nullable|in:open,in_progress,awaiting_verification,closed,returned_for_revision',
             'kind' => 'nullable|in:formal,legacy', 'overdue' => 'nullable|boolean',
-            'sort' => 'nullable|in:target,reference,newest', 'page' => 'nullable|integer|min:1', 'perPage' => 'nullable|integer|in:10,20,50']);
+            'sort' => 'nullable|in:target,reference,newest', 'page' => 'nullable|integer|min:1', 'perPage' => 'nullable|integer|in:5,10,20,50,100']);
         $checks = $this->scope($request->user())->orderBy('_id')->get();
         $context = $this->context($checks, $request->user());
         $rows = $checks->map(fn ($check) => $this->card($check, $context));
