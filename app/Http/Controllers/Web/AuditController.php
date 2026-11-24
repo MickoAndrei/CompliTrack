@@ -92,8 +92,23 @@ class AuditController extends Controller
             'closedThisMonth' => $checks->filter(fn ($check) => $check->correctiveStatus === 'closed' && $check->closedAt?->gte(now()->startOfMonth()))->count()];
         $audits = $this->query($request)->orderBy('updatedAt', 'desc')->get();
         $stats['observations'] = 0;
+        // Dashboard-only counters: keep existing API metrics compatible with other clients.
+        $stats['checklistResults'] = ['N' => 0, 'C' => 0, 'O' => 0];
+        $stats['assignedAudits'] = $audits->count();
+        $stats['assignmentStatuses'] = array_fill_keys(['draft', 'ready', 'in_progress', 'submitted', 'returned', 'accepted', 'other'], 0);
+        $openChecks = $checks->whereIn('correctiveStatus', ['open', 'in_progress', 'awaiting_verification', 'returned_for_revision']);
+        $stats['overdueCars'] = $openChecks->filter(fn ($check) => app(\App\Services\AtlWorkspace::class)->isOverdue($check))->count();
+        $stats['awaitingVerificationCars'] = $openChecks->where('correctiveStatus', 'awaiting_verification')->count();
+        $listing = app(\App\Services\AuditorAuditListing::class);
+        $cards = $audits->map(function ($audit) use ($listing, &$stats) {
+            $card = $listing->card($audit);
+            $state = $card['status'];
+            $stats['assignmentStatuses'][array_key_exists($state, $stats['assignmentStatuses']) ? $state : 'other']++;
+            return $card;
+        });
         foreach ($audits as $audit) {
             $progress = AuditChecklist::progress($audit->items ?? []);
+            foreach (['N', 'C', 'O'] as $result) { $stats['checklistResults'][$result] += $progress[$result]; }
             $stats['totalChecks'] += $progress['evaluated'];
             $stats['compliantChecks'] += $progress['C'];
             $stats['nonCompliantChecks'] += $progress['N'];
@@ -112,22 +127,23 @@ class AuditController extends Controller
                     'code' => $check->checkCode, 'status' => $event['status'],
                     'label' => match ($event['status']) { 'closed' => 'closed', 'in_progress' => 'moved to In Progress', default => 'opened' }, 'at' => $at];
             });
-        })->filter(fn ($change) => $change['at'])->sortByDesc('at')->take(3)->values();
+        })->filter(fn ($change) => $change['at'])->sortByDesc('at')->take(4)->values();
         $auditActivity = $audits->flatMap(function ($audit) {
             return collect($audit->history ?? [])->map(fn ($event, $index) => [
                 'key' => 'audit-'.(string) $audit->getKey().'-'.$index, 'id' => (string) $audit->getKey(),
                 'url' => '/audits/'.$audit->getKey(), 'code' => $audit->auditCode,
-                'status' => $event['action'], 'label' => '— '.str_replace('_', ' ', $event['action']), 'at' => $event['at'],
+                'status' => $event['action'], 'label' => '— '.str_replace('_', ' ', $event['action']), 'at' => $event['at'] ?? null,
             ]);
         });
         $changes = $changes->map(fn ($change) => $change + ['url' => '/auditor/checks/'.$change['id']])
-            ->concat($auditActivity)->sortByDesc('at')->take(3)->values();
+            ->concat($auditActivity)->filter(fn ($change) => $change['at'])->sortByDesc('at')->take(4)->values();
         return response()->json(['data' => $stats, 'changes' => $changes,
             'assignments' => $audits->take(3)->map(fn ($audit) => [
                 'id' => (string) $audit->getKey(), 'code' => $audit->auditCode, 'title' => $audit->title,
                 'status' => $audit->status, 'department' => $audit->departmentName,
                 'progress' => AuditChecklist::progress($audit->items ?? []),
-            ])->values()]);
+            ])->values(),
+            'dashboardAssignments' => $cards->take(5)->map(fn ($card) => array_intersect_key($card, array_flip(['id', 'code', 'title', 'department', 'status', 'progress', 'url'])))->values()]);
     }
 
     public function store(Request $request, CounterService $counter)

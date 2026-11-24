@@ -9,7 +9,7 @@
 <section class="car-page" x-data="correctiveActions" :aria-busy="loading">
     <div class="car-summary" aria-label="Corrective action summary">
         @foreach ([['total', 'Total Actions', 'clipboard-list'], ['inProgress', 'In Progress', 'clock'], ['awaitingVerification', 'Awaiting Verification', 'clipboard-check'], ['closed', 'Closed', 'circle-check']] as [$key, $label, $icon])
-        <article class="car-metric"><div><p>{{ $label }}</p><strong x-text="summary?.{{ $key }} ?? '—'"></strong></div><i data-lucide="{{ $icon }}" aria-hidden="true"></i></article>
+        <article class="car-metric"><div><p>{{ $label }}</p><strong x-text="summary?.{{ $key }} ?? '—'"></strong></div><span class="car-metric-icon" data-tone="{{ $key }}"><i data-lucide="{{ $icon }}" aria-hidden="true"></i></span></article>
         @endforeach
     </div>
     <div class="car-records">
