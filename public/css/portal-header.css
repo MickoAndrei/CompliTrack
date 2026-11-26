@@ -48,9 +48,9 @@
 .app-header .header-user-badge { display: flex; align-items: center; gap: 10px; min-width: 0; padding: 2px 4px; border-radius: 9999px; text-decoration: none; }
 .app-header .header-avatar { box-sizing: border-box; width: 36px; height: 36px; flex: 0 0 36px; border: 2px solid #fbbf24; border-radius: 50%; object-fit: cover; }
 .app-header .header-avatar-initials { display: inline-flex; align-items: center; justify-content: center; background: #fcc419; color: #00205b; font-size: 11px; font-weight: 800; }
-.app-header .header-user-info { display: flex; flex-direction: column; gap: 0; min-width: 0; line-height: 1.25; }
+.app-header .header-user-info { display: flex; flex-direction: column; gap: 0; min-width: 0; max-width:220px; line-height: 1.25; }
 .app-header .header-user-name { max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #0f172a; font-size: 12px; font-weight: 700; }
-.app-header .header-user-role { color: #64748b; font-size: 10px; font-weight: 400; }
+.app-header .header-user-role { display:block; max-width:220px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color: #64748b; font-size: 10px; font-weight: 400; }
 .app-header .menu-toggle { display: none; align-items: center; justify-content: center; flex-shrink: 0; width: 38px; height: 38px; margin-right: 12px; border: 1px solid #e2e8f0; border-radius: 10px; background: #fff; color: #00205b; cursor: pointer; }
 .app-header .menu-toggle svg { width: 20px; height: 20px; }
 .app-header :is(button, a):focus-visible { outline: 2px solid #00205b; outline-offset: 3px; }
@@ -66,3 +66,12 @@
     .app-header .header-right { gap: 10px; }
     .app-header .header-divider { display: none; }
 }
+.header-profile-menu { position:relative; }
+.header-profile-menu > .header-user-badge { border:0; background:transparent; cursor:pointer; font:inherit; text-align:left; }
+.header-profile-dropdown { position:absolute; left:0; top:calc(100% + 8px); z-index:100; min-width:160px; padding:6px; border:1px solid #d9e2ee; border-radius:10px; background:#fff; box-shadow:0 8px 24px #0f172a26; }
+.header-profile-dropdown :is(a,button) { display:flex; align-items:center; gap:10px; width:100%; padding:10px 12px; border:0; border-radius:6px; background:transparent; color:#0f2345; font:inherit; font-size:13px; text-align:left; text-decoration:none; cursor:pointer; }
+.header-profile-dropdown :is(svg,i) { width:16px; height:16px; flex-shrink:0; }
+.header-profile-dropdown form :is(svg,i) { color:#dc2626; }
+.header-profile-dropdown :is(a,button):hover { background:#f1f5f9; }
+.header-profile-dropdown :is(a,button):focus-visible { outline:2px solid #d5a835; outline-offset:1px; }
+@media (max-width:768px) { .header-profile-menu .header-profile-dropdown { left:auto; right:0; } }

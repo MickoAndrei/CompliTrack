@@ -50,7 +50,7 @@ class AuditPlanWorkflow
     public function transition(Request $request, string $id): ArchiveDocument
     {
         // Read role and permission from MongoDB, never from a cached session or token claim.
-        $actor = User::find($request->user()->getKey());
+        $actor = User::query()->project(['avatarData' => 0])->find($request->user()->getKey());
         abort_unless($actor && $actor->isActive, 403);
         $data = $request->validate(['action' => 'required|in:save,submit,approve,return,revise', 'version' => 'required|integer|min:0',
             'remarks' => 'required|string|max:3000']);

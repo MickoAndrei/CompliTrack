@@ -100,6 +100,19 @@ for (const name of ['auditeeNotifications']) {
         await app.markAllRead();
         assert.equal(app.unreadCount, 0); assert.equal(app.notifications[0].isRead, true);
     });
+
+    test(`${name}: clearing notifications persists via clear-all and filters refresh`, async () => {
+        const { app, calls } = fixture(name);
+        app.notifications = [{ _id: 'one', isRead: true }];
+        app.previewPage = 2;
+        await app.clearNotifications();
+        assert.equal(app.notifications.length, 0);
+        assert.equal(app.previewPage, 1);
+        assert.equal(app.unreadCount, 0);
+        await app.refresh();
+        const refreshCall = calls.findLast(call => call.perPage === 8);
+        assert.equal(refreshCall.excludeCleared, true);
+    });
 }
 
 test('notification read actions never count or mutate audit activity', async () => {

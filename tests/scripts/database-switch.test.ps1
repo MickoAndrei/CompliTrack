@@ -14,7 +14,7 @@ foreach ($definition in $workerAst.FindAll({ param($node) $node -is [System.Mana
 $workerBody = $workerAst.EndBlock.Statements | Where-Object { $_ -is [System.Management.Automation.Language.TryStatementAst] } | Select-Object -Last 1
 if (-not $workerBody) { throw 'Worker execution block was not found.' }
 
-function Start-Sleep { param([int]$Seconds) }
+function Start-Sleep { param([int]$Seconds, [int]$Milliseconds) }
 function Assert-ManagedServices {}
 function Stop-ManagedServices { $script:servicesStopped = $true; $script:stops++ }
 function Start-ManagedServices { $script:starts++ }
@@ -34,6 +34,10 @@ foreach ($scenario in @('success', 'rollback')) {
     $servicesStopped = $false; $configurationChanged = $false; $switchFailed = $false
     $stops = 0; $starts = 0; $failTarget = $scenario -eq 'rollback'
     $commands = [System.Collections.Generic.List[string]]::new()
+    if ($scenario -eq 'success') {
+        $lockedLog = [IO.File]::Open($logPath, [IO.FileMode]::Create, [IO.FileAccess]::ReadWrite, [IO.FileShare]::None)
+        try { Write-SwitchLog 'Log contention must not stop the switch.' } finally { $lockedLog.Dispose() }
+    }
     . ([scriptblock]::Create($workerBody.Extent.Text))
 
     $expected = if ($failTarget) { 'local' } else { 'remote' }

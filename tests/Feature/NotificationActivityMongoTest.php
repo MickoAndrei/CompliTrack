@@ -136,9 +136,30 @@ class NotificationActivityMongoTest extends TestCase
         $this->assertFalse($other->fresh()->isRead);
         $this->assertEquals($before, $log->fresh()->toArray());
         $this->assertSame(3, Notification::count());
+        $this->patchJson('/api/v1/notifications/clear-all')->assertOk();
+        $this->getJson('/api/v1/notifications?excludeCleared=1')->assertOk()->assertJsonPath('meta.total', 0);
+        $this->getJson('/api/v1/notifications')->assertOk()->assertJsonPath('meta.total', 0);
+        $this->actingAs($bob)->getJson('/api/v1/notifications?excludeCleared=1')->assertOk()->assertJsonPath('meta.total', 1);
+        $this->actingAs($alice);
         $this->patchJson('/api/v1/logs/'.$log->getKey(), ['action' => 'Tampered'])->assertStatus(405);
         $this->deleteJson('/api/v1/logs/'.$log->getKey())->assertStatus(405);
         $this->assertEquals($before, $log->fresh()->toArray());
+    }
+
+    public function test_clear_persists_for_every_role_and_new_notifications_still_arrive(): void
+    {
+        foreach ([0, 1, 2, 3] as $role) {
+            $user = $this->account($role);
+            $this->notification($user);
+            $this->notification($user, ['isRead' => true]);
+            $this->actingAs($user)->patchJson('/api/v1/notifications/clear-all')->assertOk();
+            $this->getJson('/api/v1/notifications?includeSummary=1')->assertOk()
+                ->assertJsonPath('meta.total', 0)->assertJsonPath('meta.unreadCount', 0)->assertJsonCount(0, 'data');
+            $new = $this->notification($user);
+            $this->getJson('/api/v1/notifications?includeSummary=1')->assertOk()
+                ->assertJsonPath('meta.total', 1)->assertJsonPath('meta.unreadCount', 1)
+                ->assertJsonPath('data.0._id', (string) $new->getKey());
+        }
     }
 
     public function test_open_related_record_rechecks_assignment_and_rejects_external_targets(): void

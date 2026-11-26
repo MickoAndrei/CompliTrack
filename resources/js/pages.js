@@ -108,7 +108,7 @@ document.addEventListener('alpine:init', () => {
             this.loading = true;
             this.error = null;
             try {
-                const { data } = await readNotifications({ perPage: 8 });
+                const { data } = await readNotifications({ perPage: 8, excludeCleared: true });
                 if (this.notificationDisposed) return;
                 this.notifications = data.data || [];
                 this.$nextTick(() => window.renderIcons?.());
@@ -147,10 +147,12 @@ document.addEventListener('alpine:init', () => {
             this.markingRead = true;
             this.error = null;
             try {
-                if (this.unreadCount > 0) await axios.patch(apiPath('notifications/read-all'));
+                await axios.patch(apiPath('notifications/clear-all'));
                 this.notifications = [];
                 this.previewPage = 1;
+                window.dispatchEvent(new Event('complitrack:notifications-cleared'));
                 await this.refreshUnreadCount();
+                window.dispatchEvent(new Event('complitrack:notifications-changed'));
             } catch (error) {
                 this.error = responseMessage(error, 'Unable to clear notifications.');
             } finally {
@@ -472,7 +474,7 @@ document.addEventListener('alpine:init', () => {
                         page,
                         perPage: this.perPage,
                         ...(this.directoryPage ? { includeSummary: 1 } : {}),
-                        ...(this.endpoint === 'notifications' ? { status: this.notificationStatus, type: this.typeFilter, includeSummary: true } : {}),
+                        ...(this.endpoint === 'notifications' ? { status: this.unreadOnly ? 'unread' : this.notificationStatus, type: this.typeFilter, includeSummary: true } : {}),
                         ...(this.search ? { search: this.search } : {}),
                         ...(this.endpoint === 'departments' ? Object.fromEntries(Object.entries(this.departmentFilters).filter(([, value]) => value !== '')) : {}),
                         ...(['users', 'departments'].includes(this.endpoint) ? { sortBy: this.sortBy.split(':')[0], sortDirection: this.sortBy.split(':')[1] } : {}),

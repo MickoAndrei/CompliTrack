@@ -139,71 +139,11 @@ Artisan::command('mongodb:check {--ping : Only check database connectivity, with
 Artisan::command('complitrack:logout-all {--all-mongodb-targets}', function () {
     $driver = config('session.driver');
     if ($this->option('all-mongodb-targets')) {
-        if (! in_array($driver, ['database', 'mongodb', 'file'], true)) {
-            $this->error("Automatic restart logout does not support SESSION_DRIVER=$driver. No sessions were cleared.");
-
+        try {
+            app(\App\Services\AllTargetLogout::class)->run();
+        } catch (\RuntimeException $error) {
+            $this->error($error->getMessage());
             return 1;
-        }
-
-        if ($driver === 'file') {
-            File::cleanDirectory(config('session.files'));
-        } elseif ($driver === 'database') {
-            $sessionConnection = config('session.connection', 'mongodb');
-            if (config('database.connections.'.$sessionConnection.'.driver') === 'mongodb') {
-                foreach (['local', 'remote'] as $environment) {
-                    $target = config('database.mongodb_targets.'.$environment, []);
-                    if (empty($target['dsn']) || empty($target['database'])) {
-                        $this->error("The $environment MongoDB target is not configured; no complete logout was performed.");
-
-                        return 1;
-                    }
-                    $connectionName = 'database_switch_logout_'.$environment;
-                    config(['database.connections.'.$connectionName => array_replace(
-                        config('database.connections.mongodb', []),
-                        $target,
-                    )]);
-                    DB::purge($connectionName);
-                    DB::connection($connectionName)->table(config('session.table', 'sessions'))->delete();
-                    DB::purge($connectionName);
-                }
-            } else {
-                DB::connection($sessionConnection)->table(config('session.table', 'sessions'))->delete();
-            }
-        } elseif ($driver === 'mongodb') {
-            foreach (['local', 'remote'] as $environment) {
-                $target = config('database.mongodb_targets.'.$environment, []);
-                if (empty($target['dsn']) || empty($target['database'])) {
-                    $this->error("The $environment MongoDB target is not configured; no complete logout was performed.");
-
-                    return 1;
-                }
-                $connectionName = 'database_switch_logout_'.$environment;
-                config(['database.connections.'.$connectionName => array_replace(
-                    config('database.connections.mongodb', []),
-                    $target,
-                )]);
-                DB::purge($connectionName);
-                DB::connection($connectionName)->table(config('session.table', 'sessions'))->delete();
-                DB::purge($connectionName);
-            }
-        }
-
-        foreach (['local', 'remote'] as $environment) {
-            $target = config('database.mongodb_targets.'.$environment, []);
-            if (empty($target['dsn']) || empty($target['database'])) {
-                $this->error("The $environment MongoDB target is not configured; no complete logout was performed.");
-
-                return 1;
-            }
-            $connectionName = 'database_switch_logout_'.$environment;
-            config(['database.connections.'.$connectionName => array_replace(
-                config('database.connections.mongodb', []),
-                $target,
-            )]);
-            DB::purge($connectionName);
-            DB::connection($connectionName)->table('users')->update(['remember_token' => null]);
-            DB::connection($connectionName)->table('personal_access_tokens')->delete();
-            DB::purge($connectionName);
         }
     } else {
         if ($driver === 'database' || $driver === 'mongodb') {

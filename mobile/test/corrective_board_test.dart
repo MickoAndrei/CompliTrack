@@ -21,6 +21,43 @@ class _Auth extends AuthRepository {
 void main() {
   setUp(() => dotenv.loadFromString(envString: 'COMPLITRACK_API_URL=http://localhost'));
 
+  testWidgets('failed department refresh retains selection and retries the same filter', (tester) async {
+    final dio = Dio();
+    addTearDown(dio.close);
+    final requests = <Map<String, dynamic>>[];
+    dio.interceptors.add(InterceptorsWrapper(onRequest: (request, handler) {
+      requests.add(Map<String, dynamic>.from(request.queryParameters));
+      if (requests.length == 2) {
+        handler.reject(DioException(requestOptions: request, type: DioExceptionType.connectionError));
+        return;
+      }
+      handler.resolve(Response(requestOptions: request, statusCode: 200, data: {
+        'data': [], 'summary': {}, 'meta': {'total': 0, 'currentPage': 1, 'lastPage': 1},
+        'departments': [{'id': 'dept1', 'name': 'Engineering'}],
+      }));
+    }));
+    await tester.pumpWidget(ChangeNotifierProvider(
+      create: (_) => AuthProvider(authRepository: _Auth()),
+      child: MaterialApp(home: CorrectiveBoardScreen(repository: ComplianceRepository(dio: dio))),
+    ));
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('All departments'));
+    await tester.tap(find.text('All departments'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Engineering').last);
+    await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull);
+    expect(find.text('Engineering'), findsOneWidget);
+    expect(requests.last['departmentId'], 'dept1');
+    await tester.scrollUntilVisible(find.text('Retry'), 200, scrollable: find.byType(Scrollable).first);
+    await tester.tap(find.text('Retry'));
+    await tester.pumpAndSettle();
+    expect(requests.last['departmentId'], 'dept1');
+    expect(requests.length, 3);
+    expect(tester.takeException(), isNull);
+    await tester.pumpWidget(const SizedBox());
+  });
+
   testWidgets('web-style records filter and paginate on a narrow phone', (tester) async {
     tester.view.physicalSize = const Size(390, 844);
     tester.view.devicePixelRatio = 1;

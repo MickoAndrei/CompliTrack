@@ -13,6 +13,36 @@ class QmsArchivesMongoTest extends TestCase
     use \Tests\Support\AuthorizesAuditPlan;
     private ?string $databaseName = null;
     private ?string $directory = null;
+
+    public function test_cycle_sync_preserves_a_user_owned_root_with_the_cycle_name(): void
+    {
+        $this->migrate();
+        $unit = $this->units()->first();
+        $folder = QmsCategory::create(['collegeId' => $unit->collegeId, 'name' => config('qms.currentAuditCycle'),
+            'code' => 'USER-CYCLE-NAME', 'normalizedName' => mb_strtolower(config('qms.currentAuditCycle')), 'parentId' => null, 'isActive' => true, 'userManaged' => true,
+            'folderPolicy' => 'department', 'classification' => 'department', 'createdByUserId' => new ObjectId()]);
+        (require database_path('migrations/2026_11_16_190000_index_manual_qms_repository_folders.php'))->up();
+        $before = $folder->fresh()->getAttributes();
+        app(\App\Services\QmsCycleRepository::class)->sync();
+        $this->assertEquals($before, $folder->fresh()->getAttributes());
+        $root = QmsCategory::where('cycleRoot', true)->where('cycleKey', config('qms.currentAuditCycle'))->firstOrFail();
+        $this->assertNotEquals((string) $folder->getKey(), (string) $root->getKey());
+        $this->assertSame(0, app(\App\Services\QmsCycleRepository::class)->sync());
+    }
+
+    public function test_system_department_folders_reject_college_visibility(): void
+    {
+        $this->migrate(); $unit = $this->units()->first(); $owner = $this->leader($unit);
+        $category = QmsCategory::where('unitType', 'academic_department')->whereNotNull('parentId')->firstOrFail();
+        $category->forceFill(['classification' => 'department', 'userManaged' => false])->save();
+        $document = $this->document($unit, $owner, ['categoryId' => $category->getKey()]);
+        $this->actingAs($owner)->patchJson('/api/v1/documents/'.$document->getKey().'/permissions',
+            ['visibility' => 'college', 'downloadAllowed' => false, 'accessUserIds' => []])->assertUnprocessable();
+        $payload = ['purpose' => 'qms', 'unitId' => (string) $unit->getKey(), 'categoryId' => (string) $category->getKey(),
+            'title' => 'Restricted to department', 'visibility' => 'college', 'recordType' => 'digital-reference', 'documentReference' => 'TEST-REF'];
+        $this->postJson('/api/v1/documents/upload', $payload)->assertUnprocessable();
+        $this->postJson('/api/v1/documents/'.$document->getKey().'/versions', $payload)->assertUnprocessable();
+    }
     public function test_cycle_repository_exposes_only_authorized_paths_and_atl_can_open_all_cycle_files(): void
     {
         $this->migrate(); $unit = $this->units()->first(); $other = $this->units()->last();

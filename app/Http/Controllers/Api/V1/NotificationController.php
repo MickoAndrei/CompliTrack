@@ -110,6 +110,15 @@ class NotificationController extends Controller
         return response()->json(['message' => 'Notifications marked as read.']);
     }
 
+    public function clearAll(Request $request)
+    {
+        $this->scopes->notifications($request->user())
+            ->update(['isRead' => true, 'isCleared' => true]);
+        $this->auditLogs->record($request, 'Cleared notifications', 'notification');
+
+        return response()->json(['message' => 'Notifications cleared.']);
+    }
+
     public function broadcast(Request $request)
     {
         $data = $request->validate([

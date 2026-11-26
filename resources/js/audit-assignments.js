@@ -5,6 +5,15 @@ onDocumentReady(() => {
     const results = document.querySelector('[data-assignment-results]');
     const loading = document.querySelector('[data-assignment-loading]');
     const message = document.querySelector('[data-assignment-filter-message]');
+    const controls = document.querySelector('.assignment-controls');
+    if (controls) {
+        const register = controls.closest('.assignment-register');
+        const measureControls = () => register.style.setProperty('--assignment-controls-height', `${controls.getBoundingClientRect().height}px`);
+        const observer = new ResizeObserver(measureControls);
+        observer.observe(controls);
+        measureControls();
+        window.addEventListener('pagehide', () => observer.disconnect(), { once: true });
+    }
     let pendingFilter, searchTimer;
     const syncFilters = url => {
         for (const control of filters.querySelectorAll('input[name], select[name]')) {

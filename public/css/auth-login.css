@@ -220,6 +220,12 @@ body {
   gap: 8px;
 }
 
+.auth-container--login .features-list {
+  width: 100%;
+  max-width: 410px;
+  margin-inline: 0;
+}
+
 .feature-item {
   border-radius: 11px;
   padding: 9px 11px;
@@ -744,6 +750,21 @@ body {
 /* ==========================================
    RESPONSIVE BREAKPOINTS
    ========================================== */
+@media (min-width: 901px) {
+  .auth-container--login > .sidebar-panel,
+  .auth-container--login > .main-panel {
+    flex: 0 0 50%;
+    width: 50%;
+    min-width: 0;
+    max-width: 50%;
+  }
+
+  .auth-container--login .sidebar-content {
+    width: calc(100% - 24px);
+    margin-inline: auto;
+  }
+}
+
 @media (max-width: 900px) {
 
   html,

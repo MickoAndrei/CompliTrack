@@ -355,7 +355,7 @@ class ArchiveController extends Controller
         }
         $correctiveRootUpload = !$category && $check && $folderPermissions['view'];
         abort_unless($correctiveRootUpload || ((!$category || $category->userManaged || ($category->classification && $category->classification !== 'department')) ? $folderPermissions['upload'] : ($access->canCreate($request->user(), $unit) || $folderPermissions['upload'])), 403);
-        if ($category && ($category->userManaged || ($category->classification && $category->classification !== 'department'))) {
+        if ($category) {
             $allowed = app(\App\Services\QmsFolderAccess::class)->allowedVisibility($category);
             abort_unless(in_array($previous?->visibility ?: $data['visibility'], $allowed, true), 422, 'Document visibility cannot exceed its folder classification.');
         }

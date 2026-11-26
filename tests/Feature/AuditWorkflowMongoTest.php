@@ -14,6 +14,24 @@ class AuditWorkflowMongoTest extends TestCase
     private ?string $testDatabase = null;
     private ?string $testStorage = null;
 
+    public function test_legacy_and_returned_findings_accept_evidence_and_reject_reused_keys(): void
+    {
+        [, $auditor, $audit] = $this->fixture();
+        $person = User::create(['fullName' => 'Evidence Recipient', 'roleId' => 3, 'isActive' => true, 'departmentId' => $audit->departmentId]);
+        foreach (['In Progress', 'returned_for_revision', 'Returned for Revision'] as $status) {
+            $check = \App\Models\ComplianceCheck::create(['departmentId' => $audit->departmentId, 'auditorId' => $auditor->getKey(),
+                'auditeeId' => $person->getKey(), 'result' => 'non_compliant', 'correctiveStatus' => $status, 'checkCode' => 'REVIEW-FIX']);
+            $data = ['submissionKey' => (string) \Illuminate\Support\Str::uuid(), 'method' => 'digital-reference', 'notes' => 'Evidence ready'];
+            $url = '/auditee/finding-details/'.$check->getKey().'/response';
+            $this->actingAs($person)->postJson($url, $data)->assertOk();
+            $this->assertCount(1, $check->fresh()->evidenceResponses);
+            $this->postJson($url, $data)->assertOk();
+            $this->assertCount(1, $check->fresh()->evidenceResponses);
+            $this->postJson($url, array_replace($data, ['notes' => 'Different submission']))->assertConflict();
+            $this->assertCount(1, $check->fresh()->evidenceResponses);
+        }
+    }
+
     protected function setUp(): void
     {
         parent::setUp();

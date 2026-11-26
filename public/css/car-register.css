@@ -4,3 +4,46 @@
 .car-metrics{gap:12px;margin-bottom:18px}.car-metrics article{padding:15px 18px}.car-metric-top{display:flex;justify-content:space-between;align-items:center;gap:8px}.car-metrics .car-metric-icon{width:20px;height:20px;flex-shrink:0;color:#496d9d}.car-metrics article:nth-child(4) .car-metric-icon{color:#c44c5c}.car-metrics article:nth-child(5) .car-metric-icon{color:#258452}.car-metrics strong{font-size:28px;margin:6px 0}.car-metrics small{font-size:11px}.car-register-header{display:flex;align-items:center;justify-content:space-between;gap:16px}.car-register-header h3{margin:0}.car-export{display:inline-flex;align-items:center;gap:8px;padding:10px 14px;font-size:12px}.car-export svg{width:17px;height:17px;flex-shrink:0}.car-reset{display:inline-flex;align-items:center;justify-content:center;min-height:40px;padding:9px 14px;border:1px solid #dce5f0;border-radius:8px;color:#243f66;text-decoration:none;font-size:12px;font-weight:600}.car-reset:hover{background:#f3f6fb}@media(max-width:760px){.car-register-header{align-items:flex-start;flex-wrap:wrap}.car-metrics article{padding:13px}.car-metric-top span{font-size:12px}.car-metrics strong{font-size:26px}}
 .car-dialog{margin:auto;inset:0}.car-dialog header button{color:white}
 .car-pagination{display:flex;justify-content:space-between;align-items:center;gap:16px;padding:16px 22px;color:#687d9e}.car-pagination p{margin:0}.car-pagination nav{display:flex;align-items:center;gap:14px;margin:0}.car-page-button{display:inline-flex;align-items:center;justify-content:center;border:1px solid #dce5f0;border-radius:7px;padding:8px 12px;color:#18355a;text-decoration:none;font-size:12px;font-weight:600;background:white}.car-page-button[aria-disabled=true]{color:#99a7bb;background:#f7f9fc}.car-page-button[href]:hover{background:#eef3fc}.car-page-position{font-size:12px;white-space:nowrap}@media(max-width:450px){.car-pagination{padding:14px;gap:12px;flex-wrap:wrap}.car-pagination nav{gap:9px}.car-page-button{padding:7px 9px}}
+
+/* Compact monitoring summary and filter controls. */
+.car-register .car-metrics { gap:8px; margin-bottom:12px; }
+#main-content:has(.car-register) { min-height:0; padding-top:8px; overflow-y:auto; overscroll-behavior:contain; scrollbar-gutter:stable; }
+.car-register .car-metrics article { display:grid; grid-template-columns:minmax(0,1fr) 44px; grid-template-rows:auto auto; align-content:center; gap:6px 10px; min-width:0; min-height:90px; padding:12px 14px; border-color:#edf2f7; box-shadow:0 1px 3px #0f172a08,0 1px 2px #0f172a05; }
+.car-register .car-metric-top { display:contents; }
+.car-register .car-metric-top span { grid-column:1; color:#64748b; font-size:11px; font-weight:500; }
+.car-register .car-metrics .car-metric-icon { grid-column:2; grid-row:1 / 3; align-self:center; box-sizing:border-box; width:44px; height:44px; padding:12px; border-radius:50%; background:#eff6ff; color:#2563eb; }
+.car-register .car-metrics article:nth-child(4) .car-metric-icon { background:#fef2f2; color:#dc2626; }
+.car-register .car-metrics article:nth-child(5) .car-metric-icon { background:#ecfdf5; color:#258452; }
+.car-register .car-metrics strong { grid-column:1; margin:0; color:#0f172a; font-size:20px; font-weight:800; line-height:1.2; }
+.car-register .car-panel { padding:16px; }
+.car-register .car-register-controls { border:1px solid #d9e2ee; border-radius:10px; padding:12px; background:#fff; }
+.car-register .car-filters { flex-wrap:nowrap; gap:8px; margin:8px 0; }
+.car-register .car-filters label { flex:1 1 0; min-width:0; gap:5px; font-size:11px; }
+.car-register .car-filters label:first-of-type { flex:1.4 1 0; }
+.car-register .car-filters :is(input:not([type=checkbox]),select) { height:36px; padding:7px; font-size:11px; }
+.car-register .car-filters .car-check { flex:0 0 auto; display:flex; gap:5px; padding:0 0 10px; white-space:nowrap; }
+.car-register .car-reset, .car-register .car-export { flex:0 0 auto; min-height:36px; box-sizing:border-box; padding:8px 10px; font-size:11px; white-space:nowrap; }
+@media(max-width:1100px) { .car-register .car-filters { flex-wrap:wrap; } .car-register .car-filters label, .car-register .car-filters label:first-of-type { flex:1 1 140px; } .car-register .car-filters .car-check { flex:0 0 auto; } }
+@media(min-width:641px) {
+    .car-register .car-register-controls { position:sticky; top:0; z-index:12; padding:12px 14px; margin-bottom:20px; background:#fff; box-shadow:0 2px 3px #00205b05; }
+    .car-register .car-register-controls .car-filters { margin-bottom:0; }
+    .car-register .um-table-wrap { overflow:visible; contain:none; }
+    .car-register .um-table { min-width:0; table-layout:fixed; border-collapse:separate; border-spacing:0; }
+    .car-register .um-table thead th { position:sticky; top:var(--car-controls-height, 140px); z-index:11; background:#fff; border-top:1px solid #d9e2ee; border-bottom:1px solid #d9e2ee; box-shadow:0 2px 3px #00205b05; }
+    .car-register .um-table thead th:first-child { border-left:1px solid #d9e2ee; border-radius:10px 0 0 10px; width:30%; }
+    .car-register .um-table thead th:nth-child(2) { width:27%; }
+    .car-register .um-table thead th:nth-child(3) { width:11%; }
+    .car-register .um-table thead th:nth-child(4) { width:11%; }
+    .car-register .um-table thead th:nth-child(5) { width:12%; }
+    .car-register .um-table thead th:last-child { border-right:1px solid #d9e2ee; border-radius:0 10px 10px 0; width:9%; }
+    .car-register .um-table th { padding:5px 8px; vertical-align:top; line-height:1.25; overflow-wrap:anywhere; }
+    .car-register .um-table td { padding:5px 8px; line-height:1.3; overflow-wrap:anywhere; }
+    .car-register .um-table strong { min-width:0; }
+}
+.car-register .um-table td p { margin:3px 0 0; color:#64748b; font-size:12px; line-height:1.4; }
+.car-register .car-date-format { display:block; margin-top:1px; color:#64748b; font-size:10px; font-weight:400; white-space:nowrap; }
+.car-register .um-table .car-badge { margin-top:2px; padding:3px 7px; line-height:1.25; }
+.car-register .car-view { padding:5px 7px; color:#00205b; font-size:12px; line-height:1.25; white-space:normal; }
+.car-register .um-table-wrap { border:0; border-radius:0; background:transparent; }
+.car-register-pagination { padding:16px 0; border-top:1px solid #e2e8f0; }
+.car-register-pagination .app-pagination-button { border-radius:999px; }

@@ -8,10 +8,14 @@ const directory = path.join(root, 'storage/framework/testing/attention-browser')
 const pause = milliseconds => new Promise(resolve => setTimeout(resolve, milliseconds));
 execFileSync('php', ['tests/Fixtures/attention.php'], { cwd: root, windowsHide: true });
 const notices = [
-    { _id: '111111111111111111111111', title: 'Evidence uploaded', message: 'Engineering Auditee uploaded evidence for CHK-IN-PROGRESS.', category: 'Evidence', type: 'evidence_submitted', isRead: false, createdAt: '2026-11-08T15:12:00Z', destination: '/api/v1/notifications/111111111111111111111111/open' },
-    { _id: '222222222222222222222222', title: 'Evidence ready for review', message: 'Corrective evidence has been submitted for your review.', category: 'Evidence', type: 'evidence_submitted', isRead: false, createdAt: '2026-11-04T05:42:00Z', destination: null },
-    { _id: '333333333333333333333333', title: 'Audit accepted', message: 'Your submitted audit was accepted.', category: 'Audit', type: 'audit_accepted', isRead: true, createdAt: '2026-11-03T05:42:00Z', destination: null },
+    { _id: '111111111111111111111111', title: 'Evidence uploaded', message: 'Engineering Auditee uploaded evidence for CHK-IN-PROGRESS.', category: 'Evidence', type: 'evidence_submitted', isRead: false, isCleared: false, createdAt: '2026-11-08T15:12:00Z', destination: '/api/v1/notifications/111111111111111111111111/open' },
+    { _id: '222222222222222222222222', title: 'Evidence ready for review', message: 'Corrective evidence has been submitted for your review.', category: 'Evidence', type: 'evidence_submitted', isRead: false, isCleared: false, createdAt: '2026-11-04T05:42:00Z', destination: null },
+    { _id: '333333333333333333333333', title: 'Audit accepted', message: 'Your submitted audit was accepted.', category: 'Audit', type: 'audit_accepted', isRead: true, isCleared: false, createdAt: '2026-11-03T05:42:00Z', destination: null },
 ];
+const resetNotices = () => {
+    notices[0].isRead = false; notices[1].isRead = false; notices[2].isRead = true;
+    notices.forEach(row => { row.isCleared = false; });
+};
 const logs = [{ _id: '444444444444444444444444', action: 'Document uploaded', userName: 'Department Head', userId: '555555555555555555555555', entityType: 'archive_document', entityId: '666666666666666666666666', category: 'documents', outcome: 'success', createdAt: '2026-11-08T15:12:00Z', ipAddress: '127.0.0.1', method: 'POST', route: 'api/v1/archives/upload' }];
 const departmentRows = [{ _id: '777777777777777777777777', departmentName: 'Engineering Department', departmentCode: 'CET-ENG', collegeName: 'CET', campusName: 'Claveria', isActive: true }, { _id: '888888888888888888888888', departmentName: 'Technology Department', departmentCode: 'CET-TECH', collegeName: 'CET', campusName: 'Claveria', isActive: false }];
 const userRows = [{ _id: '999999999999999999999999', fullName: 'Test Auditor', email: 'auditor@example.test', userCode: 'AUD-001', roleId: 2, isActive: true, assignedDepartmentIds: [], organizationalUnits: [], organizationalColleges: [] }, { _id: 'aaaaaaaaaaaaaaaaaaaaaaaa', fullName: 'Test Auditee', email: 'auditee@example.test', userCode: 'ATE-001', roleId: 3, isActive: false, assignedDepartmentIds: [], organizationalUnits: [], organizationalColleges: [] }];
@@ -29,12 +33,13 @@ const server = http.createServer(async (request, response) => {
         const status = url.searchParams.get('status');
         const unread = url.searchParams.get('unread') === 'true' || status === 'unread';
         const search = (url.searchParams.get('search') || '').toLowerCase();
-        const rows = notices.filter(row => (!unread || !row.isRead) && (status !== 'read' || row.isRead)
+        const rows = notices.filter(row => (!unread || !row.isRead) && !row.isCleared && (status !== 'read' || row.isRead)
             && (!search || `${row.title} ${row.message}`.toLowerCase().includes(search)));
         return json(response, { data: rows, meta: { total: rows.length, currentPage: 1, lastPage: 1, unreadCount: notices.filter(row => !row.isRead).length } });
     }
     if (request.method === 'PATCH' && url.pathname.startsWith('/api/v1/notifications/')) {
-        if (url.pathname.endsWith('/read-all')) notices.forEach(row => { row.isRead = true; });
+        if (url.pathname.endsWith('/clear-all')) notices.forEach(row => { row.isRead = true; row.isCleared = true; });
+        else if (url.pathname.endsWith('/read-all')) notices.forEach(row => { row.isRead = true; });
         else notices.find(row => url.pathname.includes(row._id)).isRead = true;
         return json(response, { message: 'Notifications marked as read.' });
     }
@@ -132,6 +137,27 @@ const server = http.createServer(async (request, response) => {
                 })()`);
                 if (role === 0) headerBaseline.set(width, header);
                 else assert.deepEqual(header, headerBaseline.get(width), `Header role ${role}, ${width}px matches Super Admin`);
+                if (width === 1440) {
+                    const bellRoleUrl = ['/super-admin/notifications', '/admin/notifications', '/auditor/notifications', '/auditee/notifications'][role];
+                    await evaluate('document.querySelector(".app-header button.notification-bell-btn").click()');
+                    await waitFor('document.querySelector(".header-notification-panel .header-notification-item") && getComputedStyle(document.querySelector(".header-notification-panel")).display !== "none"');
+                    assert.equal(await evaluate('new URL(document.querySelector(".header-notification-panel footer a").href).pathname'), bellRoleUrl);
+                    await evaluate('[...document.querySelectorAll(".header-notification-panel header button")].find(b => b.textContent.trim() === "Read all").click()');
+                    await waitFor('!Alpine.$data(document.querySelector(".app-header [x-data*=auditeeNotifications]")).markingRead && !document.querySelector(".header-notification-count").checkVisibility()');
+                    await evaluate('[...document.querySelectorAll(".header-notification-panel header button")].find(b => b.textContent.trim() === "Clear all").click()');
+                    await waitFor('getComputedStyle(document.querySelector(".header-notification-panel .header-notification-empty")).display !== "none"');
+                    await evaluate('window.beforeNotificationReload = true');
+                    await send('Page.reload', {}, sessionId);
+                    await waitFor(`!window.beforeNotificationReload && document.querySelector('.notification-inbox .attention-empty:not([x-cloak])')?.checkVisibility()`);
+                    assert.equal(await evaluate('document.querySelectorAll(".notification-item").length'), 0);
+                    await evaluate('document.querySelector(".app-header button.notification-bell-btn").click()');
+                    await waitFor('!Alpine.$data(document.querySelector(".app-header [x-data*=auditeeNotifications]")).loading && getComputedStyle(document.querySelector(".header-notification-panel")).display !== "none"');
+                    assert.equal(await evaluate('document.querySelectorAll(".header-notification-panel .header-notification-item").length'), 0, `Role ${role} cleared notifications stay cleared after refresh`);
+                    assert.equal(await evaluate('getComputedStyle(document.querySelector(".header-notification-panel .header-notification-empty")).display !== "none"'), true);
+                    await evaluate('document.querySelector(".app-header button.notification-bell-btn").click()');
+                    await waitFor('getComputedStyle(document.querySelector(".header-notification-panel")).display === "none"');
+                    resetNotices();
+                }
                 if (role === 0 && width === 1440 || role === 3 && width === 390) {
                     const { data } = await send('Page.captureScreenshot', { format: 'png', captureBeyondViewport: true }, sessionId);
                     fs.writeFileSync(path.join(directory, `inbox-role-${role}-${width}.png`), Buffer.from(data, 'base64'));

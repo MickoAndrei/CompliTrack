@@ -11,9 +11,9 @@ class AuditPlanController extends Controller
 {
     public function index(Request $request)
     {
-        $actor = User::find($request->user()->getKey());
+        $actor = User::query()->project(['avatarData' => 0])->find($request->user()->getKey());
         abort_unless($actor && $actor->isActive, 403);
-        $approve = app(AuditPlanPermissions::class)->allows($actor);
+        $approve = app(AuditPlanPermissions::class)->allows($actor, false);
         $prepare = (int) $actor->roleId === 1;
         abort_unless($approve || $prepare, 403, 'Audit plan preparation or approval permission is required.');
         $workflow = app(AuditPlanWorkflow::class);
@@ -41,7 +41,7 @@ class AuditPlanController extends Controller
         }
         return response()->json(['plans' => $plans, 'archives' => $archives, 'canApprove' => $approve, 'canPrepare' => $prepare,
             'units' => app(AuditAssignment::class)->units()->map(fn ($unit) => ['id' => (string) $unit->getKey(), 'name' => $unit->departmentName])->values(),
-            'reviewers' => $reviewers->get()->map(fn ($user) => ['id' => (string) $user->getKey(), 'name' => $user->fullName])])
+            'reviewers' => $reviewers->get(['fullName'])->map(fn ($user) => ['id' => (string) $user->getKey(), 'name' => $user->fullName])])
             ->header('Cache-Control', 'no-store');
     }
 

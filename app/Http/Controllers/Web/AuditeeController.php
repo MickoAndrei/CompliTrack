@@ -262,7 +262,8 @@ class AuditeeController extends Controller
     {
         abort_unless((int) $request->user()->roleId === 3 && $request->user()->isActive, 403);
         $check = $this->scopes->checks($request->user())->where('_id', MongoId::parse($id))->firstOrFail();
-        abort_unless($check->result === 'non_compliant' && in_array($check->correctiveStatus, ['open', 'in_progress'], true)
+        $actionable = ['open', 'in_progress', 'returned_for_revision'];
+        abort_unless($check->result === 'non_compliant' && in_array($check->correctiveStatus, $actionable, true)
             && (string) $check->departmentId === (string) $request->user()->departmentId, 403);
         $data = $request->validate(['submissionKey' => 'required|uuid', 'method' => 'required|in:digital-reference,physical-original,interview-process',
             'reference' => 'nullable|string|max:500', 'notes' => 'required|string|max:5000',
@@ -270,11 +271,18 @@ class AuditeeController extends Controller
         if ($data['method'] !== 'physical-original') { unset($data['availability']); }
         $response = $data + ['author' => (string) $request->user()->getKey(), 'at' => now()->utc()->toIso8601String()];
         $result = $check->getConnection()->getMongoDB()->selectCollection($check->getTable())->updateOne(
-            ['_id' => MongoId::parse($id), 'correctiveStatus' => ['$in' => ['open', 'in_progress']], 'evidenceResponses.submissionKey' => ['$ne' => $data['submissionKey']]],
+            ['_id' => MongoId::parse($id), 'correctiveStatus' => ['$in' => \App\Support\CarStatus::storedValues($actionable)], 'evidenceResponses.submissionKey' => ['$ne' => $data['submissionKey']]],
             ['$push' => ['evidenceResponses' => $response]]);
         if ($result->getModifiedCount()) {
             app(NotificationDispatchService::class)->persist($check->auditorId, 'corrective:'.$data['submissionKey'], 'evidence_submitted', 'Corrective evidence submitted',
                 $check->checkCode.' has a reference/original available for review.', $request->user()->getKey(), $check->getKey(), '/auditor/checks/'.$id);
+        } else {
+            $existing = collect($check->fresh()?->evidenceResponses ?? [])->firstWhere('submissionKey', $data['submissionKey']);
+            $duplicate = $existing && (string) ($existing['author'] ?? '') === (string) $request->user()->getKey();
+            foreach ($data as $field => $value) {
+                $duplicate = $duplicate && ($existing[$field] ?? null) === $value;
+            }
+            abort_unless($duplicate, 409, 'The finding changed or this submission key was already used. Refresh and try again.');
         }
         $message = 'Corrective evidence saved; the CAR remains subject to authorized verification.';
         if ($request->expectsJson()) { return response()->json(['message' => $message]); }

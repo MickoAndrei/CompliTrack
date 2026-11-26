@@ -83,6 +83,27 @@ const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
             assert.equal(await evaluate('document.querySelector(".um-table td strong").textContent'),'Test Person 0');
             assert.equal(await evaluate('document.querySelector(".um-table td small").textContent'),'ATE-0');
             await waitFor('document.querySelector(".um-table-wrap").getClientRects().length>0');
+            if (width > 640) {
+                await evaluate(`(() => {
+                    const body = document.querySelector('.um-table tbody');
+                    for (let i = 0; i < 30; i++) {
+                        const row = body.querySelector('tr').cloneNode(true);
+                        row.setAttribute('x-ignore', '');
+                        row.dataset.stickyProbe = ''; body.append(row);
+                    }
+                    document.querySelector('#main-content').scrollTop = 500;
+                })()`);
+                await delay(100);
+                const sticky = await evaluate(`(() => {
+                    const main = document.querySelector('#main-content').getBoundingClientRect();
+                    const filters = document.querySelector('.um-filters').getBoundingClientRect();
+                    const headings = [...document.querySelectorAll('.um-table th')].map(el => el.getBoundingClientRect().top);
+                    return { top: main.top + parseFloat(getComputedStyle(document.querySelector('#main-content')).paddingTop), filtersTop: filters.top, filtersBottom: filters.bottom, headings };
+                })()`);
+                assert.ok(Math.abs(sticky.filtersTop - sticky.top) <= 2, 'Filters and actions remain at the top of the scrolling area: '+JSON.stringify(sticky));
+                assert.ok(sticky.headings.every(top => Math.abs(top - sticky.filtersBottom) <= 2), 'All column headings stay directly below the filters');
+                await evaluate(`document.querySelectorAll('[data-sticky-probe]').forEach(el => el.remove());document.querySelector('#main-content').scrollTop=0`);
+            }
             assert.equal(await evaluate('(()=>{const main=document.querySelector("#main-content"),header=document.querySelector(".app-header"),top=header.getBoundingClientRect().top;main.scrollTop=main.scrollHeight;const valid=main.scrollTop>0&&main.getBoundingClientRect().top>=header.getBoundingClientRect().bottom&&header.getBoundingClientRect().top===top&&document.documentElement.scrollHeight<=innerHeight;main.scrollTop=0;return valid;})()'),true,'User Management scrolls below the fixed page header');
             assert.equal(await evaluate('document.documentElement.scrollWidth<=innerWidth'),true,'Page fits '+width+' '+JSON.stringify(await evaluate('({document:document.documentElement.scrollWidth,viewport:innerWidth,wrap:[...document.querySelectorAll(".um-table-wrap,.um-loading")].map(el=>({width:el.clientWidth,scroll:el.scrollWidth,overflow:getComputedStyle(el).overflowX,display:getComputedStyle(el).display}))})')));
             await evaluate('document.querySelectorAll(".attention-pagination button")[1].click()');

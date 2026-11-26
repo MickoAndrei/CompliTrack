@@ -17,9 +17,24 @@ $configurationChanged = $false
 $switchFailed = $false
 
 function Write-SwitchLog([string]$message) {
-    $directory = Split-Path -Parent $logPath
-    New-Item -ItemType Directory -Force -Path $directory | Out-Null
-    Add-Content -LiteralPath $logPath -Value ('{0:o} {1}' -f [DateTime]::UtcNow, $message)
+    # Logging must never interrupt a switch or its rollback. Other processes may
+    # briefly hold the log open while inspecting it.
+    try {
+        $directory = Split-Path -Parent $logPath
+        New-Item -ItemType Directory -Force -Path $directory | Out-Null
+        $entry = '{0:o} {1}' -f [DateTime]::UtcNow, $message
+        for ($attempt = 0; $attempt -lt 5; $attempt++) {
+            try {
+                Add-Content -LiteralPath $logPath -Value $entry -ErrorAction Stop
+                return
+            } catch {
+                if ($attempt -lt 4) { Start-Sleep -Milliseconds 100 }
+            }
+        }
+        Write-Warning 'Unable to write the database switch log; continuing the switch.'
+    } catch {
+        Write-Warning 'Unable to write the database switch log; continuing the switch.'
+    }
 }
 
 function Get-PendingRequest {

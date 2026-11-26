@@ -23,9 +23,18 @@ class QmsCycleRepository
             if (!$folder->unitType) { $folder->forceFill(['unitType' => $attributes['unitType'] ?? 'repository'])->save(); }
             return $folder;
         };
-        // Adopt an existing named root so imports do not create a second cycle.
-        $root = QmsCategory::where('collegeId', MongoId::parse((string) $college->getKey()))->whereNull('parentId')->where('name', $cycle)->where('isActive', true)->first();
-        if (!$root) { $root = $add('root', $cycle, null, ['cycleRoot' => true]); }
+        // Only adopt a system repository root; a matching name does not transfer ownership.
+        $root = QmsCategory::where('collegeId', MongoId::parse((string) $college->getKey()))->whereNull('parentId')->where('name', $cycle)->where('isActive', true)
+            ->where('userManaged', '!=', true)->where('folderPolicy', 'administration')->where('unitType', 'repository')
+            ->whereNull('createdByUserId')->whereNull('departmentId')->whereNull('auditorId')->first();
+        if (!$root) {
+            $name = $cycle; $suffix = 0;
+            while (QmsCategory::where('collegeId', MongoId::parse((string) $college->getKey()))->whereNull('parentId')->where('isActive', true)
+                ->where('normalizedName', mb_strtolower(trim($name)))->exists()) {
+                $name = $cycle.' (System'.(++$suffix > 1 ? ' '.$suffix : '').')';
+            }
+            $root = $add('root', $name, null, ['cycleRoot' => true]);
+        }
         elseif (!$root->cycleRoot) { $root->forceFill(['cycleRoot' => true, 'cycleKey' => $cycle, 'folderPolicy' => 'administration'])->save(); }
         $campus = $add('campus', 'USTP Claveria', $root);
         $admin = $add('admin', '01 Audit Administration', $campus);

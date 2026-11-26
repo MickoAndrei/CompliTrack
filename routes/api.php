@@ -104,6 +104,7 @@ Route::prefix('v1')->group(function () {
         Route::get('/notifications/{id}', [NotificationController::class, 'show']);
         Route::patch('/notifications/{id}/read', [NotificationController::class, 'markRead']);
         Route::patch('/notifications/read-all', [NotificationController::class, 'markAllRead']);
+        Route::patch('/notifications/clear-all', [NotificationController::class, 'clearAll']);
 
         // Super Admin only
         Route::middleware('role:0')->group(function () {

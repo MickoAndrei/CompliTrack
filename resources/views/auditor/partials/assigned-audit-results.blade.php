@@ -25,6 +25,11 @@
         <div class="maa-empty"><i data-lucide="clipboard-list" aria-hidden="true"></i><h3>{{ $summary['total'] ? 'No matching audits' : 'No Assigned Audits Yet' }}</h3><p>{{ $summary['total'] ? 'Try a different title, department, or status.' : 'Your assigned audits will appear here once an authorized audit assignment has been made.' }}</p>@if($summary['total'])<a href="/audits" class="maa-button" data-my-audit-reset>Clear filters</a>@endif</div>
         @endforelse
     </div>
-    <x-server-pagination :paginator="$audits" />
+    <nav class="app-pagination maa-pagination" aria-label="Assigned audit pages">
+        <span class="app-pagination-total">{{ $audits->total() }} {{ $audits->total() === 1 ? 'record' : 'records' }} · Page {{ $audits->currentPage() }} of {{ $audits->lastPage() }}</span>
+        <x-server-page-size :paginator="$audits" />
+        @if($audits->onFirstPage())<span class="app-pagination-button" aria-disabled="true">Previous</span>@else<a class="app-pagination-button" href="{{ $audits->previousPageUrl() }}" rel="prev">Previous</a>@endif
+        @if($audits->hasMorePages())<a class="app-pagination-button" href="{{ $audits->nextPageUrl() }}" rel="next">Next</a>@else<span class="app-pagination-button" aria-disabled="true">Next</span>@endif
+    </nav>
     </div>
 </div>

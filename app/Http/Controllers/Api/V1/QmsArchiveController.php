@@ -188,7 +188,7 @@ class QmsArchiveController extends Controller
             'accessUserIds' => 'present|array|max:100', 'accessUserIds.*' => 'string|regex:/^[a-f0-9]{24}$/i|distinct']);
         $data['accessUserIds'] = $this->access->ids($data['accessUserIds']);
         $folder = $document->categoryId ? QmsCategory::find($document->categoryId) : null;
-        if ($folder && ($folder->userManaged || ($folder->classification && $folder->classification !== 'department'))) {
+        if ($folder) {
             abort_unless(in_array($data['visibility'], app(\App\Services\QmsFolderAccess::class)->allowedVisibility($folder), true), 422, 'Document visibility cannot exceed its folder classification.');
         }
         $document->fill($data)->save();

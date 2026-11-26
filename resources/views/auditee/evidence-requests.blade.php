@@ -33,7 +33,7 @@
                 <button type="button" @click="evidenceLayout = 'list'" :aria-pressed="evidenceLayout === 'list'" aria-label="List view" title="List view" aria-controls="evidence-request-results"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 6h13M8 12h13M8 18h13M3 6h1M3 12h1M3 18h1"/></svg></button>
             </div>
         </div>
-        <div id="evidence-request-results" data-evidence-list>
+        <div id="evidence-request-results" data-evidence-list x-cloak>
             <div class="evidence-request-grid">
                 @forelse($requests as $record)
                 @php($detailUrl = '/auditee/evidence-requests?'.http_build_query(['auditId' => $record['auditId'], 'requestId' => $record['id']]))

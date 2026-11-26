@@ -42,7 +42,7 @@
                 <td><a class="atl-primary" href="/audits/{{ $audit->getKey() }}?review=1" data-atl-review aria-haspopup="dialog" aria-label="Review {{ $audit->auditCode }}">{{ $status === 'submitted' ? 'Review' : 'View review' }}</a></td></tr>
             @empty<tr><td colspan="6" class="review-empty">No audits match this queue. Adjust the filters or choose another category.</td></tr>@endforelse
         </tbody></table></div>
-        <div class="review-pagination"><x-server-pagination :paginator="$audits" /></div>
+        <footer class="review-pagination"><nav class="app-pagination" aria-label="Audit review pages"><span class="app-pagination-total">{{ $audits->total() }} {{ $audits->total() === 1 ? 'record' : 'records' }} · Page {{ $audits->currentPage() }} of {{ $audits->lastPage() }}</span><x-server-page-size :paginator="$audits" />@if($audits->onFirstPage())<span class="app-pagination-button" aria-disabled="true">Previous</span>@else<a class="app-pagination-button" href="{{ $audits->previousPageUrl() }}" rel="prev">Previous</a>@endif @if($audits->hasMorePages())<a class="app-pagination-button" href="{{ $audits->nextPageUrl() }}" rel="next">Next</a>@else<span class="app-pagination-button" aria-disabled="true">Next</span>@endif</nav></footer>
         </div>
         <template data-review-skeleton><div class="review-loading" role="status"><span class="sr-only">Loading audit reviews</span>@for($row = 0; $row < 5; $row++)<div class="review-loading-row" aria-hidden="true"><span></span><span></span><span></span><span></span><span></span></div>@endfor</div></template>
     </div>

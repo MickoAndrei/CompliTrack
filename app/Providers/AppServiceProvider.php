@@ -26,6 +26,7 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        Auth::provider('portal', fn ($app, array $config) => new \App\Auth\PortalUserProvider($app['hash'], $config['model']));
         // Reuse Laravel's session guard, including its normal cookie encryption,
         // with a distinct remember-me cookie and login key for each tab context.
         Auth::extend('tab-session', function ($app, $name, array $config) {
