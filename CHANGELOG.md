@@ -2,6 +2,12 @@
 
 All notable changes to CompliTrack are documented here.
 
+## [Unreleased] - 2026-11-26
+
+### Fixed
+
+- Fixed **Clear all** for Super Admin, Admin, Auditor, and Auditee accounts. Read and unread notifications now stay cleared from the bell and inbox after a refresh. The Auditee dashboard also removes cleared notifications from Recent Activity immediately.
+
 ## [Unreleased] - 2026-11-18
 
 ### Added

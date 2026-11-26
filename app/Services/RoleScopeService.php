@@ -60,7 +60,8 @@ class RoleScopeService
 
     public function notifications(User $actor)
     {
-        return Notification::where('recipientUserId', new ObjectId((string) $actor->getKey()));
+        return Notification::where('recipientUserId', new ObjectId((string) $actor->getKey()))
+            ->where('isCleared', '!=', true);
     }
 
     public function auditLogs(User $actor)

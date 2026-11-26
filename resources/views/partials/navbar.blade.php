@@ -13,16 +13,16 @@
         </div>
     </div>
     <div class="header-right">
-        @if (in_array($roleId, [0, 1, 3], true))
+        @if (in_array($roleId, [0, 1, 2, 3], true))
             <div class="relative" x-data="auditeeNotifications()" @click.outside="close()" @keydown.escape.window="close()">
                 <button type="button" @click="toggle()" class="notification-bell-btn" :aria-label="badgeCount() > 0 ? `Notifications, ${badgeCount()} unread` : 'Notifications'" :aria-expanded="open.toString()" aria-haspopup="dialog">
                     <i data-lucide="bell" class="size-5"></i>
                     <span x-show="badgeCount() > 0" x-cloak class="header-notification-count" aria-hidden="true" x-text="badgeCount() > 99 ? '99+' : badgeCount()"></span>
                 </button>
-                <x-notification-dropdown :notifications-url="match ($roleId) { 0 => '/super-admin/notifications', 1 => '/admin/notifications', default => '/auditee/notifications' }" />
+                <x-notification-dropdown :notifications-url="match ($roleId) { 0 => '/super-admin/notifications', 1 => '/admin/notifications', 2 => '/auditor/notifications', default => '/auditee/notifications' }" />
             </div>
         @else
-            <a href="{{ match ($roleId) { 1 => '/admin/notifications', 2 => '/auditor/notifications', 3 => '/auditee/notifications', default => '/profile' } }}" class="notification-bell-btn" x-data="notificationBadge()" :aria-label="badgeCount() > 0 ? `Notifications, ${badgeCount()} unread` : 'Notifications'">
+            <a href="/profile" class="notification-bell-btn" x-data="notificationBadge()" :aria-label="badgeCount() > 0 ? `Notifications, ${badgeCount()} unread` : 'Notifications'">
                 <i data-lucide="bell" class="size-5"></i>
                 <span x-show="badgeCount() > 0" x-cloak class="header-notification-count" aria-hidden="true" x-text="badgeCount() > 99 ? '99+' : badgeCount()"></span>
             </a>

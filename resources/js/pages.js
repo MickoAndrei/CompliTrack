@@ -108,7 +108,7 @@ document.addEventListener('alpine:init', () => {
             this.loading = true;
             this.error = null;
             try {
-                const { data } = await readNotifications({ perPage: 8 });
+                const { data } = await readNotifications({ perPage: 8, excludeCleared: true });
                 if (this.notificationDisposed) return;
                 this.notifications = data.data || [];
                 this.$nextTick(() => window.renderIcons?.());
@@ -147,10 +147,12 @@ document.addEventListener('alpine:init', () => {
             this.markingRead = true;
             this.error = null;
             try {
-                if (this.unreadCount > 0) await axios.patch(apiPath('notifications/read-all'));
+                await axios.patch(apiPath('notifications/clear-all'));
                 this.notifications = [];
                 this.previewPage = 1;
+                window.dispatchEvent(new Event('complitrack:notifications-cleared'));
                 await this.refreshUnreadCount();
+                window.dispatchEvent(new Event('complitrack:notifications-changed'));
             } catch (error) {
                 this.error = responseMessage(error, 'Unable to clear notifications.');
             } finally {

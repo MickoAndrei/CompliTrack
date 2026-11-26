@@ -63,13 +63,18 @@
             @endforelse
         </section>
     </div>
-    <section class="workflow-card" aria-labelledby="activity-title">
+    <section class="workflow-card" aria-labelledby="activity-title" x-data="{ cleared: false }" @complitrack:notifications-cleared.window="cleared = true">
         <div class="dashboard-section-heading"><h2 id="activity-title">Recent Activity</h2><a href="/auditee/notifications">All notifications</a></div>
-        @forelse($activity as $entry)
+        @foreach($activity as $entry)
+        @if($entry['url'] === '/auditee/notifications')<template x-if="!cleared">@endif
         <article class="dashboard-record"><div class="dashboard-section-heading"><h3><a @if(str_starts_with($entry['url'], '/auditee/finding-details/')) data-result-modal-open aria-haspopup="dialog" @endif href="{{ $entry['url'] }}">{{ $entry['title'] }}</a></h3>@if($entry['at'])<time datetime="{{ $entry['at']->toIso8601String() }}">{{ \App\Support\PortalDate::format($entry['at']) }}</time>@endif</div><p>{{ $entry['detail'] }}</p></article>
-        @empty
+        @if($entry['url'] === '/auditee/notifications')</template>@endif
+        @endforeach
+        @if($activity->every(fn ($entry) => $entry['url'] === '/auditee/notifications'))
+        <div @if($activity->isNotEmpty()) x-cloak x-show="cleared" @endif>
         <div class="dashboard-empty"><i data-lucide="bell" aria-hidden="true"></i><div><h3>No activity yet</h3><p>New results and audit updates will appear here.</p></div></div>
-        @endforelse
+        </div>
+        @endif
     </section>
 </div>
 @include('auditee.result-modal')
