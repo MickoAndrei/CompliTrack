@@ -2,24 +2,17 @@
 @section('title', 'Roles')
 @section('heading', 'Roles & Permissions')
 @push('styles')<link rel="stylesheet" href="{{ asset('css/audit-plans.css') }}?v={{ filemtime(public_path('css/audit-plans.css')) }}">@endpush
+@section('body-class', 'ct-v2-page')
 @section('content')
 <section class="app-view-panel active app-role-page">
-    <header class="role-page-heading">
-        <div><p class="role-page-eyebrow">ACCESS CONTROL</p><h2 class="font-heading text-2xl font-bold text-ustp-navy">Role overview</h2><p class="role-page-description">Review what each account role can access across CompliTrack.</p></div>
-        <span class="role-fixed-note"><i data-lucide="lock-keyhole" aria-hidden="true"></i><span>Roles are managed by the system</span></span>
-    </header>
-    <div class="role-card-grid">
+<header class="ct-page-heading"><div><h1>Roles &amp; Permissions</h1><p>Review four roles and explicit workflow grants.</p></div></header>
+    <div class="ct-role-grid">
         @foreach ([0 => ['Super Admin', 'System-wide user, department, and settings administration.', 'shield-check', 'Full system access'], 1 => ['Admin', 'CET management, users, archives, and reporting.', 'settings-2', 'CET administration'], 2 => ['Auditor', 'Assigned-department checks and corrective actions.', 'clipboard-check', 'Audit operations'], 3 => ['Auditee', 'Own compliance findings and evidence uploads.', 'file-check-2', 'Assigned records']] as $id => [$role, $description, $icon, $scope])
-            <article class="role-overview-card">
-                <div class="role-card-topline"><span class="role-card-icon role-card-icon-{{ $id }}"><i data-lucide="{{ $icon }}" aria-hidden="true"></i></span><x-role-badge :role-id="$id" /></div>
-                <h3>{{ $role }}</h3>
-                <p>{{ $description }}</p>
-                <div class="role-card-scope"><span>ACCESS SCOPE</span><strong>{{ $scope }}</strong></div>
-            </article>
+            <article class="ct-panel ct-role-card"><h2>{{ $id === 1 ? 'Admin (ATL)' : $role }}</h2><p class="ct-muted">System role · fixed</p><p class="sr-only">{{ $description }} · {{ $scope }}</p></article>
         @endforeach
     </div>
-    <section class="plan-panel workflow-permissions" x-data="auditPlanPermissions" aria-labelledby="workflow-permissions-heading">
-        <header class="workflow-heading">
+    <section class="ct-permission-layout workflow-permissions" x-data="auditPlanPermissions" aria-labelledby="workflow-permissions-heading">
+        <div class="ct-panel"><header class="workflow-heading">
             <h2 id="workflow-permissions-heading" class="font-heading text-xl font-bold">Workflow Permissions</h2>
             <p>Choose which roles can approve audit plans, verify CARs, or close CARs.</p>
         </header>
@@ -48,7 +41,7 @@
                 <button type="submit" class="plan-primary" :disabled="loading || saving || !current()" x-text="saving ? 'Saving...' : 'Save Permission'">Save Permission</button>
             </fieldset>
         </form>
-        <details class="plan-history" style="margin-top:20px"><summary>Permission change history</summary><template x-for="(entry, index) in (current()?.history || []).filter(entry => entry.permission === permission)" :key="index"><p><strong x-text="entry.enabled ? 'Granted' : 'Revoked'"></strong> · <span x-text="entry.actorName"></span> · <time x-text="entry.at"></time><br><span x-text="entry.remarks"></span></p></template></details>
+        </div><aside class="ct-panel"><h2>Decision rules</h2><p class="ct-muted">Audit plan approval must be explicitly enabled, even for Super Admin.</p><p class="ct-muted">Verification and closure are separate assigned-auditor permissions. Admin monitors only.</p><hr><details class="plan-history" style="margin-top:20px"><summary>Permission change history</summary><template x-for="(entry, index) in (current()?.history || []).filter(entry => entry.permission === permission)" :key="index"><p><strong x-text="entry.enabled ? 'Granted' : 'Revoked'"></strong> · <span x-text="entry.actorName"></span> · <time x-text="entry.at"></time><br><span x-text="entry.remarks"></span></p></template></details></aside>
     </section>
 </section>
 @endsection

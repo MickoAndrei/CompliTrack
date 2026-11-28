@@ -5,7 +5,10 @@
 @push('styles')
 <link rel="stylesheet" href="{{ asset('css/auditee-help.css') }}?v={{ filemtime(public_path('css/auditee-help.css')) }}">
 @endpush
+@section('body-class', 'ct-v2-page')
 @section('content')
+<header class="ct-page-heading"><div><h1>Help &amp; Standards</h1><p>Role-specific workflow guidance and reference standards.</p></div></header>
+
 @php
     $helpRole = (int) auth()->user()->roleId;
     $roleGuide = config('help.'.$helpRole);

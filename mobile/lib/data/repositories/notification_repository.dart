@@ -3,6 +3,12 @@ import '../../core/network/api_client.dart';
 import '../../core/network/api_response.dart';
 import '../models/notification_model.dart';
 
+class NotificationPage {
+  const NotificationPage({required this.items, required this.lastPage, required this.total, required this.unreadCount});
+  final List<NotificationModel> items;
+  final int lastPage, total, unreadCount;
+}
+
 class NotificationRepository {
   final Dio _dio;
 
@@ -14,6 +20,18 @@ class NotificationRepository {
         .map(NotificationModel.fromJson)
         .toList();
   }
+
+  Future<NotificationPage> preview({int page = 1, int perPage = 4}) async {
+    final response = await _dio.get('/api/v1/notifications', queryParameters: {
+      'page': page, 'perPage': perPage, 'includeSummary': true,
+    });
+    final data = ApiResponse.object(response.data);
+    final meta = Map<String, dynamic>.from(data['meta'] as Map);
+    return NotificationPage(items: ApiResponse.list(data).map(NotificationModel.fromJson).toList(),
+      lastPage: (meta['lastPage'] as num).toInt(), total: (meta['total'] as num).toInt(), unreadCount: (meta['unreadCount'] as num).toInt());
+  }
+
+  Future<bool> clearAll() async => (await _dio.patch('/api/v1/notifications/clear-all')).statusCode == 200;
 
   Future<bool> markAsRead(String id) async {
     final response = await _dio.patch('/api/v1/notifications/$id/read');

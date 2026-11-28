@@ -5,7 +5,7 @@
         <h2>Notifications</h2>
         <button type="button" @click="markAllRead()" :disabled="loading || markingRead || badgeCount() === 0">Read all</button>
         <button type="button" @click="clearNotifications()" :disabled="loading || markingRead || previewItems().length === 0">Clear all</button>
-        <button type="button" @click="close()" aria-label="Close notifications">×</button>
+        <button type="button" @click="close()" aria-label="Close notifications" class="v2-close-button"><i data-lucide="x" aria-hidden="true"></i></button>
     </header>
     <div x-show="loading" role="status" class="header-notification-loading">
         <span class="sr-only">Loading notifications…</span>

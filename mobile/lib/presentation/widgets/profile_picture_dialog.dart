@@ -1,3 +1,4 @@
+import 'v2/portal_dialog.dart';
 import 'dart:ui';
 
 import 'package:dio/dio.dart';
@@ -13,9 +14,8 @@ class ProfilePictureDialog extends StatefulWidget {
   const ProfilePictureDialog({super.key});
 
   static Future<bool?> show(BuildContext context) {
-    return showDialog<bool>(
+    return showPortalDialog<bool>(
       context: context,
-      barrierColor: const Color(0x660F172A),
       builder: (_) => const ProfilePictureDialog(),
     );
   }

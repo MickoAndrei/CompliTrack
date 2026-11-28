@@ -1,3 +1,4 @@
+import '../../widgets/v2/portal_dialog.dart';
 import 'dart:async';
 import '../../../core/utils/car_status.dart';
 import '../../../core/utils/date_formatter.dart';
@@ -480,7 +481,7 @@ Future<void> _showStatusHistory(
   BuildContext context,
   ComplianceCheckModel check,
 ) {
-  return showDialog<void>(
+  return showPortalDialog<void>(
     context: context,
     builder: (dialogContext) => Dialog(
       backgroundColor: AppColors.ustpWhite,

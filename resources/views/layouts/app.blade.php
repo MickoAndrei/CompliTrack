@@ -44,6 +44,8 @@
     @auth
         <link rel="stylesheet" href="{{ asset('css/portal-header.css') }}?v={{ filemtime(public_path('css/portal-header.css')) }}">
         <link rel="stylesheet" href="{{ asset('css/portal-typography.css') }}?v={{ filemtime(public_path('css/portal-typography.css')) }}">
+        <link rel="stylesheet" href="{{ asset('css/v2/portal.css') }}?v={{ filemtime(public_path('css/v2/portal.css')) }}">
+        <link rel="stylesheet" href="{{ asset('css/v2/pages.css') }}?v={{ filemtime(public_path('css/v2/pages.css')) }}">
     @endauth
 </head>
 <body class="min-h-screen @yield('body-class')" data-user-id="{{ auth()->id() }}" data-portal-role="{{ auth()->user()?->roleId }}">
@@ -57,7 +59,7 @@
             3 => 'view-content-container',
             default => '',
         })
-        <div class="{{ $portalLayout }}" x-data="{ sidebarOpen: false }">
+        <div class="{{ $portalLayout }}" x-data="portalShell()" :class="{ 'sidebar-collapsed': sidebarCollapsed }" @keydown.escape.window="sidebarOpen = false">
             <div x-cloak x-show="sidebarOpen" x-transition.opacity class="fixed inset-0 z-40 bg-ustp-dark/50 lg:hidden" @click="sidebarOpen = false"></div>
             @include('partials.sidebar')
             <div class="{{ $mainLayout }}">

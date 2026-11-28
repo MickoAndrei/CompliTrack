@@ -5,7 +5,10 @@
 @push('styles')
 <link rel="stylesheet" href="{{ asset('css/corrective-actions.css') }}?v={{ filemtime(public_path('css/corrective-actions.css')) }}">
 @endpush
+@section('body-class', 'ct-v2-page')
 @section('content')
+<header class="ct-page-heading"><div><h1>Corrective actions</h1><p>Review and verify assigned corrective actions.</p></div></header>
+
 <section class="car-page" x-data="correctiveActions" :aria-busy="loading">
     <div class="car-summary" aria-label="Corrective action summary">
         @foreach ([['total', 'Total Actions', 'clipboard-list'], ['inProgress', 'In Progress', 'clock'], ['awaitingVerification', 'Awaiting Verification', 'clipboard-check'], ['closed', 'Closed', 'circle-check']] as [$key, $label, $icon])
@@ -23,14 +26,16 @@
         <p x-page-notice="'success'" role="status" x-show="notice" x-cloak x-text="notice"></p>
         <div x-page-notice role="alert" x-show="error" x-cloak><p x-text="error"></p><button type="button" class="car-secondary" @click="load()">Retry</button></div>
         <div x-show="loading"><span class="sr-only" role="status">Loading corrective actions</span><x-dashboard-skeleton type="activity" /></div>
-        <div class="car-list" x-show="!loading && !error" x-cloak>
-            <template x-for="row in rows" :key="row._id"><article class="car-record">
-                <div class="car-section-heading"><div><p class="car-eyebrow">Audit Item</p><h3 x-text="row.auditItem"></h3><p class="car-reference" x-text="`Reference: ${row.checkCode}`"></p></div><x-status-badge status="" class="car-status" ::data-status="row.displayStatus" x-text="row.statusLabel" /></div>
-                <p class="car-assignment"><span><i data-lucide="building-2" aria-hidden="true"></i><span x-text="row.departmentName"></span></span><span><i data-lucide="user-round" aria-hidden="true"></i><span x-text="row.auditeeName"></span></span></p>
-                <p class="car-finding" x-text="row.finding"></p>
-                <footer><span x-text="row.dueDate ? `Due ${date(row.dueDate)}` : 'Due date not recorded'"></span><button type="button" class="car-secondary" @click="openDetails(row)" aria-haspopup="dialog">View Details <span aria-hidden="true">→</span><span class="sr-only" x-text="` for ${row.checkCode}`"></span></button></footer>
-            </article></template>
-            <div class="car-empty" x-show="!rows.length"><i data-lucide="clipboard-check" aria-hidden="true"></i><h3>No corrective actions match these filters</h3><p>Try another search, department, or status.</p><button type="button" class="car-secondary" @click="clearFilters()">Clear filters</button></div>
+        <div class="ct-table-wrap" x-show="!loading && !error" x-cloak>
+            <table class="ct-table"><thead><tr><th scope="col">Reference</th><th scope="col">Finding</th><th scope="col">Responsible person</th><th scope="col">Target</th><th scope="col">Status</th><th scope="col">Actions</th></tr></thead><tbody>
+                <template x-for="row in rows" :key="row._id"><tr>
+                    <td x-text="row.checkCode"></td><td><strong x-text="row.auditItem"></strong><div class="ct-muted" x-text="row.finding"></div></td>
+                    <td><span x-text="row.auditeeName"></span><div class="ct-muted" x-text="row.departmentName"></div></td>
+                    <td x-text="row.dueDate ? date(row.dueDate) : 'Not recorded'"></td><td><x-status-badge status="" class="car-status" ::data-status="row.displayStatus" x-text="row.statusLabel" /></td>
+                    <td><button type="button" class="ct-secondary" @click="openDetails(row)" aria-haspopup="dialog">View details<span class="sr-only" x-text="` for ${row.checkCode}`"></span></button></td>
+                </tr></template>
+                <tr x-show="!rows.length"><td colspan="6">No matching corrective actions. <button type="button" class="ct-secondary" @click="clearFilters()">Clear filters</button></td></tr>
+            </tbody></table>
         </div>
         <x-pagination-controls label="Corrective action pages" />
     </div>

@@ -7,7 +7,7 @@
         <p class="result-detail-eyebrow">Audit Result Details</p>
         <h2 data-result-title>{{ $check->referenceStandard ?: $check->checkCode }}</h2>
         <p class="result-detail-reference">Reference: {{ $check->checkCode }}</p>
-        <div class="result-detail-badges"><x-status-badge class="results-status-badge" :status="$check->result" :label="$check->result === 'compliant' ? 'C — Compliant' : 'N — Non-Conformance'"/><x-status-badge class="results-status-badge result-detail-car-badge" :data-status="$hasCar ? $check->correctiveStatus : 'none'" :status="$hasCar ? $check->correctiveStatus : 'none'" :label="$hasCar ? 'Corrective Action '.ucfirst(str_replace('_', ' ', $check->correctiveStatus)) : 'No corrective action'"/><span class="result-detail-review-date">Review date: Not recorded</span></div>
+        <div class="result-detail-badges"><x-status-badge class="results-status-badge" :status="$check->result" :label="match ($check->result) { 'compliant' => 'C — Compliant', 'non_compliant' => 'N — Non-Conformance', 'observation' => 'O — Observation', default => 'Not evaluated' }"/><x-status-badge class="results-status-badge result-detail-car-badge" :data-status="$hasCar ? $check->correctiveStatus : 'none'" :status="$hasCar ? $check->correctiveStatus : 'none'" :label="$hasCar ? 'Corrective Action '.ucfirst(str_replace('_', ' ', $check->correctiveStatus)) : 'No corrective action'"/><span class="result-detail-review-date">Review date: Not recorded</span></div>
     </header>
     <div data-result-detail-body>
         <div class="result-detail-tabs" role="tablist" aria-label="Audit result sections">
@@ -20,7 +20,7 @@
             <dl class="workflow-details"><dt>Audited department</dt><dd>{{ $departmentName ?? 'Not recorded' }}</dd><dt>Auditor</dt><dd>{{ $auditorName ?? 'Not recorded' }}</dd><dt>Reference Standard</dt><dd>{{ $check->referenceStandard ?: 'Not recorded' }}</dd><dt>Result recorded</dt><dd>{{ \App\Support\PortalDate::format($check->createdAt, true) }}</dd></dl>
             <div class="results-detail-block"><h3>Check item / requirement</h3><p>No separate audit question is recorded for this legacy compliance result.</p></div>
             <div class="results-detail-block"><h3>Auditor remarks</h3><p>{{ $check->remarks ?: 'No remarks recorded for this result.' }}</p></div>
-            <div class="results-detail-block"><h3>Finding</h3><p>{{ $check->result === 'non_compliant' ? 'Non-conformance recorded against the reference standard. See the auditor remarks for the recorded explanation.' : 'Compliant result. No non-conformance finding is recorded.' }}</p></div>
+            <div class="results-detail-block"><h3>Finding</h3><p>{{ $check->result === 'non_compliant' ? 'Non-conformance recorded against the reference standard. See the auditor remarks for the recorded explanation.' : 'No non-conformance finding is recorded.' }}</p></div>
         </section>
         <section role="tabpanel" id="result-panel-evidence" aria-labelledby="result-tab-evidence" data-result-panel="evidence" tabindex="0">
             <h2>Evidence Reviewed and References</h2>

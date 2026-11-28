@@ -2,6 +2,7 @@ import './bootstrap';
 import './page-notices';
 import './table-sorting';
 import Alpine from 'alpinejs';
+import { portalShell } from './components/portal-shell';
 import { createIcons } from 'lucide';
 import { icons } from './icons';
 import { onDocumentReady } from './dom-ready';
@@ -10,6 +11,7 @@ import { clearNotificationRequests } from './notification-data';
 import './pages';
 
 window.Alpine = Alpine;
+Alpine.data('portalShell', portalShell);
 markPerformance('entry');
 
 const renderIcons = () => createIcons({ icons });

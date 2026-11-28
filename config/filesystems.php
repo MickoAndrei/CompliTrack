@@ -32,7 +32,7 @@ return [
 
         'local' => [
             'driver' => 'local',
-            'root' => storage_path('app/private'),
+            'root' => storage_path(env('COMPLITRACK_V2', false) ? 'app/private-v2' : 'app/private'),
             'serve' => true,
             'throw' => false,
             'report' => false,

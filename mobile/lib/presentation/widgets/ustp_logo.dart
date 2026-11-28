@@ -18,16 +18,18 @@ class UstpLogo extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final textColor = isLightMode ? AppColors.ustpNavy : AppColors.ustpWhite;
-    final subtitleColor = AppColors.ustpMuted;
+    final subtitleColor = isLightMode ? AppColors.ustpMuted : AppColors.navigationMuted;
 
     return Row(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         if (showEmblem) ...[
-          SizedBox(
-            width: fontSize * 1.5,
-            height: fontSize * 1.5,
+          Container(
+            width: fontSize * 2,
+            height: fontSize * 2,
+            padding: const EdgeInsets.all(3),
+            decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(6)),
             child: Image.asset(
               'assets/images/ustp-logo-mark.png',
               fit: BoxFit.contain,

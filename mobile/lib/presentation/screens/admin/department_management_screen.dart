@@ -1,3 +1,4 @@
+import '../../widgets/v2/portal_dialog.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart';
@@ -7,7 +8,6 @@ import '../../../data/models/department_model.dart';
 import '../../../data/repositories/department_repository.dart';
 import '../../widgets/empty_state.dart';
 import '../../widgets/ustp_app_bar.dart';
-import '../admin/admin_notifications_screen.dart';
 import 'department_edit_form.dart';
 
 class DepartmentManagementScreen extends StatefulWidget {
@@ -69,7 +69,7 @@ class _DepartmentManagementScreenState
 
   Future<void> _deleteDepartment(DepartmentModel department) async {
     if (!_canManage) return;
-    final confirmed = await showDialog<bool>(
+    final confirmed = await showPortalDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -116,7 +116,6 @@ class _DepartmentManagementScreenState
     return Scaffold(
       backgroundColor: const Color(0xFFF8F9FA),
       appBar: UstpAppBar(
-        onNotificationTap: () => AdminNotificationsScreen.showOverlay(context),
       ),
       body: !canManage || (_editingDepartment == null && !_isCreatingDepartment)
           ? Column(

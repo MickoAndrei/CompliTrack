@@ -29,7 +29,7 @@ class CompliTrackApp extends StatelessWidget {
         );
 
         return MaterialApp.router(
-          title: 'CompliTrack V8',
+          title: 'CompliTrack',
           debugShowCheckedModeBanner: false,
           theme: UstpTheme.lightTheme,
           routerConfig: router,

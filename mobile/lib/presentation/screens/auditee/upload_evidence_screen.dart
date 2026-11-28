@@ -1,3 +1,4 @@
+import '../../widgets/v2/portal_dialog.dart';
 import 'dart:io';
 
 import 'package:cunning_document_scanner/cunning_document_scanner.dart';
@@ -31,7 +32,7 @@ class UploadEvidenceScreen extends StatefulWidget {
     required String checkCode,
     required String referenceStandard,
   }) {
-    return showDialog<void>(
+    return showPortalDialog<void>(
       context: context,
       barrierDismissible: false,
       builder: (context) => Dialog(
@@ -47,7 +48,7 @@ class UploadEvidenceScreen extends StatefulWidget {
   }
 
   static Future<void> showQuick(BuildContext context) {
-    return showDialog<void>(
+    return showPortalDialog<void>(
       context: context,
       barrierDismissible: false,
       builder: (context) => const Dialog(

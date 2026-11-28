@@ -89,6 +89,13 @@ Route::prefix('v1')->group(function () {
         Route::get('/documents/{id}/download', [ArchiveController::class, 'download']);
         Route::get('/documents/{id}/verify-checksum', [ArchiveController::class, 'verifyChecksum']);
 
+        // V2 mobile and web share the same assignment query and mutation validation.
+        Route::middleware('role:1,2')->group(function () {
+            Route::get('/audit-workspaces', [\App\Http\Controllers\Api\V1\AuditWorkspaceController::class, 'index']);
+            Route::get('/audit-workspaces/{id}', [\App\Http\Controllers\Api\V1\AuditWorkspaceController::class, 'show']);
+            Route::post('/audit-workspaces/{id}', [\App\Http\Controllers\Web\AuditController::class, 'update']);
+        });
+
         // Compliance checks (Auditor creates, all roles can view per scope)
         Route::middleware('role:2')->get('/auditor/metrics', [\App\Http\Controllers\Web\AuditController::class, 'metrics']);
         Route::get('/compliance-checks', [ComplianceCheckController::class, 'index']);

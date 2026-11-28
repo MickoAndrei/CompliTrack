@@ -5,7 +5,10 @@
 @push('styles')
 <link rel="stylesheet" href="{{ asset('css/audit-assignments.css') }}?v={{ filemtime(public_path('css/audit-assignments.css')) }}">
 @endpush
+@section('body-class', 'ct-v2-page')
 @section('content')
+<header class="ct-page-heading"><div><h1>Assignment progress</h1><p>Review audit assignments and progress in your authorized scope.</p></div></header>
+
 <div class="atl-assignment-page" data-assignment-page>
     @include('auditor.audit-feedback')
     <div class="assignment-stats">

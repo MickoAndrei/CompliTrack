@@ -44,7 +44,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     super.initState();
     _fullNameController = TextEditingController(
       text: context.read<AuthProvider>().currentUser?.fullName ??
-          'Nico Dale B. Sevilla',
+          '',
     );
   }
 
@@ -168,6 +168,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final profileContent = ListView(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
       children: [
+        if (auth.roleId == 2 || auth.roleId == 3) Card(child: ListTile(
+          leading: const Icon(Icons.help_outline), title: const Text('Help & Standards'),
+          trailing: const Icon(Icons.chevron_right), onTap: () => context.push(auth.roleId == 2 ? '/auditor/help' : '/auditee/standards'),
+        )),
         // Profile Card Container matching mockup 1-to-1
         Container(
           padding: const EdgeInsets.all(20),
@@ -215,7 +219,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ),
                   ),
                   // Settings Gear Icon
-                  IconButton(
+                  if (auth.roleId == 0) IconButton(
                     onPressed: () => context.push('/super-admin/settings'),
                     icon: const Icon(
                       Icons.settings_outlined,
@@ -512,83 +516,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
       backgroundColor: const Color(0xFFF8F9FA),
       appBar: const UstpAppBar(),
       body: profileContent,
-      bottomNavigationBar: Container(
-        decoration: const BoxDecoration(
-          color: AppColors.ustpNavy,
-        ),
-        child: BottomNavigationBar(
-          currentIndex: 0,
-          onTap: (index) {
-            final routes = switch (auth.roleId) {
-              0 => [
-                  '/super-admin',
-                  '/super-admin/users',
-                  '/super-admin/departments',
-                  '/super-admin/logs',
-                  '/super-admin/documents',
-                ],
-              1 => [
-                  '/admin',
-                  '/admin/users',
-                  '/admin/departments',
-                  '/admin/documents',
-                  '/admin/reports',
-                ],
-              2 => [
-                  '/auditor',
-                  '/auditor/findings',
-                  '/auditor/documents',
-                  '/auditor/profile',
-                  '/auditor/profile',
-                ],
-              _ => [
-                  '/auditee',
-                  '/auditee/my-findings',
-                  '/auditee/documents',
-                  '/auditee/notifications',
-                  '/auditee/notifications',
-                ],
-            };
-            context.go(routes[index]);
-          },
-          type: BottomNavigationBarType.fixed,
-          backgroundColor: AppColors.ustpNavy,
-          selectedItemColor: AppColors.ustpMuted,
-          unselectedItemColor: AppColors.ustpMuted,
-          iconSize: 18,
-          selectedLabelStyle: const TextStyle(
-            fontFamily: 'Inter',
-            fontSize: 9,
-            fontWeight: FontWeight.bold,
-          ),
-          unselectedLabelStyle: const TextStyle(
-            fontFamily: 'Inter',
-            fontSize: 9,
-          ),
-          items: const [
-            BottomNavigationBarItem(
-              icon: Icon(Icons.grid_view_rounded),
-              label: 'Dashboard',
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.person_rounded),
-              label: 'User',
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.account_tree_outlined),
-              label: 'Dept',
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.find_in_page_outlined),
-              label: 'Actions',
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.inventory_2_outlined),
-              label: 'Archive',
-            ),
-          ],
-        ),
-      ),
     );
   }
 }

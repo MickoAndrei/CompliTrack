@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
-import '../../../core/constants/app_colors.dart';
+import '../../core/constants/app_colors.dart';
 import '../providers/auth_provider.dart';
-import '../screens/admin/admin_notifications_screen.dart';
+import 'v2/notification_preview.dart';
+import 'package:flutter/services.dart';
 import 'ustp_app_bar.dart';
 import 'ustp_logo.dart';
 import 'current_user_avatar.dart';
@@ -23,7 +24,7 @@ class AdminPageHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final auth = context.watch<AuthProvider>();
-    return Container(
+    return AnnotatedRegion<SystemUiOverlayStyle>(value: SystemUiOverlayStyle.light, child: Container(
       color: AppColors.ustpNavy,
       child: SafeArea(
         bottom: false,
@@ -41,8 +42,7 @@ class AdminPageHeader extends StatelessWidget {
                     ),
                   ),
                   UstpNotificationButton(
-                    onPressed: () =>
-                        AdminNotificationsScreen.showOverlay(context),
+                    onPressed: () => showNotificationPreview(context),
                   ),
                   const SizedBox(width: 8),
                   GestureDetector(
@@ -88,6 +88,6 @@ class AdminPageHeader extends StatelessWidget {
           ),
         ),
       ),
-    );
+    ));
   }
 }

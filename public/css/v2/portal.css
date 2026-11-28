@@ -1,0 +1,91 @@
+/* CompliTrack V2 shared visual system; loaded after existing portal/page CSS. */
+:root {
+    --ct-sidebar-bg: #00205b; --ct-sidebar-active: #284982;
+    --ct-sidebar-muted: #c3d0e9; --ct-sidebar-light: #f8faff;
+    --ct-sidebar-surface: #153772; --ct-sidebar-divider: #36558b;
+    --ct-gold: #d8a007; --ct-canvas: #fcfcfc; --ct-border: #e4e5e8;
+    --ct-text: #202124; --ct-muted: #62666f;
+    --ct-content-max: 1104px; --ct-sidebar-width: 240px;
+    --ct-n: #a23837; --ct-n-bg: #fceeee;
+    --ct-c: #176344; --ct-c-bg: #e9f6ef;
+    --ct-o: #8a5700; --ct-o-bg: #fff4da;
+}
+.app-container { --ct-rail-width: var(--ct-sidebar-width); background: var(--ct-canvas); }
+.app-container.sidebar-collapsed { --ct-rail-width: 72px; }
+.app-container .sidebar.app-sidebar { width: var(--ct-rail-width); min-width: var(--ct-rail-width); padding: 0 12px; background: var(--ct-sidebar-bg); transition: width .18s ease, min-width .18s ease, transform .18s ease; }
+.app-container > .main-wrapper { margin-left: var(--ct-rail-width); width: calc(100% - var(--ct-rail-width)); min-width: 0; transition: margin-left .18s ease, width .18s ease; background: var(--ct-canvas); }
+/* Center actual content in remaining workspace; the header stays full width. */
+body[data-portal-role] .app-container #main-content { box-sizing: border-box; width: 100%; min-width: 0; padding: 32px max(24px, calc((100% - var(--ct-content-max))/2)) 32px; background: var(--ct-canvas); }
+.app-sidebar .sidebar-primary > .sidebar-header { min-height: 64px; padding: 16px 4px 12px; gap: 10px; }
+.app-sidebar .sidebar-header .brand-emblem-svg { border-radius: 8px; background: white; overflow: hidden; }
+.app-sidebar .sidebar-brand-logo { padding: 3px; }
+.app-sidebar .super-admin-brand-copy .brand-title { font-size: 18px; font-weight: 700; }
+.app-sidebar .super-admin-brand-copy .brand-subtitle { color: var(--ct-sidebar-muted); font-size: 9px; }
+.v2-sidebar-tools { display: grid; gap: 12px; margin: 4px 0 16px; }
+.v2-collapse-toggle { display: flex; gap: 10px; align-items: center; border: 0; width: 100%; min-height: 40px; padding: 8px 12px; color: var(--ct-sidebar-light); background: transparent; border-radius: 8px; cursor: pointer; text-align: left; font: 500 13px/1.3 Inter, sans-serif; }
+.v2-collapse-toggle:hover { background: var(--ct-sidebar-surface); }
+.v2-collapse-toggle svg, .v2-scope-value svg { width: 20px; height: 20px; flex: 0 0 20px; }
+.v2-scope-label { display: block; font: 600 11px/1.4 Inter,sans-serif; color: var(--ct-sidebar-muted); margin: 0 0 6px 6px; text-transform: uppercase; letter-spacing: .06em; }
+.v2-scope-value { display: flex; align-items: center; gap: 8px; min-height: 42px; padding: 8px; border: 1px solid var(--ct-sidebar-divider); border-radius: 8px; background: var(--ct-sidebar-surface); color: var(--ct-sidebar-light); font: 500 13px/1.3 Inter,sans-serif; }
+.v2-scope-value span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.app-sidebar .sidebar-primary > .sidebar-nav { gap: 4px; flex: 1; }
+.app-sidebar .sidebar-nav .nav-link-item { min-height: 44px; gap: 10px; padding: 10px 12px; color: var(--ct-sidebar-muted); border-left-width: 3px; font-size: 13px; }
+.app-sidebar .sidebar-nav .nav-link-item.active { color: var(--ct-sidebar-light); background: var(--ct-sidebar-active); border-left-color: var(--ct-gold); }
+.app-sidebar .nav-link-item.active .nav-icon { color: var(--ct-gold); }
+.v2-sidebar-account { display:flex; align-items:center; gap:8px; margin-top:auto; padding:12px 4px 18px; color:var(--ct-sidebar-light); border-top:1px solid var(--ct-sidebar-divider); text-decoration:none; }
+.v2-sidebar-account img,.v2-avatar { flex:0 0 32px; width:32px; height:32px; border-radius:50%; object-fit:cover; }
+.v2-avatar { display:grid; place-items:center; background:#eaf0f8; color:#0a2b59; font-size:12px; font-weight:600; }
+.v2-account-copy { display:flex; flex-direction:column; min-width:0; flex:1; font-size:12px; }
+.v2-account-copy strong,.v2-account-copy small { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.v2-account-copy small { color:var(--ct-sidebar-muted); }
+.v2-sidebar-account>svg { width:16px; height:16px; flex-shrink:0; }
+.app-header.top-header-bar { min-height:64px; padding:12px 32px; border-color:var(--ct-border); font-family:Inter, sans-serif; }
+.app-header .header-page-title { font:600 20px/1.3 Inter,sans-serif; color:var(--ct-text); }
+.app-header .notification-bell-btn { width:44px;height:44px;border-radius:8px;background:transparent; }
+.app-header .header-avatar { border:0; background:#eaf0f8;color:#0a2b59; }
+.v2-profile-chevron { width:16px;height:16px;color:var(--ct-muted); }
+.header-profile-dropdown { left:auto;right:0; }
+.header-notification-panel { width:min(420px,calc(100vw - 32px)); top:72px; border-color:var(--ct-border); box-shadow:0 12px 40px #0f172a33; }
+.header-notification-panel h2 { font-size:15px; }
+.header-notification-panel>header .v2-close-button { min-width:40px;min-height:40px;display:grid;place-items:center;border-radius:8px; }
+.v2-close-button svg { width:20px;height:20px; }
+.header-notification-panel>header .v2-close-button:hover { background:#f1f5f9; }
+.header-notification-content { overflow:auto; }
+.header-notification-panel>footer a { border:1px solid var(--ct-border);padding:8px;border-radius:8px; }
+.ct-outcome-n,.aw-badge-N { color:var(--ct-n)!important;background:var(--ct-n-bg)!important; }
+.ct-outcome-c,.aw-badge-C { color:var(--ct-c)!important;background:var(--ct-c-bg)!important; }
+.ct-outcome-o,.aw-badge-O { color:var(--ct-o)!important;background:var(--ct-o-bg)!important; }
+.aw-choice:has(input:checked) { outline:2px solid var(--ct-control-border,#858a94);outline-offset:2px; }
+.aw-choice:has(input[value="N"]:checked) { background:var(--ct-n-bg);outline-color:var(--ct-n); }
+.aw-choice:has(input[value="C"]:checked) { background:var(--ct-c-bg);outline-color:var(--ct-c); }
+.aw-choice:has(input[value="O"]:checked) { background:var(--ct-o-bg);outline-color:var(--ct-o); }
+/* Native scroll behavior, not a decorative fake thumb. */
+* { scrollbar-width:thin;scrollbar-color:#858a94 transparent; }
+*::-webkit-scrollbar { width:6px;height:6px; }
+*::-webkit-scrollbar-thumb { background:#858a94;border-radius:999px; }
+*::-webkit-scrollbar-thumb:hover { background:#62666f; }
+*::-webkit-scrollbar-track { background:transparent; }
+/* Existing native dialogs keep focus and cancellation semantics. */
+body[data-portal-role] dialog::backdrop,body[data-portal-role] .modal-overlay,body[data-portal-role] .user-modal-overlay { background:rgba(15,23,42,.40); }
+@supports (backdrop-filter:blur(12px)) {
+    body[data-portal-role] dialog::backdrop,body[data-portal-role] .modal-overlay,body[data-portal-role] .user-modal-overlay { background:rgba(15,23,42,.20);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px); }
+}
+dialog[open] { border-radius:12px;box-shadow:0 12px 40px rgba(15,23,42,.20); }
+dialog button:is([aria-label="Close"],[aria-label^="Close "]) { min-width:40px;min-height:40px;display:inline-grid;place-items:center;border-radius:8px; }
+.metric-stat-card,.stat-card,.atl-card,.content-card,.app-view-panel>.card { border-radius:12px; border-color:var(--ct-border); }
+@media(min-width:1024px) {
+    .sidebar-collapsed .app-sidebar .sidebar-header { justify-content:center;padding-inline:0; }
+    .sidebar-collapsed .app-sidebar :is(.super-admin-brand-copy,.v2-scope,.v2-collapse-toggle span,.nav-link-item>span,.v2-account-copy,.v2-sidebar-account>svg) { display:none; }
+    .sidebar-collapsed .app-sidebar :is(.v2-collapse-toggle,.v2-sidebar-account) { justify-content:center;padding-inline:0; }
+    .sidebar-collapsed .app-sidebar .nav-link-item { justify-content:center;padding-inline:0;border-left-width:0;border-radius:8px; }
+    .sidebar-collapsed .app-sidebar .nav-link-item.active { box-shadow:inset 3px 0 var(--ct-gold); }
+}
+@media(max-width:1023px) {
+    .app-container,.app-container.sidebar-collapsed { --ct-rail-width:240px; }
+    .app-container > .main-wrapper { width:100%;margin-left:0; }
+    body[data-portal-role] .app-container #main-content { padding:24px 16px; }
+    .v2-collapse-toggle { display:none; }
+    .app-header.top-header-bar { padding:12px 16px; }
+}
+@media(prefers-reduced-motion:reduce) { .app-container .sidebar.app-sidebar,.app-container > .main-wrapper { transition:none; } }
+@media(max-width:640px) { @supports(backdrop-filter:blur(8px)) { body[data-portal-role] dialog::backdrop,body[data-portal-role] .modal-overlay,body[data-portal-role] .user-modal-overlay { background:rgba(15,23,42,.24);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px); } } }

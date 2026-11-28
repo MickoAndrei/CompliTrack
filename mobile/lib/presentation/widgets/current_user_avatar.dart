@@ -36,11 +36,17 @@ class _CurrentUserAvatarState extends State<CurrentUserAvatar> {
 
   Future<Uint8List?> _loadAvatar() => context.read<AuthProvider>().loadAvatar();
 
+  String _initials(BuildContext context) {
+    final name = context.watch<AuthProvider>().currentUser?.fullName.trim() ?? '';
+    final words = name.split(RegExp(r'\s+')).where((s) => s.isNotEmpty).take(2);
+    return words.isEmpty ? 'U' : words.map((s) => s.characters.first.toUpperCase()).join();
+  }
+
   @override
   Widget build(BuildContext context) => Container(
         padding: const EdgeInsets.all(2),
         decoration: const BoxDecoration(
-          color: Color(0xFFFFC72C),
+          color: Color(0xFFEAF0F8),
           shape: BoxShape.circle,
         ),
         child: ClipOval(
@@ -53,11 +59,10 @@ class _CurrentUserAvatarState extends State<CurrentUserAvatar> {
                           snapshot.data == null
                       ? ColoredBox(
                           color: const Color(0xFFF1F5F9),
-                          child: Icon(
-                            Icons.person,
-                            size: widget.radius * 1.15,
-                            color: const Color(0xFFCBD5E1),
-                          ),
+                          child: Center(child: Text(
+                            _initials(context),
+                            style: TextStyle(color: const Color(0xFF0A2B59), fontSize: widget.radius * .8, fontWeight: FontWeight.w600),
+                          )),
                         )
                       : Image.memory(snapshot.data!, fit: BoxFit.cover),
             ),

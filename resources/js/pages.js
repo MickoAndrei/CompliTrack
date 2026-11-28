@@ -868,6 +868,23 @@ document.addEventListener('alpine:init', () => {
             }
         },
 
+        async clearInbox() {
+            if (this.endpoint !== 'notifications' || this.markingAll || this.loading) return;
+            if (!window.confirm('Clear all notifications from your inbox, including read and unread notifications? System activity logs will remain unchanged.')) return;
+            this.markingAll = true;
+            this.error = null;
+            try {
+                await axios.patch(apiPath('notifications/clear-all'));
+                this.notificationUnreadCount = 0;
+                this.page = 1;
+                window.dispatchEvent(new Event('complitrack:notifications-cleared'));
+                window.dispatchEvent(new Event('complitrack:notifications-changed'));
+                if (!this.notificationFeedChanged) await this.load(1);
+                this.message = 'All notifications cleared.';
+            } catch (error) { this.error = responseMessage(error, 'Unable to clear notifications.'); }
+            finally { this.markingAll = false; }
+        },
+
         async markAllNotificationsRead() {
             if (this.endpoint !== 'notifications' || this.markingAll || !this.notificationUnreadCount) return;
             this.markingAll = true;

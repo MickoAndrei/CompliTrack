@@ -4,7 +4,10 @@
 @push('styles')
 <link rel="stylesheet" href="{{ asset('css/audit-workspace.css') }}?v={{ filemtime(public_path('css/audit-workspace.css')) }}">
 @endpush
+@section('body-class', 'ct-v2-page')
 @section('content')
+<header class="ct-page-heading"><div><h1>Audit workspace</h1><p>Review the authorized assignment, checklist, evidence and submission.</p></div></header>
+
 @php
     $editable = (int) auth()->user()->roleId === 2 && in_array($audit->status, ['draft', 'ready', 'returned']);
     $preparing = $editable && $audit->status === 'draft';
@@ -21,7 +24,7 @@
         default => [],
     };
 @endphp
-<div class="audit-workspace" x-data="auditWorkspace({{ count($items) }})" data-recovery="{{ $errors->any() ? old('action', old('workspaceAction', '')) : '' }}" data-old-item="{{ old('item', 0) }}" data-old-question="{{ old('question') }}" data-old-reference="{{ old('reference') }}" data-old-method="{{ old('method', 'digital') }}">
+<div class="audit-workspace ct-audit-workspace" x-data="auditWorkspace({{ count($items) }})" data-recovery="{{ $errors->any() ? old('action', old('workspaceAction', '')) : '' }}" data-old-item="{{ old('item', 0) }}" data-old-question="{{ old('question') }}" data-old-reference="{{ old('reference') }}" data-old-method="{{ old('method', 'digital') }}">
     <a href="/audits" class="aw-back">← My Assigned Audits</a>
     @include('auditor.audit-feedback')
     <div class="aw-shell">

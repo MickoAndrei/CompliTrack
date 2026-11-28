@@ -1,3 +1,4 @@
+import '../../widgets/v2/portal_dialog.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import '../../../core/constants/app_colors.dart';
@@ -8,7 +9,7 @@ import '../../../data/repositories/notification_repository.dart';
 class BroadcastNotificationDialog extends StatefulWidget {
   const BroadcastNotificationDialog({super.key});
 
-  static Future<void> show(BuildContext context) => showDialog<void>(
+  static Future<void> show(BuildContext context) => showPortalDialog<void>(
         context: context,
         builder: (context) => const BroadcastNotificationDialog(),
       );

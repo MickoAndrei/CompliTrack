@@ -55,8 +55,6 @@ class _AuditorNotificationsScreenState
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: UstpAppBar(
-        onNotificationTap: () async =>
-            context.go('/auditor/profile/notifications'),
       ),
       body: FutureBuilder<List<NotificationModel>>(
         future: _notifications,

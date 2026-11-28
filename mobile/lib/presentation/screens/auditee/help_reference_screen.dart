@@ -1,3 +1,4 @@
+import '../../widgets/v2/portal_dialog.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/constants/app_colors.dart';
@@ -31,7 +32,7 @@ class HelpReferenceScreen extends StatelessWidget {
   ];
 
   void _showHelp(BuildContext context) {
-    showDialog<void>(
+    showPortalDialog<void>(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Compliance guidance'),

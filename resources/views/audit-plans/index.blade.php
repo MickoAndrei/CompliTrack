@@ -3,55 +3,22 @@
 @section('heading', 'Audit Plans')
 @section('subtitle', 'Prepare audit plans and record explicit approval before assigning auditors.')
 @push('styles')<link rel="stylesheet" href="{{ asset('css/audit-plans.css') }}?v={{ filemtime(public_path('css/audit-plans.css')) }}">@endpush
+@section('body-class', 'ct-v2-page')
 @section('content')
 <section class="plan-page attention-page" x-data="auditPlans" :aria-busy="loading">
     <p x-page-notice role="alert" x-show="error" x-text="error"></p><p x-page-notice x-show="notice" x-text="notice"></p>
-    <div class="attention-stats" aria-label="Audit plan summary" :class="{'is-loading': loading}">
-        @foreach ([['', 'Total Plans', 'clipboard-list', 'blue'], ['submitted', 'Pending Approval', 'clock', 'purple'], ['accepted', 'Approved', 'clipboard-check', 'blue'], ['returned', 'Returned', 'undo-2', 'danger']] as [$key, $label, $icon, $color])
-            <article class="metric-stat-card"><div class="metric-info"><span class="metric-label">{{ $label }}</span><strong class="metric-number color-dark" x-text="loading ? '—' : countStatus('{{ $key }}')"></strong></div><div class="metric-icon-box {{ $color }}"><i data-lucide="{{ $icon }}" aria-hidden="true"></i></div></article>
-        @endforeach
-    </div>
-    <div class="plan-register">
-    <div class="attention-tabs" role="group" aria-label="Plan status">
-        @foreach (['' => 'All Plans', 'draft' => 'Draft', 'submitted' => 'Pending Approval', 'accepted' => 'Approved', 'returned' => 'Returned'] as $key => $label)
-            <button type="button" @click="statusFilter = '{{ $key }}'; page = 1" :aria-pressed="statusFilter === '{{ $key }}'" :class="{'is-active': statusFilter === '{{ $key }}'}">{{ $label }}</button>
-        @endforeach
-    </div>
-    <div class="plan-filter-toolbar">
-        <div class="attention-log-filters plan-filter-group">
-            <label>Search audit plans<input type="search" placeholder="Search title or reference…" x-model="search" @input="page = 1"></label>
-            <label>Filter by unit<select x-model="unitFilter" @change="page = 1"><option value="">All units</option><template x-for="unit in data.units" :key="unit.id"><option :value="unit.id" x-text="unit.name"></option></template></select></label>
-            <label>Sort by<select x-model="sortBy" @change="page = 1"><option value="newest">Newest first</option><option value="oldest">Oldest first</option><option value="title">Title A–Z</option></select></label>
-        </div>
-        <button type="button" class="plan-primary plan-prepare-button" x-cloak x-show="data.canPrepare" :disabled="loading || saving" @click="edit()"><i data-lucide="plus" aria-hidden="true"></i> Prepare Audit Plan</button>
-    </div>
-    <div class="plan-results">
-    <p class="plan-loading-status" role="status" x-show="loading">Loading audit plans…</p>
-    <div class="attention-empty" x-cloak x-show="!loading && !error && !filteredPlans.length"><i data-lucide="search-x" aria-hidden="true"></i><h3>No matching audit plans</h3><p>Try another filter.</p></div>
-    <div class="attention-table-wrap" x-show="loading || filteredPlans.length">
-        <table class="attention-log-table audit-plans-table"><thead><tr><th>Audit Plan</th><th>Covered Units</th><th>Schedule</th><th>Status</th><th>Action</th></tr></thead><tbody>
-            @for ($row = 0; $row < 5; $row++)
-                <tr class="plan-skeleton-row" x-show="loading" aria-hidden="true">
-                    <td><span class="plan-skeleton"></span><span class="plan-skeleton plan-skeleton-short"></span></td>
-                    <td><span class="plan-skeleton"></span></td><td><span class="plan-skeleton"></span></td><td><span class="plan-skeleton"></span></td><td><span class="plan-skeleton"></span></td>
-                </tr>
-            @endfor
-            <template x-for="row in visiblePlans" :key="row.id"><tr x-show="!loading">
-                <td data-label="Audit Plan"><strong x-text="row.title"></strong><small x-text="row.reference"></small></td>
-                <td data-label="Covered Units" x-text="unitNames(row)"></td>
-                <td data-label="Schedule" x-text="schedule(row)"></td>
-                <td data-label="Status"><span class="plan-state" :class="'plan-state-' + row.plan.status" x-text="row.stateLabel"></span></td>
-                <td data-label="Action"><button type="button" class="attention-button" @click="openDetails(row)">View details</button></td>
-            </tr></template>
-        </tbody></table>
-    </div>
-    </div>
-    <nav class="attention-pagination" aria-label="Audit plan pages" x-cloak x-show="loading || (!error && filteredPlans.length)" :style="loading ? 'visibility:hidden' : ''">
-        <span x-text="`${filteredPlans.length} record${filteredPlans.length === 1 ? '' : 's'} · Page ${page} of ${lastPage}`"></span>
-        <div><x-page-size model="perPage" change="page = 1" /><button type="button" class="attention-button" @click="page--" :disabled="page <= 1">Previous</button><button type="button" class="attention-button" @click="page++" :disabled="page >= lastPage">Next</button></div>
-    </nav>
-    <p class="plan-note">Only explicitly approved plans are available for new auditor assignments. Approval requires explicit permission.</p>
-    </div>
+<header class="ct-page-heading"><div><h1>Audit plans</h1><p>View audit plans within your authorized institutional scope.</p></div><div class="ct-heading-actions"><button class="ct-secondary" type="button" x-show="data.canApprove" @click="statusFilter='submitted'; page=1">Review pending plan</button><button class="ct-primary" type="button" x-show="data.canPrepare" :disabled="loading || saving" @click="edit()">Prepare audit plan</button></div></header>
+    <div class="ct-register plan-register">
+    <div class="ct-toolbar"><label class="ct-search"><i data-lucide="search" aria-hidden="true"></i><span class="sr-only">Search audit plans</span><input type="search" placeholder="Search audit plans…" x-model="search" @input="page=1"></label>
+    <select aria-label="Status" x-model="statusFilter" @change="page=1"><option value="">All statuses</option><option value="draft">Draft</option><option value="submitted">Pending approval</option><option value="accepted">Approved</option><option value="returned">Returned</option></select>
+    <select aria-label="Covered unit" x-model="unitFilter" @change="page=1"><option value="">All units</option><template x-for="unit in data.units" :key="unit.id"><option :value="unit.id" x-text="unit.name"></option></template></select>
+    <select aria-label="Sort by" x-model="sortBy" @change="page=1"><option value="newest">Newest first</option><option value="oldest">Oldest first</option><option value="title">Title A–Z</option></select></div>
+    <p role="status" x-show="loading">Loading audit plans…</p>
+    <div class="ct-table-wrap"><table class="ct-table"><thead><tr><th>Plan reference</th><th>Audit cycle / title</th><th>Scope</th><th>Schedule</th><th>Status</th></tr></thead><tbody>
+    <template x-for="row in visiblePlans" :key="row.id"><tr x-show="!loading"><td><button type="button" class="ct-record-link" @click="openDetails(row)" x-text="row.reference || row.title"></button></td><td x-text="row.title"></td><td x-text="unitNames(row)"></td><td x-text="schedule(row)"></td><td><span class="plan-state" :class="'plan-state-'+row.plan.status" x-text="row.stateLabel"></span></td></tr></template>
+    <tr x-show="!loading && !filteredPlans.length"><td colspan="5">No matching audit plans.</td></tr></tbody></table></div>
+    <nav class="ct-pagination" aria-label="Audit plan pages" x-show="!loading"><x-page-size model="perPage" change="page = 1"/><span class="ct-page-count" x-text="filteredPlans.length ? `Showing ${(page-1)*perPage+1}–${Math.min(page*perPage,filteredPlans.length)} of ${filteredPlans.length}` : '0 records'"></span><button type="button" class="ct-secondary" @click="page--" :disabled="page<=1" aria-label="Previous page">‹</button><span class="ct-page-current" x-text="page"></span><button type="button" class="ct-secondary" @click="page++" :disabled="page>=lastPage" aria-label="Next page">›</button><span x-text="`Page ${page} of ${lastPage}`"></span></nav>
+    <section class="ct-panel"><h2>Approval and planning</h2><p class="ct-muted">Audit plan approval depends on the authorized institutional workflow. Draft records are not official assignments.</p></section></div>
     <dialog class="plan-editor plan-details" x-ref="details" aria-labelledby="plan-details-heading" @cancel="if (saving) $event.preventDefault()">
         <template x-if="detailRow"><article x-data="{ get row() { return detailRow } }">
             <header class="plan-toolbar"><div><h2 id="plan-details-heading" x-text="row.title"></h2><small x-text="row.reference"></small></div><button type="button" class="plan-details-close" aria-label="Close audit plan details" :disabled="saving" @click="$refs.details.close()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="m18 6-12 12M6 6l12 12" /></svg></button></header>

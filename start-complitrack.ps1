@@ -1,6 +1,7 @@
-param(
+﻿param(
     [switch]$DisableOpcache,
     [switch]$SkipMongoBootstrap,
+    [switch]$BootstrapMongo,
     [switch]$SkipLogout,
     [switch]$SkipFrontendBuild,
     [switch]$SkipDependencyInstall,
@@ -139,9 +140,9 @@ foreach ($ext in $requiredExts) {
 }
 
 if (-not (Test-Path (Join-Path $repoRoot ".env"))) {
-    if (Test-Path (Join-Path $repoRoot ".env.example")) {
-        Copy-Item (Join-Path $repoRoot ".env.example") (Join-Path $repoRoot ".env")
-        Write-Host "  [OK] Created .env from .env.example"
+    if (Test-Path (Join-Path $repoRoot ".env.v2.example")) {
+        Copy-Item (Join-Path $repoRoot ".env.v2.example") (Join-Path $repoRoot ".env")
+        Write-Host "  [OK] Created .env from .env.v2.example"
     } else {
         @"
 APP_NAME=CompliTrack
@@ -180,8 +181,8 @@ if (-not (Test-Path $databaseFile)) { New-Item -ItemType File -Path $databaseFil
 
 if (Test-Path (Join-Path $repoRoot "realtime")) {
     if (-not (Test-Path (Join-Path $repoRoot "realtime\.env"))) {
-        if (Test-Path (Join-Path $repoRoot "realtime\.env.example")) {
-            Copy-Item (Join-Path $repoRoot "realtime\.env.example") (Join-Path $repoRoot "realtime\.env")
+        if (Test-Path (Join-Path $repoRoot "realtime\.env.v2.example")) {
+            Copy-Item (Join-Path $repoRoot "realtime\.env.v2.example") (Join-Path $repoRoot "realtime\.env")
             Write-Host "  [OK] Created realtime\.env"
         } else {
             @"
@@ -234,6 +235,13 @@ if (-not ((Get-Content (Join-Path $repoRoot ".env")) -match '^APP_KEY=') -or ((G
 
 Ensure-MongoRunning
 
+if ($BootstrapMongo -and $SkipMongoBootstrap) {
+    throw 'Choose either -BootstrapMongo or -SkipMongoBootstrap, not both.'
+}
+if ($BootstrapMongo -and $script:ActiveMongoDatabase -cne 'complitrack_v2') {
+    throw "MongoDB bootstrap is restricted to database 'complitrack_v2'; the configured database is '$($script:ActiveMongoDatabase)'."
+}
+
 Write-Host "Clearing cached Laravel configuration so the current .env MongoDB settings are used..."
 php artisan config:clear
 if ($LASTEXITCODE -ne 0) { throw "Could not clear Laravel configuration cache." }
@@ -244,8 +252,8 @@ if ($LASTEXITCODE -ne 0) {
     throw "MongoDB connectivity check failed. Resolve the connection issue above and run start-complitrack.ps1 again. Migrations, seeding, and account logout were not attempted."
 }
 
-if ($SkipMongoBootstrap) {
-    Write-Host "MongoDB migrations and seeding explicitly skipped for this controlled restart."
+if (-not $BootstrapMongo) {
+    Write-Host "MongoDB migrations and seeding skipped. Use -BootstrapMongo only when initializing an isolated V2 database."
 } else {
     # Remember completion per active target without storing the credential-bearing URI.
     $mongoTargetHashInput = "{0}|{1}" -f $script:ActiveMongoUri, $script:ActiveMongoDatabase
@@ -364,3 +372,4 @@ if ($DatabaseSwitchRestart) {
 }
 Write-Host "Logs: $logDir"
 Write-Host "========================================"
+

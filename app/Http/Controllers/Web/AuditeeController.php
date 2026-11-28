@@ -25,7 +25,7 @@ class AuditeeController extends Controller
         $notifications = $this->scopes->notifications($request->user())->orderBy('createdAt', 'desc')->limit(4)->get();
         $published = $this->published($request->user());
         $oversight = app(\App\Services\QmsOversightService::class)->summary($request->user());
-        return view('auditee.dashboard', compact('checks', 'requests', 'notifications', 'published', 'oversight'));
+        return view($request->boolean('details') ? 'auditee.dashboard-details' : 'auditee.dashboard', compact('checks', 'requests', 'notifications', 'published', 'oversight'));
     }
 
     public function requests(Request $request)

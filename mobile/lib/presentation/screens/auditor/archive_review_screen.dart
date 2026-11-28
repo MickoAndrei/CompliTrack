@@ -90,8 +90,6 @@ class _ArchiveReviewScreenState extends State<ArchiveReviewScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: UstpAppBar(
-        onNotificationTap: () async =>
-            context.go('/auditor/profile/notifications'),
       ),
       body: FutureBuilder<List<ArchiveDocumentModel>>(
         future: _archives,

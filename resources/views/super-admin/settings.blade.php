@@ -5,8 +5,10 @@
 @push('styles')
 <link rel="stylesheet" href="{{ asset('css/system-settings.css') }}?v={{ filemtime(public_path('css/system-settings.css')) }}">
 @endpush
+@section('body-class', 'ct-v2-page')
 @section('content')
-<section class="app-view-panel active app-settings-page" aria-label="System settings" x-data="systemSettings" :aria-busy="busy || loading">
+<section class="app-view-panel active app-settings-page ct-settings-grid" aria-label="System settings" x-data="systemSettings" :aria-busy="busy || loading">
+<header class="ct-page-heading"><div><h1>System settings</h1><p>Super Admin controls · web only for database switch</p></div></header>
     <p x-show="loading" class="settings-feedback" role="status">Loading system settings...</p>
     <p x-page-notice x-cloak x-show="message" x-text="message" class="settings-feedback settings-success" role="status"></p>
     <p x-page-notice x-cloak x-show="error" x-text="error" class="settings-feedback settings-error" role="alert"></p>
@@ -45,7 +47,6 @@
             <p>The switch restarts the local Laravel, scheduler, and realtime services. All users, including you, must sign in again. Migrations, seeders, and data synchronization are not run.</p>
         </div>
     </article>
-    <div class="settings-grid">
         <article class="settings-card">
             <h2>Automated Backup</h2>
             <p>Nightly encrypted backup of the CompliTrack database and uploaded files.</p>
@@ -92,7 +93,6 @@
                 <button type="button" class="settings-button settings-button-danger" :disabled="loading || busy" @click="openConfirmation('wipe')">Wipe All Data</button>
             </div>
         </article>
-    </div>
     <dialog x-ref="confirmationDialog" class="settings-dialog" aria-labelledby="settings-confirm-title" @cancel="if (busy) $event.preventDefault(); else { password = ''; confirmation = ''; }">
         <form @submit.prevent="confirm()">
             <h2 id="settings-confirm-title" x-text="action === 'wipe' ? 'Permanently wipe system data?' : 'Rotate archive encryption key?'"></h2>

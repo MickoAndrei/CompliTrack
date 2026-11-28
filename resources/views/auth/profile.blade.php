@@ -5,14 +5,17 @@
 @push('styles')
     <link rel="stylesheet" href="{{ asset('css/profile.css') }}?v={{ filemtime(public_path('css/profile.css')) }}">
 @endpush
+@section('body-class', 'ct-v2-page')
 @section('content')
+<header class="ct-page-heading"><div><h1>My profile</h1><p>Manage your personal information and account preferences.</p></div></header>
+
 @php
     $profileUser = auth()->user();
     $roleNames = ['Super Admin', 'Admin', 'Auditor', 'Auditee'];
     $profileInitials = collect(explode(' ', $profileUser->fullName ?? 'U'))->filter()->take(2)->map(fn ($part) => mb_substr($part, 0, 1))->implode('');
     $avatarUrl = $profileUser->avatarUrl();
 @endphp
-<section class="super-admin-profile-page" x-data="profilePage({ avatarUrl: @js($avatarUrl) })">
+<section class="super-admin-profile-page ct-profile-page" x-data="profilePage({ avatarUrl: @js($avatarUrl) })">
     <div x-page-notice="error ? 'error' : 'success'" x-cloak x-show="error || message" x-transition class="profile-feedback" :class="error ? 'is-error' : 'is-success'" :role="error ? 'alert' : 'status'" aria-live="polite">
         <span x-text="error || message"></span>
         <button type="button" @click="error = null; message = null" aria-label="Dismiss message"><i data-lucide="x" aria-hidden="true"></i></button>
@@ -25,13 +28,13 @@
         <div x-page-notice class="profile-feedback is-error" role="alert">Your administrator issued a temporary password. Change it below before continuing to use CompliTrack.</div>
     @endif
 
-    <article class="super-admin-profile-card">
-        <header class="super-admin-profile-identity">
+    <article class="ct-profile-layout">
+        <div class="ct-panel ct-profile-info"><header class="super-admin-profile-identity">
             <div class="super-admin-profile-avatar">
                 <button type="button" class="profile-photo-open" @click="openPhotoPreview()" :disabled="!avatarUrl" aria-label="View full-size profile picture" aria-haspopup="dialog">
                 <img x-show="avatarUrl" :src="avatarUrl" alt="Profile photo" class="profile-photo" data-user-avatar>
                 <span x-show="!avatarUrl" class="super-admin-profile-crest" data-user-avatar-fallback aria-hidden="true">
-                    <span>USTP</span>
+                    <span>{{ $profileInitials }}</span>
                 </span>
                 </button>
                 <input x-ref="avatarInput" type="file" accept="image/jpeg,image/png,image/webp" class="sr-only" @change="uploadAvatar($event)">
@@ -39,7 +42,7 @@
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.5 4h-5L7.7 6H5a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-2.7z"/><circle cx="12" cy="13" r="3"/></svg>
                 </button>
             </div>
-            <h2>{{ $profileUser->fullName }}</h2>
+            <h2>{{ $profileUser->fullName }}</h2><p class="ct-muted">{{ $profileUser->email }}</p>
             <div class="profile-role-details">
                 <x-role-badge :role-id="$profileUser->roleId" class="super-admin-profile-role" :data-profile-role="(int) $profileUser->roleId" />
                 <x-organizational-responsibility :user="$profileUser" />
@@ -69,6 +72,7 @@
             @endif
         </form>
 
+        </div><aside class="ct-panel ct-profile-security"><h2>Account security</h2><p class="ct-muted">Password and account settings</p>
         <form method="POST" action="{{ route('profile.password.update') }}" class="super-admin-password-form">
             @csrf
             @method('PATCH')
@@ -101,6 +105,7 @@
             </form>
         </div>
         <p class="super-admin-switch-hint">Switch Account securely ends this session and returns you to sign in.</p>
+        </aside>
     </article>
     <dialog class="profile-photo-preview" x-ref="photoPreview" aria-labelledby="profile-photo-preview-title" @click="closePhotoOnBackdrop($event)">
         <header><h3 id="profile-photo-preview-title">Profile picture</h3><button type="button" @click="$refs.photoPreview.close()" aria-label="Close profile picture"><i data-lucide="x" aria-hidden="true"></i></button></header>

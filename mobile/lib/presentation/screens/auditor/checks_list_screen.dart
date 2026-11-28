@@ -36,8 +36,6 @@ class _ChecksListScreenState extends State<ChecksListScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: UstpAppBar(
-        onNotificationTap: () async =>
-            context.go('/auditor/profile/notifications'),
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => context.push('/auditor/checks/create'),

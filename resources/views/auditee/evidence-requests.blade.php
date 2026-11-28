@@ -5,7 +5,10 @@
 @push('styles')
 <link rel="stylesheet" href="{{ asset('css/auditee-evidence.css') }}?v={{ filemtime(public_path('css/auditee-evidence.css')) }}">
 @endpush
+@section('body-class', 'ct-v2-page')
 @section('content')
+<header class="ct-page-heading"><div><h1>Evidence requests</h1><p>Evidence requests addressed to your account.</p></div></header>
+
 <div class="workflow-page evidence-page" data-evidence-page x-data="{
     evidenceLayout: 'grid',
     init() {

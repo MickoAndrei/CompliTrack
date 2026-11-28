@@ -10,40 +10,40 @@
     },
     destroy() { this.filterObserver?.disconnect(); }
 }">
-    <div class="um-summary">
+    <details class="ct-directory-summary"><summary>Account totals</summary>    <div class="um-summary">
         @foreach ([['total', 'Total Users', 'users', 'purple'], ['active', 'Active Users', 'user-round-check', 'green'], ['auditors', 'Auditors', 'clipboard-check', 'blue'], ['auditees', 'Auditees', 'building-2', 'slate']] as [$key, $label, $icon, $color])
         <article class="metric-stat-card" data-summary="{{ $key }}"><div class="metric-info"><span class="metric-label">{{ $label }}</span><strong class="metric-number color-dark" x-text="summary?.{{ $key }} ?? '—'"></strong></div><div class="metric-icon-box {{ $color }}"><i data-lucide="{{ $icon }}" aria-hidden="true"></i></div></article>
         @endforeach
     </div>
+</details>
     <p x-page-notice="successPopupType" class="um-notice" role="status" x-show="successPopupVisible" x-cloak x-text="successPopupMessage"></p>
-    <div class="um-filters">
+    <div class="um-filters ct-toolbar">
         <label class="um-search">Search users<input type="search" x-model="search" @input.debounce.350ms="load(1)" maxlength="255" placeholder="Name, email or user code"></label>
         <label>Primary role<select x-model="filters.roleId" @change="load(1)"><option value="">All roles</option>@foreach ([0 => 'Super Admin', 1 => 'Admin', 2 => 'Auditor', 3 => 'Auditee'] as $id => $name)<option value="{{ $id }}">{{ $name }}</option>@endforeach</select></label>
         <label>Department / office<select x-model="filters.departmentId" @change="load(1)"><option value="">All departments / offices</option><template x-for="unit in options.departments" :key="unit._id"><option :value="unit._id" x-text="unit.name"></option></template></select></label>
         <label>Position<select x-model="filters.responsibility" @change="load(1)"><option value="">All positions</option><template x-for="responsibility in options.responsibilities" :key="responsibility"><option :value="responsibility" x-text="responsibilityName(responsibility)"></option></template></select></label>
         <label>Account status<select x-model="filters.status" @change="load(1)"><option value="">All statuses</option><option value="active">Active</option><option value="inactive">Inactive</option></select></label>
-        <div class="directory-filter-actions"><button class="um-primary user-create-trigger" type="button" @click="startUserCreate()" :disabled="loading || !summary"><i data-lucide="user-round-plus" aria-hidden="true"></i>Create User</button><button class="um-secondary" type="button" @click="clearUserFilters()">Clear filters</button></div>
+        <div class="directory-filter-actions"><button class="um-primary user-create-trigger" type="button" @click="startUserCreate()" :disabled="loading || !summary"><i data-lucide="user-round-plus" aria-hidden="true"></i>Add user</button><button class="um-secondary" type="button" @click="clearUserFilters()">Clear filters</button></div>
     </div>
-    <div class="um-loading" x-show="loading"><span class="sr-only" role="status">Loading users...</span><x-dashboard-skeleton type="table" :columns="7" /></div>
+    <div class="um-loading" x-show="loading"><span class="sr-only" role="status">Loading users...</span><x-dashboard-skeleton type="table" :columns="5" /></div>
     <div x-page-notice class="um-error" role="alert" x-show="error" x-cloak><p x-text="error"></p><button class="um-secondary" type="button" @click="load()">Retry</button></div>
     <div class="um-empty" x-show="!loading && !error && rows.length === 0" x-cloak>
         <i data-lucide="search-x" aria-hidden="true"></i>
         <p>No users match these filters. Try a different search or clear the filters.</p>
     </div>
-    <div class="um-table-wrap" x-show="!loading && !error && rows.length" x-cloak>
-        <table class="um-table"><thead><tr><th>Full Name</th><th>Email</th><th>Primary Role</th><th>Position</th><th>Assigned Cluster / College /<br>Department / Office</th><th>Account Status</th><th><span class="sr-only">Actions</span></th></tr></thead>
+    <div class="um-table-wrap ct-table-wrap" x-show="!loading && !error && rows.length" x-cloak>
+        <table class="um-table ct-table"><thead><tr><th>Account</th><th>Organization</th><th>Role</th><th>Status</th><th><span class="sr-only">Actions</span></th></tr></thead>
             <tbody><template x-for="row in rows" :key="row._id"><tr>
-                <td data-label="Full Name"><strong x-text="row.fullName"></strong><small x-text="row.userCode || 'No user code recorded'"></small></td>
-                <td data-label="Email"><span class="um-email" :title="row.email" x-text="row.email"></span></td>
-                <td data-label="Primary Role"><span class="um-role" :class="roleClass(row.roleId)" x-text="roleName(row.roleId)"></span><small x-show="row.isAuditTeamLeader">Audit Team Leader</small></td>
-                <td data-label="Position" :title="assignmentNames(row)" x-text="responsibilityName(row.archiveResponsibility)"></td>
-                <td data-label="Assigned Organization" x-text="assignmentNames(row)"></td>
+                <td data-label="Account"><strong x-text="row.fullName"></strong><small class="um-email" :title="row.email" x-text="row.email"></small><small x-text="row.userCode || ''"></small></td>
+                <td data-label="Organization"><span x-text="assignmentNames(row)"></span><small x-text="responsibilityName(row.archiveResponsibility)"></small></td>
+                <td data-label="Role"><span class="um-role" :class="roleClass(row.roleId)" x-text="roleName(row.roleId)"></span><small x-show="row.isAuditTeamLeader">Audit Team Leader</small></td>
                 <td data-label="Account Status"><span class="um-status" :class="{'is-inactive': !row.isActive}" x-text="row.isActive ? 'Active' : 'Inactive'"></span></td>
                 <td data-label="Actions"><button class="um-menu-trigger" type="button" @click="toggleUserMenu(row, $el)" aria-haspopup="menu" :aria-expanded="menuTarget?._id === row._id" :aria-label="`Actions for ${row.fullName}`"><span aria-hidden="true">&#8942;</span></button></td>
             </tr></template></tbody>
         </table>
     </div>
     @include('components.partials.attention-pagination', ['label' => 'User pages'])
+    <section class="ct-panel"><h2>Access is role- and scope-based</h2><p class="ct-muted">Audit assignments do not imply unrestricted access to a department’s records.</p></section>
 </div>
 <div class="um-menu" x-ref="userMenu" popover="auto" role="menu" aria-label="User actions" @keydown="menuKey($event)" @toggle="if ($event.newState === 'closed') menuTarget = null">
     <button role="menuitem" type="button" @click="viewUser(menuTarget)">View User Details</button><button role="menuitem" type="button" @click="startUserEdit(menuTarget)">Edit user</button><button role="menuitem" type="button" @click="requestUserAction('reset', menuTarget)">Send password reset link</button>

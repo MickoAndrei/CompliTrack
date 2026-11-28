@@ -1,10 +1,12 @@
 @props(['allowBroadcast' => false])
-<section class="attention-page notification-inbox" x-data="resourcePage({ endpoint: 'notifications', columns: [], perPage: 10, allowBroadcast: @js($allowBroadcast) })" x-init="load()" aria-label="Notifications">
-    <div class="notification-toolbar">
+<section class="attention-page notification-inbox ct-notification-inbox" x-data="resourcePage({ endpoint: 'notifications', columns: [], perPage: 10, allowBroadcast: @js($allowBroadcast) })" x-init="load()" aria-label="Notifications">
+<header class="ct-page-heading"><div><h1>Notifications</h1><p>In-app notifications and authorized announcements.</p></div></header>
+    <div class="notification-toolbar ct-toolbar">
         <label class="attention-search"><i data-lucide="search" aria-hidden="true"></i><span class="sr-only">Search notifications</span><input type="search" maxlength="200" placeholder="Search notifications…" x-model="search" @input.debounce.350ms="load(1)"></label>
         <div class="attention-actions">
         @if($allowBroadcast)<button type="button" class="attention-button broadcast-trigger" @click="startBroadcast()"><i data-lucide="send" aria-hidden="true"></i>Broadcast</button>@endif
         <button type="button" class="attention-button" @click="markAllNotificationsRead()" :disabled="markingAll || loading || !notificationUnreadCount" x-text="markingAll ? 'Marking…' : 'Mark all read'"></button>
+        <button type="button" class="ct-secondary" @click="clearInbox()" :disabled="markingAll || loading">Clear all</button>
         </div>
     </div>
     <div class="attention-filter-row"><div class="attention-tabs" role="group" aria-label="Notification status">
@@ -18,12 +20,10 @@
     <div class="attention-empty" x-cloak x-show="!loading && !error && !rows.length"><i data-lucide="bell" aria-hidden="true"></i><h3 x-text="search || notificationStatus !== 'all' ? 'No matching notifications' : 'You’re all caught up'"></h3><p x-text="search || notificationStatus !== 'all' ? 'Try another search or filter.' : 'New updates will appear here when they arrive.'"></p></div>
     <div class="notification-list" x-cloak x-show="!loading && !error" :aria-busy="loading">
         <template x-for="notification in rows" :key="notification._id"><article class="notification-item" :class="{ 'is-unread': !notification.isRead }">
-            <span class="notification-symbol" aria-hidden="true"><i data-lucide="file-check-2"></i></span>
-            <div class="notification-copy"><div class="notification-title"><h3 x-text="notification.title"></h3><span class="attention-new" x-text="notification.isRead ? 'Read' : 'New'"></span></div>
+            <div class="notification-copy"><div class="notification-title"><span class="attention-new" x-text="notification.isRead ? 'Read' : 'New'"></span><h3 x-text="notification.title"></h3></div>
                 <p class="notification-excerpt" x-text="notification.message"></p>
                 <div class="notification-metadata"><time :datetime="notification.createdAt" x-text="formatValue(notification.createdAt)"></time><span class="attention-pill" x-text="notification.category || 'Update'"></span></div>
-                <div class="notification-actions"><button type="button" class="attention-button" x-show="!notification.isRead" @click="markRead(notification)" :disabled="markingAll || markingReadIds.includes(notification._id)" x-text="markingReadIds.includes(notification._id) ? 'Marking…' : 'Mark read'"></button><button type="button" class="attention-button is-primary" @click="openRecordDetails(notification)">View details<i data-lucide="arrow-right" aria-hidden="true"></i></button></div>
-            </div>
+                </div><div class="notification-actions"><button type="button" class="attention-button" x-show="!notification.isRead" @click="markRead(notification)" :disabled="markingAll || markingReadIds.includes(notification._id)" x-text="markingReadIds.includes(notification._id) ? 'Marking…' : 'Mark read'"></button><button type="button" class="attention-button is-primary" @click="openRecordDetails(notification)">View details<i data-lucide="arrow-right" aria-hidden="true"></i></button></div>
         </article></template>
     </div>
     @include('components.partials.attention-pagination', ['label' => 'Notification pages'])

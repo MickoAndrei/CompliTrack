@@ -1,3 +1,4 @@
+import '../../widgets/v2/portal_dialog.dart';
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
@@ -5,7 +6,6 @@ import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_icons.dart';
 import '../../providers/auth_provider.dart';
-import '../admin/admin_notifications_screen.dart';
 import '../../widgets/ustp_app_bar.dart';
 
 class SettingsReadonlyScreen extends StatefulWidget {
@@ -20,7 +20,7 @@ class _SettingsReadonlyScreenState extends State<SettingsReadonlyScreen> {
   bool _maintenanceMode = false;
 
   void _showManageOnWebDialog(String actionName) {
-    showDialog(
+    showPortalDialog(
       context: context,
       builder: (context) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -218,7 +218,6 @@ class _SettingsReadonlyScreenState extends State<SettingsReadonlyScreen> {
     return Scaffold(
       backgroundColor: const Color(0xFFF8F9FA),
       appBar: UstpAppBar(
-        onNotificationTap: () => AdminNotificationsScreen.showOverlay(context),
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),

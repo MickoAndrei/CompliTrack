@@ -1,35 +1,9 @@
-<div data-my-audit-results aria-busy="false">
-    <div class="maa-result-heading"><nav class="maa-pills" aria-label="Quick status filters">
-        @foreach(['' => 'All', 'draft' => 'Draft', 'in_progress' => 'In Progress', 'submitted' => 'Submitted', 'returned' => 'Returned', 'accepted' => 'Completed'] as $key => $label)
-        <a href="{{ request()->fullUrlWithQuery(['status' => $key, 'page' => null]) }}" @if($filters['status'] === $key) aria-current="page" @endif>{{ $label }}</a>
-        @endforeach
-    </nav><span class="maa-record-count" role="status" aria-live="polite">{{ $audits->total() }} {{ $audits->total() === 1 ? 'record' : 'records' }}</span></div>
-    <p class="maa-completion-note">Progress shows checklist items evaluated, not compliance percentage.</p>
-    <div data-my-audit-content>
-    <div class="maa-cards">
-        @forelse($audits as $audit)
-        <article class="maa-card" data-audit-status="{{ $audit['status'] }}">
-            <div class="maa-card-heading"><div><h3>{{ $audit['title'] }}</h3><p class="maa-reference">{{ $audit['code'] }}</p></div><span class="maa-status" data-status="{{ $audit['status'] }}">{{ $audit['label'] }}</span></div>
-            <div class="maa-meta"><span><i data-lucide="building-2" aria-hidden="true"></i>{{ $audit['department'] }}</span><span><i data-lucide="calendar-days" aria-hidden="true"></i>{{ $audit['scheduled'] }}</span></div>
-            <div class="maa-progress-heading"><span>Checklist evaluated</span><strong>{{ $audit['progress']['evaluated'] }} of {{ $audit['progress']['total'] }} · {{ $audit['progress']['percent'] }}%</strong></div>
-            <progress value="{{ $audit['progress']['evaluated'] }}" max="{{ max(1, $audit['progress']['total']) }}" aria-label="{{ $audit['title'] }}: checklist evaluation completion"></progress>
-            @if($audit['status'] === 'submitted')
-            <div class="maa-review-note"><i data-lucide="clock" aria-hidden="true"></i><div><strong>{{ $audit['awaitingAtl'] ? 'Awaiting Audit Team Leader Review' : 'Submitted · Review assignment unavailable' }}</strong><p>Editing is locked until the audit is returned for revision.</p></div></div>
-            @elseif($audit['status'] === 'returned')
-            <div class="maa-feedback"><strong>ATL review feedback</strong>@if($audit['feedback'])<p>{{ \Illuminate\Support\Str::limit($audit['feedback']['notes'], 220) }}</p>@if(mb_strlen($audit['feedback']['notes']) > 220)<details><summary>Read full feedback</summary><p>{{ $audit['feedback']['notes'] }}</p></details>@endif<small>{{ $audit['feedback']['at'] }}</small>@else<p>Open the workspace to review the return decision.</p>@endif</div>
-            @elseif($audit['status'] === 'accepted')<p class="maa-final-note"><i data-lucide="circle-check" aria-hidden="true"></i>Accepted by the Audit Team Leader. Final results are read-only.</p>
-            @endif
-            <footer><a href="{{ $audit['url'] }}" class="maa-button maa-action">{{ $audit['action'] }}<i data-lucide="arrow-right" aria-hidden="true"></i></a></footer>
-        </article>
-        @empty
-        <div class="maa-empty"><i data-lucide="clipboard-list" aria-hidden="true"></i><h3>{{ $summary['total'] ? 'No matching audits' : 'No Assigned Audits Yet' }}</h3><p>{{ $summary['total'] ? 'Try a different title, department, or status.' : 'Your assigned audits will appear here once an authorized audit assignment has been made.' }}</p>@if($summary['total'])<a href="/audits" class="maa-button" data-my-audit-reset>Clear filters</a>@endif</div>
-        @endforelse
-    </div>
-    <nav class="app-pagination maa-pagination" aria-label="Assigned audit pages">
-        <span class="app-pagination-total">{{ $audits->total() }} {{ $audits->total() === 1 ? 'record' : 'records' }} · Page {{ $audits->currentPage() }} of {{ $audits->lastPage() }}</span>
-        <x-server-page-size :paginator="$audits" />
-        @if($audits->onFirstPage())<span class="app-pagination-button" aria-disabled="true">Previous</span>@else<a class="app-pagination-button" href="{{ $audits->previousPageUrl() }}" rel="prev">Previous</a>@endif
-        @if($audits->hasMorePages())<a class="app-pagination-button" href="{{ $audits->nextPageUrl() }}" rel="next">Next</a>@else<span class="app-pagination-button" aria-disabled="true">Next</span>@endif
-    </nav>
-    </div>
-</div>
+<div data-my-audit-results aria-busy="false"><div data-my-audit-content class="ct-register">
+<div class="ct-table-wrap"><table class="ct-table"><thead><tr><th>Assignment</th><th>Audit focus</th><th>Organization</th><th>Schedule</th><th>Status</th></tr></thead><tbody>
+@forelse($audits as $audit)<tr data-audit-status="{{ $audit['status'] }}"><td><a class="ct-record-link" href="{{ $audit['url'] }}">{{ $audit['code'] }}</a></td><td>{{ $audit['title'] }}<small>{{ $audit['progress']['evaluated'] }} / {{ $audit['progress']['total'] }} checklist items evaluated</small></td><td>{{ $audit['department'] }}</td><td>{{ $audit['scheduled'] }}</td><td><span class="maa-status" data-status="{{ $audit['status'] }}">{{ $audit['label'] }}</span></td></tr>
+@empty<tr><td colspan="5">{{ $summary['total'] ? 'No matching audits.' : 'No assigned audits yet.' }}</td></tr>@endforelse</tbody></table></div>
+
+<nav class="app-pagination maa-pagination ct-pagination" aria-label="Assigned audit pages"><x-server-page-size :paginator="$audits"/><span class="ct-page-count">Showing {{ $audits->firstItem() ?? 0 }}–{{ $audits->lastItem() ?? 0 }} of {{ $audits->total() }}</span>@if($audits->onFirstPage())<span class="ct-secondary" aria-disabled="true">‹</span>@else<a class="ct-secondary" href="{{ $audits->previousPageUrl() }}" rel="prev" aria-label="Previous page">‹</a>@endif<span class="ct-page-current">{{ $audits->currentPage() }}</span>@if($audits->hasMorePages())<a class="ct-secondary" href="{{ $audits->nextPageUrl() }}" rel="next" aria-label="Next page">›</a>@else<span class="ct-secondary" aria-disabled="true">›</span>@endif<span>Page {{ $audits->currentPage() }} of {{ $audits->lastPage() }}</span></nav>
+@php($nextTask = collect($audits->items())->first(fn($audit) => in_array($audit['status'], ['draft','ready','in_progress','returned'], true)))
+@if($nextTask)<section class="ct-panel ct-task"><div><h2>{{ $nextTask['title'] }}</h2><p class="ct-muted">{{ $nextTask['department'] }} · {{ $nextTask['code'] }}</p>@if($nextTask['feedback'])<p>{{ $nextTask['feedback']['notes'] }}</p>@endif</div><a class="ct-primary" href="{{ $nextTask['url'] }}">{{ $nextTask['action'] }}</a></section>@endif
+</div></div>

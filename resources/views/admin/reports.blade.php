@@ -122,18 +122,11 @@
 
 </style>
 @endpush
+@section('body-class', 'ct-v2-page')
 @section('content')
+<header class="ct-page-heading"><div><h1>Reports</h1><p>Annual IQA reports by year and authorized audit plan.</p></div></header>
+
 <section class="annual-report attention-page" x-data="annualReport" :aria-busy="loading">
-    <div class="ar-metrics">
-        @foreach ([['planned','Planned Audits','clipboard-list'],['accepted','Completed Audits','clipboard-check'],['rate','Compliance Rate','shield-check'],['openCars','Open CARs','triangle-alert']] as [$key,$label,$icon])
-        <article class="ar-card ar-metric" data-metric="{{ $key }}"><div class="ar-metric-copy"><small>{{ $label }}</small><strong x-text="loading || error || !current ? '—' : {{ $key === 'rate' ? 'rate' : 'totals.'.$key }}"></strong></div><span class="ar-metric-icon"><i data-lucide="{{ $icon }}" aria-hidden="true"></i></span></article>
-        @endforeach
-    </div>
-    <div class="attention-tabs ar-tabs" role="group" aria-label="Report sections">
-        @foreach (['overview'=>'Overview','lifecycle'=>'Audit Lifecycle','compliance'=>'Compliance Results','cars'=>'Corrective Actions','legacy'=>'Legacy Checks'] as $key=>$label)
-        <button type="button" @click="tab = '{{ $key }}'" :class="{'is-active': tab === '{{ $key }}'}" :aria-pressed="tab === '{{ $key }}'">{{ $label }}</button>
-        @endforeach
-    </div>
     <form class="ar-toolbar" @submit.prevent="load()">
         <label class="ar-year">Audit year<input type="number" min="2000" max="2200" required x-model="year" @change="changeYear()"></label>
         <label class="ar-plan">Audit plan<select x-model="planId" @change="load()" :disabled="loading || !validYear"><option value="">All authorized plans</option><template x-for="plan in report?.plans || []" :key="plan.id"><option :value="plan.id" x-text="plan.title"></option></template></select></label>
@@ -143,16 +136,20 @@
             <a class="ar-button ar-export" :href="!loading && !error && current ? csvUrl : null" :aria-disabled="loading || !!error || !current" :tabindex="loading || error || !current ? -1 : 0" @click="if (loading || error || !current) $event.preventDefault()"><i data-lucide="download" aria-hidden="true"></i>Export CSV</a>
         </div>
     </form>
+    <div class="attention-tabs ar-tabs" role="group" aria-label="Report sections">
+        @foreach (['overview'=>'Overview','lifecycle'=>'Audit Lifecycle','compliance'=>'Compliance Results','cars'=>'Corrective Actions','legacy'=>'Legacy Checks'] as $key=>$label)
+        <button type="button" @click="tab = '{{ $key }}'" :class="{'is-active': tab === '{{ $key }}'}" :aria-pressed="tab === '{{ $key }}'">{{ $label }}</button>
+        @endforeach
+    </div>
     <div class="ar-status ar-grid" x-show="loading" role="status" aria-label="Loading annual report"><div class="ar-skeleton"></div><div class="ar-skeleton"></div></div>
     <p class="ar-status ar-muted" x-cloak x-show="!current && !loading && !error">Change or confirm the audit year to refresh the report.</p>
     <div class="ar-status" role="alert" x-cloak x-show="error"><span x-text="error"></span> <button class="ar-button" type="button" @click="load()">Retry</button></div>
     <template x-if="report && !loading && !error && current"><div style="display:grid;gap:8px">
         <div class="ar-meta ar-report-meta"><strong x-text="`Annual IQA report · ${report.year}`"></strong><span x-text="`Generated ${date(report.generatedAt)}`"></span><span x-text="report.planId ? 'Audit plan: ' + (report.plans.find(plan => plan.id === report.planId)?.title || report.planId) : 'Audit plan: All authorized plans'"></span><details class="ar-method"><summary>Report methodology</summary><div class="ar-method-copy" x-text="report.scope"></div><p>Accepted / Completed means the ATL accepted the audit. Checklist readiness is evaluated separately before submission. CAR closure preserves the original N finding. Observations are excluded from the compliance rate denominator.</p></details><div class="ar-print-method" x-text="report.scope"></div></div>
-        <div class="ar-grid ar-overview" x-show="tab === 'overview'">
-            <article class="ar-card"><h2>Audit Completion</h2><div class="ar-chart"><div class="ar-ring" :style="`background:conic-gradient(#16a34a ${Math.min(100,Number(completion))}%,#e2e8f0 0)`"><div class="ar-ring-center"><strong x-text="completion+'%'"></strong><small class="ar-muted">Completed</small></div></div><div class="ar-legend"><div><span class="ar-dot" style="background:#16a34a"></span>Accepted<strong x-text="totals.accepted"></strong></div><div><span class="ar-dot" style="background:#e2e8f0"></span>Remaining<strong x-text="Math.max(0,totals.assigned-totals.accepted)"></strong></div></div></div><p class="ar-muted">Accepted ÷ assigned audits</p></article>
-            <article class="ar-card"><h2>N/C/O Overview</h2><div class="ar-chart"><div class="ar-ring" :style="`background:${ncoStyle}`"><div class="ar-ring-center"><strong x-text="assessed"></strong><small class="ar-muted">Results</small></div></div><div class="ar-legend">@foreach ([['N','Non-Conformance','#dc2626'],['C','Compliant','#16a34a'],['O','Observation','#d97706']] as [$key,$label,$color])<div><span class="ar-dot" style="background:{{ $color }}"></span>{{ $label }}<strong x-text="totals.{{ $key }}"></strong></div>@endforeach</div></div><p class="ar-muted">Accepted checklist results only</p></article>
-            <article class="ar-card ar-comparison"><div class="ar-section-heading"><h2>Compliance Overview</h2><span class="ar-muted">Departments &amp; Offices</span></div><div class="ar-unit-list"><template x-for="row in report.rows" :key="row.unitId"><div class="ar-unit-line"><span x-text="row.unit"></span><div class="ar-track"><span :style="`width:${Math.min(100,Math.max(0,Number(row.compliance)||0))}%`"></span></div><strong :class="{'ar-unassessed': row.compliance === null}" x-text="row.compliance === null ? 'Not yet assessed' : row.compliance+'%'"></strong></div></template></div></article>
-            <article class="ar-card ar-car-summary"><h2>Corrective Action Summary</h2><div class="ar-car-grid">@foreach ([['openCars','Open'],['overdueCars','Overdue'],['awaitingVerificationCars','For Verification'],['closedCars','Closed']] as [$key,$label])<div><small class="ar-muted">{{ $label }}</small><div class="ar-car-number" data-kind="{{ $key }}" x-text="totals.{{ $key }}"></div></div>@endforeach</div></article>
+        <div class="ar-grid ar-overview ct-report-overview" x-show="tab === 'overview'">
+            <article class="ct-panel"><h2>Audit lifecycle</h2><p><strong x-text="totals.assigned"></strong> assigned · <strong x-text="totals.submitted"></strong> submitted · <strong x-text="totals.accepted"></strong> accepted</p><p class="ct-muted">Recorded lifecycle states</p></article>
+            <article class="ct-panel"><h2>Corrective Action Summary</h2><p><strong x-text="totals.openCars"></strong> open · <strong x-text="totals.overdueCars"></strong> overdue · <strong x-text="totals.awaitingVerificationCars"></strong> for verification · <strong x-text="totals.closedCars"></strong> closed</p></article>
+            <div class="ct-table-wrap ar-wide"><table class="ct-table"><thead><tr><th>Department / office</th><th>Planned</th><th>Assigned</th><th>Submitted</th><th>Accepted</th></tr></thead><tbody><template x-for="row in report.rows" :key="row.unitId"><tr><th scope="row" x-text="row.unit"></th><td x-text="row.planned"></td><td x-text="row.assigned"></td><td x-text="row.submitted"></td><td x-text="row.accepted"></td></tr></template></tbody></table></div>
         </div>
         <section class="ar-card ar-table-card ar-report-section" x-show="tab === 'lifecycle'" aria-label="Audit Lifecycle"><h2>Audit Lifecycle</h2><div class="report-scroll" tabindex="0"><table><thead><tr><th scope="col">Department / Office</th><th scope="col">Planned</th><th scope="col">Assigned</th><th scope="col">In Progress</th><th scope="col">Submitted</th><th scope="col">Returned</th><th scope="col">Accepted / Completed</th></tr></thead><tbody><template x-for="row in report.rows" :key="row.unitId"><tr><th scope="row" x-text="row.unit"></th><td x-text="row.planned"></td><td x-text="row.assigned"></td><td x-text="row.inProgress"></td><td x-text="row.submitted"></td><td x-text="row.returned"></td><td x-text="row.accepted"></td></tr></template></tbody></table></div></section>
         <section class="ar-card ar-table-card ar-report-section" x-show="tab === 'compliance'" aria-label="Compliance Results"><h2>Compliance Results</h2><div class="report-scroll" tabindex="0"><table><thead><tr><th scope="col">Department / Office</th><th scope="col">N</th><th scope="col">C</th><th scope="col">O</th><th scope="col">Compliance</th><th scope="col">Outstanding evidence</th></tr></thead><tbody><template x-for="row in report.rows" :key="row.unitId"><tr><th scope="row" x-text="row.unit"></th><td x-text="row.N"></td><td x-text="row.C"></td><td x-text="row.O"></td><td x-text="row.compliance === null ? 'Not yet assessed' : row.compliance + '%'"></td><td x-text="row.outstandingEvidence"></td></tr></template></tbody></table></div></section>

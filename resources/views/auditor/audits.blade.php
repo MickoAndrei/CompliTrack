@@ -5,17 +5,20 @@
 @push('styles')
 <link rel="stylesheet" href="{{ asset('css/my-assigned-audits.css') }}?v={{ filemtime(public_path('css/my-assigned-audits.css')) }}">
 @endpush
+@section('body-class', 'ct-v2-page')
 @section('content')
-<div class="maa-page" data-my-audits>
+<div class="maa-page ct-register" data-my-audits>
+<header class="ct-page-heading"><div><h1>Assigned audits</h1><p>Your authorized assignments, grouped by audit status.</p></div><a class="ct-secondary" href="/audits?status=submitted">Submitted reports</a></header>
+
     @include('auditor.audit-feedback')
     @if($loadError ?? false)
     <section class="maa-register maa-empty" role="alert"><h3>Assigned audits unavailable</h3><p>Your assignments could not be loaded. Please retry; no audit records have been changed.</p><a href="{{ request()->fullUrl() }}" class="maa-button">Retry loading audits</a></section>
     @else
     @include('auditor.partials.assigned-audit-summary')
-    <section class="maa-register" aria-labelledby="my-audits-title">
+    <section class="maa-register ct-flat-register" aria-labelledby="my-audits-title">
         <a href="/auditor/historical-records" class="maa-history-link">Historical Compliance Records</a>
-        <h2 id="my-audits-title">My Audits</h2>
-        <form action="/audits" method="GET" class="maa-filters" data-my-audit-filters role="search" aria-label="Filter assigned audits">
+        <h2 id="my-audits-title" class="sr-only">My Audits</h2>
+        <form action="/audits" method="GET" class="maa-filters ct-toolbar" data-my-audit-filters role="search" aria-label="Filter assigned audits">
             <label class="maa-search"><span class="sr-only">Search audit title, reference, or department</span><i data-lucide="search" aria-hidden="true"></i><input type="search" name="search" maxlength="160" placeholder="Search audits or departments…" value="{{ $filters['search'] }}"></label>
             <label><span class="sr-only">Department or office</span><select name="departmentId"><option value="">All departments & offices</option>@foreach($departments as $department)<option value="{{ $department['id'] }}" @selected($filters['departmentId'] === $department['id'])>{{ $department['name'] }}</option>@endforeach</select></label>
             <label><span class="sr-only">Audit status</span><select name="status"><option value="">All statuses</option>@foreach(['draft' => \App\Support\AuditStatus::label('draft'), 'ready' => \App\Support\AuditStatus::label('ready').' — Checklist prepared', 'in_progress' => \App\Support\AuditStatus::label('in_progress').' — Evaluation started', 'submitted' => \App\Support\AuditStatus::label('submitted'), 'returned' => \App\Support\AuditStatus::label('returned'), 'accepted' => \App\Support\AuditStatus::label('accepted')] as $key => $label)<option value="{{ $key }}" @selected($filters['status'] === $key)>{{ $label }}</option>@endforeach</select></label>

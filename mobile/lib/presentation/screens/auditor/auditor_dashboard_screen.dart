@@ -38,8 +38,6 @@ class _AuditorDashboardScreenState extends State<AuditorDashboardScreen> {
     return Scaffold(
       appBar: UstpAppBar(
         onProfileTap: () => context.go('/auditor/profile'),
-        onNotificationTap: () async =>
-            context.go('/auditor/profile/notifications'),
       ),
       body: FutureBuilder<List<ComplianceCheckModel>>(
         future: _checks,
@@ -84,7 +82,7 @@ class _AuditorDashboardScreenState extends State<AuditorDashboardScreen> {
                       ),
                     ),
                     FilledButton.icon(
-                      onPressed: () => context.push('/auditor/checks/create'),
+                      onPressed: () => context.go('/auditor/audits'),
                       style: FilledButton.styleFrom(
                         backgroundColor: AppColors.ustpGold,
                         foregroundColor: AppColors.ustpDark,
@@ -98,7 +96,7 @@ class _AuditorDashboardScreenState extends State<AuditorDashboardScreen> {
                         ),
                       ),
                       icon: const Icon(AppIcons.plus, size: 16),
-                      label: const Text('New Check'),
+                      label: const Text('My audits'),
                     ),
                   ],
                 ),

@@ -1,3 +1,4 @@
+import '../../widgets/v2/portal_dialog.dart';
 import 'package:flutter/material.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_icons.dart';
@@ -5,7 +6,6 @@ import '../../../data/models/department_model.dart';
 import '../../../data/models/user_model.dart';
 import '../../../data/repositories/department_repository.dart';
 import '../../../data/repositories/user_repository.dart';
-import '../admin/admin_notifications_screen.dart';
 import '../../widgets/empty_state.dart';
 import '../../widgets/role_badge.dart';
 import '../../widgets/ustp_app_bar.dart';
@@ -169,7 +169,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
   }
 
   void _showDeactivateDialog(UserModel user) {
-    showDialog(
+    showPortalDialog(
       context: context,
       builder: (context) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -216,7 +216,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
   }
 
   void _showResetPasswordDialog(UserModel user) {
-    showDialog(
+    showPortalDialog(
       context: context,
       builder: (context) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -270,7 +270,6 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
     return Scaffold(
       backgroundColor: const Color(0xFFF8F9FA),
       appBar: UstpAppBar(
-        onNotificationTap: () => AdminNotificationsScreen.showOverlay(context),
       ),
       body: _editingUser == null && !_isCreatingUser
           ? Column(

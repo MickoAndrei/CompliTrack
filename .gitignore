@@ -39,3 +39,7 @@ settings.local.json
 /dataset_files/mock_academic_directory_400.xlsx
 /old_complitrack/
 
+
+!.env.v2.example
+/storage/app/private-v2/
+/storage/app/system-v2/

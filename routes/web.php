@@ -42,7 +42,8 @@ Route::middleware(['auth', \App\Http\Middleware\SystemAccess::class])->group(fun
     Route::middleware('role:0')->prefix('super-admin')->group(function () {
         Route::view('/help', 'help.index');
         Route::view('/profile', 'auth.profile')->name('super-admin.profile');
-        Route::view('/dashboard', 'super-admin.dashboard');
+        Route::get('/dashboard', [\App\Http\Controllers\Web\PortalOverviewController::class, 'show']);
+        Route::get('/organizations', [\App\Http\Controllers\Web\OrganizationController::class, 'index']);
         Route::view('/users', 'super-admin.users');
         Route::view('/roles', 'super-admin.roles');
         Route::view('/departments', 'super-admin.departments');
@@ -56,7 +57,7 @@ Route::middleware(['auth', \App\Http\Middleware\SystemAccess::class])->group(fun
     Route::middleware('role:1')->prefix('admin')->group(function () {
         Route::view('/help', 'help.index');
         Route::view('/profile', 'auth.profile')->name('admin.profile');
-        Route::view('/dashboard', 'admin.dashboard');
+        Route::get('/dashboard', [\App\Http\Controllers\Web\PortalOverviewController::class, 'show']);
         Route::view('/departments', 'admin.departments');
         Route::view('/users', 'admin.users');
         Route::get('/compliance-records', [\App\Http\Controllers\Web\AtlWorkspaceController::class, 'records']);
@@ -67,7 +68,7 @@ Route::middleware(['auth', \App\Http\Middleware\SystemAccess::class])->group(fun
     Route::middleware('role:2')->prefix('auditor')->group(function () {
         Route::view('/help', 'help.index');
         Route::view('/profile', 'auth.profile')->name('auditor.profile');
-        Route::view('/dashboard', 'auditor.dashboard');
+        Route::get('/dashboard', [\App\Http\Controllers\Web\PortalOverviewController::class, 'show']);
         Route::view('/historical-records', 'auditor.checks')->middleware('EnsureUserIsActive')->name('auditor.historical-records');
         Route::get('/checks', fn (\Illuminate\Http\Request $request) => redirect()->route('auditor.historical-records', $request->query()));
         Route::get('/checks/{id}', [\App\Http\Controllers\Web\HistoricalComplianceController::class, 'show']);

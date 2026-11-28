@@ -1,3 +1,4 @@
+import '../../widgets/v2/portal_dialog.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
@@ -9,7 +10,6 @@ import '../../../data/repositories/archive_repository.dart';
 import '../../../data/repositories/department_repository.dart';
 import '../../widgets/empty_state.dart';
 import '../../widgets/ustp_app_bar.dart';
-import '../admin/admin_notifications_screen.dart';
 
 class ArchiveRepositoryScreen extends StatefulWidget {
   const ArchiveRepositoryScreen({super.key});
@@ -121,7 +121,7 @@ class _ArchiveRepositoryScreenState extends State<ArchiveRepositoryScreen> {
   }
 
   void _previewDetails(ArchiveDocumentModel doc) {
-    showDialog<void>(
+    showPortalDialog<void>(
       context: context,
       builder: (context) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -165,7 +165,6 @@ class _ArchiveRepositoryScreenState extends State<ArchiveRepositoryScreen> {
     return Scaffold(
       backgroundColor: const Color(0xFFF8F9FA),
       appBar: UstpAppBar(
-        onNotificationTap: () => AdminNotificationsScreen.showOverlay(context),
       ),
       body: Column(
         children: [

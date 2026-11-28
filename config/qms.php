@@ -1,7 +1,7 @@
 <?php
 
 return [
-    'currentAuditCycle' => 'Internal Quality Audit August 2026',
+    'currentAuditCycle' => env('QMS_AUDIT_CYCLE', 'Internal Quality Audit August 2026'),
     'campus' => 'USTP Claveria Campus',
     'campuses' => ['Alubijid', 'Balubal', 'Cagayan de Oro', 'Claveria', 'Jasaan', 'Oroquieta', 'Panaon', 'Villanueva'],
     // Official campus pages checked 2026-11-14. Empty lists mean no named colleges

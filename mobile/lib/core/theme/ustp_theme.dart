@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../constants/app_colors.dart';
 
@@ -17,16 +18,31 @@ abstract final class UstpTheme {
         onSecondary: AppColors.ustpDark,
         onSurface: AppColors.ustpDark,
       ),
+      scrollbarTheme: ScrollbarThemeData(
+        thickness: const WidgetStatePropertyAll(6),
+        radius: const Radius.circular(8),
+        thumbColor: WidgetStateProperty.resolveWith((states) =>
+          states.contains(WidgetState.hovered) || states.contains(WidgetState.dragged)
+            ? const Color(0xFF62666F) : const Color(0xFF858A94)),
+      ),
+      dialogTheme: DialogThemeData(
+        backgroundColor: AppColors.ustpWhite,
+        surfaceTintColor: Colors.transparent,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      ),
       appBarTheme: const AppBarTheme(
         backgroundColor: AppColors.ustpNavy,
         foregroundColor: AppColors.ustpWhite,
         elevation: 0,
+        surfaceTintColor: Colors.transparent,
+        systemOverlayStyle: SystemUiOverlayStyle.light,
       ),
       cardTheme: CardThemeData(
         color: AppColors.ustpWhite,
         elevation: 0,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(12),
+          side: const BorderSide(color: Color(0xFFE4E5E8)),
         ),
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(

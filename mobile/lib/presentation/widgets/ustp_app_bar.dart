@@ -1,11 +1,12 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import '../../core/constants/app_colors.dart';
 import '../../data/repositories/notification_repository.dart';
 import '../providers/auth_provider.dart';
-import '../screens/admin/admin_notifications_screen.dart';
+import 'v2/notification_preview.dart';
 import 'current_user_avatar.dart';
 import 'ustp_logo.dart';
 
@@ -35,34 +36,20 @@ class _UstpAppBarState extends State<UstpAppBar> {
   Widget build(BuildContext context) {
     final auth = context.watch<AuthProvider>();
 
-    return Container(
+    return AnnotatedRegion<SystemUiOverlayStyle>(value: SystemUiOverlayStyle.light, child: Container(
       color: AppColors.ustpNavy,
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: SafeArea(
         child: Row(
           children: [
-            UstpLogo(
+            Expanded(child: UstpLogo(
               fontSize: 16,
               subtitle: widget.title != 'CompliTrack'
                   ? widget.title
                   : 'CLAVERIA CAMPUS / MOBILE',
-            ),
-            const Spacer(),
-            UstpNotificationButton(
-              showBadge: widget.showNotificationBadge,
-              onPressed: () async {
-                if (widget.onNotificationTap != null) {
-                  await widget.onNotificationTap!.call();
-                  return;
-                }
-                if (auth.roleId == 0 || auth.roleId == 1) {
-                  await AdminNotificationsScreen.showOverlay(context);
-                } else if (auth.roleId == 2) {
-                  await context.push('/auditor/profile/notifications');
-                } else {
-                  await context.push('/auditee/notifications');
-                }
-              },
+            )),
+            if (widget.showNotificationBadge) UstpNotificationButton(
+              onPressed: () => showNotificationPreview(context),
             ),
             const SizedBox(width: 8),
             GestureDetector(
@@ -84,7 +71,7 @@ class _UstpAppBarState extends State<UstpAppBar> {
           ],
         ),
       ),
-    );
+    ));
   }
 }
 
@@ -105,7 +92,7 @@ class UstpNotificationButton extends StatefulWidget {
 class _UstpNotificationButtonState extends State<UstpNotificationButton> {
   final NotificationRepository _repository = NotificationRepository();
   Timer? _refreshTimer;
-  bool _hasUnread = false;
+  int _unreadCount = 0;
 
   @override
   void initState() {
@@ -130,44 +117,46 @@ class _UstpNotificationButtonState extends State<UstpNotificationButton> {
 
   Future<void> _refreshUnread() async {
     try {
-      final notifications = await _repository.getNotifications();
+      final notifications = await _repository.preview(perPage: 1);
       if (!mounted) return;
-      setState(() => _hasUnread = notifications.any((item) => !item.isRead));
+      setState(() => _unreadCount = notifications.unreadCount);
     } catch (_) {
-      if (mounted) setState(() => _hasUnread = false);
+      if (mounted) setState(() => _unreadCount = 0);
     }
   }
 
   @override
   Widget build(BuildContext context) => Material(
         color: AppColors.ustpWhite.withValues(alpha: 0.12),
-        shape: const CircleBorder(),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
         child: InkWell(
-          customBorder: const CircleBorder(),
+          borderRadius: BorderRadius.circular(8),
           onTap: () async {
             await widget.onPressed();
             await _refreshUnread();
           },
           child: SizedBox(
-            width: 34,
-            height: 34,
+            width: 44,
+            height: 44,
             child: Stack(
               clipBehavior: Clip.none,
               alignment: Alignment.center,
               children: [
                 const Icon(Icons.notifications_none_rounded,
                     color: AppColors.ustpWhite, size: 19),
-                if (widget.showBadge && _hasUnread)
+                if (widget.showBadge && _unreadCount > 0)
                   Positioned(
                     right: 5,
                     top: 5,
                     child: Container(
-                      width: 7,
-                      height: 7,
+                      constraints: const BoxConstraints(minWidth: 16, minHeight: 16),
+                      padding: const EdgeInsets.symmetric(horizontal: 3),
+                      alignment: Alignment.center,
                       decoration: const BoxDecoration(
                         color: AppColors.error,
-                        shape: BoxShape.circle,
+                        borderRadius: BorderRadius.all(Radius.circular(10)),
                       ),
+                      child: Text(_unreadCount > 99 ? '99+' : '$_unreadCount', style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold)),
                     ),
                   ),
               ],

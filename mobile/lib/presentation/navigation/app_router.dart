@@ -29,6 +29,10 @@ import '../screens/super_admin/settings_readonly_screen.dart';
 import '../screens/super_admin/super_admin_dashboard_screen.dart';
 import '../screens/super_admin/system_logs_screen.dart';
 import '../screens/super_admin/user_management_screen.dart';
+import '../screens/audits/audit_register_screen.dart';
+import '../screens/audits/audit_workspace_screen.dart';
+import '../screens/audits/audit_plans_screen.dart';
+import '../screens/common/management_screen.dart';
 import 'admin_shell.dart';
 import 'auditor_shell.dart';
 import 'auditee_shell.dart';
@@ -93,7 +97,7 @@ class AppRouter {
         ),
         GoRoute(
           path: '/common/profile',
-          builder: (context, state) => const ProfileScreen(),
+          redirect: (context, state) => switch (currentRoleId) { 0 => '/super-admin/profile', 1 => '/admin/profile', 2 => '/auditor/profile', _ => '/auditee/profile' },
         ),
         GoRoute(
           path: '/super-admin/settings',
@@ -108,232 +112,77 @@ class AppRouter {
           builder: (context, state) => const AdminNotificationsScreen(),
         ),
 
-        // Super Admin Shell Route
-        StatefulShellRoute.indexedStack(
-          builder: (context, state, navigationShell) {
-            return SuperAdminShell(navigationShell: navigationShell);
-          },
-          branches: [
-            StatefulShellBranch(
-              routes: [
-                GoRoute(
-                  path: '/super-admin',
-                  builder: (context, state) =>
-                      const SuperAdminDashboardScreen(),
-                ),
-              ],
-            ),
-            StatefulShellBranch(
-              routes: [
-                GoRoute(
-                  path: '/super-admin/users',
-                  builder: (context, state) => const UserManagementScreen(),
-                ),
-              ],
-            ),
-            StatefulShellBranch(
-              routes: [
-                GoRoute(
-                  path: '/super-admin/departments',
-                  builder: (context, state) =>
-                      const DepartmentManagementScreen(),
-                ),
-              ],
-            ),
-            StatefulShellBranch(
-              routes: [
-                GoRoute(
-                  path: '/super-admin/logs',
-                  builder: (context, state) => const SystemLogsScreen(),
-                ),
-              ],
-            ),
-            StatefulShellBranch(
-              routes: [
-                GoRoute(
-                  path: '/super-admin/documents',
-                  builder: (context, state) => const ArchiveRepositoryScreen(),
-                ),
-              ],
-            ),
-          ],
-        ),
 
-        // Admin Shell Route
-        StatefulShellRoute.indexedStack(
-          builder: (context, state, navigationShell) {
-            return AdminShell(navigationShell: navigationShell);
-          },
-          branches: [
-            StatefulShellBranch(
-              routes: [
-                GoRoute(
-                  path: '/admin',
-                  builder: (context, state) => const AdminDashboardScreen(),
-                ),
-              ],
-            ),
-            StatefulShellBranch(
-              routes: [
-                GoRoute(
-                  path: '/admin/users',
-                  builder: (context, state) =>
-                      const AdminUserManagementScreen(),
-                ),
-              ],
-            ),
-            StatefulShellBranch(
-              routes: [
-                GoRoute(
-                  path: '/admin/departments',
-                  builder: (context, state) =>
-                      const DepartmentManagementScreen(),
-                ),
-              ],
-            ),
-            StatefulShellBranch(
-              routes: [
-                GoRoute(
-                  path: '/admin/documents',
-                  builder: (context, state) => const ArchiveRepositoryScreen(),
-                ),
-              ],
-            ),
-            StatefulShellBranch(
-              routes: [
-                GoRoute(
-                  path: '/admin/reports',
-                  builder: (context, state) => const ReportsViewScreen(),
-                ),
-              ],
-            ),
-          ],
-        ),
-
-        // Auditor Shell Route
-        StatefulShellRoute.indexedStack(
-          builder: (context, state, navigationShell) {
-            return AuditorShell(
-              navigationShell: navigationShell,
-              hideNavigationBar:
-                  state.matchedLocation == '/auditor/checks/create',
-            );
-          },
-          branches: [
-            StatefulShellBranch(
-              routes: [
-                GoRoute(
-                  path: '/auditor',
-                  builder: (context, state) => const AuditorDashboardScreen(),
-                ),
-              ],
-            ),
-            StatefulShellBranch(
-              routes: [
-                GoRoute(
-                  path: '/auditor/checks',
-                  builder: (context, state) => const ChecksListScreen(),
-                  routes: [
-                    GoRoute(
-                      path: 'create',
-                      builder: (context, state) => const CreateCheckScreen(),
-                    ),
-                    GoRoute(
-                      path: ':id',
-                      builder: (context, state) => CheckDetailScreen(
-                        checkId: state.pathParameters['id']!,
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-            StatefulShellBranch(
-              routes: [
-                GoRoute(
-                  path: '/auditor/documents',
-                  builder: (context, state) => const ArchiveReviewScreen(),
-                ),
-              ],
-            ),
-            StatefulShellBranch(
-              routes: [
-                GoRoute(
-                  path: '/auditor/corrective',
-                  builder: (context, state) => const CorrectiveBoardScreen(),
-                ),
-              ],
-            ),
-            StatefulShellBranch(
-              routes: [
-                GoRoute(
-                  path: '/auditor/help',
-                  builder: (context, state) =>
-                      const HelpReferenceScreen(forAuditor: true),
-                ),
-              ],
-            ),
-          ],
-        ),
-        GoRoute(
-          path: '/auditor/profile',
-          builder: (context, state) => const ProfileScreen(),
-          routes: [
-            GoRoute(
-              path: 'notifications',
-              builder: (context, state) => const AuditorNotificationsScreen(),
-            ),
-          ],
-        ),
-
-        // Auditee Shell Route
-        StatefulShellRoute.indexedStack(
-          builder: (context, state, navigationShell) {
-            return AuditeeShell(navigationShell: navigationShell);
-          },
-          branches: [
-            StatefulShellBranch(
-              routes: [
-                GoRoute(
-                  path: '/auditee',
-                  builder: (context, state) => const AuditeeDashboardScreen(),
-                ),
-              ],
-            ),
-            StatefulShellBranch(
-              routes: [
-                GoRoute(
-                  path: '/auditee/status',
-                  builder: (context, state) => const MyFindingsScreen(),
-                ),
-              ],
-            ),
-            StatefulShellBranch(
-              routes: [
-                GoRoute(
-                  path: '/auditee/documents',
-                  builder: (context, state) => const MyArchivesScreen(),
-                ),
-              ],
-            ),
-            StatefulShellBranch(
-              routes: [
-                GoRoute(
-                  path: '/auditee/standards',
-                  builder: (context, state) => const HelpReferenceScreen(),
-                ),
-              ],
-            ),
-            StatefulShellBranch(
-              routes: [
-                GoRoute(
-                  path: '/auditee/profile',
-                  builder: (context, state) => const ProfileScreen(),
-                ),
-              ],
-            ),
-          ],
-        ),
+        // V2: retain the existing routes in four grouped destinations.
+StatefulShellRoute.indexedStack(builder: (context, state, navigationShell) => SuperAdminShell(navigationShell: navigationShell), branches: [
+StatefulShellBranch(routes: [
+GoRoute(path: '/super-admin', builder: (context, state) => const SuperAdminDashboardScreen()),
+]),
+StatefulShellBranch(routes: [
+GoRoute(path: '/super-admin/manage', builder: (context, state) => const ManagementScreen()),
+GoRoute(path: '/super-admin/users', builder: (context, state) => const UserManagementScreen()),
+GoRoute(path: '/super-admin/departments', builder: (context, state) => const DepartmentManagementScreen()),
+GoRoute(path: '/super-admin/logs', builder: (context, state) => const SystemLogsScreen()),
+]),
+StatefulShellBranch(routes: [
+GoRoute(path: '/super-admin/documents', builder: (context, state) => const ArchiveRepositoryScreen()),
+]),
+StatefulShellBranch(routes: [
+GoRoute(path: '/super-admin/profile', builder: (context, state) => const ProfileScreen()),
+]),
+]),
+StatefulShellRoute.indexedStack(builder: (context, state, navigationShell) => AdminShell(navigationShell: navigationShell), branches: [
+StatefulShellBranch(routes: [
+GoRoute(path: '/admin', builder: (context, state) => const AdminDashboardScreen()),
+]),
+StatefulShellBranch(routes: [
+GoRoute(path: '/admin/audits', builder: (context, state) => const AuditRegisterScreen()),
+GoRoute(path: '/admin/audit-workspaces/:id', builder: (context, state) => AuditWorkspaceScreen(auditId: state.pathParameters['id']!)),
+GoRoute(path: '/admin/plans', builder: (context, state) => const AuditPlansScreen()),
+GoRoute(path: '/admin/users', builder: (context, state) => const AdminUserManagementScreen()),
+GoRoute(path: '/admin/departments', builder: (context, state) => const DepartmentManagementScreen()),
+GoRoute(path: '/admin/reports', builder: (context, state) => const ReportsViewScreen()),
+]),
+StatefulShellBranch(routes: [
+GoRoute(path: '/admin/documents', builder: (context, state) => const ArchiveRepositoryScreen()),
+]),
+StatefulShellBranch(routes: [
+GoRoute(path: '/admin/profile', builder: (context, state) => const ProfileScreen()),
+]),
+]),
+StatefulShellRoute.indexedStack(builder: (context, state, navigationShell) => AuditorShell(navigationShell: navigationShell, hideNavigationBar: state.matchedLocation == '/auditor/checks/create'), branches: [
+StatefulShellBranch(routes: [
+GoRoute(path: '/auditor', builder: (context, state) => const AuditorDashboardScreen()),
+]),
+StatefulShellBranch(routes: [
+GoRoute(path: '/auditor/audits', builder: (context, state) => const AuditRegisterScreen()),
+GoRoute(path: '/auditor/audit-workspaces/:id', builder: (context, state) => AuditWorkspaceScreen(auditId: state.pathParameters['id']!)),
+GoRoute(path: '/auditor/checks', builder: (context, state) => const ChecksListScreen(), routes: [GoRoute(path: 'create', builder: (context, state) => const CreateCheckScreen()),GoRoute(path: ':id', builder: (context, state) => CheckDetailScreen(checkId: state.pathParameters['id']!)),]),
+GoRoute(path: '/auditor/corrective', builder: (context, state) => const CorrectiveBoardScreen()),
+]),
+StatefulShellBranch(routes: [
+GoRoute(path: '/auditor/documents', builder: (context, state) => const ArchiveReviewScreen()),
+]),
+StatefulShellBranch(routes: [
+GoRoute(path: '/auditor/profile', builder: (context, state) => const ProfileScreen(), routes: [GoRoute(path: 'notifications', builder: (context, state) => const AuditorNotificationsScreen()),]),
+GoRoute(path: '/auditor/help', builder: (context, state) => const HelpReferenceScreen(forAuditor: true)),
+]),
+]),
+StatefulShellRoute.indexedStack(builder: (context, state, navigationShell) => AuditeeShell(navigationShell: navigationShell), branches: [
+StatefulShellBranch(routes: [
+GoRoute(path: '/auditee', builder: (context, state) => const AuditeeDashboardScreen()),
+]),
+StatefulShellBranch(routes: [
+GoRoute(path: '/auditee/status', builder: (context, state) => const MyFindingsScreen()),
+]),
+StatefulShellBranch(routes: [
+GoRoute(path: '/auditee/documents', builder: (context, state) => const MyArchivesScreen()),
+]),
+StatefulShellBranch(routes: [
+GoRoute(path: '/auditee/profile', builder: (context, state) => const ProfileScreen()),
+GoRoute(path: '/auditee/standards', builder: (context, state) => const HelpReferenceScreen()),
+]),
+]),
         GoRoute(
           path: '/auditee/upload',
           builder: (context, state) => const UploadEvidenceScreen(),

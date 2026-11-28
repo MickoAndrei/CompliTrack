@@ -1,3 +1,4 @@
+import '../../widgets/v2/portal_dialog.dart';
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
@@ -10,7 +11,7 @@ class NotificationsScreen extends StatefulWidget {
   const NotificationsScreen({super.key});
 
   static Future<void> showOverlay(BuildContext context) {
-    return showDialog<void>(
+    return showPortalDialog<void>(
       context: context,
       builder: (context) => const Dialog(
         insetPadding: EdgeInsets.symmetric(horizontal: 20, vertical: 28),

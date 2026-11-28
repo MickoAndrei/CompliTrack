@@ -1,10 +1,10 @@
 @php($roleId = (int) auth()->user()->roleId)
-@php($roleNames = ['Super Admin', 'Admin', 'Auditor', 'Auditee'])
+@php($roleNames = ['Super Admin', 'Admin (ATL)', 'Auditor', 'Auditee'])
 @php($userAvatarUrl = auth()->user()->avatarUrl())
 @php($userInitials = collect(explode(' ', auth()->user()->fullName ?? 'U'))->filter()->take(2)->map(fn ($part) => mb_substr($part, 0, 1))->implode(''))
 <header class="top-header-bar app-header">
     <div class="header-left">
-        <button type="button" class="menu-toggle" aria-label="Open navigation" @click="sidebarOpen = true">
+        <button type="button" class="menu-toggle" aria-label="Toggle navigation" @click="toggleSidebar()">
             <i data-lucide="menu" class="size-5"></i>
         </button>
         <div>
@@ -13,6 +13,10 @@
         </div>
     </div>
     <div class="header-right">
+        <div class="ct-nav-search" x-data="{open:false, query:'', links:[], show(){this.links=Array.from(document.querySelectorAll('.sidebar-nav a')).map(a=>({label:a.getAttribute('aria-label'),href:a.getAttribute('href')}));this.open=true;this.$nextTick(()=>this.$refs.query.focus())}}" @click.outside="open=false" @keydown.escape.stop="open=false">
+            <button class="ct-search-trigger" type="button" @click="open ? open=false : show()" :aria-expanded="open" aria-label="Search authorized pages"><i data-lucide="search" aria-hidden="true"></i><span>Search</span></button>
+            <div class="ct-search-popup" x-show="open" x-cloak><label><span class="sr-only">Search authorized navigation</span><input type="search" x-ref="query" x-model="query" placeholder="Search pages…"></label><template x-for="link in links.filter(l=>l.label.toLowerCase().includes(query.toLowerCase()))" :key="link.href"><a :href="link.href" x-text="link.label"></a></template><p x-show="!links.some(l=>l.label.toLowerCase().includes(query.toLowerCase()))">No matching pages.</p></div>
+        </div>
         @if (in_array($roleId, [0, 1, 2, 3], true))
             <div class="relative" x-data="auditeeNotifications()" @click.outside="close()" @keydown.escape.window="close()">
                 <button type="button" @click="toggle()" class="notification-bell-btn" :aria-label="badgeCount() > 0 ? `Notifications, ${badgeCount()} unread` : 'Notifications'" :aria-expanded="open.toString()" aria-haspopup="dialog">
@@ -42,6 +46,7 @@
                     <span class="header-user-name">{{ auth()->user()->fullName }}</span>
                     <span class="header-user-role">{{ $roleNames[$roleId] ?? 'User' }} <x-organizational-responsibility :user="auth()->user()" /></span>
                 </span>
+                <i data-lucide="chevron-down" class="v2-profile-chevron" aria-hidden="true"></i>
             </button>
             <div class="header-profile-dropdown" x-cloak x-show="open">
                 <a href="{{ $profilePath }}"><i data-lucide="circle-user-round" aria-hidden="true"></i><span>Profile</span></a>

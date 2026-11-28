@@ -10,7 +10,6 @@ import '../../../data/models/super_admin_dashboard_model.dart';
 import '../../../data/repositories/audit_log_repository.dart';
 import '../../../data/repositories/super_admin_repository.dart';
 import '../../../data/repositories/system_health_repository.dart';
-import '../admin/admin_notifications_screen.dart';
 import '../../widgets/ustp_app_bar.dart';
 
 class SuperAdminDashboardScreen extends StatefulWidget {
@@ -54,7 +53,6 @@ class _SuperAdminDashboardScreenState extends State<SuperAdminDashboardScreen> {
       backgroundColor: AppColors.ustpLight,
       appBar: UstpAppBar(
         onProfileTap: () => context.go('/common/profile'),
-        onNotificationTap: () => AdminNotificationsScreen.showOverlay(context),
       ),
       body: FutureBuilder<SuperAdminDashboardModel>(
         future: _dashboardFuture,

@@ -25,6 +25,11 @@ class DatabaseSeeder extends Seeder
         // Fail before seeding if the configured MongoDB server/database is unavailable.
         DB::connection('mongodb')->getMongoDB()->command(['ping' => 1]);
 
+        if (config('v2.enabled') || DB::connection('mongodb')->getMongoDB()->getDatabaseName() === 'complitrack_v2') {
+            $this->call(\Database\Seeders\V2\V2DatabaseSeeder::class);
+            return;
+        }
+
         $this->call([
             RoleSeeder::class,
             DepartmentSeeder::class,

@@ -1,10 +1,10 @@
+import '../../widgets/v2/portal_dialog.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_icons.dart';
 import '../../../data/models/audit_log_model.dart';
 import '../../../data/repositories/audit_log_repository.dart';
-import '../admin/admin_notifications_screen.dart';
 import '../../widgets/empty_state.dart';
 import '../../widgets/ustp_app_bar.dart';
 
@@ -90,7 +90,7 @@ class _SystemLogsScreenState extends State<SystemLogsScreen> {
   }
 
   void _showExportDisabledNotice() {
-    showDialog(
+    showPortalDialog(
       context: context,
       builder: (context) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -146,7 +146,6 @@ class _SystemLogsScreenState extends State<SystemLogsScreen> {
     return Scaffold(
       backgroundColor: const Color(0xFFF8F9FA),
       appBar: UstpAppBar(
-        onNotificationTap: () => AdminNotificationsScreen.showOverlay(context),
       ),
       body: Column(
         children: [
